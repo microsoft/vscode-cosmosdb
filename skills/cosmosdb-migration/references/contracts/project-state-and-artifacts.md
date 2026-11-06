@@ -442,6 +442,9 @@ is `complete` and all four evaluation gates pass:
   `projectType`, `language`, `databaseType`, `databaseAccess`, and `completedAt` values.
   `frameworks` is optional; omit it or use an empty array when none applies. Supplied
   entries must be non-empty strings.
+  Exception: `codebaseAvailable: false` explicitly selects schema-only scope. Only `projectName`, `databaseType`,
+  and `completedAt` are required then; preserve supplied application details without inventing missing values.
+  An omitted availability flag retains the existing application-migration contract.
 2. The resolved source selection contains sufficient evidence and
    `preflight-manifest.json#sourceInventory` records a current accepted interpretation
    with no unresolved reported errors or blocking findings. Explain the interpretation
@@ -465,10 +468,12 @@ before generating its source report. See [Discovery preparation](../phases/disco
 
 SDK compatibility belongs to `discovery`, not preflight. Do not evaluate it, report
 it as missing, or include `sdkCompatibility` in `preflight-manifest.json`. During
-discovery, evaluate every declared application language and write the report to
+discovery with application code available, evaluate every declared application language and write the report to
 `discovery-manifest.json#sdkCompatibility`. Every valid support classification
 completes that discovery gate. Unsupported status permits analytical phases,
 provisioning, and code-migration planning, but blocks application code migration.
+Schema-only discovery does not require an SDK report, and application mapping does not exclude selected datasets
+from conversion. New code-migration planning/execution remains blocked until code is supplied and discovery refreshed.
 
 ## Persisted Phase Transitions
 

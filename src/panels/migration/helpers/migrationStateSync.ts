@@ -29,6 +29,7 @@ export function toMigrationProjectView(project: ProjectJson) {
                 applicationAnalysis:
                     analysis && typeof analysis === 'object' && !Array.isArray(analysis)
                         ? {
+                              codebaseAvailable: analysis.codebaseAvailable,
                               projectName: analysis.projectName,
                               projectType: analysis.projectType,
                               language: analysis.language,

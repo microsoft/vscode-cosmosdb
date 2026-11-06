@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { showHelp } from './cli-help.mjs';
 import { parseJson } from './phase-summary.mjs';
-import { validateMigrationProject } from './validate-migration-project.mjs';
+import { isSchemaOnlyProject, validateMigrationProject } from './validate-migration-project.mjs';
 import { domainSources } from './source-contract.mjs';
 
 function compareNames(left, right) {
@@ -24,12 +24,13 @@ export function selectSchemaConversionDomains(project, includeUnmappedDomains = 
         throw new Error('No assessed domains are available for schema conversion.');
     }
 
+    const includeAll = isSchemaOnlyProject(project) || includeUnmappedDomains;
     const selectedDomains = domains
-        .filter((domain) => includeUnmappedDomains || domain.isMapped)
+        .filter((domain) => includeAll || domain.isMapped)
         .map(domain => ({ name: domain.name, [domain.datasets ? 'datasets' : 'tables']: [...domainSources(domain)].sort() }))
         .sort(compareNames);
     const skippedDomains = domains
-        .filter((domain) => !includeUnmappedDomains && !domain.isMapped)
+        .filter((domain) => !includeAll && !domain.isMapped)
         .map(domain => ({ name: domain.name, [domain.datasets ? 'datasets' : 'tables']: [...domainSources(domain)].sort(), reason: 'no detected application mapping' }))
         .sort(compareNames);
 

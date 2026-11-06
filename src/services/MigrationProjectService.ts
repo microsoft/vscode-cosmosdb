@@ -72,6 +72,7 @@ export interface ProjectJson {
             volumetrics?: DiscoverySourceSelection;
             accessPatterns?: DiscoverySourceSelection;
             applicationAnalysis?: {
+                codebaseAvailable?: boolean;
                 projectName?: string;
                 projectType?: string;
                 language?: string;

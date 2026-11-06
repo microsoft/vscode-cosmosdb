@@ -770,6 +770,40 @@ describe('migration accessibility', () => {
         });
     });
 
+    it('keeps schema-only modeling available without application fields and explains unavailable code migration', () => {
+        addGeneratedArtifacts();
+        state.analysisResult = {
+            projectName: 'Source evidence',
+            databaseType: 'Document store',
+            codebaseAvailable: false,
+        };
+        state.assessmentResult = {
+            domainFiles: [{ name: 'Orders', datasets: ['orders'], filePath: '/workspace/Orders.md', isMapped: false }],
+            summaryFilePath: '/workspace/assessment.md',
+        };
+        render(renderAssistant());
+        expect(screen.getByText(/^Schema-only migration:/)).toBeVisible();
+        for (const name of ['Type:', 'Language:', 'Access Method:']) {
+            const input = screen.getByRole('textbox', { name });
+            expect(input).not.toBeRequired();
+            fireEvent.blur(input);
+            expect(input).not.toHaveAttribute('aria-invalid', 'true');
+        }
+        fireEvent.click(screen.getByRole('button', { name: /Phase 2: Domain Assessment/ }));
+        expect(screen.getByText('Not applicable')).toBeVisible();
+        fireEvent.click(screen.getByRole('button', { name: /Phase 3: Schema Conversion/ }));
+        const unmapped = screen.getByRole('checkbox', { name: /Include domains without detected application code/ });
+        expect(unmapped).toBeChecked();
+        expect(unmapped).toBeDisabled();
+        expect(screen.getByTestId('migration-run-conversion')).toBeEnabled();
+        const plan = within(screen.getByTestId('migration-footer')).getByTestId('migration-action-button');
+        expect(plan).toHaveAccessibleName('Plan Migration');
+        expect(plan).toBeDisabled();
+        expect(plan).toHaveAccessibleDescription(
+            'Application code migration is unavailable until a codebase is supplied and discovery is refreshed.',
+        );
+    });
+
     it.each(['azure', 'emulator'] as const)(
         'keeps connection-test focus and prevents duplicate activation for %s',
         (targetType) => {

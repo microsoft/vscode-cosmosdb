@@ -4,6 +4,11 @@ Application code migration is an optional workflow after a validated `schema-con
 model. It can run after artifact-only `provisioning`; provisioning need not be complete
 unless tests require a live target.
 
+When `applicationAnalysis.codebaseAvailable` is false, this workflow is unavailable: do not generate a plan for
+invented application files. Continue schema-only analytical/provisioning work as requested. Before a new code plan
+or execution, obtain the codebase and refresh application discovery/SDK evidence. Historical execution records
+remain intact and may still be inspected.
+
 ## Iterative Handoff
 
 Code migration is a terminal, iterative action, not a continuously fresh analytical

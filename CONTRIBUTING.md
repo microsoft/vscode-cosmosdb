@@ -23,6 +23,13 @@ There are several ways you can contribute to the [vscode-cosmosdb repository](ht
 
   - Debug: Select the `Launch Extension` configuration in the Debug side bar and press <kbd>F5</kbd> to start debugging the extension.
 
+    By default, the Vite Watch tasks stay running between debug sessions. Select
+    `Launch Extension (stop Watch on exit)` to stop the extension build watcher and webview dev server when debugging
+    ends or the Extension Development Host window closes. This profile launches Vite through the Node debugger,
+    waits for the initial build and server readiness, and links the three debug sessions for automatic shutdown.
+    Stop the default Watch tasks before switching to it, since both profiles use the same output directory and
+    dev-server port.
+
 This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
 For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/)
 or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.

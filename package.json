@@ -68,7 +68,7 @@
     "pretest": "rimraf out && tsc -p tsconfig.test.json && node -e \"require('fs').writeFileSync('out/package.json', JSON.stringify({type:'module'}))\"",
     "test": "node scripts/run-integration-tests.mjs",
     "test:proxy": "node scripts/test-proxy.mjs",
-    "test:migration-skill": "node --test skills/cosmosdb-relational-migration/tests/*.test.mjs",
+    "test:migration-skill": "node --test skills/cosmosdb-migration/tests/*.test.mjs",
     "eval": "cross-env VALLY_TELEMETRY_OPTOUT=1 node scripts/eval.mjs --output-dir .vally/results --workers 2 --max-retries 2 --require-pass",
     "eval:handoff": "cross-env VALLY_TELEMETRY_OPTOUT=1 node scripts/eval-handoff.mjs",
     "eval:lint": "cross-env VALLY_TELEMETRY_OPTOUT=1 vally lint --eval-spec evals --grader-plugin ./evals/cosmosdb-relational-migration/check-artifacts.mjs --grader-plugin ./evals/cosmosdb-relational-migration/adventureworks/check-artifacts.mjs",
@@ -233,7 +233,7 @@
         "path": "./skills/cosmosdb-nosql-query-editor/SKILL.md"
       },
       {
-        "path": "./skills/cosmosdb-relational-migration/SKILL.md"
+        "path": "./skills/cosmosdb-migration/SKILL.md"
       },
       {
         "path": "./skills/cosmosdb-data-model-recommendation/SKILL.md"

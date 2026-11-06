@@ -35,7 +35,7 @@ export interface MigrationState {
     // Consent
     consentGiven: boolean;
 
-    // Phase 1: Schema Inventory & Application Analysis
+    // Phase 1: Source Inventory & Application Analysis
     schemaFiles: string[];
     volumetricFiles: string[];
     accessPatternFiles: string[];
@@ -65,7 +65,7 @@ export interface MigrationState {
     assessmentResult: {
         domainFiles: {
             name: string;
-            tables: string[];
+            datasets: string[];
             filePath: string;
             isMapped: boolean;
         }[];

@@ -6,9 +6,8 @@
 /**
  * TypeScript types for the cosmos-model.json file produced during Step 3 (Schema Conversion).
  *
- * The format is inspired by MongoDB's Relational Migrator .relmig schema mapping format
- * (https://www.mongodb.com/docs/relational-migrator/mapping-rules/schema-mapping/)
- * with additional Cosmos DB NoSQL-specific sections (partition keys, indexing, docType, etc.).
+ * Source-neutral lineage refers to the preflight inventory. Legacy relational lineage remains
+ * readable through the skill's validated compatibility boundary.
  *
  * The cosmos-model.json is progressively enriched through sub-steps 1–6:
  *   1. Container Design  → containers, entities, attributes (sourceType, docType, attribute mappings)
@@ -75,10 +74,22 @@ export interface PartitionKeyCandidate {
     rationale: string;
 }
 
-export interface CosmosEntity {
+export interface SourceFieldReference {
+    dataset: string;
+    field: string;
+}
+
+export type CosmosIdentity =
+    | {
+          kind: 'fields';
+          fields: SourceFieldReference[];
+          encoding: 'typed-hex-v1' | 'native-uuid';
+      }
+    | { kind: 'generated-uuid' };
+
+export type CosmosEntity = {
     name: string;
     docType: string;
-    sourceTable: string;
     attributes: CosmosAttribute[];
     relationships?: EntityRelationship[];
     /**
@@ -88,34 +99,44 @@ export interface CosmosEntity {
      * produce their own top-level documents.
      */
     isEmbeddedOnly?: boolean;
-    /**
-     * Deterministic template used by sample-data generation and (future) data
-     * import to construct each document's `id` from source PK column values.
-     * Source column names are referenced in braces, e.g. `"customer-{CustomerID}"`,
-     * `"salesOrderDetail-{SalesOrderID}-{SalesOrderDetailID}"`, or `"{rowguid}"`
-     * when the PK is a native GUID. Use `"{uuid}"` as a fallback when no usable
-     * PK exists (a fresh GUID is generated per document).
-     * Required at runtime for every standalone entity (`isEmbeddedOnly` !== true).
-     */
-    idTemplate?: string;
-}
+} & ({ sourceDataset: string; sourceTable?: never } | { sourceTable: string; sourceDataset?: never }) &
+    (
+        | { identity: CosmosIdentity; idTemplate?: never }
+        | {
+              identity?: never;
+              /** Legacy templates are validated against the original relational primary-key columns. */
+              idTemplate?: string;
+          }
+    );
 
 export interface CosmosAttribute {
     target: string;
-    source: { table: string; column: string; type: string };
+    source:
+        | { table: string; column: string; type: string }
+        | (SourceFieldReference & { type: string })
+        | { inputs: SourceFieldReference[]; type: string }
+        | { generated: 'uuid' | 'constant'; type: string };
     type: string;
     isPartitionKey?: boolean;
     isId?: boolean;
+    optional?: boolean;
+    nullable?: boolean;
 }
 
-export interface EntityRelationship {
+export type EntityRelationship = {
     targetEntity: string;
-    sourceFK: { table: string; column: string };
     type: 'one-to-one' | 'one-to-many' | 'many-to-many';
     strategy?: 'embed' | 'reference';
+    targetProperty?: string;
     score?: number;
     rationale?: string;
-}
+} & (
+    | { sourceRelationship: string; sourceFK?: never }
+    | {
+          sourceFK: { table: string; column: string; type?: string; constraintName?: string };
+          sourceRelationship?: never;
+      }
+);
 
 export interface IndexingPolicy {
     indexingMode?: string;

@@ -5,7 +5,7 @@
 
 import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
-import { parseJson } from '../../../../skills/cosmosdb-relational-migration/scripts/phase-summary.mjs';
+import { parseJson } from '../../../../skills/cosmosdb-migration/scripts/phase-summary.mjs';
 import { type ProjectJson } from '../../../services/MigrationProjectService';
 import { type MigrationSkillInvocation } from './migrationSkillDispatcher';
 import { type MigrationPhaseCompletion, type MigrationPhaseCompletionMap } from './migrationStateSync';
@@ -45,12 +45,11 @@ function scopeValid(invocation: MigrationSkillInvocation, completion: MigrationP
             return !completion.artifacts.some(
                 (artifact) => artifact.path === '.cosmosdb-migration/project.json#phases.discovery.applicationAnalysis',
             );
-        case 'schema-acquisition': {
-            const schema = completion.artifacts.filter(
-                (artifact) => artifact.description === 'Authoritative schema DDL',
+        case 'schema-acquisition':
+            return artifactPresent(
+                completion,
+                '.cosmosdb-migration/phases/1-discovery/preflight-manifest.json#sourceInventory',
             );
-            return schema.length > 0 && schema.every((artifact) => artifact.state === 'present');
-        }
         case 'volumetrics':
         case 'access-patterns':
             return (
@@ -109,17 +108,27 @@ export async function collectMigrationTelemetryEvidence(
                 measurements,
             );
             const inventory = record(manifest.sourceInventory);
-            const tables = array(inventory.tables);
             measurements.schemaFileCount = array(inventory.files).length;
-            measurements.sourceInventoryTableCount = tables.length;
-            measurements.sourceColumnCount = tables.reduce<number>(
-                (sum, table) => sum + array(record(table).columns).length,
-                0,
-            );
-            measurements.sourceForeignKeyCount = tables.reduce<number>(
-                (sum, table) => sum + array(record(table).foreignKeys).length,
-                0,
-            );
+            if (inventory.version === 2) {
+                const datasets = array(inventory.datasets);
+                measurements.sourceDatasetCount = datasets.length;
+                measurements.sourceFieldCount = datasets.reduce<number>(
+                    (sum, dataset) => sum + array(record(dataset).fields).length,
+                    0,
+                );
+                measurements.sourceRelationshipCount = array(inventory.relationships).length;
+            } else {
+                const tables = array(inventory.tables);
+                measurements.sourceInventoryTableCount = tables.length;
+                measurements.sourceColumnCount = tables.reduce<number>(
+                    (sum, table) => sum + array(record(table).columns).length,
+                    0,
+                );
+                measurements.sourceForeignKeyCount = tables.reduce<number>(
+                    (sum, table) => sum + array(record(table).foreignKeys).length,
+                    0,
+                );
+            }
         }
         if (phase === 'assessment') {
             measurements.domainCount = project.phases.assessment?.domains?.length ?? 0;

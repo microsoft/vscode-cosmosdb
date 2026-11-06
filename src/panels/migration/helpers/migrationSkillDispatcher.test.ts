@@ -63,7 +63,12 @@ vi.mock('vscode', () => ({
         executeCommand: vi.fn().mockResolvedValue(undefined),
         getCommands: vi.fn().mockResolvedValue([]),
     },
-    window: { showWarningMessage: vi.fn(), showTextDocument: vi.fn(), showQuickPick: vi.fn() },
+    window: {
+        showWarningMessage: vi.fn(),
+        showTextDocument: vi.fn(),
+        showQuickPick: vi.fn(),
+        showOpenDialog: vi.fn(),
+    },
     workspace: {
         get workspaceFolders() {
             return [{ uri: { fsPath: '/workspace/shop' }, name: 'shop', index: 0 }];
@@ -131,6 +136,15 @@ describe('MigrationAssistantTab settings and AI launch guards', () => {
             publishRunActivity: vi.fn(),
             eventSink: { emit: vi.fn() },
         });
+    });
+
+    it('offers source evidence without a SQL or known-engine file restriction', async () => {
+        vi.mocked(vscode.window.showOpenDialog).mockResolvedValueOnce(undefined);
+        await tab.dispatchCommand('selectSchemaFiles', []);
+        expect(vscode.window.showOpenDialog).toHaveBeenCalledWith(
+            expect.objectContaining({ canSelectMany: true, filters: { 'Source Evidence': ['*'] } }),
+        );
+        expect(save).not.toHaveBeenCalled();
     });
 
     describe('target account selection', () => {
@@ -700,10 +714,7 @@ describe('migrationSkillDispatcher', () => {
         const prompt = buildMigrationSkillPrompt({ workspacePath: '/workspace/shop' });
 
         expect(prompt).toBe(
-            [
-                'Run a relational database migration to Azure Cosmos DB.',
-                'Use the cosmosdb-relational-migration skill.',
-            ].join('\n'),
+            ['Run a database migration to Azure Cosmos DB for NoSQL.', 'Use the cosmosdb-migration skill.'].join('\n'),
         );
     });
 
@@ -772,7 +783,7 @@ describe('migrationSkillDispatcher', () => {
                 expect(prompt).toContain(
                     `Review the ${phase.replaceAll('-', ' ')} migration blockers and propose fixes for approval.`,
                 );
-                expect(prompt).toContain('Use the cosmosdb-relational-migration skill.');
+                expect(prompt).toContain('Use the cosmosdb-migration skill.');
                 expect(prompt).toContain('Run in interactive mode.');
                 expect(prompt).toContain('Do not change files or resources before explicit approval.');
                 expect(prompt).toContain(`Workspace: ${JSON.stringify(path.resolve('/workspace/Other App'))}`);
@@ -809,8 +820,8 @@ describe('migrationSkillDispatcher', () => {
 
         expect(prompt).toBe(
             [
-                'Run the assessment phase of a relational database migration to Azure Cosmos DB.',
-                'Use the cosmosdb-relational-migration skill.',
+                'Run the assessment phase of a database migration to Azure Cosmos DB for NoSQL.',
+                'Use the cosmosdb-migration skill.',
             ].join('\n'),
         );
     });
@@ -874,7 +885,7 @@ describe('migrationSkillDispatcher', () => {
         const prompt = buildMigrationSkillPrompt({ ...invocation, schemaSource: 'infer' });
         expect(prompt).toContain('Run only the schema-acquisition preflight step.');
         expect(prompt).toContain(
-            'Infer the source schema from workspace code and selected artifacts (schema-source: infer).',
+            'Infer the source inventory from workspace code and selected artifacts (schema-source: infer).',
         );
         expect(prompt).not.toContain('project.json');
         expect(buildMigrationSkillPrompt(invocation)).not.toContain('schema-source:');

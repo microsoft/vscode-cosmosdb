@@ -263,7 +263,7 @@ Assessment domains must use this version 1 shape; do not persist a shortened dom
 ```json
 {
   "name": "Sales",
-  "tables": ["sales.orders"],
+  "datasets": ["orders"],
   "crossDomainDependencies": [],
   "estimatedTokens": 1200,
   "isMapped": true
@@ -278,7 +278,9 @@ shape. When the context window is unknown, retain the estimate and report budget
 status as unknown without automatically splitting the domain.
 
 Each `parsedAccessPatterns` entry requires string `name`, `type`, and `frequency`
-values plus string arrays for `tables` and `codeReferences`. The optional
+values plus string arrays for `datasets` and `codeReferences`. Legacy `tables` arrays remain
+readable through validated inventory resolution; never persist both forms on one object.
+Dataset values are stable inventory IDs, not display names. The optional
 `filterFields`, `singleOrBatch`, `sqlExample`, and `codeExample` values are strings.
 
 Omit optional fields when no value is available; do not write null. Read helpers
@@ -360,10 +362,11 @@ The three discovery sources use the same selection format under:
 - `phases.discovery.volumetrics`
 - `phases.discovery.accessPatterns`
 
-The schema selection holds both DDL and supporting artifacts. The inspector exposes
+The source selection holds native declarations, metadata, code, documentation, and samples.
+The inspector's `source-evidence` view exposes the entire selection. Compatibility views expose
 `.sql`/`.ddl` files as `schema-ddl` and all other selected files as `schema-evidence`;
-both views share the same selection and exclusions. Non-DDL artifacts are evidence,
-never authoritative SQL. Application code can also be inspected within project scope.
+all views share the same selection and exclusions. Native declarations remain authoritative for their
+evidenced scope; non-SQL artifacts are never treated as SQL. Application code can also be inspected within project scope.
 The managed `project.json`, phase reports/manifests/models, provisioning artifacts,
 code-migration outputs listed above, curated templates, and their path aliases are excluded
 from raw schema evidence. Raw input folders remain eligible. Freshness tracks semantic
@@ -439,10 +442,12 @@ is `complete` and all four evaluation gates pass:
   `projectType`, `language`, `databaseType`, `databaseAccess`, and `completedAt` values.
   `frameworks` is optional; omit it or use an empty array when none applies. Supplied
   entries must be non-empty strings.
-2. The resolved schema selection contains at least one DDL file and
+2. The resolved source selection contains sufficient evidence and
    `preflight-manifest.json#sourceInventory` records a current accepted interpretation
    with no unresolved reported errors or blocking findings. Explain the interpretation
    and findings in `preflight-summary.md`; the JSON manifest owns the inventory.
+   Use the [version-2 source contract](./source-inventory.md); DDL is optional even for
+   relational inventories inferred from code. Legacy v1 evidence is validated before normalization.
 3. The default `volumetrics/volumetrics.md` exists and passes the `preflight` review.
 4. The default `access-patterns/access-patterns.md` exists and passes the `preflight`
    review.

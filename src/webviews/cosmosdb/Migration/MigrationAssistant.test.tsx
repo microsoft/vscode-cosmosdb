@@ -243,7 +243,7 @@ describe('migration tooltip theming', () => {
                 });
 
                 for (const [label, folder] of [
-                    ['Source schema help', 'schema-ddl/'],
+                    ['Source evidence help', 'schema-ddl/'],
                     ['Volumetrics help', 'volumetrics/'],
                     ['Access patterns help', 'access-patterns/'],
                 ]) {
@@ -293,7 +293,7 @@ describe('migration chat action tooltips', () => {
                     if (header.getAttribute('aria-expanded') === 'false') fireEvent.click(header);
                 }
                 const actions = [
-                    ['Generate schema files from workspace code', 'Generate schema files from workspace code'],
+                    ['Infer source inventory from workspace code', 'Infer source inventory from workspace code'],
                     ['Update volumetrics template', 'Update volumetrics template'],
                     ['Update access-patterns template', 'Update access-patterns template'],
                     ['Re-Run Auto-Detect', 'Auto-Detect'],
@@ -714,7 +714,11 @@ describe('migration accessibility', () => {
 
     it('describes every file picker and expander without changing its visible accessible name', () => {
         render(renderAssistant());
-        const descriptions = ['Optional DDL or supporting schema artifacts', 'Volumetrics:', 'Access Patterns:'];
+        const descriptions = [
+            'Source definitions, metadata, code, documentation, or samples',
+            'Volumetrics:',
+            'Access Patterns:',
+        ];
         for (const label of ['Select Files…', 'Select Folder…', '1 file(s) selected']) {
             const controls = screen.getAllByRole('button', { name: label });
             expect(controls).toHaveLength(3);
@@ -722,19 +726,41 @@ describe('migration accessibility', () => {
                 expect(control).toHaveTextContent(label);
                 expect(control).toHaveAccessibleName(label);
                 expect(control).toHaveAccessibleDescription(
-                    label === '1 file(s) selected' && index === 0 ? 'Source Schema:' : descriptions[index],
+                    label === '1 file(s) selected' && index === 0 ? 'Source Evidence:' : descriptions[index],
                 );
             });
         }
     });
 
+    it('shows native datasets and accepts an unfamiliar source without a technology selector', () => {
+        state.analysisResult = { ...state.analysisResult, databaseType: 'Custom event store' };
+        state.assessmentResult = {
+            domainFiles: [
+                {
+                    name: 'Events',
+                    datasets: ['stream:events', 'collection:snapshots'],
+                    filePath: '/workspace/.cosmosdb-migration/phases/2-assessment/domains/Events.md',
+                    isMapped: true,
+                },
+            ],
+            summaryFilePath: '/workspace/.cosmosdb-migration/phases/2-assessment/assessment-summary.md',
+        };
+        render(renderAssistant());
+        expect(screen.getByRole('textbox', { name: /Database:/ })).toHaveValue('Custom event store');
+        fireEvent.click(screen.getByRole('button', { name: /Phase 2: Domain Assessment/ }));
+        const table = screen.getByTestId('migration-phase2-domains');
+        expect(within(table).getByRole('columnheader', { name: 'Datasets' })).toBeVisible();
+        expect(within(table).getByRole('cell', { name: '2' })).toBeVisible();
+        expect(within(table).getByRole('img', { name: 'Yes' })).toBeVisible();
+    });
+
     it('offers an icon-only inference action without supplied DDL', () => {
         state.schemaFiles = [];
         render(renderAssistant());
-        const button = screen.getByRole('button', { name: 'Generate schema files from workspace code' });
+        const button = screen.getByRole('button', { name: 'Infer source inventory from workspace code' });
         expect(button.textContent).toBe('');
-        expect(button).toHaveAccessibleName('Generate schema files from workspace code');
-        expect(button).toHaveAccessibleDescription('Generate schema files from workspace code using Copilot Chat');
+        expect(button).toHaveAccessibleName('Infer source inventory from workspace code');
+        expect(button).toHaveAccessibleDescription('Infer source inventory from workspace code using Copilot Chat');
         expect(button).toBeEnabled();
         fireEvent.click(button);
         expect(postMessage).toHaveBeenCalledWith({

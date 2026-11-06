@@ -1,8 +1,16 @@
-# Relational to Azure Cosmos DB Migration
+# Source to Azure Cosmos DB Migration
 
-A portable agent skill for migrating relational applications to Azure Cosmos DB for
+A portable agent skill for migrating source applications to Azure Cosmos DB for
 NoSQL. It supports source discovery, domain assessment, document-model design,
 target provisioning with sample data, and application code migration.
+
+Sources may be relational, document-oriented, or unfamiliar. A typed inventory preserves native
+identity, fields, coverage, provenance, and behavior obligations. DDL and SQLGlot are optional for
+unrelated evidence; even relational code inventories need no generated SQL. The destination remains
+NoSQL, never implicitly the source-compatible API. See the [common contract](./references/contracts/source-inventory.md),
+[MongoDB guidance](./references/sources/mongodb.md), and [unfamiliar sources](./references/sources/unfamiliar.md).
+Existing version-1 projects resume through validated in-memory normalization without rewriting
+artifacts, selections, or historical execution records.
 
 This README is for people installing and using the skill. The agent's entry point
 is [SKILL.md](./SKILL.md); its linked references define the workflow. You do not need
@@ -42,7 +50,7 @@ approval rules. There is no need to install every listed tool before starting.
 
 ## Installation
 
-1. Install the entire `cosmosdb-relational-migration` folder through your host's
+1. Install the entire `cosmosdb-migration` folder through your host's
    supported skill installation or discovery mechanism. Keep its scripts, schemas,
    references, assets, and tests together; copying only [SKILL.md](./SKILL.md) is not enough.
 2. Install `cosmosdb-best-practices` as a separate peer skill using the same mechanism.
@@ -52,7 +60,7 @@ The installation should contain two independent skill folders:
 
 ```text
 <host skill directory>/
-|-- cosmosdb-relational-migration/
+|-- cosmosdb-migration/
 |   |-- README.md
 |   |-- SKILL.md
 |   |-- references/
@@ -67,8 +75,8 @@ The installation should contain two independent skill folders:
 
 ## Get Started
 
-Open the application source. **Supplying DDL is optional.** Current database DDL is
-preferred when available; otherwise the agent infers it from code and supporting
+Open the application source. **DDL is optional, not an intermediate requirement.** Current native declarations are
+preferred when available; otherwise the agent infers a typed inventory from code and supporting
 artifacts, recording provenance and uncertainty. These sources may omit deployed
 constraints, indexes, or behavior, so review the inferred schema before relying on it.
 
@@ -259,8 +267,8 @@ the complete set, including referenced definitions. A data dump is not required.
 Selected DDL is authoritative and is not rewritten to match application code. Conflicts
 with ORM mappings or queries are reported for review. Without DDL, use application models,
 migrations, queries, metadata exports, schema documents, or samples as evidence.
-Inferred DDL retains provenance and uncertainty across reruns; changed evidence makes it
-stale. These sources may not represent the complete deployed database. Incomplete or malformed
+The inferred inventory retains provenance and uncertainty across reruns; changed evidence makes it
+stale. Generated DDL is an optional review/export artifact only. These sources may not represent the complete deployed database. Incomplete or malformed
 supplied DDL must be corrected or deselected; it does not silently trigger code-based
 inference.
 
@@ -523,6 +531,8 @@ These modules support the executable helpers and have no command-line entry poin
 | [phase-summary.mjs](./scripts/phase-summary.mjs) | Validators: read evidence/model JSON and Markdown sections |
 | [reconcile-capacity.mjs](./scripts/reconcile-capacity.mjs) | Model merge: reconcile capacity contributions before sizing |
 | [validate-source-evidence.mjs](./scripts/validate-source-evidence.mjs) | Completion and provisioning validators: inventory, hashes, source identity |
+| [source-contract.mjs](./scripts/source-contract.mjs) | Common inventory, validated legacy views, typed paths, field references, and dataset ownership |
+| [mapping-examples.mjs](./scripts/mapping-examples.mjs) | Bounded executable JSON/BSON conversion, identity examples, and approved behavior decisions; never executes hooks |
 | [cli-help.mjs](./scripts/cli-help.mjs) | All executable helpers: side-effect-free help dispatch |
 | [cli-arguments.mjs](./scripts/cli-arguments.mjs) | Option-taking helpers: reject missing values before reading inputs or performing work |
 

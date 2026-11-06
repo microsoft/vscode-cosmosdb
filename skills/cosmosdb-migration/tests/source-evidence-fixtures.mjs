@@ -2,7 +2,9 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { buildCompatibilityReport } from '../scripts/check-sdk-compatibility.mjs';
-import { buildFreshnessManifest } from '../scripts/freshness.mjs';
+import { buildFreshnessManifest, fileSha256 } from '../scripts/freshness.mjs';
+import { resolveItemId } from '../scripts/identity-mapping.mjs';
+import { mergeCosmosModels } from '../scripts/merge-cosmos-models.mjs';
 import { modelHash } from '../scripts/validate-conversion-evidence.mjs';
 import { canonicalStringify, canonicalizeCosmosModel } from '../scripts/validate-cosmos-model.mjs';
 import { sourceFilesHash } from '../scripts/validate-source-evidence.mjs';
@@ -105,4 +107,100 @@ export function verificationSummary(workspace, project, verification) {
     writeFixture(workspace, 'phases/4-provisioning/manifest.json', `${JSON.stringify({ version: 1, blockingIssues: [], verification }, null, 2)}\n`);
     checkpointFreshness(workspace, project, 'provisioning');
     return summary;
+}
+
+export function createSourceNeutralFixture(workspace, engine = 'ExampleDocumentStore') {
+    const sourcePath = 'source.json';
+    const value = entry => ({ state: 'value', value: entry });
+    fs.writeFileSync(path.join(workspace, sourcePath), '{"_id":{"$oid":"507f1f77bcf86cd799439011"},"tenant":"a"}');
+    const files = [{
+        path: sourcePath, sha256: fileSha256(path.join(workspace, sourcePath)), kind: 'sample',
+        disposition: 'used', rationale: 'Selected sample export reviewed.',
+        provenance: { method: 'user export', scope: 'one document' },
+    }];
+    const field = (id, nativeType) => ({
+        id, path: [{ kind: 'property', name: id }], nativeTypes: [nativeType], presence: 'required', nullable: false, evidence: [sourcePath],
+    });
+    const inventory = {
+        version: 2, source: { engine, version: null, namespaces: ['native'], capabilities: [] }, files, errors: [],
+        datasets: [{
+            id: 'orders', name: 'native.orders', kind: 'document', evidence: [sourcePath],
+            coverage: { basis: 'observed', scope: 'selected document', complete: false,
+                sampling: { method: 'bounded export', size: 1, limitations: 'Rare variants may be absent.' } },
+            fields: [field('_id', 'ObjectId'), field('tenant', 'string')],
+            identities: [{ id: 'native-id', kind: 'native', fields: ['_id'], scope: 'collection', evidence: [sourcePath] }],
+        }], relationships: [], semantics: [],
+    };
+    const project = {
+        version: 1, name: 'app', sourceCode: 'parent', custom: { preserve: true },
+        phases: {
+            discovery: {
+                status: 'complete', preflightStatus: 'complete', schemaInventory: { files: ['../source.json'], excludedFiles: [] },
+                applicationAnalysis: { projectName: 'app', projectType: 'service', language: 'TypeScript',
+                    databaseType: engine, databaseAccess: 'driver', completedAt: '2026-10-01T00:00:00Z' },
+            },
+            assessment: { status: 'complete', domains: [{ name: 'Orders', datasets: ['orders'],
+                crossDomainDependencies: [], estimatedTokens: 100, isMapped: true }] },
+            schemaConversion: { status: 'complete', domains: ['Orders'] },
+        },
+    };
+    const source = fieldId => ({ dataset: 'orders', field: fieldId, type: fieldId === '_id' ? 'ObjectId' : 'string' });
+    const entity = {
+        name: 'Order', docType: 'order', sourceDataset: 'orders',
+        identity: { kind: 'fields', fields: [{ dataset: 'orders', field: '_id' }], encoding: 'typed-hex-v1' },
+        attributes: [
+            { target: 'id', source: source('_id'), type: 'string', isId: true },
+            { target: 'sourceId', source: source('_id'), type: 'string' },
+            { target: 'tenant', source: source('tenant'), type: 'string', isPartitionKey: true },
+        ],
+    };
+    const model = { version: 1, domain: 'Orders', sourceType: engine, containers: [{
+        name: 'Orders', partitionKeys: [{ path: '/tenant' }], entities: [entity],
+        indexingPolicy: { includedPaths: [{ path: '/*' }], excludedPaths: [] },
+    }] };
+    const models = [{ domainName: 'Orders', model }];
+    const root = mergeCosmosModels(models, { databaseName: 'app', capacityMode: 'serverless' }).model;
+    const item = { sourceId: '507f1f77bcf86cd799439011', tenant: 'a', docType: 'order' };
+    item.id = resolveItemId(entity, item);
+    inventory.sha256 = sourceFilesHash(engine, files);
+    const evidence = {
+        version: 1, includeUnmappedDomains: false, sourceSha256: inventory.sha256,
+        domainSha256: { Orders: modelHash(model) }, databaseName: 'app', capacityMode: 'serverless', blockingIssues: [],
+        fieldMappings: [
+            { domain: 'Orders', container: 'Orders', entity: 'Order', target: 'sourceId', inputs: [{ dataset: 'orders', field: '_id' }],
+                operation: 'extended-json-string', examples: [{ inputs: [value({ $oid: item.sourceId })], output: value(item.sourceId) }] },
+            { domain: 'Orders', container: 'Orders', entity: 'Order', target: 'tenant', inputs: [{ dataset: 'orders', field: 'tenant' }],
+                operation: 'copy', examples: [{ inputs: [value('a')], output: value('a') }] },
+        ],
+        identityExamples: [{ domain: 'Orders', container: 'Orders', entity: 'Order', cases: [{ item, id: item.id }] }],
+        behaviorDecisions: [],
+    };
+    return { project, inventory, model, models, root, entity, item, evidence };
+}
+
+export function writeSourceNeutralAnalysis(workspace, fixture) {
+    const { project, inventory, model, root, evidence } = fixture;
+    const json = (file, content) => writeFixture(workspace, file, JSON.stringify(content));
+    const report = (prefix, name, headings, manifest) => {
+        writeFixture(workspace, `${prefix}/${name}.md`, evidenceReport(headings));
+        json(`${prefix}/${name.replace(/(?:summary|report)$/u, 'manifest')}.json`, { version: 1, blockingIssues: [], sourceSha256: inventory.sha256, ...manifest });
+    };
+    report('phases/1-discovery', 'preflight-summary', ['Summary', 'Warnings', 'Decisions'], { sourceInventory: inventory });
+    writeFixture(workspace, 'phases/1-discovery/volumetrics/volumetrics.md',
+        '# Volumetrics\n| # | Namespace | Dataset | Est. Record Count | Avg Record Size (KB) | Growth Rate (month) | Read TPS | Write TPS | Notes |\n|---|---|---|---|---|---|---|---|---|\n| 1 | native | orders | unknown | 1 | unknown | unknown | unknown | sampled |\n');
+    writeFixture(workspace, 'phases/1-discovery/access-patterns/access-patterns.md',
+        '# Access Patterns\n## Read Patterns\n| # | Pattern Name | Datasets | Filter / Lookup Fields | Frequency (TPS) | Latency Requirement | Notes |\n|---|---|---|---|---|---|---|\n## Write Patterns\n| # | Pattern Name | Datasets | Single / Batch | Frequency (TPS) | Latency Requirement | Notes |\n|---|---|---|---|---|---|---|\nNo observed application access: orders\n');
+    report('phases/1-discovery', 'discovery-report', ['Source Overview', 'Read Patterns', 'Write Patterns', 'Source Semantics', 'Warnings'],
+        { datasets: ['orders'], patterns: [], noObservedAccess: ['orders'], sdkCompatibility: buildCompatibilityReport(['TypeScript']) });
+    report('phases/2-assessment', 'assessment-summary', ['Overview', 'Domains', 'Cross-Domain Dependencies', 'Recommendations', 'Warnings'],
+        { datasets: ['orders'], domains: ['Orders'], crossDomainEdges: [] });
+    writeFixture(workspace, 'phases/2-assessment/domains/Orders.md', evidenceReport(['Purpose', 'Datasets', 'Access Patterns', 'Cross-Domain Dependencies']));
+    json('phases/2-assessment/domains/Orders.manifest.json', { version: 1, blockingIssues: [], sourceSha256: inventory.sha256, domain: 'Orders', datasets: ['orders'] });
+    json('phases/3-schema-conversion/domains/Orders/cosmos-model.json', model);
+    writeFixture(workspace, 'phases/3-schema-conversion/domains/Orders/summary.md', VALID_DOMAIN_SUMMARY);
+    writeFixture(workspace, 'phases/3-schema-conversion/model.json', canonicalStringify(canonicalizeCosmosModel(root)));
+    writeFixture(workspace, 'phases/3-schema-conversion/summary.md', VALID_ROOT_SUMMARY);
+    json('phases/3-schema-conversion/manifest.json', evidence);
+    project.freshness = Object.fromEntries(['preflight', 'discovery', 'assessment', 'schema-conversion'].map(phase => [phase, buildFreshnessManifest(workspace, project, phase)]));
+    json('project.json', project);
 }

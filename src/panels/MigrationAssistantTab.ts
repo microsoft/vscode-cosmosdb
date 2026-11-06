@@ -22,7 +22,7 @@ import { attachTrpc } from '@microsoft/vscode-ext-webview/host';
 import * as l10n from '@vscode/l10n';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { parseJson } from '../../skills/cosmosdb-relational-migration/scripts/phase-summary.mjs';
+import { parseJson } from '../../skills/cosmosdb-migration/scripts/phase-summary.mjs';
 import { isMigrationFeatureEnabled } from '../commands/migration/migrationFeatureFlag';
 import { getThemedIconPath } from '../constants';
 import { getCosmosDBEntraIdCredential } from '../cosmosdb/CosmosDBCredential';
@@ -511,7 +511,7 @@ export class MigrationAssistantTab extends BaseTab {
             let assessmentResult: {
                 domainFiles: {
                     name: string;
-                    tables: string[];
+                    datasets: string[];
                     filePath: string;
                     isMapped: boolean;
                 }[];
@@ -523,14 +523,17 @@ export class MigrationAssistantTab extends BaseTab {
                 assessmentResult = {
                     domainFiles: assessmentDomains
                         .filter((domain) => domain && typeof domain.name === 'string')
-                        .map((domain) => ({
-                            name: domain.name,
-                            tables: Array.isArray(domain.tables)
-                                ? domain.tables.filter((table): table is string => typeof table === 'string')
-                                : [],
-                            filePath: path.join(assessmentPath, 'domains', `${domain.name}.md`),
-                            isMapped: domain.isMapped === true,
-                        })),
+                        .map((domain) => {
+                            const datasets = domain.datasets ?? domain.tables;
+                            return {
+                                name: domain.name,
+                                datasets: Array.isArray(datasets)
+                                    ? datasets.filter((dataset): dataset is string => typeof dataset === 'string')
+                                    : [],
+                                filePath: path.join(assessmentPath, 'domains', `${domain.name}.md`),
+                                isMapped: domain.isMapped === true,
+                            };
+                        }),
                     summaryFilePath: assessmentSummaryPath,
                 };
             }
@@ -858,21 +861,7 @@ export class MigrationAssistantTab extends BaseTab {
     private async selectFiles(subfolder: 'schema-ddl' | 'volumetrics' | 'access-patterns'): Promise<void> {
         const filterMap: Record<string, Record<string, string[]>> = {
             'schema-ddl': {
-                'DDL and Schema Evidence': [
-                    'sql',
-                    'ddl',
-                    'json',
-                    'xml',
-                    'csv',
-                    'log',
-                    'out',
-                    'md',
-                    'txt',
-                    'yaml',
-                    'yml',
-                    'prisma',
-                ],
-                'All Files': ['*'],
+                [l10n.t('Source Evidence')]: ['*'],
             },
             volumetrics: { 'Volumetric Files': ['txt', 'csv', 'json', 'html', 'xls', 'xlsx'] },
             'access-patterns': { 'Access Pattern Files': ['md', 'txt'] },

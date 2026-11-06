@@ -115,7 +115,7 @@ export function mergeCosmosModels(domainModels, { databaseName, capacityMode, ca
     }
     const referenceRegistry = orderedDomains.flatMap(({ domainName, model }) =>
         (model.containers ?? []).flatMap(container => (container.entities ?? []).map(entity => ({
-            domain: domainName, name: entity.name, sourceTable: entity.sourceTable,
+            domain: domainName, name: entity.name, ...(entity.sourceDataset ? { sourceDataset: entity.sourceDataset } : { sourceTable: entity.sourceTable }),
         }))),
     );
     for (const { domainName, model } of orderedDomains) {

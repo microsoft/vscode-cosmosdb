@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { validateCompatibilityReport } from './check-sdk-compatibility.mjs';
 import { requireOptionValue } from './cli-arguments.mjs';
 import { showHelp } from './cli-help.mjs';
-import { validateFreshnessManifest } from './freshness.mjs';
+import { selectedSourceFiles, validateAcceptedPhaseArtifacts, validateFreshnessManifest } from './freshness.mjs';
 import { buildProvisioningArtifacts } from './generate-provisioning-artifacts.mjs';
 import { readIdentityManifest, validateIdentityManifest } from './identity-mapping.mjs';
 import { normalizePhaseName } from './phase-names.mjs';
@@ -27,6 +27,7 @@ import {
     validateSchemaConversionSummary,
 } from './validate-schema-conversion-summary.mjs';
 import { readSourceInventory, selectedDdlFiles, validateSourceReport, validateTemplates, validateWorkloadInputs } from './validate-source-evidence.mjs';
+import { domainSources } from './source-contract.mjs';
 
 export const MAX_COMPLETION_OUTPUT_BYTES = 16 * 1024;
 export const DEFAULT_COMPLETION_PAGE_SIZE = 20;
@@ -90,9 +91,9 @@ function validateSdkReport(filePath, project) {
     }));
 }
 
-function validatePreflightManifest(filePath, inventory, workspace, project) {
+function validatePreflightManifest(filePath, inventory, workspace, project, checkSourcePaths = true) {
     const evidence = readPhaseEvidence(filePath);
-    const errors = validateWorkloadInputs(workspace, project, evidence.workloadInputs);
+    const errors = checkSourcePaths ? validateWorkloadInputs(workspace, project, evidence.workloadInputs) : [];
     if (evidence.sourceSha256 !== inventory.sha256) {
         errors.push({ path: 'preflight-manifest.json#sourceSha256', message: 'must match the current source inventory' });
     }
@@ -122,17 +123,17 @@ function markdownTableRows(content, headerPattern) {
 function validateVolumetrics(filePath) {
     if (!nonEmpty(filePath)) return false;
     const content = fs.readFileSync(filePath, 'utf8');
-    const rows = markdownTableRows(content, /\|\s*#\s*\|\s*Schema\s*\|\s*Table\s*\|/iu);
+    const rows = markdownTableRows(content, /\|\s*#\s*\|\s*(?:Schema|Namespace)\s*\|\s*(?:Table|Dataset)\s*\|/iu);
     return /^#\s+Volumetrics\s*$/mu.test(content) && rows.some((row) => row.split('|')[3]?.trim());
 }
 
 function validateAccessPatterns(filePath) {
     if (!nonEmpty(filePath)) return false;
     const content = fs.readFileSync(filePath, 'utf8');
-    const readRows = markdownTableRows(content, /\|\s*#\s*\|\s*Pattern Name\s*\|\s*Tables \/ Entities\s*\|/iu);
-    const writeHeader = content.lastIndexOf('| # | Pattern Name | Tables / Entities |');
+    const readRows = markdownTableRows(content, /\|\s*#\s*\|\s*Pattern Name\s*\|\s*(?:Tables \/ Entities|Datasets)\s*\|/iu);
+    const writeHeader = Math.max(content.lastIndexOf('| # | Pattern Name | Tables / Entities |'), content.lastIndexOf('| # | Pattern Name | Datasets |'));
     const writeContent = writeHeader >= 0 ? content.slice(writeHeader) : '';
-    const writeRows = markdownTableRows(writeContent, /\|\s*#\s*\|\s*Pattern Name\s*\|\s*Tables \/ Entities\s*\|/iu);
+    const writeRows = markdownTableRows(writeContent, /\|\s*#\s*\|\s*Pattern Name\s*\|\s*(?:Tables \/ Entities|Datasets)\s*\|/iu);
     return (
         /^#\s+Access Patterns\s*$/mu.test(content) &&
         /^##\s+Read Patterns\s*$/mu.test(content) &&
@@ -469,9 +470,16 @@ function evaluatePhase(workspace, phaseInput, checkFreshness, cache) {
         };
     }
 
-    const artifactMode = phase === 'discovery' && checkFreshness;
+    const artifactMode = checkFreshness;
     const artifacts = [...cachedCheck(cache, `artifacts:${phase}:${artifactMode}`, () =>
         collectPhaseArtifacts(workspace, phase, project, artifactMode, cache))];
+    if (!checkFreshness && phase !== 'code-migration') {
+        const diagnostics = validateAcceptedPhaseArtifacts(workspace, project, phase);
+        if (diagnostics.length) artifacts.push({
+            path: `.cosmosdb-migration/project.json#freshness.${phase}`, description: 'Accepted analytical artifacts',
+            conditional: false, state: 'invalid', diagnostics,
+        });
+    }
     const ownFreshness = checkFreshness
         ? validateFreshnessManifest(workspace, project, phase, project.freshness?.[phase])
         : { freshness: 'not-applicable', staleInputs: [] };
@@ -536,20 +544,20 @@ function collectPhaseArtifacts(workspace, phase, project, checkSourcePaths, cach
     const getDdlFiles = () => cachedCheck(cache, 'ddl-files', () => selectedDdlFiles(workspace, project));
     let inventory;
     if (['preflight', 'discovery', 'assessment', 'schema-conversion', 'provisioning'].includes(phase)) {
-        inventory = cachedCheck(cache, 'source-inventory', () => {
-            try { return readSourceInventory(workspace, project, getDdlFiles()); }
+        inventory = cachedCheck(cache, `source-inventory:${checkSourcePaths}`, () => {
+            try { return readSourceInventory(workspace, project, undefined, { accepted: !checkSourcePaths }); }
             catch (error) { return { errors: [{ path: 'resolved schema selection', message: error.message }] }; }
         });
-        if (inventory.errors.length) artifacts.push({ path: 'resolved schema selection', description: 'Recorded source inventory evidence', conditional: false, state: 'invalid', diagnostics: inventory.errors });
+        artifacts.push({ path: '.cosmosdb-migration/phases/1-discovery/preflight-manifest.json#sourceInventory', description: 'Source inventory', conditional: false, state: inventory.errors.length ? 'invalid' : 'present', ...(inventory.errors.length ? { diagnostics: inventory.errors } : {}) });
     }
 
     if (phase === 'preflight') {
-        const ddlFiles = getDdlFiles();
-        if (ddlFiles.length === 0) {
-            artifacts.push(missingMetadataArtifact('resolved schema selection', 'At least one selected DDL file'));
+        const ddlFiles = !checkSourcePaths ? [] : inventory.version === 2 ? selectedSourceFiles(workspace, project) : getDdlFiles();
+        if (checkSourcePaths && ddlFiles.length === 0) {
+            artifacts.push(missingMetadataArtifact('resolved schema selection', 'At least one selected source evidence file'));
         } else {
             for (const ddlFile of ddlFiles) {
-                addArtifact(artifacts, workspace, ddlFile, 'Authoritative schema DDL', () => inventory.errors);
+                addArtifact(artifacts, workspace, ddlFile, inventory.version === 2 ? 'Selected source evidence' : 'Authoritative schema DDL', () => inventory.errors);
             }
         }
         if (!applicationDetailsComplete(project)) {
@@ -586,7 +594,7 @@ function collectPhaseArtifacts(workspace, phase, project, checkSourcePaths, cach
             workspace,
             path.join(migrationRoot, 'phases', '1-discovery', 'preflight-manifest.json'),
             'Preflight evidence manifest',
-            (filePath) => validatePreflightManifest(filePath, inventory, workspace, project),
+            (filePath) => validatePreflightManifest(filePath, inventory, workspace, project, checkSourcePaths),
         );
         if (!inventory.errors.length) {
             const volumetricPath = path.join(migrationRoot, 'phases/1-discovery/volumetrics/volumetrics.md');
@@ -613,7 +621,7 @@ function collectPhaseArtifacts(workspace, phase, project, checkSourcePaths, cach
             workspace,
             path.join(migrationRoot, 'phases', '1-discovery', 'discovery-report.md'),
             'Discovery summary',
-            (filePath) => validateMarkdownFile(filePath, ['Source Overview', 'Read Patterns', 'Write Patterns', 'Relational Semantics', 'Warnings']),
+            (filePath) => validateMarkdownFile(filePath, ['Source Overview', 'Read Patterns', 'Write Patterns', inventory.version === 2 ? 'Source Semantics' : 'Relational Semantics', 'Warnings']),
         );
         addArtifact(
             artifacts,
@@ -652,7 +660,7 @@ function collectPhaseArtifacts(workspace, phase, project, checkSourcePaths, cach
                 workspace,
                 path.join(migrationRoot, 'phases', '2-assessment', 'domains', `${domain.name}.md`),
                 `Assessment domain ${domain.name} summary`,
-                (filePath) => validateMarkdownFile(filePath, ['Purpose', 'Tables', 'Access Patterns', 'Cross-Domain Dependencies']),
+                (filePath) => validateMarkdownFile(filePath, ['Purpose', domain.datasets ? 'Datasets' : 'Tables', 'Access Patterns', 'Cross-Domain Dependencies']),
             );
             addArtifact(
                 artifacts,
@@ -661,7 +669,7 @@ function collectPhaseArtifacts(workspace, phase, project, checkSourcePaths, cach
                 `Assessment domain ${domain.name} manifest`,
                 filePath => {
                     const evidence = readPhaseEvidence(filePath);
-                    return evidence.sourceSha256 === inventory.sha256 && evidence.domain === domain.name && JSON.stringify([...(evidence.tables ?? [])].sort()) === JSON.stringify([...domain.tables].sort());
+                    return evidence.sourceSha256 === inventory.sha256 && evidence.domain === domain.name && JSON.stringify([...(domainSources(evidence) ?? [])].sort()) === JSON.stringify([...domainSources(domain)].sort());
                 },
             );
         }
@@ -688,7 +696,7 @@ function collectPhaseArtifacts(workspace, phase, project, checkSourcePaths, cach
             try { model = readDomainModel(path.join(conversionRoot, 'domains', domainName, 'cosmos-model.json')); } catch { model = undefined; }
             return { domainName, model };
         });
-        const referenceRegistry = domainModels.flatMap(({ domainName, model }) => (model?.containers ?? []).flatMap(container => (container.entities ?? []).map(entity => ({ domain: domainName, name: entity.name, sourceTable: entity.sourceTable }))));
+        const referenceRegistry = domainModels.flatMap(({ domainName, model }) => (model?.containers ?? []).flatMap(container => (container.entities ?? []).map(entity => ({ domain: domainName, name: entity.name, ...(entity.sourceDataset ? { sourceDataset: entity.sourceDataset } : { sourceTable: entity.sourceTable }) }))));
         addArtifact(
             artifacts,
             workspace,

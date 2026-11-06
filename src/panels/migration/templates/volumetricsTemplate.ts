@@ -6,7 +6,7 @@
 export function getVolumetricsTemplateContent(): string {
     return `# Volumetrics
 
-> Fill in the table below with volumetric data for each table or entity in your database.
+> Fill in the table below with volumetric data for each dataset (table, collection, stream, or other source unit).
 > This information helps the migration assistant estimate request unit (RU) consumption
 > and choose optimal partition keys for Azure Cosmos DB.
 >
@@ -17,7 +17,7 @@ export function getVolumetricsTemplateContent(): string {
 >
 > **TPS** = Transactions Per Second — the estimated number of read/write operations per second under normal load.
 
-| #   | Schema  | Table      | Est. Row Count | Avg Row Size (KB) | Growth Rate (month) | Read TPS | Write TPS | Notes                                       |
+| #   | Namespace | Dataset    | Est. Record Count | Avg Record Size (KB) | Growth Rate (month) | Read TPS | Write TPS | Notes                                       |
 |----:|---------|------------|---------------:|------------------:|---------------------|---------:|----------:|---------------------------------------------|
 | V1  | Sales   | Orders     |     1,000,000  |              2.5  | 10% / month         |      500 |       100 | example; partitioned by customer region     |
 | V2  | Sales   | OrderItems |     5,000,000  |              1.2  | 10% / month         |      500 |       100 | example; child of Orders, cascade deletes   |
@@ -32,26 +32,26 @@ export function getVolumetricsTemplateContent(): string {
 > so the highest-value additions here are real-world traffic data and account-level decisions.
 >
 > All items below are **optional**, but RU/s and storage estimates improve significantly when
-> they are filled in. Add as free-form prose, bullets, or per-table sub-sections — whatever is
+> they are filled in. Add as free-form prose, bullets, or per-dataset sub-sections — whatever is
 > clearest. The schema-conversion prompts read this as plain text.
 
 - **Peak vs. average TPS** — peak-to-average ratio or explicit peak TPS windows
   (e.g. "peak ≈ 5× daily average between 9-11 AM", or "Black Friday = 20× normal").
   When present, estimates are sized against the peak rather than applying a default buffer.
-- **TTL / retention per table** — retention policy if any
+- **TTL / retention per dataset** — retention policy if any
   (e.g. "Sessions: 30-day TTL", "Events: 90 days then archived to cold storage").
   Strongly affects 12-month storage projection — without TTL, growth compounds indefinitely.
-- **Document size P95 / P99** — when the average row size hides outliers (large text columns,
-  blob references, sparse wide rows). Call out the high-percentile size and any items
+- **Document size P95 / P99** — when the average record size hides outliers (large fields,
+  nested arrays, blob references, sparse records). Call out the high-percentile size and any items
   expected to approach the 2 MB Cosmos DB item limit.
 - **Hot partitions / data skew** — known skew that should influence partition key choice
   (e.g. "top 10 % of customers generate 80 % of orders", "tenant X is 100× larger than others").
-- **Read mix per table** *(only when production data contradicts what the code suggests)* —
+- **Read mix per dataset** *(only when production data contradicts what the code suggests)* —
   rough split of Read TPS into point reads / single-partition queries / cross-partition queries.
   By default the schema-conversion prompt infers this from the access patterns in your source.
   Fill in here only to override (e.g. "in production 95 % of reads are point reads by orderId,
   even though the code shows many filter queries").
-- **Write mix per table** *(only when production data contradicts what the code suggests)* —
+- **Write mix per dataset** *(only when production data contradicts what the code suggests)* —
   split of Write TPS into inserts / updates / deletes. Update-heavy workloads cost more RU
   because indexed properties are re-written. Default is inferred from CRUD verbs in the code.
 - **Account-level intent** — multi-region read/write plans, target consistency level,

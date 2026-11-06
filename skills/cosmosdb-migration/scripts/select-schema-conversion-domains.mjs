@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { showHelp } from './cli-help.mjs';
 import { parseJson } from './phase-summary.mjs';
 import { validateMigrationProject } from './validate-migration-project.mjs';
+import { domainSources } from './source-contract.mjs';
 
 function compareNames(left, right) {
     return left.name < right.name ? -1 : left.name > right.name ? 1 : 0;
@@ -25,11 +26,11 @@ export function selectSchemaConversionDomains(project, includeUnmappedDomains = 
 
     const selectedDomains = domains
         .filter((domain) => includeUnmappedDomains || domain.isMapped)
-        .map(({ name, tables }) => ({ name, tables: [...tables].sort() }))
+        .map(domain => ({ name: domain.name, [domain.datasets ? 'datasets' : 'tables']: [...domainSources(domain)].sort() }))
         .sort(compareNames);
     const skippedDomains = domains
         .filter((domain) => !includeUnmappedDomains && !domain.isMapped)
-        .map(({ name, tables }) => ({ name, tables: [...tables].sort(), reason: 'no detected application mapping' }))
+        .map(domain => ({ name: domain.name, [domain.datasets ? 'datasets' : 'tables']: [...domainSources(domain)].sort(), reason: 'no detected application mapping' }))
         .sort(compareNames);
 
     if (selectedDomains.length === 0) {

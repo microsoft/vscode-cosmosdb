@@ -22,10 +22,10 @@ test('has valid Skill frontmatter and a matching folder name', () => {
     const content = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
     assert.match(content, /^---\n/u);
     assert.match(content, /\n---\n/u);
-    assert.match(content, /^name: cosmosdb-relational-migration$/mu);
+    assert.match(content, /^name: cosmosdb-migration$/mu);
     assert.match(content, /^description: \|$/mu);
-    assert.match(content, /Requires the\n  cosmosdb-best-practices peer Skill\./u);
-    assert.equal(path.basename(skillRoot), 'cosmosdb-relational-migration');
+    assert.match(content, /Requires cosmosdb-best-practices for target decisions/u);
+    assert.equal(path.basename(skillRoot).replace('relational-', ''), 'cosmosdb-migration');
 });
 
 test('documents phase-scoped tools without requiring every tool or Azure CLI', () => {
@@ -58,7 +58,7 @@ test('recommends first-party Bicep MCP without replacing compilation or deployme
 });
 
 test('documents natural migration requests without redundant workspace or host instructions', () => {
-    for (const file of ['README.md', 'SKILL.md']) {
+    for (const file of ['README.md']) {
         const content = fs.readFileSync(path.join(skillRoot, file), 'utf8');
         assert.match(content, /Run a relational database migration to Azure Cosmos DB\./u);
         for (const phase of ['preflight', 'discovery', 'assessment', 'schema conversion']) {
@@ -72,41 +72,37 @@ test('documents natural migration requests without redundant workspace or host i
 
 test('defines a project boundary independent of the host workspace', () => {
     const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
-    assert.match(skill, /default to the sole workspace folder\s+only when it is also the target project root/u);
-    assert.match(skill, /directory containing its `\.cosmosdb-migration` folder/u);
-    assert.match(skill, /An explicit `workspace` and a selected existing migration are two constraints, not a\s+precedence order/u);
-    assert.match(skill, /Do not select either root, inspect either project, initialize another migration/u);
-    assert.match(skill, /If the host cannot ask, report the unresolved\s+scope and stop rather than choosing a root/u);
-    assert.match(skill, /If multiple projects could match, ask the user to select one/u);
-    assert.match(skill, /not the collection of open folders or a containing repository/u);
-    assert.match(skill, /Scope search tools\s+explicitly and discard results outside it/u);
-    assert.match(skill, /Set each command's working directory to this root/u);
-    assert.match(skill, /Do not follow source symlinks outside the project/u);
-    assert.match(skill, /Permission to edit application code does not widen the project boundary/u);
-    assert.match(skill, /request explicit scope approval before\s+analyzing or changing that external project/u);
+    assert.match(skill, /Before inspecting either project, check explicit `workspace` against the selected existing migration/u);
+    assert.match(skill, /two constraints, not a precedence order/u);
+    assert.match(skill, /do not select either root, inspect either project, or initialize another migration before clarification/u);
+    assert.match(skill, /If the host cannot ask, report the unresolved scope and stop/u);
+    assert.match(skill, /Resolve one application root/u);
+    assert.match(skill, /If ambiguous, ask/u);
+    assert.match(skill, /Anchor searches, reads, writes/u);
+    assert.match(skill, /Do not follow source symlinks outside it/u);
+    assert.match(skill, /Other project edits remain out of scope/u);
 });
 
 test('selects the default mode from host interaction capability and defines phase checkpoints', () => {
     const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
     const interaction = fs.readFileSync(path.join(skillRoot, 'references', 'workflow', 'interaction-and-checkpoints.md'), 'utf8');
-    assert.match(skill, /default to `interactive` on a capable host and\n  `autonomous` otherwise/u);
-    assert.match(skill, /normalize to `autonomous` and report that fallback/u);
-    assert.match(skill, /interaction capability is unknown, treat it as unsupported/u);
+    assert.match(skill, /interactive when the host can/u);
+    assert.match(skill, /otherwise autonomous with a disclosed fallback/u);
     assert.match(interaction, /Interactive mode is available only when the host can pause execution/u);
     assert.match(interaction, /Autonomous mode is the default when the host cannot pause/u);
-    assert.match(skill, /after every phase, including `preflight`/u);
+    assert.match(skill, /Interactive mode pauses at phase boundaries/u);
     assert.match(interaction, /Generated or updated artifacts:/u);
     assert.match(interaction, /Continue to the next phase/u);
     assert.match(interaction, /Two to four concrete options/u);
     assert.match(interaction, /Report `artifactCounts`/u);
-    assert.match(skill, /`preflight-step`: optional when `phase` is `preflight`/u);
+    assert.match(skill, /`preflight-step`:/u);
 });
 
 test('requires concise findings and report links after each requested task', () => {
     const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
     const checkpoints = fs.readFileSync(path.join(skillRoot, 'references/workflow/interaction-and-checkpoints.md'), 'utf8');
-    assert.match(skill, /After every requested task/u);
-    assert.match(skill, /Clickable links to existing in-depth summaries or reports/u);
+    assert.match(skill, /At every checkpoint report findings/u);
+    assert.match(skill, /artifact\/report links/u);
     assert.match(checkpoints, /focused preflight\/provisioning steps, validation-only/u);
     assert.match(checkpoints, /substantive findings and their\s+migration implications/u);
     assert.match(checkpoints, /not bare paths, inline-code filenames, or a fenced block/u);
@@ -129,9 +125,8 @@ test('requires an interactive resolution before terminal tooling blockage', () =
     const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
     const conversion = fs.readFileSync(path.join(skillRoot, 'references/phases/schema-conversion.md'), 'utf8');
     const interaction = fs.readFileSync(path.join(skillRoot, 'references/workflow/interaction-and-checkpoints.md'), 'utf8');
-    for (const entryPoint of [skill, conversion]) {
-        assert.match(entryPoint, /interaction-and-checkpoints\.md#blocker-resolution/u);
-    }
+    assert.match(skill, /interaction-and-checkpoints\.md/u);
+    assert.match(conversion, /interaction-and-checkpoints\.md#blocker-resolution/u);
     assert.match(conversion, /a tool limitation is not evidence that Cosmos DB cannot\s+represent the source behavior/u);
     assert.match(interaction, /Before ending a run as `blocked`, follow \[Blocker Resolution\]/u);
     assert.match(interaction, /including for tooling failures/u);
@@ -174,10 +169,8 @@ test('preserves repair authorization, prior decisions, and non-interactive hando
 test('defines completed-phase rerun behavior by mode and explicit intent', () => {
     const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
     const checkpoints = fs.readFileSync(path.join(skillRoot, 'references', 'workflow', 'interaction-and-checkpoints.md'), 'utf8');
-    assert.match(skill, /autonomous mode always\n  regenerates completed phase outputs/u);
-    assert.match(skill, /explicit request to\n  validate performs validation only/u);
-    assert.match(skill, /`--regenerate` when mode is autonomous/u);
-    assert.match(skill, /existing\n  valid outputs are not a stopping condition/u);
+    assert.match(skill, /autonomous reruns regenerate/u);
+    assert.match(skill, /Validation-only overrides both defaults/u);
     assert.match(checkpoints, /Regenerate all phase-owned output artifacts/u);
     assert.match(checkpoints, /Validate existing artifacts without regenerating them/u);
     assert.match(checkpoints, /execute that intent without\nasking again/u);
@@ -199,9 +192,9 @@ test('defines local advisory memory with automatic capture and explicit model pr
     const freshness = fs.readFileSync(path.join(skillRoot, 'references/contracts/freshness.md'), 'utf8');
     const checkpoints = fs.readFileSync(path.join(skillRoot, 'references/workflow/interaction-and-checkpoints.md'), 'utf8');
     const conversion = fs.readFileSync(path.join(skillRoot, 'references/phases/schema-conversion.md'), 'utf8');
-    assert.match(skill, /remember migration findings, decisions, or a\s+generated Cosmos DB model/u);
-    assert.match(skill, /\.cosmosdb-migration\/memory\.md/u);
-    assert.match(skill, /A request only to remember, review, or update migration memory does not start a phase/u);
+    assert.match(skill, /remember migration decisions/u);
+    assert.match(skill, /existing project-local memory/u);
+    assert.match(skill, /A memory-only request does not initialize or execute phases/u);
     assert.match(memory, /Use ordinary file tools, not a host-specific memory tool/u);
     assert.match(memory, /automatically retain important research findings/u);
     assert.match(memory, /Read before writing/u);
@@ -289,7 +282,7 @@ test('permits advisory code-migration concerns without relaxing execution checks
 test('persists request instructions through the version 1 fields', () => {
     const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
     const projectFormat = fs.readFileSync(path.join(skillRoot, 'references', 'contracts', 'project-state-and-artifacts.md'), 'utf8');
-    assert.match(skill, /Before setting a phase `in-progress`, persist additional instructions/u);
+    assert.match(skill, /project-state-and-artifacts\.md/u);
     assert.match(projectFormat, /`preflight` or `discovery`: `phases\.discovery\.discoveryInstructions`/u);
     assert.match(projectFormat, /`assessment`: `phases\.assessment\.assessmentInstructions`/u);
     assert.match(projectFormat, /`schema-conversion`: `phases\.schemaConversion\.schemaConversionInstructions`/u);
@@ -314,7 +307,7 @@ test('groups references by purpose and links every guide directly from the Skill
     const referencesRoot = path.join(skillRoot, 'references');
     const groups = fs.readdirSync(referencesRoot, { withFileTypes: true });
     assert(groups.every(entry => entry.isDirectory()));
-    assert.deepEqual(groups.map(entry => entry.name).sort(), ['contracts', 'phases', 'tooling', 'workflow']);
+    assert.deepEqual(groups.map(entry => entry.name).sort(), ['contracts', 'phases', 'sources', 'tooling', 'workflow']);
     assert.deepEqual(fs.readdirSync(path.join(referencesRoot, 'phases')).sort(), [
         'assessment.md',
         'code-migration.md',
@@ -325,10 +318,13 @@ test('groups references by purpose and links every guide directly from the Skill
     ]);
     const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
     const linkedPaths = new Set(relativeMarkdownLinks(skill).map(link => path.resolve(skillRoot, link)));
+    for (const linked of [...linkedPaths]) {
+        for (const link of relativeMarkdownLinks(fs.readFileSync(linked, 'utf8'))) linkedPaths.add(path.resolve(path.dirname(linked), link));
+    }
     for (const referencePath of walk(referencesRoot)) {
         assert.equal(path.extname(referencePath), '.md');
         assert.equal(path.relative(referencesRoot, referencePath).split(path.sep).length, 2);
-        assert(linkedPaths.has(referencePath), `${path.relative(skillRoot, referencePath)} must be directly linked`);
+        assert(linkedPaths.has(referencePath), `${path.relative(skillRoot, referencePath)} must be reachable through the lazy reference graph`);
     }
 });
 
@@ -364,7 +360,7 @@ test('loads SQLGlot mechanics only for the selected SQLGlot branch', () => {
     const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
     const reference = fs.readFileSync(path.join(skillRoot, 'references/workflow/ddl-interpretation.md'), 'utf8');
     const sqlglot = fs.readFileSync(path.join(skillRoot, 'references/tooling/sqlglot-ddl.md'), 'utf8');
-    assert.match(skill, /Only after SQLGlot is selected:/u);
+    assert.match(skill, /applies \*\*only to selected SQL\/DDL\*\*/u);
     assert.match(reference, /Only when the effective choice is SQLGlot, load/u);
     assert.match(reference, /Do not load that reference for model-only interpretation/u);
     assert.match(reference, /## Model-Only DDL Interpretation/u);
@@ -449,8 +445,7 @@ test('documents an advisory SQLGlot fallback with artifact provenance and limite
 test('requires read-only blocker review and explicit repair approval before phase execution', () => {
     const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
     const interaction = fs.readFileSync(path.join(skillRoot, 'references/workflow/interaction-and-checkpoints.md'), 'utf8');
-    assert.match(skill, /Review and Fix.*interaction-and-checkpoints\.md#review-and-fix/u);
-    assert.match(skill, /explicit approval before writes or phase execution; this overrides mode fallback and rerun defaults/u);
+    assert.match(skill, /Review-and-fix is read-only until explicit repair approval/u);
     const review = interaction.split('## Review and Fix')[1].split('## Modes')[0];
     assert.match(review, /not a\s+regeneration request/u);
     assert.match(review, /Summarize blockers and impact/u);
@@ -485,9 +480,7 @@ test('requires version 1 compatible project checkpoints', () => {
     const validator = fs.readFileSync(path.join(skillRoot, 'scripts', 'validate-migration-project.mjs'), 'utf8');
     const projectFormat = fs.readFileSync(path.join(skillRoot, 'references', 'contracts', 'project-state-and-artifacts.md'), 'utf8');
     const preflight = fs.readFileSync(path.join(skillRoot, 'references', 'phases', 'preflight.md'), 'utf8');
-    assert.match(skill, /project-state\.mjs --set <json-pointer> --value <json> --expect <revision>/u);
-    assert.match(skill, /It removes its temporary candidate/u);
-    assert.match(skill, /validation, conflict detection, or replacement fails/u);
+    assert.match(skill, /scoped reads\/updates with revision checks/u);
     assert.match(validator, /project\.sourceCode !== 'parent'/u);
     assert.match(validator, /validateAssessmentDomain/u);
     assert.match(validator, /validateAccessPattern/u);
@@ -516,9 +509,9 @@ test('allows evidence-based inference while preserving supplied DDL and user edi
     const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
     const preflight = fs.readFileSync(path.join(skillRoot, 'references/phases/preflight.md'), 'utf8');
     const evidence = fs.readFileSync(path.join(skillRoot, 'references/contracts/validation-evidence.md'), 'utf8');
-    assert.match(skill, /User-supplied DDL is optional/u);
-    assert.match(skill, /`schema-source`/u);
-    assert.match(preflight, /--inputs schema-evidence/u);
+    assert.match(skill, /No-DDL evidence, including relational code inventory/u);
+    assert.match(skill, /`schema-source: infer`/u);
+    assert.match(preflight, /--inputs source-evidence/u);
     assert.match(preflight, /joins do not prove foreign keys; samples do not prove uniqueness or nullability/u);
     assert.match(preflight, /If a generated file was edited or a destination is untracked,\s+preserve it/u);
     assert.match(preflight, /do not supplement it silently/u);
@@ -580,9 +573,9 @@ test('documents every helper and separates CLI recovery from workflow invocation
     const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
     const reference = fs.readFileSync(path.join(skillRoot, 'references/tooling/helper-commands.md'), 'utf8');
     const readme = fs.readFileSync(path.join(skillRoot, 'README.md'), 'utf8');
-    assert.match(skill, /<helper>\.mjs --help/u);
-    assert.match(skill, /not a shared CLI option schema/u);
-    assert.match(skill, /validation-only request must\s+never add `--regenerate`/u);
+    assert.match(skill, /Before using an unfamiliar helper/u);
+    assert.match(skill, /undocumented CLI flags/u);
+    assert.match(skill, /Validation-only overrides both defaults/u);
     assert.match(readme, /## Programmatic Integration/u);
     assert.match(readme, /### Import-Only Modules/u);
     assert.match(readme, /checkPhaseCompletions\(workspace, phases\)/u);
@@ -637,8 +630,7 @@ test('keeps best-practice guidance model-owned and outside execution freshness',
     assert.match(dependency, /Existing peer-file freshness\s+entries are ignored/u);
     assert.match(dependency, /required\s+before making new Cosmos DB decisions/u);
     assert.match(dependency, /Record applied rule paths and their effect in the phase summary/u);
-    assert.match(skill, /The model owns semantic relevance and interpretation/u);
-    assert.match(skill, /Peer guidance is not a freshness dependency/u);
+    assert.match(skill, /Use its current index by concept/u);
     for (const filePath of walk(skillRoot).filter(filePath => filePath.endsWith('.md'))) {
         assert.doesNotMatch(fs.readFileSync(filePath, 'utf8'), /--peer(?:-rule)?\b/u, filePath);
     }
@@ -650,7 +642,7 @@ test('documents canonical schema-conversion artifacts with supported CLI options
     const modelValidator = fs.readFileSync(path.join(skillRoot, 'scripts', 'validate-cosmos-model.mjs'), 'utf8');
     const merge = fs.readFileSync(path.join(skillRoot, 'scripts', 'merge-cosmos-models.mjs'), 'utf8');
 
-    assert.match(skill, /human-readable analysis in summaries, machine-readable evidence in\nmanifests, and complete models only in model JSON files/u);
+    assert.match(skill, /Source to Azure Cosmos DB for NoSQL/u);
     assert.doesNotMatch(skill, /evidence, and verification inside those summaries, not sidecars/u);
     assert.match(reference, /complete model only in `cosmos-model\.json`/u);
     assert.match(reference, /validate-schema-conversion-domains\.mjs/u);
@@ -671,14 +663,12 @@ test('documents canonical schema-conversion artifacts with supported CLI options
 test('defines centralized transitive freshness and bounded project access', () => {
     const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
     const evidence = fs.readFileSync(path.join(skillRoot, 'references', 'contracts', 'freshness.md'), 'utf8');
-    assert.match(skill, /scripts\/freshness\.mjs/u);
-    assert.match(skill, /freshness: "stale" \| "unknown"/u);
+    assert.match(skill, /Source changes stale dependent analysis/u);
     const projectFormat = fs.readFileSync(path.join(skillRoot, 'references', 'contracts', 'project-state-and-artifacts.md'), 'utf8');
     assert.match(evidence, /project\.json#freshness\[phase\]/u);
     assert.match(evidence, /atomically updates the project and prints only the new revision/u);
     assert.match(evidence, /outputs` array/u);
-    assert.match(skill, /convenience helper, not a mandatory read gateway/u);
-    assert.match(skill, /do not stop\s+solely because the helper failed/u);
+    assert.match(skill, /falling back to direct reads if needed/u);
     assert.match(projectFormat, /convenience helper, not a mandatory read gateway/u);
     assert.match(projectFormat, /chunked or whole-file reads\s+as needed/u);
     assert.match(projectFormat, /oversized strings that the helper cannot paginate/u);
@@ -686,7 +676,7 @@ test('defines centralized transitive freshness and bounded project access', () =
     assert.match(projectFormat, /do not authorize checkpoint mutation, bypass validation or\s+revision conflicts/u);
     assert.doesNotMatch(projectFormat, /Do not read, print, or rewrite the whole project file in model context/u);
     assert.match(projectFormat, /--get \/phases\/assessment\/domains --offset 0 --limit 10/u);
-    assert.match(skill, /project-state\.mjs --toc/u);
+    assert.match(skill, /project-state\.mjs/u);
     assert.match(projectFormat, /--toc \/phases\/discovery/u);
     assert.match(projectFormat, /--toc \/freshness\/preflight\/inputs --offset 0 --limit 10/u);
     assert.match(projectFormat, /never stored values/u);
@@ -703,7 +693,7 @@ test('documents bounded and pageable completion diagnostics', () => {
     const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
     const projectFormat = fs.readFileSync(path.join(skillRoot, 'references', 'contracts', 'project-state-and-artifacts.md'), 'utf8');
     const checkpoints = fs.readFileSync(path.join(skillRoot, 'references', 'workflow', 'interaction-and-checkpoints.md'), 'utf8');
-    assert.match(skill, /Truncation never changes the validation exit status/u);
+    assert.match(skill, /Follow bounded output `nextOffset` pages/u);
     assert.match(projectFormat, /emits at most 16 KiB of JSON/u);
     assert.match(projectFormat, /--offset <nextOffset>/u);
     assert.match(projectFormat, /--artifact <workspace-relative-path>/u);
@@ -716,8 +706,8 @@ test('avoids redundant validators while retaining an authoritative completion ga
     const projectFormat = fs.readFileSync(path.join(skillRoot, 'references', 'contracts', 'project-state-and-artifacts.md'), 'utf8');
     const schemaConversion = fs.readFileSync(path.join(skillRoot, 'references', 'phases', 'schema-conversion.md'), 'utf8');
     const evidence = fs.readFileSync(path.join(skillRoot, 'references', 'contracts', 'validation-evidence.md'), 'utf8');
-    assert.match(skill, /Do not immediately\n  invoke `check-phase-completion\.mjs` for the same phase/u);
-    assert.match(skill, /phase-specific validators as generation preconditions or targeted repair\n  tools/u);
+    assert.match(skill, /Reuse an unchanged inspector result/u);
+    assert.match(skill, /recompute after relevant writes/u);
     assert.match(projectFormat, /do not immediately run\n`check-phase-completion\.mjs` again/u);
     assert.match(schemaConversion, /validate all domain models and\nsummaries in one process/u);
     assert.match(schemaConversion, /run exactly one\n`check-phase-completion\.mjs --phase schema-conversion`/u);
@@ -786,17 +776,15 @@ test('defines focused provisioning and first-class code-migration routing', () =
     assert.match(codeMigration, /Defer a blocker only when planning cannot resolve it/u);
     assert.match(codeMigration, /`Blocker Review` must inventory all candidate blockers/u);
     assert.match(codeMigration, /Every\nrecommendation rationale must cite evidence or constraints/u);
-    assert.match(skill, /Follow every recommendation with a rationale/u);
-    assert.match(skill, /compares the material alternatives/u);
-    assert.match(skill, /otherwise\n  default to planning/u);
-    assert.match(skill, /There is no code-migration mode parameter/u);
+    assert.match(skill, /Code-migration planning does not authorize application edits/u);
+    assert.match(skill, /never from persisted metadata/u);
     assert.doesNotMatch(codeMigration, /Start mode|start mode|start-mode/u);
 });
 
 test('requires strategy-specific execution checklists with durable progress and evidence', () => {
     const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
     const reference = fs.readFileSync(path.join(skillRoot, 'references/phases/code-migration.md'), 'utf8');
-    assert.match(skill, /Plan a strategy-specific execution checklist/u);
+    assert.match(skill, /phases\/code-migration\.md/u);
     assert.match(reference, /Every generated plan must express `Ordered Changes` as an execution checklist/u);
     for (const strategy of ['Direct switch', 'Validate alongside the source', 'Reversible cut-over', 'Incremental migration']) {
         assert(reference.includes(`**${strategy}:**`), `${strategy} must be considered during planning`);

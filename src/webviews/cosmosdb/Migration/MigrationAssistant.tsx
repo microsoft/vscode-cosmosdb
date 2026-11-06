@@ -1392,7 +1392,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
     const { announce } = useAnnounce();
     const previousRunActivity = useRef(state.runActivity);
     const previousConnectionTestState = useRef(state.connectionTestState);
-    const schemaFilesDescription = l10n.t('Optional DDL or supporting schema artifacts');
+    const schemaFilesDescription = l10n.t('Source definitions, metadata, code, documentation, or samples');
     const volumetricsLabel = l10n.t('Volumetrics:');
     const accessPatternsLabel = l10n.t('Access Patterns:');
     useEffect(() => {
@@ -1508,7 +1508,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
         : !state.isAIFeaturesEnabled
           ? l10n.t('GitHub Copilot must be active to use this action.')
           : undefined;
-    const generateSchemaLabel = l10n.t('Generate schema files from workspace code');
+    const generateSchemaLabel = l10n.t('Infer source inventory from workspace code');
     const updateVolumetricsLabel = l10n.t('Update volumetrics template');
     const updateAccessPatternsLabel = l10n.t('Update access-patterns template');
     const codeMigrationDescription =
@@ -1876,12 +1876,12 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                 {isFirstVisit || descriptionExpanded ? (
                     <Text size={200}>
                         {l10n.t(
-                            'Migrate your application from a relational database (RDBMS) to Azure Cosmos DB NoSQL with AI-assisted analysis. Follow the phases below to inventory your schema, analyze your application, and configure your target environment.',
+                            'Plan your application migration to Azure Cosmos DB for NoSQL with AI-assisted analysis. Follow the phases below to inventory source data and behavior, analyze your application, and configure your target environment.',
                         )}
                     </Text>
                 ) : (
                     <Text size={200} style={{ color: 'var(--vscode-descriptionForeground)' }}>
-                        {l10n.t('RDBMS → Cosmos DB NoSQL migration assistant.')}{' '}
+                        {l10n.t('Migration assistant for Azure Cosmos DB for NoSQL.')}{' '}
                         <Link
                             style={{ fontSize: '12px' }}
                             aria-description={l10n.t('Show full migration assistant description')}
@@ -2043,7 +2043,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
 
                 <Text size={200} style={{ color: 'var(--vscode-descriptionForeground)' }}>
                     {l10n.t(
-                        'Database DDL is optional. Infer the schema from code and supporting artifacts when no DDL is available.',
+                        'Build a source inventory from definitions, metadata, code, documentation, or samples. DDL is optional; coverage and assumptions remain explicit.',
                     )}
                 </Text>
 
@@ -2052,13 +2052,13 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                     <div className={styles.filePickerGrid}>
                         {/* Schema Files */}
                         <Text weight="semibold" size={200}>
-                            <span id={`${analysisLabelId}-schema-files`}>{l10n.t('Source Schema:')}</span>{' '}
+                            <span id={`${analysisLabelId}-schema-files`}>{l10n.t('Source Evidence:')}</span>{' '}
                             <InfoPopoverIcon
                                 content={
                                     <>
                                         <p style={tooltipParagraphStyle}>
                                             {l10n.t(
-                                                'Select DDL (.sql, .ddl) or supporting artifacts such as ORM mappings, metadata exports, schema documentation, and sample data. Supporting artifacts are evidence, not authoritative DDL.',
+                                                'Select native definitions, metadata exports, ORM mappings, code, documentation, or samples. Evidence is interpreted using its source semantics; samples do not establish a complete schema or constraints.',
                                             )}
                                         </p>
                                         <p style={tooltipParagraphStyle}>
@@ -2070,12 +2070,12 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                         </p>
                                         <p style={tooltipParagraphLastStyle}>
                                             {l10n.t(
-                                                'Schema inference uses workspace code and selected artifacts to generate DDL with provenance and explicit assumptions. Supplied DDL is preserved.',
+                                                'Inventory inference preserves native identities, relationships, and behavior with provenance and explicit unknowns. Source artifacts are preserved; generating DDL is not required.',
                                             )}
                                         </p>
                                     </>
                                 }
-                                ariaLabel={l10n.t('Source schema help')}
+                                ariaLabel={l10n.t('Source evidence help')}
                                 styles={styles}
                             />
                         </Text>
@@ -2132,7 +2132,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                     <>
                                         <p style={tooltipParagraphStyle}>
                                             {l10n.t(
-                                                'Provide quantitative data about your database: row counts, table sizes, read/write ratios, hot collections, and query frequencies. Accepted file types: .txt, .csv, .json, .html, .xls (typical sources include query logs and AWR reports).',
+                                                'Provide quantitative data about your source: record counts, dataset sizes, read/write ratios, hot partitions, and query frequencies. Accepted file types: .txt, .csv, .json, .html, .xls (typical sources include query logs and workload reports).',
                                             )}
                                         </p>
                                         <p style={tooltipParagraphStyle}>
@@ -2227,7 +2227,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                         </p>
                                         <p style={tooltipParagraphLastStyle}>
                                             {l10n.t(
-                                                'Not sure where to start? Open the access-patterns template and fill it in by hand, or use the AI button (sparkle icon) to derive patterns from your workspace code — repositories, query builders, and raw SQL.',
+                                                'Not sure where to start? Open the access-patterns template and fill it in by hand, or use the AI button (sparkle icon) to derive patterns from your workspace code, including repositories, queries, and native driver calls.',
                                             )}
                                         </p>
                                     </>
@@ -2386,7 +2386,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                 <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
                                 <InfoTooltipIcon
                                     content={l10n.t(
-                                        'The source relational database system you are migrating from. Examples: PostgreSQL, SQL Server, Oracle',
+                                        'The source database technology you are migrating from. Relational, document-oriented, wide-column, and other sources are accepted; readiness depends on evidence and required behavior.',
                                     )}
                                     ariaLabel={l10n.t('Database field help')}
                                     styles={styles}
@@ -2400,7 +2400,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                     size="small"
                                     value={state.analysisResult?.databaseType ?? ''}
                                     onChange={(_e, data) => handleAnalysisFieldChange('databaseType', data.value)}
-                                    placeholder={l10n.t('e.g. PostgreSQL, SQL Server, Oracle')}
+                                    placeholder={l10n.t('Enter the source database technology')}
                                 />
                             </Field>
                             <Text weight="semibold" size={200}>
@@ -2408,7 +2408,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                 <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
                                 <InfoTooltipIcon
                                     content={l10n.t(
-                                        'How your application connects to the database. Examples: Entity Framework, JDBC, Raw SQL queries',
+                                        'How your application connects to the source. Examples: Entity Framework, JDBC, native database drivers, HTTP APIs',
                                     )}
                                     ariaLabel={l10n.t('Access method field help')}
                                     styles={styles}
@@ -2525,7 +2525,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                         value={state.discoveryInstructions ?? ''}
                                         onChange={handleDiscoveryInstructionsChange}
                                         placeholder={l10n.t(
-                                            'e.g., Focus on the ordering domain, ignore legacy tables prefixed with tmp_…',
+                                            'e.g., Focus on the ordering domain, ignore temporary datasets…',
                                         )}
                                         resize="vertical"
                                         rows={3}
@@ -2590,7 +2590,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                 >
                                     <Text size={200}>
                                         {l10n.t(
-                                            'Run AI-powered domain decomposition to identify bounded contexts, group related tables, and generate Cosmos DB migration recommendations.',
+                                            'Run AI-powered domain decomposition to identify bounded contexts, group related datasets, and generate Cosmos DB migration recommendations.',
                                         )}
                                     </Text>
 
@@ -2618,7 +2618,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                     value={state.assessmentInstructions ?? ''}
                                                     onChange={handleAssessmentInstructionsChange}
                                                     placeholder={l10n.t(
-                                                        'e.g., Prioritize minimizing cross-domain joins and keep payment-related tables isolated…',
+                                                        'e.g., Minimize cross-domain dependencies and keep payment-related datasets isolated…',
                                                     )}
                                                     resize="vertical"
                                                     rows={3}
@@ -2675,7 +2675,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                 >
                                                     <th style={{ padding: '4px 6px' }}>{l10n.t('Domain')}</th>
                                                     <th style={{ padding: '4px 6px', textAlign: 'right' }}>
-                                                        {l10n.t('Tables')}
+                                                        {l10n.t('Datasets')}
                                                     </th>
 
                                                     <th style={{ padding: '4px 6px', textAlign: 'center' }}>
@@ -2707,7 +2707,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                                 color: 'var(--vscode-descriptionForeground)',
                                                             }}
                                                         >
-                                                            {domain.tables.length}
+                                                            {domain.datasets.length}
                                                         </td>
 
                                                         <td
@@ -2757,7 +2757,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                 >
                                     <Text size={200}>
                                         {l10n.t(
-                                            'Transform your RDBMS schema into optimized Cosmos DB NoSQL data models. This phase designs containers, partition keys, embedding strategies, access patterns, and indexing policies for each domain.',
+                                            'Map your source inventory and required behavior to Cosmos DB for NoSQL data models. This phase designs containers, partition keys, embedding strategies, access patterns, and indexing policies for each domain.',
                                         )}
                                     </Text>
 
@@ -2766,7 +2766,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                         onChange={handleIncludeUnmappedDomainsChange}
                                         disabled={isRunActive}
                                         label={l10n.t(
-                                            'Include domains without detected application code access patterns (e.g. tables only referenced via stored procedures, ETL, or external systems)',
+                                            'Include domains without detected application code access patterns (e.g. datasets only referenced via stored procedures, ETL, or external systems)',
                                         )}
                                     />
 
@@ -2793,7 +2793,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                 value={state.schemaConversionInstructions ?? ''}
                                                 onChange={handleSchemaConversionInstructionsChange}
                                                 placeholder={l10n.t(
-                                                    'e.g., Use serverless throughput mode, prefer embedding over referencing for 1:few relationships, keep all lookup tables in a single container…',
+                                                    'e.g., Use serverless throughput mode, prefer embedding for bounded relationships, keep lookup datasets in a shared container…',
                                                 )}
                                                 resize="vertical"
                                                 rows={3}

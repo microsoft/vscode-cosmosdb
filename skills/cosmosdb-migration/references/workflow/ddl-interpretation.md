@@ -1,6 +1,8 @@
 # DDL Interpretation
 
-Choose and follow the interpretation procedure before preparing schema inputs.
+Choose and follow this procedure only for selected SQL/DDL evidence. Other inputs, including
+relational code inventories, follow the [common source contract](../contracts/source-inventory.md)
+without a parser dependency or synthetic SQL intermediate.
 Use the [assurance contract](../contracts/validation-evidence.md#assurance-contract)
 to describe the result and the [source inventory contract](../contracts/validation-evidence.md#inventory-in-the-preflight-manifest)
 to record it. Interpretation does not replace evidence validation.

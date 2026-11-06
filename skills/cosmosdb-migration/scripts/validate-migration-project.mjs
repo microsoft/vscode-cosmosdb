@@ -195,7 +195,9 @@ function validateAssessmentDomain(value, index, errors) {
     const pathLabel = `$.phases.assessment.domains[${index}]`;
     if (!requireObject(value, pathLabel, errors)) return;
     optionalStringArray(value, 'tables', pathLabel, errors);
-    if (!Array.isArray(value.tables)) addError(errors, `${pathLabel}.tables`, 'is required');
+    optionalStringArray(value, 'datasets', pathLabel, errors);
+    if (!Array.isArray(value.datasets ?? value.tables)) addError(errors, `${pathLabel}.datasets`, 'datasets or legacy tables is required');
+    if (value.datasets !== undefined && value.tables !== undefined) addError(errors, pathLabel, 'use datasets or legacy tables, not both');
     optionalStringArray(value, 'crossDomainDependencies', pathLabel, errors);
     if (!Array.isArray(value.crossDomainDependencies)) {
         addError(errors, `${pathLabel}.crossDomainDependencies`, 'is required');
@@ -209,8 +211,9 @@ function validateAssessmentDomain(value, index, errors) {
 function validateAccessPattern(value, index, errors) {
     const pathLabel = `$.phases.assessment.parsedAccessPatterns[${index}]`;
     if (!requireObject(value, pathLabel, errors)) return;
+    if (value.datasets !== undefined && value.tables !== undefined) addError(errors, pathLabel, 'use datasets or legacy tables, not both');
     for (const key of ['name', 'type', 'frequency']) requireString(value[key], `${pathLabel}.${key}`, errors);
-    for (const key of ['tables', 'codeReferences']) {
+    for (const key of [value.datasets === undefined ? 'tables' : 'datasets', 'codeReferences']) {
         optionalStringArray(value, key, pathLabel, errors);
         if (!Array.isArray(value[key])) addError(errors, `${pathLabel}.${key}`, 'is required');
     }

@@ -1431,6 +1431,58 @@ test.describe('Migration Assistant', () => {
         });
     }
 
+    test('resumes schema-only modeling without application fields or code-migration readiness', async ({
+        vscodeWindow,
+    }) => {
+        await openMigrationSeeded(vscodeWindow);
+        await closeAllEditorTabs(vscodeWindow);
+        const fixtures = pathToFileURL(
+            path.resolve('skills/cosmosdb-migration/tests/source-evidence-fixtures.mjs'),
+        ).href;
+        execFileSync(
+            process.execPath,
+            [
+                '--input-type=module',
+                '--eval',
+                `
+                import { createSourceNeutralFixture, writeSourceNeutralAnalysis } from ${JSON.stringify(fixtures)};
+                const workspace = process.env.COSMOSDB_E2E_WORKSPACE_DIR;
+                const fixture = createSourceNeutralFixture(workspace);
+                const analysis = fixture.project.phases.discovery.applicationAnalysis;
+                analysis.codebaseAvailable = false;
+                delete analysis.language;
+                delete analysis.projectType;
+                delete analysis.databaseAccess;
+                fixture.project.phases.assessment.domains[0].isMapped = false;
+                fixture.project.consentGiven = true;
+                writeSourceNeutralAnalysis(workspace, fixture);
+                `,
+            ],
+            { env: process.env },
+        );
+        const frame = await openMigrationAssistant(vscodeWindow);
+        const migration = new MigrationPage(frame);
+        await expect(frame.getByText(/^Schema-only migration:/)).toBeVisible();
+        for (const field of ['language', 'access'] as const) {
+            await expect(migration.analysisField(field)).not.toHaveAttribute('required', /.*/);
+            await expect(migration.analysisField(field)).not.toHaveAttribute('aria-required', 'true');
+        }
+        await migration.expandPhase(PHASE_HEADERS.phase2);
+        await expect(migration.phase2DomainTable.getByRole('cell', { name: 'Not applicable' })).toBeVisible();
+        await migration.expandPhase(PHASE_HEADERS.phase3);
+        await expect(migration.runConversionButton()).toBeEnabled();
+        await expect(
+            frame.getByRole('checkbox', { name: /Include domains without detected application code/ }),
+        ).toBeChecked();
+        await expect(migration.migrationActionButton).toBeDisabled();
+        await expect(migration.migrationActionButton).toHaveAccessibleName('Plan Migration');
+        await expect(migration.migrationActionButton).toHaveAccessibleDescription(
+            'Application code migration is unavailable until a codebase is supplied and discovery is refreshed.',
+        );
+        expect(checkMockSkillPhaseCompletion('schema-conversion')).toMatchObject({ complete: true, errors: [] });
+        expect(checkMockSkillPhaseCompletion('code-migration')).toMatchObject({ ready: false });
+    });
+
     test('drives Skill-first preflight through code migration with a mocked agent', async ({ vscodeWindow }) => {
         const captureStart = readCapturedPrompts().length;
         const readFlowPrompts = () => readCapturedPrompts().slice(captureStart);

@@ -391,8 +391,9 @@ export function validateSourceReport(markdown, evidence, inventory, kind, domain
             const dispositions = new Set();
             for (const pattern of evidence.patterns) {
                 if (!/^[RW]\d{3,}$/u.test(pattern?.id) || ids.has(pattern.id) || !['read', 'write'].includes(pattern.kind) || pattern.id[0] !== (pattern.kind === 'read' ? 'R' : 'W')) throw new Error('Invalid or duplicate discovery pattern');
-                if (!Array.isArray(domainSources(pattern)) || !domainSources(pattern).length || !Array.isArray(pattern.sourcePaths) || !['code', 'observed', 'schema-inferred', 'query-only'].includes(pattern.evidence)) throw new Error('Incomplete pattern evidence');
+                if (!Array.isArray(domainSources(pattern)) || !domainSources(pattern).length || !Array.isArray(pattern.sourcePaths) || !['code', 'observed', 'schema-inferred', 'query-only', 'user-declared'].includes(pattern.evidence)) throw new Error('Incomplete pattern evidence');
                 if (pattern.evidence === 'code' && !pattern.sourcePaths.length) throw new Error('Code-evidenced pattern requires source files');
+                if (pattern.evidence === 'user-declared' && (typeof pattern.declaration !== 'string' || !pattern.declaration.trim())) throw new Error('User-declared patterns require the supplied workload statement, not an observed-workload claim');
                 if (!Number.isFinite(pattern.tps) || pattern.tps < 0) {
                     if (pattern.tps !== null) throw new Error('Pattern TPS must be non-negative or null for unknown');
                 }

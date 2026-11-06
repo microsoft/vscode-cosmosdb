@@ -191,7 +191,8 @@ export function writeSourceNeutralAnalysis(workspace, fixture) {
     writeFixture(workspace, 'phases/1-discovery/access-patterns/access-patterns.md',
         '# Access Patterns\n## Read Patterns\n| # | Pattern Name | Datasets | Filter / Lookup Fields | Frequency (TPS) | Latency Requirement | Notes |\n|---|---|---|---|---|---|---|\n## Write Patterns\n| # | Pattern Name | Datasets | Single / Batch | Frequency (TPS) | Latency Requirement | Notes |\n|---|---|---|---|---|---|---|\nNo observed application access: orders\n');
     report('phases/1-discovery', 'discovery-report', ['Source Overview', 'Read Patterns', 'Write Patterns', 'Source Semantics', 'Warnings'],
-        { datasets: ['orders'], patterns: [], noObservedAccess: ['orders'], sdkCompatibility: buildCompatibilityReport(['TypeScript']) });
+        { datasets: ['orders'], patterns: [], noObservedAccess: ['orders'],
+            ...(project.phases.discovery.applicationAnalysis.codebaseAvailable === false ? {} : { sdkCompatibility: buildCompatibilityReport(['TypeScript']) }) });
     report('phases/2-assessment', 'assessment-summary', ['Overview', 'Domains', 'Cross-Domain Dependencies', 'Recommendations', 'Warnings'],
         { datasets: ['orders'], domains: ['Orders'], crossDomainEdges: [] });
     writeFixture(workspace, 'phases/2-assessment/domains/Orders.md', evidenceReport(['Purpose', 'Datasets', 'Access Patterns', 'Cross-Domain Dependencies']));

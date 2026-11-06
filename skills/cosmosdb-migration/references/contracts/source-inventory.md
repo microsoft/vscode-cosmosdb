@@ -29,6 +29,12 @@ Legacy model mappings are resolved exactly, never reinterpreted as new IDs. No r
 state, artifact bytes, selections, or hashes. `normalizeDomains` converts validated legacy ownership to
 IDs for shared validation without rewriting persisted metadata.
 
+`phases.discovery.applicationAnalysis.codebaseAvailable: false` explicitly records schema-only scope.
+In that scope application type/language/access metadata and an SDK report are not analytical prerequisites,
+and application mapping does not filter assessed datasets out of conversion. Existing code-migration execution
+records remain historical, but new code-migration planning/execution requires an available codebase and renewed
+application discovery. Omitting the flag preserves legacy application-migration behavior.
+
 New semantic analysis writes version 2. That is a real contract change: repeat applicable source,
 discovery, assessment, and conversion review, then record freshness. Do not copy hashes onto historical
 reports to imply review. Version-2 preflight freshness includes a source-contract version input; output

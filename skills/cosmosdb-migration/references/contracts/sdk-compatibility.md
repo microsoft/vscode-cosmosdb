@@ -5,6 +5,11 @@ first-party Azure Cosmos DB for NoSQL SDK. A valid unsupported classification do
 not block discovery, assessment, schema conversion, provisioning, or code-migration
 planning. Missing or invalid SDK evidence prevents discovery completion until repaired.
 
+Exception: schema-only projects explicitly record `applicationAnalysis.codebaseAvailable: false`. They need no
+application language or SDK report to complete analytical phases or prepare provisioning. Do not invent a language
+or an unsupported classification to satisfy the gate. Code-migration planning and execution remain unavailable until
+a codebase is supplied and application discovery is refreshed; existing execution records remain historical.
+
 ## Built-In Matrix
 
 The executable source of truth is

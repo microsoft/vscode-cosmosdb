@@ -1366,7 +1366,14 @@ function MigrationPhaseHeader({
     );
 }
 
-function ReferencedInCodeStatus({ isMapped }: { isMapped: boolean }): ReactElement {
+function ReferencedInCodeStatus({
+    isMapped,
+    codebaseAvailable,
+}: {
+    isMapped: boolean;
+    codebaseAvailable?: boolean;
+}): ReactElement {
+    if (codebaseAvailable === false) return <Text size={200}>{l10n.t('Not applicable')}</Text>;
     const label = isMapped ? l10n.t('Yes') : l10n.t('No');
 
     return (
@@ -1388,6 +1395,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
     const rootRef = useRef<HTMLDivElement>(null);
     const analysisLabelId = useId();
     const state = useMigrationState();
+    const isSchemaOnly = state.analysisResult?.codebaseAvailable === false;
     const dispatch = useMigrationDispatch();
     const { announce } = useAnnounce();
     const previousRunActivity = useRef(state.runActivity);
@@ -1429,7 +1437,8 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
     const analysisFieldValidation = (
         field: 'projectName' | 'projectType' | 'language' | 'databaseType' | 'databaseAccess',
     ) => {
-        const invalid = touchedAnalysisFields[field] && !state.analysisResult?.[field]?.trim();
+        const required = !isSchemaOnly || field === 'projectName' || field === 'databaseType';
+        const invalid = required && touchedAnalysisFields[field] && !state.analysisResult?.[field]?.trim();
         return {
             validationMessage: invalid ? l10n.t('Required') : undefined,
             validationState: invalid ? ('error' as const) : ('none' as const),
@@ -1492,14 +1501,16 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                   : state.provisioningState
               : state.connectionTestState;
 
-    const allComplete = !isRunActive && isCodeMigrationReady(state.phaseCompletion) && state.consentGiven;
+    const allComplete =
+        !isSchemaOnly && !isRunActive && isCodeMigrationReady(state.phaseCompletion) && state.consentGiven;
     const hasAllAnalysisFields = !!(
         state.analysisResult &&
         state.analysisResult.projectName?.trim() &&
-        state.analysisResult.projectType?.trim() &&
-        state.analysisResult.language?.trim() &&
         state.analysisResult.databaseType?.trim() &&
-        state.analysisResult.databaseAccess?.trim()
+        (isSchemaOnly ||
+            (state.analysisResult.projectType?.trim() &&
+                state.analysisResult.language?.trim() &&
+                state.analysisResult.databaseAccess?.trim()))
     );
     const isDiscoveryDisabled = isRunActive || !isDiscoveryLaunchReady(state);
     const isAiActionDisabled = isRunActive || !state.consentGiven || !state.isAIFeaturesEnabled;
@@ -1511,10 +1522,11 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
     const generateSchemaLabel = l10n.t('Infer source inventory from workspace code');
     const updateVolumetricsLabel = l10n.t('Update volumetrics template');
     const updateAccessPatternsLabel = l10n.t('Update access-patterns template');
-    const codeMigrationDescription =
-        state.codeMigrationAction === 'plan'
-            ? l10n.t('Plan Migration using Copilot Chat')
-            : l10n.t('Migrate Application using Copilot Chat');
+    const codeMigrationDescription = isSchemaOnly
+        ? l10n.t('Application code migration is unavailable until a codebase is supplied and discovery is refreshed.')
+        : state.codeMigrationAction === 'plan'
+          ? l10n.t('Plan Migration using Copilot Chat')
+          : l10n.t('Migrate Application using Copilot Chat');
     const isPhase2Disabled = isRunActive || phase1State !== 'complete' || !hasAllAnalysisFields;
     const isPhase3Disabled = isRunActive || phase2State !== 'complete';
     const isPhase4Disabled = isRunActive || phase1State !== 'complete' || !hasAllAnalysisFields;
@@ -2040,6 +2052,13 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                 <Text size={400} weight="semibold">
                     {l10n.t('Application Details')}
                 </Text>
+                {isSchemaOnly && (
+                    <Text size={200}>
+                        {l10n.t(
+                            'Schema-only migration: no application code is available. Application type, language, and access method are optional; all assessed source datasets remain in scope.',
+                        )}
+                    </Text>
+                )}
 
                 <Text size={200} style={{ color: 'var(--vscode-descriptionForeground)' }}>
                     {l10n.t(
@@ -2318,7 +2337,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                             </Field>
                             <Text weight="semibold" size={200}>
                                 <span id={`${analysisLabelId}-type`}>{l10n.t('Type:')}</span>{' '}
-                                <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
+                                {!isSchemaOnly && <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>}
                                 <InfoTooltipIcon
                                     content={l10n.t(
                                         'The architecture or deployment style of your application. Examples: Web API, Microservice, Monolithic MVC',
@@ -2327,7 +2346,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                     styles={styles}
                                 />
                             </Text>
-                            <Field required {...analysisFieldValidation('projectType')}>
+                            <Field required={!isSchemaOnly} {...analysisFieldValidation('projectType')}>
                                 <Input
                                     data-testid="migration-project-type"
                                     disabled={isRunActive}
@@ -2340,7 +2359,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                             </Field>
                             <Text weight="semibold" size={200}>
                                 <span id={`${analysisLabelId}-language`}>{l10n.t('Language:')}</span>{' '}
-                                <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
+                                {!isSchemaOnly && <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>}
                                 <InfoTooltipIcon
                                     content={l10n.t(
                                         'The primary programming language of your application. Examples: C#, Java, Python',
@@ -2349,7 +2368,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                     styles={styles}
                                 />
                             </Text>
-                            <Field required {...analysisFieldValidation('language')}>
+                            <Field required={!isSchemaOnly} {...analysisFieldValidation('language')}>
                                 <Input
                                     data-testid="migration-language"
                                     disabled={isRunActive}
@@ -2405,7 +2424,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                             </Field>
                             <Text weight="semibold" size={200}>
                                 <span id={`${analysisLabelId}-access`}>{l10n.t('Access Method:')}</span>{' '}
-                                <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
+                                {!isSchemaOnly && <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>}
                                 <InfoTooltipIcon
                                     content={l10n.t(
                                         'How your application connects to the source. Examples: Entity Framework, JDBC, native database drivers, HTTP APIs',
@@ -2414,7 +2433,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                     styles={styles}
                                 />
                             </Text>
-                            <Field required {...analysisFieldValidation('databaseAccess')}>
+                            <Field required={!isSchemaOnly} {...analysisFieldValidation('databaseAccess')}>
                                 <Input
                                     data-testid="migration-access"
                                     disabled={isRunActive}
@@ -2716,7 +2735,12 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                                                 textAlign: 'center',
                                                             }}
                                                         >
-                                                            <ReferencedInCodeStatus isMapped={domain.isMapped} />
+                                                            <ReferencedInCodeStatus
+                                                                isMapped={domain.isMapped}
+                                                                codebaseAvailable={
+                                                                    state.analysisResult?.codebaseAvailable
+                                                                }
+                                                            />
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -2762,9 +2786,9 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                     </Text>
 
                                     <Checkbox
-                                        checked={state.includeUnmappedDomains}
+                                        checked={isSchemaOnly || state.includeUnmappedDomains}
                                         onChange={handleIncludeUnmappedDomainsChange}
-                                        disabled={isRunActive}
+                                        disabled={isSchemaOnly || isRunActive}
                                         label={l10n.t(
                                             'Include domains without detected application code access patterns (e.g. datasets only referenced via stored procedures, ETL, or external systems)',
                                         )}
@@ -3290,6 +3314,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
 
             {/* Additional Migration Instructions */}
             <div className={styles.configSection} data-testid="migration-phase-code-migration">
+                {isSchemaOnly && <Text size={200}>{codeMigrationDescription}</Text>}
                 <Field
                     label={
                         <>

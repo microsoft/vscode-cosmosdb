@@ -48,6 +48,7 @@ export interface MigrationState {
     // Phase 1 (continued): Application Analysis
     analysisState: PhaseState;
     analysisResult: {
+        codebaseAvailable?: boolean;
         projectName?: string;
         projectType?: string;
         language?: string;
@@ -419,6 +420,8 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
                     const analysisString = (key: string): string | undefined =>
                         typeof analysis?.[key] === 'string' ? analysis[key] : undefined;
                     const effectiveAnalysis: NonNullable<MigrationState['analysisResult']> = {
+                        codebaseAvailable:
+                            typeof analysis?.codebaseAvailable === 'boolean' ? analysis.codebaseAvailable : undefined,
                         projectName: analysisString('projectName') || data.project.name,
                         projectType: analysisString('projectType'),
                         language: analysisString('language'),

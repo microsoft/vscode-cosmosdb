@@ -51,6 +51,11 @@ complexity requires them; call count and decomposition are implementation detail
 Use `phases.assessment.domains[].isMapped` as the authoritative application-mapping
 signal.
 
+For schema-only scope (`applicationAnalysis.codebaseAvailable: false`), application mapping is unavailable and
+this filter does not apply: convert all assessed datasets within the already selected source scope. Do not require
+the engineer to include "unused" domains merely because no application code was supplied. Keep source exclusions
+and ownership intact, and do not claim application mappings were found.
+
 - When `include-unmapped-domains` is omitted or false, convert only domains whose
   `isMapped` value is `true`.
 - When it is true, convert every assessed domain.

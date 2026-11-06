@@ -157,6 +157,11 @@ function validateApplicationAnalysis(value, errors) {
         optionalString(value, key, pathLabel, errors);
     }
     optionalStringArray(value, 'frameworks', pathLabel, errors);
+    optionalBoolean(value, 'codebaseAvailable', pathLabel, errors);
+}
+
+export function isSchemaOnlyProject(project) {
+    return project?.phases?.discovery?.applicationAnalysis?.codebaseAvailable === false;
 }
 
 export function validateDomainNames(names, pathLabel = '$.domains') {

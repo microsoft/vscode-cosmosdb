@@ -147,6 +147,23 @@ describe('MigrationAssistantTab settings and AI launch guards', () => {
         expect(save).not.toHaveBeenCalled();
     });
 
+    it.each(['planMigration', 'migrateApplication'])('blocks %s without an application codebase', async (command) => {
+        project.phases.discovery.applicationAnalysis = { codebaseAvailable: false };
+        await expect(tab.dispatchCommand(command, [])).rejects.toThrow('Application code migration is unavailable');
+        expect(dispatch).not.toHaveBeenCalled();
+        expect(begin).not.toHaveBeenCalled();
+    });
+
+    it('does not send an application-mapping exclusion for schema-only conversion', async () => {
+        project.phases.discovery.applicationAnalysis = { codebaseAvailable: false };
+        await tab.dispatchCommand('runSchemaConversion', [false]);
+        expect(dispatch).toHaveBeenCalledWith(
+            expect.objectContaining({ phase: 'schema-conversion', includeUnmappedDomains: undefined }),
+            'selected',
+            expect.any(Function),
+        );
+    });
+
     describe('target account selection', () => {
         const subscription = {
             subscriptionId: 'selected-subscription',

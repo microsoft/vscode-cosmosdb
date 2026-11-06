@@ -1,5 +1,10 @@
 # Domain Assessment (`assessment`)
 
+When `applicationAnalysis.codebaseAvailable` is false, application mapping is unavailable, not evidence that a
+dataset is unused. Keep the selected source datasets in the assessment and conversion scope. `isMapped` continues
+to describe observed application mapping; it does not exclude schema-only domains. Use schema, metadata, examples,
+and user-confirmed workload to propose boundaries, explicitly retaining uncertainty.
+
 `assessment` decomposes the authoritative source model into business domains and
 records cross-domain migration concerns. It does not choose final containers or
 partition keys.

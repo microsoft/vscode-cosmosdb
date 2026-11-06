@@ -10,9 +10,10 @@ import { inspectMigrationState } from '../scripts/inspect-migration-state.mjs';
 import { executeBehaviorExample, executeMapping, readFieldValue, validateMappingEvidence } from '../scripts/mapping-examples.mjs';
 import { mergeCosmosModels } from '../scripts/merge-cosmos-models.mjs';
 import { normalizeDomains, validateSourceContract } from '../scripts/source-contract.mjs';
+import { selectSchemaConversionDomains } from '../scripts/select-schema-conversion-domains.mjs';
 import { modelHash, validateConversionEvidence } from '../scripts/validate-conversion-evidence.mjs';
 import { validateCosmosModel } from '../scripts/validate-cosmos-model.mjs';
-import { createSourceResolver, readSourceInventory, sourceFilesHash } from '../scripts/validate-source-evidence.mjs';
+import { createSourceResolver, readSourceInventory, sourceFilesHash, validateSourceReport } from '../scripts/validate-source-evidence.mjs';
 import {
     createSourceNeutralFixture as fixture,
     sourceFixture,
@@ -362,4 +363,37 @@ test('source-neutral ownership, identity order and root agreement remain enforce
     data.entity.attributes.pop();
     data.evidence.domainSha256.Orders = modelHash(data.model);
     assert.match(validate()[0].message, /omits source column/u);
+});
+
+test('schema-only analysis needs neither invented application details nor SDK evidence or mapped domains', t => {
+    const directory = workspace(t);
+    const data = fixture(directory);
+    const analysis = data.project.phases.discovery.applicationAnalysis;
+    analysis.codebaseAvailable = false;
+    delete analysis.language;
+    delete analysis.projectType;
+    delete analysis.databaseAccess;
+    data.project.phases.assessment.domains[0].isMapped = false;
+    writeAnalysis(directory, data);
+    for (const phase of ['preflight', 'discovery', 'assessment', 'schema-conversion']) {
+        const result = checkPhaseCompletion(directory, phase);
+        assert.equal(result.complete, true, JSON.stringify(result));
+    }
+    const discovery = JSON.parse(fs.readFileSync(path.join(directory, '.cosmosdb-migration/phases/1-discovery/discovery-manifest.json')));
+    assert.equal(discovery.sdkCompatibility, undefined);
+    const report = fs.readFileSync(path.join(directory, '.cosmosdb-migration/phases/1-discovery/discovery-report.md'), 'utf8');
+    discovery.patterns = [{ id: 'R001', kind: 'read', datasets: ['orders'], sourcePaths: [], tps: null,
+        evidence: 'user-declared', declaration: 'Look up an order by its known identity.', operation: 'Point read' }];
+    discovery.noObservedAccess = [];
+    assert.deepEqual(validateSourceReport(report, discovery, data.inventory, 'discovery'), []);
+    delete discovery.patterns[0].declaration;
+    assert.match(validateSourceReport(report, discovery, data.inventory, 'discovery')[0].message, /workload statement/u);
+    assert.equal(selectSchemaConversionDomains(data.project).selectedDomains.length, 1);
+    assert.equal(checkPhaseCompletion(directory, 'code-migration').ready, false);
+    assert.match(checkCodeMigrationPrerequisites(directory).errors.join(' '), /Application code is unavailable/u);
+    assert.equal(inspectMigrationState(directory, 'code-migration').action, 'blocked');
+    delete analysis.codebaseAvailable;
+    assert.throws(() => selectSchemaConversionDomains(data.project), /No mapped domains/u);
+    writeFixture(directory, 'project.json', JSON.stringify(data.project));
+    assert.equal(checkPhaseCompletion(directory, 'preflight').complete, false);
 });

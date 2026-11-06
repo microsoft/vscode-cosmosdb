@@ -6,6 +6,60 @@
 import { expect, test } from '../fixtures/vscode';
 import { closeAllEditorTabs, getWebviewByPredicate, maximizeWindow, runCommand } from '../fixtures/webviewHelpers';
 
+test('Selected workload radios keep their color on hover and show focus only on the card', async ({ vscodeApp }) => {
+    const vscodeWindow = await vscodeApp.firstWindow();
+    await maximizeWindow(vscodeApp);
+    await runCommand(vscodeWindow, 'Cosmos DB: [E2E Test] Open Data Modeler');
+    const webview = await getWebviewByPredicate(
+        vscodeWindow,
+        async (frame) => (await frame.getByRole('radiogroup', { name: 'Workload scenarios' }).count()) > 0,
+    );
+    try {
+        const radio = webview.getByRole('radio', { name: 'Inventory & Supply Chain' });
+        const card = radio.locator('..');
+        await card.getByText('Inventory & Supply Chain', { exact: true }).click();
+        await expect(radio).toBeChecked();
+        await expect(radio).toHaveAccessibleName('Inventory & Supply Chain');
+        await expect(card).toHaveCSS('outline-style', 'none');
+        await expect(card).not.toHaveCSS('box-shadow', 'none');
+        await radio.press('Tab');
+        const start = webview.getByRole('button', { name: 'Start', exact: true });
+        await expect(start).toBeFocused();
+        await start.press('Shift+Tab');
+        await expect(radio).toBeFocused();
+        await expect(card).toHaveCSS('outline-style', 'solid');
+        await expect(card).toHaveCSS('outline-width', '2px');
+        await expect.soft(radio).toHaveCSS('outline-style', 'none');
+
+        await start.hover();
+        const selected = await radio.screenshot();
+        await radio.hover();
+        await expect(radio).toBeFocused();
+        const hovered = await radio.screenshot();
+        expect.soft(hovered.equals(selected), 'The selected radio should not change color on hover').toBe(true);
+        await radio.press('ArrowLeft');
+        await expect(radio).not.toBeChecked();
+        await expect(card).toHaveCSS('outline-style', 'none');
+        expect((await radio.screenshot()).equals(hovered), 'Checked and unchecked radios must look different').toBe(
+            false,
+        );
+
+        await vscodeWindow.emulateMedia({ forcedColors: 'active' });
+        await radio.click();
+        await expect(radio).toBeChecked();
+        const highContrastSelected = await radio.screenshot();
+        await radio.press('ArrowLeft');
+        await expect(radio).not.toBeChecked();
+        expect(
+            (await radio.screenshot()).equals(highContrastSelected),
+            'Checked and unchecked radios must remain distinct in forced colors',
+        ).toBe(false);
+    } finally {
+        await vscodeWindow.emulateMedia({ forcedColors: null });
+        await closeAllEditorTabs(vscodeWindow);
+    }
+});
+
 test('Workload and Scale cards use native radio keyboard navigation, including filtered scenarios', async ({
     vscodeApp,
 }) => {
@@ -28,6 +82,20 @@ test('Workload and Scale cards use native radio keyboard navigation, including f
         await filter.focus();
         await filter.press('Tab');
         await expect(firstTrait).toBeFocused();
+        const focusRing = await firstTrait.evaluate((element) => {
+            const bounds = element.getBoundingClientRect();
+            const ring = getComputedStyle(element, '::after');
+            return {
+                buttonWidth: bounds.width,
+                buttonHeight: bounds.height,
+                ringWidth: parseFloat(ring.width),
+                ringHeight: parseFloat(ring.height),
+                borderStyle: ring.borderTopStyle,
+            };
+        });
+        expect(focusRing.borderStyle).toBe('solid');
+        expect(focusRing.ringWidth).toBeLessThanOrEqual(focusRing.buttonWidth + 4);
+        expect(focusRing.ringHeight).toBeLessThanOrEqual(focusRing.buttonHeight + 4);
         await expect(clear).toBeHidden();
         await firstTrait.press('ArrowRight');
         const secondTrait = traits.getByRole('button').nth(1);
@@ -106,6 +174,7 @@ test('Workload and Scale cards use native radio keyboard navigation, including f
         await medium.press('ArrowRight');
         await expect(high).toBeFocused();
         await expect(high).toBeChecked();
+        await expect(high.locator('..')).toHaveCSS('outline-style', 'solid');
         await high.press('Tab');
         const writes = webview.getByRole('radiogroup', { name: 'Write distribution' });
         const even = writes.getByRole('radio', { name: 'Even', exact: true });

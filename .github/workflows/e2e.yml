@@ -37,6 +37,7 @@ on:
       - 'test/e2e/**'
       - 'scripts/import-seed.mjs'
       - 'scripts/test-proxy*.mjs'
+      - 'scripts/summarize-playwright-report*.mjs'
       - 'docker-compose.e2e.yml'
       - 'package.json'
       - 'package-lock.json'
@@ -56,6 +57,7 @@ on:
       - 'test/e2e/**'
       - 'scripts/import-seed.mjs'
       - 'scripts/test-proxy*.mjs'
+      - 'scripts/summarize-playwright-report*.mjs'
       - 'docker-compose.e2e.yml'
       - 'package.json'
       - 'package-lock.json'
@@ -99,6 +101,9 @@ jobs:
       - name: ⬇️ Install dependencies
         run: npm ci
 
+      - name: Test Playwright report summary
+        run: node --test scripts/summarize-playwright-report.test.mjs
+
       - name: 🔧 Install Electron system dependencies
         # Provides libgtk-3, libnss3, libasound2, etc — required by the VS Code Electron build that
         # @vscode/test-electron downloads. `chromium` is the cheapest dep set that covers Electron too.
@@ -117,6 +122,7 @@ jobs:
         # globalSetup would walk src/ for no gain.
         env:
           COSMOSDB_E2E_SKIP_BUILD: '1'
+          PLAYWRIGHT_JSON_OUTPUT_FILE: ${{ runner.temp }}/e2e-report/results.json
           # When the workflow is dispatched manually with the `trace` input enabled, record a
           # per-test window trace (and screenshots). The `inputs` context is only populated for
           # workflow_dispatch, so gate on the event name; push/PR runs resolve to '' and fall back
@@ -138,6 +144,15 @@ jobs:
           #      `**/html` on its own would not pick up files inside the html/ folder either.
           path: test/e2e/.reports/**/html/**
           include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: 📤 Upload Playwright JSON report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-json-report-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/e2e-report/results.json
           if-no-files-found: warn
           retention-days: 14
 
@@ -264,6 +279,15 @@ jobs:
 
           e2e_icon=$(result_icon "$E2E_RESULT")
           artifacts=$(list_run_artifacts "${GITHUB_RUN_ID}")
+          flaky_section=""
+          if [ -f "$RUNNER_TEMP/e2e-report/results.json" ]; then
+              flaky_section=$(node scripts/summarize-playwright-report.mjs "$RUNNER_TEMP/e2e-report/results.json")
+          elif [ "$E2E_RESULT" = "success" ] || [ "$E2E_RESULT" = "failure" ]; then
+              echo "::warning::Playwright JSON report is missing; flaky test results are unavailable."
+              flaky_section="## ⚠️ Flaky test results unavailable
+
+          The Playwright JSON report was not produced. Check the test logs."
+          fi
 
           MARKER="<!-- ci-summary:e2e -->"
           cat >> "$GITHUB_STEP_SUMMARY" << SUMMARY_EOF
@@ -272,6 +296,8 @@ jobs:
 
           ## 🧪 Result
           - **E2E Tests:** ${e2e_icon} ${E2E_RESULT}
+
+          ${flaky_section}
 
           ## 📥 Artifacts ([run](${SERVER_URL}/${REPO}/actions/runs/${GITHUB_RUN_ID}))
           ${artifacts}

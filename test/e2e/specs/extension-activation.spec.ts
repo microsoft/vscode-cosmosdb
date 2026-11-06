@@ -6,6 +6,8 @@
 import { expect, test } from '../fixtures/vscode';
 import { waitForExtensionsActivated } from '../setup/activation';
 
+test.use({ layout: { primarySideBar: true } });
+
 test('keeps an already active Azure sidebar open during the activation handshake', async ({ vscodeWindow }) => {
     const sidebar = vscodeWindow.locator('.part.sidebar');
     await expect(sidebar).toBeVisible();

@@ -369,6 +369,38 @@ test('loads SQLGlot mechanics only for the selected SQLGlot branch', () => {
     assert.match(sqlglot, /Model-only interpretation does not need this reference or Python/u);
 });
 
+test('cross-checks inferred DDL with the selected SQLGlot method without another opt-in', () => {
+    const preflight = fs.readFileSync(path.join(skillRoot, 'references/phases/preflight.md'), 'utf8');
+    const reference = fs.readFileSync(path.join(skillRoot, 'references/workflow/ddl-interpretation.md'), 'utf8');
+    const crossCheck = reference.split('## Inferred DDL Cross-Check')[1].split('## Model-Only DDL Interpretation')[0];
+    assert.match(preflight, /ddl-interpretation\.md#inferred-ddl-cross-check/u);
+    assert.match(crossCheck, /parser choice.*#dependency-choice/u);
+    assert.match(crossCheck, /consent and fallback rules; inference does not require a separate SQLGlot opt-in/u);
+    assert.match(crossCheck, /Parse the generated DDL in the source dialect, inspect AST output, diagnostics,/u);
+    assert.match(crossCheck, /unsupported constructs.*compare.*inventory with the original evidence/su);
+    assert.match(crossCheck, /Correct generated DDL only where that evidence supports the change, then reparse/u);
+    assert.match(crossCheck, /`sqlglot-assisted` or\s+`model-reviewed` assurance/u);
+    assert.match(crossCheck, /neither check establishes\s+source-engine validity/u);
+});
+
+test('uses a fresh-context read-only reviewer for inferred DDL with a portable model-only fallback', () => {
+    const reference = fs.readFileSync(path.join(skillRoot, 'references/workflow/ddl-interpretation.md'), 'utf8');
+    const crossCheck = reference.split('## Inferred DDL Cross-Check')[1].split('## Model-Only DDL Interpretation')[0];
+    assert.match(crossCheck, /When permitted fresh-context delegation is available, use a read-only\s+sub-agent/u);
+    assert.match(crossCheck, /generated DDL and original source artifacts, not the inference session's\s+reasoning or conclusions/u);
+    assert.match(crossCheck, /completeness, types, nullability,\s+keys, constraints, and relationships/u);
+    assert.match(crossCheck, /source-file\/line evidence.*explicit uncertainty/su);
+    assert.match(crossCheck, /same project scope and model-only parser\s+restrictions/u);
+    assert.match(crossCheck, /return findings only; it must not write files or checkpoints/u);
+    assert.match(crossCheck, /unavailable, prohibited, or fails, perform a distinct second\s+review pass against the original evidence/u);
+    assert.match(crossCheck, /disclose that no fresh-context review completed/u);
+    assert.match(crossCheck, /Only the root agent writes DDL, inventories, and checkpoints/u);
+    assert.match(crossCheck, /rechecks affected constructs/u);
+    assert.match(crossCheck, /reviewer disagreement alone is not\s+a correctness failure/u);
+    assert.match(crossCheck, /review coverage, unresolved findings.*delegation fallback reason in the existing preflight summary/su);
+    assert.match(crossCheck, /another model can share the same errors/u);
+});
+
 test('provides an inline SQLGlot recipe with scoped AST and completeness guidance', () => {
     const reference = fs.readFileSync(path.join(skillRoot, 'references/tooling/sqlglot-ddl.md'), 'utf8');
     assert.match(reference, /without first consulting external API\s+documentation/u);
@@ -475,6 +507,21 @@ test('Discovery prepares preflight in application-details-first order without we
     assert.match(discovery, /A validation-only request performs no preparation writes/u);
     assert.match(discovery, /preserve\s+valid supplied inputs/u);
     assert.match(interaction, /source discovery without asking for a separate launch/u);
+});
+
+test('allows evidence-based inference while preserving supplied DDL and user edits', () => {
+    const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
+    const preflight = fs.readFileSync(path.join(skillRoot, 'references/phases/preflight.md'), 'utf8');
+    const evidence = fs.readFileSync(path.join(skillRoot, 'references/contracts/validation-evidence.md'), 'utf8');
+    assert.match(skill, /User-supplied DDL is optional/u);
+    assert.match(skill, /`schema-source`/u);
+    assert.match(preflight, /--inputs schema-evidence/u);
+    assert.match(preflight, /joins do not prove foreign keys; samples do not prove uniqueness or nullability/u);
+    assert.match(preflight, /If a generated file was edited or a destination is untracked,\s+preserve it/u);
+    assert.match(preflight, /do not supplement it silently/u);
+    assert.match(evidence, /origin: "inferred"/u);
+    assert.match(evidence, /sourcePaths/u);
+    assert.doesNotMatch(skill + preflight, /inferred DDL.*treated\s+as supplied truth|Infer DDL from source code only when/u);
 });
 
 test('Discovery preserves source constraints and reviews their write-pattern handoff', () => {

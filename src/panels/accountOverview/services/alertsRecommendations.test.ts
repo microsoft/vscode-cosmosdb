@@ -517,20 +517,23 @@ describe('getRecommendations', () => {
         },
     );
 
-    it('uses the account resource when Advisor only supplies impactedValue', async () => {
-        const { client } = mockAdvisorClient([
-            {
-                ...makeRec(ACCOUNT, 'High', 'Cost'),
-                resourceMetadata: undefined,
-                impactedValue: ACCOUNT,
-                recommendationTypeId: 'type',
-            },
-        ]);
-        const result = await getRecommendations(client, 'sub1', ACCOUNT);
-        expect(result.recommendations[0].portalUrl).toBe(
-            `https://portal.azure.com/#blade/Microsoft_Azure_Expert/RecommendationListBlade/recommendationTypeId/type/resourceId/${encodeURIComponent(encodeURIComponent(ACCOUNT))}`,
-        );
-    });
+    it.each([ACCOUNT, `${ACCOUNT}/sqlDatabases/database`, `${ACCOUNT}/sqlDatabases/database/containers/a b?#%2F`])(
+        'uses the impacted resource %s when Advisor only supplies impactedValue',
+        async (resourceId) => {
+            const { client } = mockAdvisorClient([
+                {
+                    ...makeRec(resourceId, 'High', 'Cost'),
+                    resourceMetadata: undefined,
+                    impactedValue: resourceId,
+                    recommendationTypeId: 'type',
+                },
+            ]);
+            const result = await getRecommendations(client, 'sub1', ACCOUNT);
+            expect(result.recommendations[0].portalUrl).toBe(
+                `https://portal.azure.com/#blade/Microsoft_Azure_Expert/RecommendationListBlade/recommendationTypeId/type/resourceId/${encodeURIComponent(encodeURIComponent(resourceId))}`,
+            );
+        },
+    );
 
     it('opens the account recommendations page when Azure omits the recommendation type', async () => {
         const { client } = mockAdvisorClient([makeRec(`${ACCOUNT}/sqlDatabases/db/containers/c`, 'High', 'Cost')]);

@@ -246,7 +246,9 @@ function buildRecommendationPortalUrl(
         return `${portal}/#${tenant}resource${accountId}/advisorRecommendations`;
     }
     const typeId = encodeURIComponent(encodeURIComponent(recommendation.recommendationTypeId));
-    const resourceId = encodeURIComponent(encodeURIComponent(recommendation.resourceMetadata?.resourceId ?? accountId));
+    const resourceId = encodeURIComponent(
+        encodeURIComponent(recommendation.resourceMetadata?.resourceId ?? recommendation.impactedValue ?? accountId),
+    );
     return `${portal}/#${tenant}blade/Microsoft_Azure_Expert/RecommendationListBlade/recommendationTypeId/${typeId}/resourceId/${resourceId}`;
 }
 

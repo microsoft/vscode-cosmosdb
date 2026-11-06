@@ -17,6 +17,7 @@
  * host-side seeding step.
  */
 
+import * as l10n from '@vscode/l10n';
 import { type ModelingAdvisorSnapshot } from '../../../dataModeling/modelingAdvisorSchema';
 import { type ContainerDefault, DATA_MODEL_DEFAULTS } from './dataModelDefaults';
 import { type ContainerModel, type PartitionCandidate, type ScenarioId } from './models';
@@ -183,7 +184,7 @@ export function createBlankContainer(entity = 'NewContainer'): ContainerModel {
         reads: [
             {
                 id: nextId('read'),
-                pattern: 'Get an item by id',
+                pattern: l10n.t('Get an item by id'),
                 query: 'SELECT * FROM c WHERE c.id = @id',
                 qps: 100,
             },

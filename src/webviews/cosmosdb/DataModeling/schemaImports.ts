@@ -43,11 +43,25 @@ export class SchemaImportTracker {
             const container = model.containers.find((c) => c.id === containerId);
             if (!container) {
                 this.latest.delete(containerId);
-            } else if (!request.reported && request.properties && container.properties === request.properties) {
+            } else if (
+                !request.reported &&
+                request.properties &&
+                containsAll(container.properties, request.properties)
+            ) {
                 request.reported = true;
                 committed.push(request);
             }
         }
         return committed;
     }
+}
+
+/**
+ * Imported property objects are unique to their import, so their presence proves it committed.
+ * A field edit queued in the same batch may rebuild the array around them. An empty import has no entries to find.
+ */
+function containsAll(properties: SchemaProperty[], imported: SchemaProperty[]): boolean {
+    if (imported.length === 0) return properties === imported;
+    const present = new Set(properties);
+    return imported.every((property) => present.has(property));
 }

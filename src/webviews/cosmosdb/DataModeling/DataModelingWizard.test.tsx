@@ -165,6 +165,27 @@ async function continueExisting() {
     await screen.findByRole('navigation', { name: 'Data modeling steps' });
 }
 
+/** Selects a schema file whose read stays pending until `finishRead` is called. */
+function selectDelayedSchemaFile(container: HTMLElement) {
+    let resolveRead: ((text: string) => void) | undefined;
+    const read = vi.fn(
+        () =>
+            new Promise<string>((resolve) => {
+                resolveRead = resolve;
+            }),
+    );
+    const file = new File([], 'schema.json', { type: 'application/json' });
+    Object.defineProperty(file, 'text', { value: read });
+    fireEvent.change(container.querySelector('input[type="file"]')!, { target: { files: [file] } });
+    return { read, finishRead: (text: string) => resolveRead!(text) };
+}
+
+function schemaImportSuccessCount(): number {
+    return client.dataModeling.recordTelemetry.mutate.mock.calls
+        .map(([event]) => event as ModelingTelemetryEvent)
+        .filter((event) => event.type === 'schemaImport' && event.outcome === 'success').length;
+}
+
 async function enterDeployStep() {
     const button = screen.getAllByRole('button', { name: 'Deploy' }).find((element) => !element.closest('nav'));
     if (!button) {
@@ -882,6 +903,141 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             'alert',
         );
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+    });
+
+    it.each([false, true])(
+        'preserves a renamed container when schema import finishes (batched: %s)',
+        async (batched) => {
+            const saved = restored();
+            saved.recommendation = { status: 'idle' };
+            saved.wizard.dataModel.containers[0].arrays.hasArrays = true;
+            client.dataModeling.loadState.query.mockResolvedValue(saved);
+            const page = render(<DataModelingWizard />);
+            await continueExisting();
+            const { read, finishRead } = selectDelayedSchemaFile(page.container);
+            await answerConfirmation('Replace schema?', true);
+            expect(read).toHaveBeenCalledOnce();
+            const averageItems = screen.getByRole('spinbutton', { name: 'Average items per array' });
+            fireEvent.change(averageItems, { target: { value: '20' } });
+            fireEvent.blur(averageItems);
+            await userEvent.click(screen.getByRole('button', { name: 'Edit Orders' }));
+            fireEvent.change(screen.getByRole('textbox', { name: 'Container name' }), {
+                target: { value: 'LatestOrders' },
+            });
+            if (batched) {
+                await act(async () => {
+                    fireEvent.click(screen.getByRole('button', { name: 'Save container name' }));
+                    finishRead('{"id":"1","amount":5}');
+                });
+            } else {
+                await userEvent.click(screen.getByRole('button', { name: 'Save container name' }));
+            }
+            await waitFor(() => expect(lastSave().wizard.dataModel.containers[0].entity).toBe('LatestOrders'));
+            if (!batched) await act(async () => finishRead('{"id":"1","amount":5}'));
+            await waitFor(() => {
+                const container = lastSave().wizard.dataModel.containers[0];
+                expect(container.entity).toBe('LatestOrders');
+                expect(container.arrays.avgItems).toBe(20);
+                expect(container.properties.map((p) => p.name)).toEqual(['id', 'amount']);
+                expect(container.scale.candidates.map((c) => c.attribute)).toEqual(['id']);
+                expect(container.scale.candidates[0].distinctValues).toBe(872);
+                expect(container.reads).toEqual(saved.wizard.dataModel.containers[0].reads);
+            });
+            expect(screen.getByRole('button', { name: 'Edit LatestOrders' })).toBeVisible();
+            expect(screen.getByRole('row', { name: /^amount / })).toBeVisible();
+        },
+    );
+
+    it('applies a confirmed import when the Data tab is left before the file read finishes', async () => {
+        const saved = restored();
+        saved.recommendation = { status: 'idle' };
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        const page = render(<DataModelingWizard />);
+        await continueExisting();
+        const { read, finishRead } = selectDelayedSchemaFile(page.container);
+        await answerConfirmation('Replace schema?', true);
+        expect(read).toHaveBeenCalledOnce();
+        await userEvent.click(screen.getByRole('tab', { name: 'Queries' }));
+        expect(screen.queryByRole('button', { name: 'Upload JSON' })).not.toBeInTheDocument();
+        await act(async () => finishRead('{"id":"1","amount":5}'));
+        await waitFor(() =>
+            expect(lastSave().wizard.dataModel.containers[0].properties.map((p) => p.name)).toEqual(['id', 'amount']),
+        );
+        expect(client.dataModeling.recordTelemetry.mutate).toHaveBeenCalledWith({
+            type: 'schemaImport',
+            outcome: 'success',
+        });
+    });
+
+    it('discards an import whose read finishes in the same batch as removing its container', async () => {
+        const saved = restored();
+        saved.wizard.dataModel.containers.push(createBlankContainer('Users'));
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        const page = render(<DataModelingWizard />);
+        await continueExisting();
+        const { finishRead } = selectDelayedSchemaFile(page.container);
+        await answerConfirmation('Replace schema?', true);
+        await userEvent.click(screen.getByRole('button', { name: 'Remove from model' }));
+        await waitFor(() => expect(respondToConfirmation).toBeTypeOf('function'));
+        const saves = client.dataModeling.saveState.mutate.mock.calls.length;
+        await act(async () => {
+            respondToConfirmation!(true);
+            finishRead('{"discarded":true}');
+        });
+        await waitFor(() =>
+            expect(lastSave().wizard.dataModel.containers).toEqual([saved.wizard.dataModel.containers[1]]),
+        );
+        expect(client.dataModeling.saveState.mutate).toHaveBeenCalledTimes(saves + 1);
+        expect(client.dataModeling.recordTelemetry.mutate).not.toHaveBeenCalledWith({
+            type: 'schemaImport',
+            outcome: 'success',
+        });
+        expect(screen.queryByText(/Inferred schema from/)).not.toBeInTheDocument();
+    });
+
+    it.each(['Remove from model', 'Start Over'])('does not autosave a late import after %s', async (action) => {
+        const saved = restored();
+        saved.wizard.dataModel.containers.push(createBlankContainer('Users'));
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        const page = render(<DataModelingWizard />);
+        await continueExisting();
+        const { finishRead } = selectDelayedSchemaFile(page.container);
+        await answerConfirmation('Replace schema?', true);
+        if (action === 'Start Over') await userEvent.click(await getStepControl('Result'));
+        await userEvent.click(screen.getByRole('button', { name: action }));
+        if (action === 'Remove from model') await answerConfirmation('Remove from model?', true);
+        const expected = action === 'Start Over' ? [] : [saved.wizard.dataModel.containers[1]];
+        await waitFor(() => expect(lastSave().wizard.dataModel.containers).toEqual(expected));
+        const saves = client.dataModeling.saveState.mutate.mock.calls.length;
+        await act(async () => finishRead('{"imported":true}'));
+        expect(lastSave().wizard.dataModel.containers).toEqual(expected);
+        expect(client.dataModeling.saveState.mutate).toHaveBeenCalledTimes(saves);
+        expect(screen.queryByRole('button', { name: 'Edit Orders' })).not.toBeInTheDocument();
+        expect(schemaImportSuccessCount()).toBe(0);
+    });
+
+    it('keeps a newer import when an older read finishes after the Data tab is reopened', async () => {
+        const saved = restored();
+        saved.recommendation = { status: 'idle' };
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        const page = render(<DataModelingWizard />);
+        await continueExisting();
+        const older = selectDelayedSchemaFile(page.container);
+        await answerConfirmation('Replace schema?', true);
+        expect(older.read).toHaveBeenCalledOnce();
+        await userEvent.click(screen.getByRole('tab', { name: 'Queries' }));
+        await userEvent.click(screen.getByRole('tab', { name: 'Data' }));
+        const newer = selectDelayedSchemaFile(page.container);
+        await answerConfirmation('Replace schema?', true);
+        await act(async () => newer.finishRead('{"newest":true}'));
+        await waitFor(() =>
+            expect(lastSave().wizard.dataModel.containers[0].properties.map((p) => p.name)).toEqual(['newest']),
+        );
+        const saves = client.dataModeling.saveState.mutate.mock.calls.length;
+        await act(async () => older.finishRead('{"older":true}'));
+        expect(lastSave().wizard.dataModel.containers[0].properties.map((p) => p.name)).toEqual(['newest']);
+        expect(client.dataModeling.saveState.mutate).toHaveBeenCalledTimes(saves);
+        expect(schemaImportSuccessCount()).toBe(1);
     });
 
     it('validates container renaming on both Save and Enter and allows the unchanged name', async () => {
@@ -1810,6 +1966,29 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         });
         expect(JSON.stringify(lastSave())).not.toContain(request.requestId);
     });
+
+    it.each(['Queries', 'Review'])('records a schema removal batched with navigation to %s', async (destination) => {
+        client.dataModeling.loadState.query.mockResolvedValue(restored(2));
+        render(<DataModelingWizard />);
+        await continueExisting();
+        const target =
+            destination === 'Queries'
+                ? screen.getByRole('tab', { name: 'Queries' })
+                : await getStepControl(destination);
+        await act(async () => {
+            fireEvent.click(screen.getAllByRole('button', { name: 'Remove type' })[0]);
+            fireEvent.click(target);
+        });
+        const container = lastSave().wizard.dataModel.containers[0];
+        expect(container.properties.map((property) => property.name)).not.toContain('type');
+        expect(container.scale.candidates.map((candidate) => candidate.attribute)).not.toContain('type');
+        const latestUsage = client.dataModeling.recordTelemetry.mutate.mock.calls
+            .map(([event]) => event as ModelingTelemetryEvent)
+            .filter((event) => event.type === 'usage')
+            .at(-1)?.usage;
+        expect(latestUsage?.dataEverEdited).toBe(true);
+    });
+
     describe('recommendation input invalidation', () => {
         const changedMessage = 'The model has changed. Get a new recommendation before deploying.';
         const callbacks = () =>

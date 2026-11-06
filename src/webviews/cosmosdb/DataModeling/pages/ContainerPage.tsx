@@ -5,10 +5,11 @@
 
 import { makeStyles, Tab, TabList, tokens } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
-import { type Ref, useEffect, useId } from 'react';
+import { type Ref, type SetStateAction, useEffect, useId } from 'react';
 import { modelingInputsEqual } from '../../../../dataModeling/modelingTelemetryMetrics';
 import { type ModelingSection, type ModelingTelemetryEvent } from '../../../../dataModeling/modelingTelemetrySchema';
 import { type DataModel } from '../dataModel';
+import { type SchemaImportTracker } from '../schemaImports';
 import { useModelingPageVisible } from '../useModelingTelemetry';
 import { DataPage } from './DataPage';
 import { QueriesPage } from './QueriesPage';
@@ -40,7 +41,7 @@ export interface ContainerPageProps {
     onTabChange: (tab: ContainerTab) => void;
     queriesTabRef?: Ref<HTMLButtonElement>;
     /** Data-tab edits change the schema, so the wizard re-derives partition-key candidates. */
-    onChangeData: (next: DataModel) => void;
+    onChangeData: (next: SetStateAction<DataModel>) => void;
     /** Queries- and Scale-tab edits write their slice back unchanged. */
     onChange: (next: DataModel) => void;
     active?: boolean;
@@ -48,6 +49,8 @@ export interface ContainerPageProps {
     onVisit?: (containerId: string, section: ModelingSection) => void;
     onEdited?: (section: ModelingSection) => void;
     onTelemetry?: (event: ModelingTelemetryEvent) => void;
+    /** Survives Data-tab remounts so a pending import is never mistaken for the latest one. */
+    schemaImports?: SchemaImportTracker;
 }
 
 export function ContainerPage({
@@ -62,6 +65,7 @@ export function ContainerPage({
     onVisit,
     onEdited,
     onTelemetry,
+    schemaImports,
 }: ContainerPageProps) {
     const styles = useStyles();
     const id = useId();
@@ -75,8 +79,12 @@ export function ContainerPage({
         if (!modelingInputsEqual(next, model)) {
             onEdited?.(tab);
         }
-        if (tab === 'data') onChangeData(next);
-        else onChange(next);
+        onChange(next);
+    };
+    const changeData = (update: SetStateAction<DataModel>) => {
+        const next = typeof update === 'function' ? update(model) : update;
+        if (!modelingInputsEqual(next, model)) onEdited?.('data');
+        onChangeData(update);
     };
 
     return (
@@ -117,7 +125,14 @@ export function ContainerPage({
                 hidden={tab !== 'data'}
                 tabIndex={0}
             >
-                {tab === 'data' ? <DataPage model={model} onChange={change} onTelemetry={onTelemetry} /> : null}
+                {tab === 'data' ? (
+                    <DataPage
+                        model={model}
+                        onChange={changeData}
+                        onTelemetry={onTelemetry}
+                        schemaImports={schemaImports}
+                    />
+                ) : null}
             </div>
             <div
                 role="tabpanel"

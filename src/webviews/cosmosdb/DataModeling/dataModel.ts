@@ -70,7 +70,9 @@ export function buildCandidates(container: Pick<ContainerModel, 'properties'> | 
             (p) => (p.role === 'key' || p.role === 'filter') && !getPartitionKeyRestriction(p, container.properties),
         )
         .map((p) => ({
-            id: nextId('cand'),
+            // Property IDs are allocated before schema updates are queued.
+            // Derivation must also produce the same candidate identities when React replays a state updater.
+            id: `cand-${p.id}`,
             attribute: p.name,
             role: p.role,
             distinctValues: estimateDistinctValues(p.name),

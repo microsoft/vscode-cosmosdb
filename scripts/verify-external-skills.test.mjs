@@ -12,11 +12,15 @@ import { test } from 'node:test';
 
 const workflow = readFileSync(new URL('../.github/workflows/build.yml', import.meta.url), 'utf8');
 const step = workflow.split('        id: skills\n')[1].split('\n      - name:')[0];
-const script = step
-    .split('        run: |\n')[1]
-    .split('\n')
-    .map((line) => line.slice(10))
-    .join('\n');
+const script = extractRun(step);
+
+function extractRun(step) {
+    return step
+        .split('        run: |\n')[1]
+        .split('\n')
+        .map((line) => line.slice(10))
+        .join('\n');
+}
 
 for (const scenario of ['match', 'drift', 'failure']) {
     test(`external skill verification preserves the checkout and cleans up after ${scenario}`, (t) => {
@@ -38,6 +42,7 @@ import { writeFileSync } from 'node:fs';
 if (process.env.FETCH_SCENARIO !== 'match') {
     writeFileSync(new URL('../skills/external/SKILL.md', import.meta.url), 'downloaded\\n');
 }
+
 if (process.env.FETCH_SCENARIO === 'failure') {
     console.error('HTTP 503 during download');
     process.exit(1);
@@ -68,5 +73,63 @@ if (process.env.FETCH_SCENARIO === 'failure') {
         assert.equal(readFileSync(path.join(checkout, 'skills', 'local', 'SKILL.md'), 'utf8'), 'local-only\n');
         assert.deepEqual(readdirSync(checkout).sort(), ['package.json', 'scripts', 'skills']);
         assert.deepEqual(readdirSync(runnerTemp), []);
+    });
+}
+
+for (const { testsResult, otherResult } of [
+    { testsResult: 'success', otherResult: 'success' },
+    { testsResult: 'failure', otherResult: 'success' },
+    { testsResult: 'failure', otherResult: 'skipped' },
+]) {
+    test(`build summary includes skill tests ${testsResult} when other checks are ${otherResult}`, (t) => {
+        const root = mkdtempSync(path.join(tmpdir(), 'skill-build-summary-'));
+        t.after(() => rmSync(root, { recursive: true, force: true }));
+        const summaryPath = path.join(root, 'summary.md');
+        const callsPath = path.join(root, 'gh-calls');
+        writeFileSync(
+            path.join(root, 'gh'),
+            `#!/bin/sh
+echo "$*" >> "$GH_CALLS"
+case "$*" in
+    *issues/123/comments*) echo 456 ;;
+esac
+`,
+            { mode: 0o755 },
+        );
+        const summaryScript = extractRun(workflow.split('      - name: 📊 Generate Job Summary\n')[1]);
+        const result = spawnSync('bash', ['--noprofile', '--norc', '-e', '-o', 'pipefail', '-c', summaryScript], {
+            env: {
+                ...process.env,
+                PATH: `${root}${path.delimiter}${process.env.PATH}`,
+                GH_CALLS: callsPath,
+                GITHUB_STEP_SUMMARY: summaryPath,
+                GITHUB_RUN_ID: '123',
+                SERVER_URL: 'https://github.com',
+                REPO: 'example/repo',
+                EVENT_NAME: 'pull_request',
+                PR_NUMBER: '123',
+                VALIDATE_RESULT: otherResult,
+                L10N_RESULT: otherResult,
+                SKILLS_RESULT: 'success',
+                SKILLS_TEST_RESULT: testsResult,
+                LINT_RESULT: otherResult,
+                PRETTIER_RESULT: otherResult,
+                COMPILE_RESULT: otherResult,
+                PACKAGE_RESULT: otherResult,
+            },
+            encoding: 'utf8',
+            timeout: 10_000,
+        });
+
+        assert.equal(result.status, 0, result.stderr);
+        const summary = readFileSync(summaryPath, 'utf8');
+        assert.match(summary, testsResult === 'failure' ? /# ❌ Build/ : /# ✅ Build/);
+        assert.match(
+            summary,
+            testsResult === 'failure'
+                ? /\*\*External Skills:\*\* verification ✅ success; tests ❌ failure/
+                : /\*\*External Skills:\*\* verification ✅ success; tests ✅ success/,
+        );
+        assert.match(readFileSync(callsPath, 'utf8'), /--method PATCH repos\/example\/repo\/issues\/comments\/456/);
     });
 }

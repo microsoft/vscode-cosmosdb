@@ -103,6 +103,7 @@ jobs:
         run: npm run l10n:check
 
       - name: 🧪 Test external skill verification
+        id: skills-tests
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: node --test scripts/verify-external-skills.test.mjs
 
@@ -228,6 +229,7 @@ jobs:
           VALIDATE_RESULT: ${{ steps.validate-version.outcome }}
           L10N_RESULT: ${{ steps.l10n.outcome }}
           SKILLS_RESULT: ${{ steps.skills.outcome }}
+          SKILLS_TEST_RESULT: ${{ steps.skills-tests.outcome }}
           LINT_RESULT: ${{ steps.lint.outcome }}
           PRETTIER_RESULT: ${{ steps.prettier.outcome }}
           COMPILE_RESULT: ${{ steps.compile.outcome }}
@@ -325,16 +327,17 @@ jobs:
           validate_icon=$(result_icon "$VALIDATE_RESULT")
           l10n_icon=$(result_icon "$L10N_RESULT")
           skills_icon=$(result_icon "$SKILLS_RESULT")
+          skills_test_icon=$(result_icon "$SKILLS_TEST_RESULT")
           lint_icon=$(result_icon "$LINT_RESULT")
           prettier_icon=$(result_icon "$PRETTIER_RESULT")
           compile_icon=$(result_icon "$COMPILE_RESULT")
           package_icon=$(result_icon "$PACKAGE_RESULT")
           build_artifacts=$(list_run_artifacts "${GITHUB_RUN_ID}")
 
-          # Overall status — green only when every gating step succeeded or was skipped. verify-skills is
-          # warning-only and excluded from pass/fail. Drives the title icon (no separate status section).
+          # Overall status — green only when every gating step succeeded or was skipped. Skill downloads are
+          # advisory, but their regression tests gate the build. Drives the title icon (no separate status section).
           all_green=true
-          for r in "$VALIDATE_RESULT" "$L10N_RESULT" "$LINT_RESULT" \
+          for r in "$VALIDATE_RESULT" "$L10N_RESULT" "$SKILLS_TEST_RESULT" "$LINT_RESULT" \
               "$PRETTIER_RESULT" "$COMPILE_RESULT" "$PACKAGE_RESULT"; do
               case "$r" in
                   success|skipped) ;;
@@ -350,7 +353,7 @@ jobs:
           # "Meaningful" run = at least one tracked check actually produced a real result. If every check
           # was skipped (e.g. a commit that didn't run the build), we won't overwrite an existing PR comment.
           comment_meaningful=false
-          for r in "$VALIDATE_RESULT" "$L10N_RESULT" "$LINT_RESULT" \
+          for r in "$VALIDATE_RESULT" "$L10N_RESULT" "$SKILLS_TEST_RESULT" "$LINT_RESULT" \
               "$PRETTIER_RESULT" "$COMPILE_RESULT" "$PACKAGE_RESULT"; do
               case "$r" in
                   success|failure) comment_meaningful=true ;;
@@ -370,7 +373,7 @@ jobs:
           - **Prettier:** ${prettier_icon} ${PRETTIER_RESULT}
           - **Compile (tsc):** ${compile_icon} ${COMPILE_RESULT}
           - **Package:** ${package_icon} ${PACKAGE_RESULT}
-          - **External Skills (info):** ${skills_icon} ${SKILLS_RESULT}
+          - **External Skills:** verification ${skills_icon} ${SKILLS_RESULT}; tests ${skills_test_icon} ${SKILLS_TEST_RESULT}
 
           ## 📥 Artifacts ([run](${SERVER_URL}/${REPO}/actions/runs/${GITHUB_RUN_ID}))
           ${build_artifacts}

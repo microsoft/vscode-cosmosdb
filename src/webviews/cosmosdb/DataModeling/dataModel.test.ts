@@ -58,6 +58,20 @@ describe('partition-key candidate eligibility', () => {
         ]);
     });
 
+    it('derives the same new candidate identities when a schema update is replayed', () => {
+        const container = createBlankContainer();
+        container.properties = [
+            ...container.properties,
+            { id: 'customer', name: 'customerId', type: 'string', role: 'key', pkCandidate: false },
+            { id: 'region', name: 'region', type: 'string', role: 'filter', pkCandidate: false },
+        ];
+        const model = { containers: [container], activeContainerId: container.id };
+        const first = withDerivedCandidates(model).containers[0].scale.candidates;
+        expect(withDerivedCandidates(model).containers[0].scale.candidates).toEqual(first);
+        expect(first.slice(0, container.scale.candidates.length)).toEqual(container.scale.candidates);
+        expect(new Set(first.map((candidate) => candidate.id)).size).toBe(first.length);
+    });
+
     it('preserves inferred restrictions across a saved-project round trip', () => {
         const inferred = inferSchemaFromJson(
             JSON.stringify([

@@ -565,8 +565,8 @@ const HydratedDataModelingWizard = ({
                 if (next === previous) return previous;
                 return {
                     ...next,
-                    // An import can finish while another container is active. Derive candidates only
-                    // for changed containers without changing the current selection.
+                    // An import can finish while another container is active.
+                    // Derive candidates only for changed containers without changing the current selection.
                     containers: next.containers.map((container) =>
                         container === previous.containers.find((c) => c.id === container.id)
                             ? container

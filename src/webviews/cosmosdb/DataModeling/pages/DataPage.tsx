@@ -203,10 +203,8 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
     }, [model, containers]);
     useEffect(() => {
         mounted.current = true;
-        const pendingImports = imports.current;
         return () => {
             mounted.current = false;
-            pendingImports.clear();
         };
     }, []);
 
@@ -220,8 +218,8 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
     }, [active?.id]);
     useEffect(() => {
         for (const [targetId, request] of imports.current) {
-            // The inferred properties retain their identity through candidate derivation. Only
-            // acknowledge imports present in the committed model, never a preview of an updater.
+            // The inferred properties retain their identity through candidate derivation.
+            // Only acknowledge imports present in the committed model, never a preview of an updater.
             if (request.reported || !request.properties) continue;
             if (containers.find((c) => c.id === targetId)?.properties !== request.properties) continue;
             request.reported = true;
@@ -301,15 +299,13 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
         if (!file || !active || confirmingImport.current) {
             return;
         }
-        // Keep the original target through both confirmation and reading. A newer selection for
-        // this container supersedes this request, even if the older read finishes last.
+        // Keep the original target through confirmation and reading, even if this page unmounts.
+        // A newer selection for this container supersedes this request, even if the older read finishes last.
         const targetId = active.id;
         const request: SchemaImport = { fileName: file.name, reported: false };
         imports.current.set(targetId, request);
         const isCurrent = () =>
-            mounted.current &&
-            imports.current.get(targetId) === request &&
-            currentModel.current.containers.some((c) => c.id === targetId);
+            imports.current.get(targetId) === request && currentModel.current.containers.some((c) => c.id === targetId);
         const isVisible = () => {
             const latest = currentModel.current;
             const visible = latest.containers.find((c) => c.id === latest.activeContainerId) ?? latest.containers[0];
@@ -356,10 +352,15 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
                     ),
                 };
             });
+            // Navigation may have unmounted this page, so it cannot observe the commit. Acknowledge the import now.
+            if (!mounted.current) {
+                request.reported = true;
+                onTelemetry?.({ type: 'schemaImport', outcome: 'success' });
+            }
         } catch (error) {
             if (!isCurrent()) return;
             onTelemetry?.({ type: 'schemaImport', outcome: 'error' });
-            if (!isVisible()) return;
+            if (!mounted.current || !isVisible()) return;
             setUploadContainerId(targetId);
             setUploadInfo(undefined);
             setUploadError(

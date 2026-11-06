@@ -7,9 +7,11 @@
 
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { StrictMode, useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createBlankContainer, type DataModel, withDerivedCandidates } from '../dataModel';
 import { inferSchemaFromJson } from '../jsonInference';
+import { ContainerPage, type ContainerPageProps } from './ContainerPage';
 import { DataPage as StatefulDataPage, type DataPageProps } from './DataPage';
 
 // These field-level tests inspect each emitted model. Import race tests exercise React state and the parent adapters.
@@ -649,4 +651,121 @@ describe('DataPage count limits', () => {
         expect(screen.getByRole('spinbutton', { name: 'Average items per array' })).toHaveValue(other.arrays.avgItems);
         expect(screen.getByRole('spinbutton', { name: 'Maximum items per array' })).toHaveValue(other.arrays.maxItems);
     });
+});
+
+describe('DataPage schema import concurrency', () => {
+    function deferred<T>() {
+        let resolve!: (value: T) => void;
+        let reject!: (reason: Error) => void;
+        const promise = new Promise<T>((yes, no) => {
+            resolve = yes;
+            reject = no;
+        });
+        return { promise, resolve, reject };
+    }
+
+    /** Commits updates through real React state, as the wizard does, instead of inspecting emitted models. */
+    function ImportHarness({
+        batchRename = false,
+        onTelemetry,
+        onEdited,
+    }: Pick<ContainerPageProps, 'onTelemetry' | 'onEdited'> & { batchRename?: boolean }) {
+        const [model, setModel] = useState<DataModel>(() => {
+            const container = createBlankContainer('Orders');
+            return { containers: [container], activeContainerId: container.id };
+        });
+        const rename = () =>
+            setModel((previous) => ({
+                ...previous,
+                containers: previous.containers.map((c) => ({ ...c, entity: 'LatestOrders' })),
+            }));
+        return (
+            <>
+                <output data-testid="model">{JSON.stringify(model)}</output>
+                <div onClickCapture={batchRename ? rename : undefined}>
+                    <ContainerPage
+                        model={model}
+                        tab="data"
+                        onTabChange={vi.fn()}
+                        onChange={setModel}
+                        onChangeData={setModel}
+                        onTelemetry={onTelemetry}
+                        onEdited={onEdited}
+                    />
+                </div>
+            </>
+        );
+    }
+
+    function committedModel(): DataModel {
+        return JSON.parse(screen.getByTestId('model').textContent) as DataModel;
+    }
+
+    function selectDelayedFile(container: HTMLElement, name = 'sample.json') {
+        const read = deferred<string>();
+        const file = new File([], name, { type: 'application/json' });
+        const text = vi.fn(() => read.promise);
+        Object.defineProperty(file, 'text', { value: text });
+        fireEvent.change(container.querySelector('input[type="file"]')!, { target: { files: [file] } });
+        return { ...read, text };
+    }
+
+    beforeEach(() => {
+        confirm.mockResolvedValue(true);
+    });
+
+    it('reports a committed import and data edit once under StrictMode', async () => {
+        const onTelemetry = vi.fn();
+        const onEdited = vi.fn();
+        const page = render(
+            <StrictMode>
+                <ImportHarness onTelemetry={onTelemetry} onEdited={onEdited} />
+            </StrictMode>,
+        );
+        const read = selectDelayedFile(page.container);
+        await waitFor(() => expect(read.text).toHaveBeenCalledOnce());
+        await act(async () => read.resolve('{"imported":true}'));
+        expect(committedModel().containers[0].properties.map((p) => p.name)).toEqual(['imported']);
+        expect(onTelemetry).toHaveBeenCalledExactlyOnceWith({ type: 'schemaImport', outcome: 'success' });
+        expect(onEdited).toHaveBeenCalledExactlyOnceWith('data');
+        expect(screen.getByText(/Inferred schema from sample.json/)).toBeVisible();
+        expect(screen.getByRole('button', { name: 'Upload JSON' })).toHaveFocus();
+    });
+
+    it('composes synchronous batched parent and field edits through the parent adapter', () => {
+        render(
+            <StrictMode>
+                <ImportHarness batchRename />
+            </StrictMode>,
+        );
+        // The parent capture handler queues a rename before the DataPage click handler queues its edit.
+        fireEvent.click(screen.getAllByRole('button', { name: 'Remove type' })[0]);
+        expect(committedModel().containers[0].entity).toBe('LatestOrders');
+        expect(committedModel().containers[0].properties.map((p) => p.name)).not.toContain('type');
+        expect(screen.queryByRole('row', { name: /^type / })).not.toBeInTheDocument();
+    });
+
+    it.each(['success', 'invalid', 'read error'])(
+        'ignores an older %s after a newer import completes',
+        async (outcome) => {
+            const onTelemetry = vi.fn();
+            const page = render(<ImportHarness onTelemetry={onTelemetry} />);
+            const old = selectDelayedFile(page.container, 'old.json');
+            await waitFor(() => expect(old.text).toHaveBeenCalledOnce());
+            const current = selectDelayedFile(page.container, 'current.json');
+            await waitFor(() => expect(current.text).toHaveBeenCalledOnce());
+            await act(async () => current.resolve('{"newest":true}'));
+            const afterCurrent = committedModel();
+            await act(async () => {
+                if (outcome === 'read error') old.reject(new Error('read failed'));
+                else old.resolve(outcome === 'invalid' ? 'invalid' : '{"older":true}');
+            });
+            expect(committedModel()).toEqual(afterCurrent);
+            expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+            expect(screen.getByRole('row', { name: /^newest / })).toBeVisible();
+            expect(screen.getByText(/Inferred schema from current.json/)).toBeVisible();
+            expect(screen.queryByText(/old.json/)).not.toBeInTheDocument();
+            expect(onTelemetry).toHaveBeenCalledExactlyOnceWith({ type: 'schemaImport', outcome: 'success' });
+        },
+    );
 });

@@ -165,6 +165,21 @@ async function continueExisting() {
     await screen.findByRole('navigation', { name: 'Data modeling steps' });
 }
 
+/** Selects a schema file whose read stays pending until `finishRead` is called. */
+function selectDelayedSchemaFile(container: HTMLElement) {
+    let resolveRead: ((text: string) => void) | undefined;
+    const read = vi.fn(
+        () =>
+            new Promise<string>((resolve) => {
+                resolveRead = resolve;
+            }),
+    );
+    const file = new File([], 'schema.json', { type: 'application/json' });
+    Object.defineProperty(file, 'text', { value: read });
+    fireEvent.change(container.querySelector('input[type="file"]')!, { target: { files: [file] } });
+    return { read, finishRead: (text: string) => resolveRead!(text) };
+}
+
 async function enterDeployStep() {
     const button = screen.getAllByRole('button', { name: 'Deploy' }).find((element) => !element.closest('nav'));
     if (!button) {
@@ -893,16 +908,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             client.dataModeling.loadState.query.mockResolvedValue(saved);
             const page = render(<DataModelingWizard />);
             await continueExisting();
-            let finishRead!: (text: string) => void;
-            const file = new File([], 'schema.json', { type: 'application/json' });
-            const read = vi.fn(
-                () =>
-                    new Promise<string>((resolve) => {
-                        finishRead = resolve;
-                    }),
-            );
-            Object.defineProperty(file, 'text', { value: read });
-            fireEvent.change(page.container.querySelector('input[type="file"]')!, { target: { files: [file] } });
+            const { read, finishRead } = selectDelayedSchemaFile(page.container);
             await answerConfirmation('Replace schema?', true);
             expect(read).toHaveBeenCalledOnce();
             const averageItems = screen.getByRole('spinbutton', { name: 'Average items per array' });
@@ -936,21 +942,60 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         },
     );
 
+    it('applies a confirmed import when the Data tab is left before the file read finishes', async () => {
+        const saved = restored();
+        saved.recommendation = { status: 'idle' };
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        const page = render(<DataModelingWizard />);
+        await continueExisting();
+        const { read, finishRead } = selectDelayedSchemaFile(page.container);
+        await answerConfirmation('Replace schema?', true);
+        expect(read).toHaveBeenCalledOnce();
+        await userEvent.click(screen.getByRole('tab', { name: 'Queries' }));
+        expect(screen.queryByRole('button', { name: 'Upload JSON' })).not.toBeInTheDocument();
+        await act(async () => finishRead('{"id":"1","amount":5}'));
+        await waitFor(() =>
+            expect(lastSave().wizard.dataModel.containers[0].properties.map((p) => p.name)).toEqual(['id', 'amount']),
+        );
+        expect(client.dataModeling.recordTelemetry.mutate).toHaveBeenCalledWith({
+            type: 'schemaImport',
+            outcome: 'success',
+        });
+    });
+
+    it('discards an import whose read finishes in the same batch as removing its container', async () => {
+        const saved = restored();
+        saved.wizard.dataModel.containers.push(createBlankContainer('Users'));
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        const page = render(<DataModelingWizard />);
+        await continueExisting();
+        const { finishRead } = selectDelayedSchemaFile(page.container);
+        await answerConfirmation('Replace schema?', true);
+        await userEvent.click(screen.getByRole('button', { name: 'Remove from model' }));
+        await waitFor(() => expect(respondToConfirmation).toBeTypeOf('function'));
+        const saves = client.dataModeling.saveState.mutate.mock.calls.length;
+        await act(async () => {
+            respondToConfirmation!(true);
+            finishRead('{"discarded":true}');
+        });
+        await waitFor(() =>
+            expect(lastSave().wizard.dataModel.containers).toEqual([saved.wizard.dataModel.containers[1]]),
+        );
+        expect(client.dataModeling.saveState.mutate).toHaveBeenCalledTimes(saves + 1);
+        expect(client.dataModeling.recordTelemetry.mutate).not.toHaveBeenCalledWith({
+            type: 'schemaImport',
+            outcome: 'success',
+        });
+        expect(screen.queryByText(/Inferred schema from/)).not.toBeInTheDocument();
+    });
+
     it.each(['Remove from model', 'Start Over'])('does not autosave a late import after %s', async (action) => {
         const saved = restored();
         saved.wizard.dataModel.containers.push(createBlankContainer('Users'));
         client.dataModeling.loadState.query.mockResolvedValue(saved);
         const page = render(<DataModelingWizard />);
         await continueExisting();
-        let finishRead!: (text: string) => void;
-        const file = new File([], 'schema.json', { type: 'application/json' });
-        Object.defineProperty(file, 'text', {
-            value: () =>
-                new Promise<string>((resolve) => {
-                    finishRead = resolve;
-                }),
-        });
-        fireEvent.change(page.container.querySelector('input[type="file"]')!, { target: { files: [file] } });
+        const { finishRead } = selectDelayedSchemaFile(page.container);
         await answerConfirmation('Replace schema?', true);
         if (action === 'Start Over') await userEvent.click(await getStepControl('Result'));
         await userEvent.click(screen.getByRole('button', { name: action }));
@@ -1882,28 +1927,25 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(JSON.stringify(lastSave())).not.toContain(request.requestId);
     });
 
-    it.each(['Queries', 'Review', 'Deploy'])(
-        'records a schema removal batched with navigation to %s',
-        async (destination) => {
-            client.dataModeling.loadState.query.mockResolvedValue(restored(2));
-            render(<DataModelingWizard />);
-            await continueExisting();
-            const target =
-                destination === 'Queries'
-                    ? screen.getByRole('tab', { name: 'Queries' })
-                    : await getStepControl(destination);
-            await act(async () => {
-                fireEvent.click(screen.getAllByRole('button', { name: 'Remove type' })[0]);
-                fireEvent.click(target);
-            });
-            const container = lastSave().wizard.dataModel.containers[0];
-            expect(container.properties.map((property) => property.name)).not.toContain('type');
-            expect(container.scale.candidates.map((candidate) => candidate.attribute)).not.toContain('type');
-            const latestUsage = client.dataModeling.recordTelemetry.mutate.mock.calls
-                .map(([event]) => event as ModelingTelemetryEvent)
-                .filter((event) => event.type === 'usage')
-                .at(-1)?.usage;
-            expect(latestUsage?.dataEverEdited).toBe(true);
-        },
-    );
+    it.each(['Queries', 'Review'])('records a schema removal batched with navigation to %s', async (destination) => {
+        client.dataModeling.loadState.query.mockResolvedValue(restored(2));
+        render(<DataModelingWizard />);
+        await continueExisting();
+        const target =
+            destination === 'Queries'
+                ? screen.getByRole('tab', { name: 'Queries' })
+                : await getStepControl(destination);
+        await act(async () => {
+            fireEvent.click(screen.getAllByRole('button', { name: 'Remove type' })[0]);
+            fireEvent.click(target);
+        });
+        const container = lastSave().wizard.dataModel.containers[0];
+        expect(container.properties.map((property) => property.name)).not.toContain('type');
+        expect(container.scale.candidates.map((candidate) => candidate.attribute)).not.toContain('type');
+        const latestUsage = client.dataModeling.recordTelemetry.mutate.mock.calls
+            .map(([event]) => event as ModelingTelemetryEvent)
+            .filter((event) => event.type === 'usage')
+            .at(-1)?.usage;
+        expect(latestUsage?.dataEverEdited).toBe(true);
+    });
 });

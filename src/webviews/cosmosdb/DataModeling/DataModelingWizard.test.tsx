@@ -1193,7 +1193,10 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             const secondary = status === 'error' ? retry : edit;
             expect(primary).toHaveStyle({ backgroundColor: tokens.colorBrandBackground });
             expect(secondary).toHaveStyle({ backgroundColor: tokens.colorNeutralBackground1 });
+            // Restored stopped state focuses Retry in a passive effect; flush it before moving focus to Edit.
+            await act(async () => {});
             edit.focus();
+            expect(edit).toHaveFocus();
             await userEvent.keyboard('{Enter}');
             await waitFor(() => expect(screen.getByRole('heading', { name: 'Review your inputs' })).toHaveFocus());
             expect(lastSave().wizard.step).toBe(3);

@@ -3,8 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { describe, expect, it } from 'vitest';
-import { parse, sqlToString } from '../index.js';
+import { describe, expect, it, vi } from 'vitest';
+import { SqlErrorMessageProvider } from '../errors/SqlErrorMessageProvider.js';
+import { parse, SqlErrorCode, sqlToString } from '../index.js';
 
 describe('SqlParser — basic queries', () => {
     it('parses SELECT * FROM c', () => {
@@ -187,6 +188,36 @@ describe('SqlParser — round-trip (parse → print → parse)', () => {
 });
 
 describe('SqlParser — error recovery', () => {
+    it.each(['SELECT c.id FROM c WHERE', 'SELECT * FROM c WHERE c.id =', 'SELECT VALUE [1,'])(
+        'bounds diagnostic lookahead for repeated incomplete input: %s',
+        (query) => {
+            const message = vi.spyOn(SqlErrorMessageProvider.prototype, 'buildNoViableAltMessage');
+            try {
+                for (let edit = 0; edit < 3; edit++) {
+                    message.mockClear();
+                    const result = parse(query);
+                    expect(result.errors).toContainEqual(
+                        expect.objectContaining({
+                            code: SqlErrorCode.UnexpectedEof,
+                            message: expect.stringContaining('end of query'),
+                            range: {
+                                start: { offset: query.length, line: 1, col: query.length + 1 },
+                                end: { offset: query.length, line: 1, col: query.length + 1 },
+                            },
+                        }),
+                    );
+                    const paths = message.mock.calls.flatMap(([options]) => options.expectedPathsPerAlt.flat());
+                    expect(paths.length).toBeGreaterThan(0);
+                    // Bound the diagnostic work without a timing assertion that depends on CI load.
+                    expect(paths.every((path) => path.length <= 2)).toBe(true);
+                    expect(parse('SELECT c.id FROM c').errors).toEqual([]);
+                }
+            } finally {
+                message.mockRestore();
+            }
+        },
+    );
+
     it('returns errors for invalid query, does not throw', () => {
         const { errors } = parse('SELECT FROM');
         expect(errors.length).toBeGreaterThan(0);

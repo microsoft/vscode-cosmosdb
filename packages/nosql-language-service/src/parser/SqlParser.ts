@@ -96,10 +96,13 @@ export class SqlParser extends EmbeddedActionsParser {
         }
     }
 
-    constructor() {
+    /** The override supports differential grammar tests; the public parse API uses the default. */
+    constructor(maxLookahead = 2) {
         super(allTokens, {
             recoveryEnabled: true,
-            maxLookahead: 3,
+            // Two tokens resolve the grammar's alternatives; gates handle longer ambiguities.
+            // Extra global lookahead expands diagnostic paths for incomplete editor input.
+            maxLookahead,
             errorMessageProvider: new SqlErrorMessageProvider(),
         });
         this.performSelfAnalysis();

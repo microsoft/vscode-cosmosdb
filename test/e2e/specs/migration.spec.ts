@@ -692,6 +692,7 @@ test.describe('Migration Assistant', () => {
             await expect(frame.getByTestId('migration-run-activity')).toHaveCount(0);
             await migration.generateSchemaButton.click();
             await expect.poll(() => readCapturedPrompts().length).toBe(promptCount + 1);
+            await expect(frame.getByTestId('migration-run-activity')).toHaveAttribute('data-activity', 'running');
         } finally {
             await resetNativeDialogStubs(vscodeApp);
         }
@@ -760,7 +761,8 @@ test.describe('Migration Assistant', () => {
             const reopenedButton = frame.getByTestId('migration-run-activity').getByRole('button');
             await reopenedButton.press('Shift+F10');
             const refresh = frame.getByRole('menuitem', { name: 'Refresh Status', exact: true });
-            await refresh.click();
+            await refresh.focus();
+            await refresh.press('Enter');
             await expect(reopenedButton).toBeFocused();
             await expect(migration.autoDetectButton).toBeDisabled();
 
@@ -824,14 +826,16 @@ test.describe('Migration Assistant', () => {
                 name: 'Authoritative schema DDL Invalid',
                 exact: true,
             });
-            await schemaToggle.click();
+            await schemaToggle.focus();
+            await schemaToggle.press('Enter');
             await expect(inventoryToggle).toHaveAttribute('aria-expanded', 'true');
             await expect(schemaToggle).toHaveAttribute('aria-expanded', 'true');
             await expect(schemaFailure.getByRole('button', { name: 'Open Artifact', exact: true })).toBeVisible();
             await diagnostics.screenshot({ path: testInfo.outputPath('blocked-phase-expanded.png') });
             await inventoryToggle.press('Space');
             await expect(inventoryToggle).toHaveAttribute('aria-expanded', 'false');
-            await schemaToggle.click();
+            await schemaToggle.focus();
+            await schemaToggle.press('Enter');
             await expect(schemaToggle).toHaveAttribute('aria-expanded', 'false');
             const restart = diagnostics.getByRole('button', { name: 'Review and Fix', exact: true });
             await expect(restart).toBeEnabled();
@@ -844,7 +848,8 @@ test.describe('Migration Assistant', () => {
                 true,
             );
             const refreshBlocked = diagnostics.getByRole('button', { name: 'Refresh Status', exact: true });
-            await refreshBlocked.click();
+            await refreshBlocked.focus();
+            await refreshBlocked.press('Enter');
             await expect(refreshBlocked).toBeFocused();
             await expect(diagnostics.getByRole('button', { name: /Open (in )?Chat/ })).toHaveCount(0);
             expect(readCapturedPrompts()).toHaveLength(count);
@@ -855,7 +860,8 @@ test.describe('Migration Assistant', () => {
             expect(await diagnostics.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
             await expect(schemaToggle).toHaveAttribute('aria-expanded', 'false');
             await schemaToggle.scrollIntoViewIfNeeded();
-            await schemaToggle.click();
+            await schemaToggle.focus();
+            await schemaToggle.press('Enter');
             await expect(schemaToggle).toHaveAttribute('aria-expanded', 'true');
             expect(await diagnostics.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
             await diagnostics.screenshot({ path: testInfo.outputPath('blocked-phase-narrow.png') });
@@ -1194,7 +1200,15 @@ test.describe('Migration Assistant', () => {
             expect(dimensions.content).toBeGreaterThan(dimensions.height);
             await list.focus();
             await expect(list).toBeFocused();
-            await list.press('PageDown');
+            await Promise.all([
+                list.evaluate(
+                    (element) =>
+                        new Promise<void>((resolve) => {
+                            element.addEventListener('scrollend', () => resolve(), { once: true });
+                        }),
+                ),
+                list.press('PageDown'),
+            ]);
             await expect.poll(() => list.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
             await list.evaluate((element) => {
                 element.scrollTop = element.scrollHeight;
@@ -1257,7 +1271,9 @@ test.describe('Migration Assistant', () => {
         );
         await expect(phase.getByTestId('migration-phase2-status-complete')).toHaveCount(0);
         await expect(diagnostics.getByText('Project validation failed', { exact: true })).toHaveCount(0);
-        await diagnostics.getByRole('button', { name: 'Compatibility adjustments (2)', exact: true }).click();
+        const compatibility = diagnostics.getByRole('button', { name: 'Compatibility adjustments (2)', exact: true });
+        await compatibility.press('Enter');
+        await expect(compatibility).toHaveAttribute('aria-expanded', 'true');
         await expect(
             diagnostics.getByRole('textbox', { name: 'Compatibility adjustments (2)', exact: true }),
         ).toHaveJSProperty('readOnly', true);

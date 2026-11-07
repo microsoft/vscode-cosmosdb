@@ -171,9 +171,13 @@ For more details, see the [AI Chat documentation](src/chat/README.md).
 
 ## Migration Assistant (Preview)
 
-The Migration Assistant uses the `cosmosdb-relational-migration` Skill in GitHub Copilot Chat to guide relational database and application migrations. Phase actions open or resume Chat; the assistant tracks progress and validates the artifacts in `.cosmosdb-migration`.
+The Migration Assistant uses the `cosmosdb-migration` Skill in GitHub Copilot Chat to plan database and application migrations to **Azure Cosmos DB for NoSQL**. Phase actions open or resume Chat; the assistant tracks progress and validates the artifacts in `.cosmosdb-migration`.
 
-Migration projects started before the Skill was introduced can still be opened and inspected. Their existing artifacts need evidence validation before their phases can be treated as complete in the Skill workflow.
+Sources are described through an evidence-backed inventory rather than mandatory SQL DDL. Native definitions, metadata, ORM mappings, code, documentation, and samples can contribute evidence. Source names are open-ended, but readiness depends on the available evidence and required behavior; accepting an inventory is not a claim of tested support for every engine. Samples do not establish a complete schema.
+
+Existing version-1 projects remain resumable through validated compatibility normalization. Source files, selections, and historical execution records are preserved; affected checkpoints need fresh evidence validation, not just updated hashes. The existing `schema-ddl` input folder remains in place and can contain non-SQL evidence.
+
+The workflow covers target modeling, provisioning artifacts, sample data, and application code migration. Production data transfer, CDC, reconciliation, cutover, and rollback require separate plans and execution contracts.
 
 Use `cosmosDB.experimental.migration.enabled` to show or hide the migration feature.
 

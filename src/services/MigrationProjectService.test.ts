@@ -203,6 +203,30 @@ describe('MigrationProjectService default input selections', () => {
         expect(list).not.toHaveBeenCalled();
     });
 
+    it('preserves selected native evidence, exclusions and metadata on resume without copying or synthesizing DDL', async () => {
+        const service = new MigrationProjectService(fixtureWorkspacePath);
+        const project = service.createDefaultProject('app');
+        const files = ['samples.ejson', 'schema.cql', 'events.custom'].map((file) =>
+            path.join(fixtureWorkspacePath, file),
+        );
+        const selection = { files: [], futureMetadata: { authority: 'user' } };
+        project.phases.discovery.schemaInventory = selection;
+        service.recordInputFiles(project, 'schema-ddl', files, [files[0]]);
+        vi.spyOn(vscode.workspace.fs, 'readFile').mockResolvedValue(Buffer.from(JSON.stringify(project)));
+        const save = vi.spyOn(service, 'save').mockResolvedValue(undefined);
+        const copy = vi.spyOn(service, 'copyFilesToSubfolder');
+        const resumed = await service.load({ readOnly: true });
+
+        expect(resumed?.phases.discovery.schemaInventory).toEqual({
+            ...selection,
+            files: ['../events.custom', '../samples.ejson', '../schema.cql'],
+            excludedFiles: ['../samples.ejson'],
+        });
+        expect(await service.listDiscoveryFiles(resumed!, 'schema-ddl')).toEqual([files[2], files[1]]);
+        expect(save).not.toHaveBeenCalled();
+        expect(copy).not.toHaveBeenCalled();
+    });
+
     it('rebases old default-folder exclusions without making their selection explicit', async () => {
         const service = new MigrationProjectService(fixtureWorkspacePath);
         const project = service.createDefaultProject('app');

@@ -15,7 +15,7 @@ import { migrationProcedure, migrationRouter } from '../trpc';
 export interface AssessmentResultPayload {
     domainFiles: {
         name: string;
-        tables: string[];
+        datasets: string[];
         filePath: string;
         isMapped: boolean;
     }[];

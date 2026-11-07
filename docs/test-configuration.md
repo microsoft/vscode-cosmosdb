@@ -58,10 +58,12 @@ Instead, we drive `@vitest/runner.startTests()` directly from a small entry scri
 - `vscode` is aliased to `src/__mocks__/vscode.ts` (provided by `jest-mock-vscode`).
 - `npm run vitest` runs these tests and the portable migration skill tests in parallel.
 
-### Migration skill tests (`skills/cosmosdb-relational-migration/tests/*.test.mjs`)
+### Migration skill tests (`skills/cosmosdb-migration/tests/*.test.mjs`)
 
 - Use Node's built-in test runner so the standalone skill does not depend on Vitest.
 - Run alone with `npm run test:migration-skill`, or as part of the main `npm run vitest` command.
+- Relational, document, and unfamiliar-source fixtures exercise inventory, mapping examples, freshness,
+  compatibility, and completion contracts. These are not live source extraction or engine-equivalence tests.
 
 ### Integration tests (`test/**/*.test.ts`)
 
@@ -93,6 +95,10 @@ Instead, we drive `@vitest/runner.startTests()` directly from a small entry scri
   `fixtures/webviewHelpers.ts`.
 - Run with `npm run e2e`. See [`test/e2e/README.md`](../test/e2e/README.md) for
   the full architecture, env-var contract, and per-spec patterns.
+- The migration spec uses deterministic agent output with real VS Code routing and artifact validation,
+  including native-source resumption and code-planning freshness. Run it without a database service with
+  `COSMOSDB_E2E_SKIP_EMULATOR=1 npm run e2e -- test/e2e/specs/migration.spec.ts --project=default`.
+  Build freshness includes `skills/` because completion workers load packaged portable helpers at runtime.
 
 ---
 

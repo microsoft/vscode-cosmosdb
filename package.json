@@ -68,7 +68,7 @@
     "pretest": "rimraf out && tsc -p tsconfig.test.json && node -e \"require('fs').writeFileSync('out/package.json', JSON.stringify({type:'module'}))\"",
     "test": "node scripts/run-integration-tests.mjs",
     "test:proxy": "node scripts/test-proxy.mjs",
-    "test:migration-skill": "node --test skills/cosmosdb-relational-migration/tests/*.test.mjs",
+    "test:migration-skill": "node --test skills/cosmosdb-migration/tests/*.test.mjs",
     "test:shell-mcp": "cross-env COSMOSDB_SHELL_MCP_INTEGRATION=1 vitest run src/cosmosDBShell/mcpProvider.test.ts",
     "vitest": "concurrently -P -n vitest,migration-skill -c magenta,cyan \"vitest run {@}\" \"npm run test:migration-skill\" --",
     "vitest:coverage": "concurrently -P -n vitest,migration-skill -c magenta,cyan \"vitest run --coverage {@}\" \"npm run test:migration-skill\" --",
@@ -226,7 +226,7 @@
         "path": "./skills/cosmosdb-nosql-query-editor/SKILL.md"
       },
       {
-        "path": "./skills/cosmosdb-relational-migration/SKILL.md"
+        "path": "./skills/cosmosdb-migration/SKILL.md"
       },
       {
         "path": "./skills/cosmosdb-data-model-recommendation/SKILL.md"

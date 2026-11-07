@@ -342,7 +342,7 @@ Serverless is eligible.
 `,
     );
 
-    const validator = path.resolve('skills/cosmosdb-relational-migration/scripts/validate-cosmos-model.mjs');
+    const validator = path.resolve('skills/cosmosdb-migration/scripts/validate-cosmos-model.mjs');
     for (const [candidate, output] of [
         [`${domainRoot}/candidate.json`, `${domainRoot}/cosmos-model.json`],
         ['phases/3-schema-conversion/candidate.json', 'phases/3-schema-conversion/model.json'],
@@ -424,7 +424,7 @@ function completeMockSkillProvisioning(): void {
     };
     writeMigrationArtifact('phases/4-provisioning/sample-data.json', `${JSON.stringify(sampleData, null, 2)}\n`);
 
-    const generator = path.resolve('skills/cosmosdb-relational-migration/scripts/generate-provisioning-artifacts.mjs');
+    const generator = path.resolve('skills/cosmosdb-migration/scripts/generate-provisioning-artifacts.mjs');
     const generation = spawnSync(
         process.execPath,
         [
@@ -512,7 +512,7 @@ const MOCK_SKILL_DECISIONS: Record<MockSkillPhase, string[]> = {
 function readMockSkillPhase(promptText: string): MockSkillPhase {
     const phase = promptText
         .match(
-            /^(?:Run|Regenerate) the (.+) (?:phase of|results for) a relational database migration to Azure Cosmos DB\.$/mu,
+            /^(?:Run|Regenerate) the (.+) (?:phase of|results for) a database migration to Azure Cosmos DB for NoSQL\.$/mu,
         )?.[1]
         ?.replaceAll(' ', '-');
     if (!phase || !Object.hasOwn(MOCK_SKILL_DECISIONS, phase)) {
@@ -746,12 +746,16 @@ export function readApplicationFile(relativePath: string): string | undefined {
     }
 }
 
-export function checkMockSkillPhaseCompletion(phase: MockSkillPhase): { complete: boolean; errors: string[] } {
-    const checker = path.resolve('skills/cosmosdb-relational-migration/scripts/check-phase-completion.mjs');
+export function checkMockSkillPhaseCompletion(phase: MockSkillPhase): {
+    complete: boolean;
+    ready?: boolean;
+    errors: string[];
+} {
+    const checker = path.resolve('skills/cosmosdb-migration/scripts/check-phase-completion.mjs');
     const result = spawnSync(process.execPath, [checker, '--workspace', migrationWorkspace(), '--phase', phase], {
         encoding: 'utf-8',
     });
-    const completion = JSON.parse(result.stdout) as { complete: boolean; errors: string[] };
+    const completion = JSON.parse(result.stdout) as { complete: boolean; ready?: boolean; errors: string[] };
     if (result.status !== 0 && completion.complete) throw new Error(result.stderr || result.stdout);
     return completion;
 }
@@ -828,7 +832,7 @@ export class MigrationPage {
     }
 
     get generateSchemaButton(): Locator {
-        return this.frame.getByRole('button', { name: 'Generate schema files from workspace code', exact: true });
+        return this.frame.getByRole('button', { name: 'Infer source inventory from workspace code', exact: true });
     }
 
     get updateVolumetricsButton(): Locator {

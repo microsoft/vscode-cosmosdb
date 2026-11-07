@@ -16,6 +16,8 @@ src/**
 test/**
 testOutput/**
 testWorkspace/**
+evals/**
+.vally/**
 **/*.gif
 **/*.map
 *.mongo

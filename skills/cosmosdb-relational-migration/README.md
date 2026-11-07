@@ -211,6 +211,10 @@ remain explicitly unknown, and inferred values must be distinguished from observ
 
 ### Supply Input Files
 
+When resuming an existing migration, keep its project root consistent with any explicit
+`workspace` selection. Conflicting roots require clarification before project inspection
+or initialization, even in autonomous mode; neither selection silently overrides the other.
+
 Identify the application project root and the files to use in your request. Files
 already inside that project can stay where they are; files outside it are copied into
 the migration input folders only after approval. For example, with paths relative to

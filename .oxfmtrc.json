@@ -42,6 +42,7 @@
     ".azure-pipelines",
     ".config",
     ".cosmosdb-data",
+    ".vally",
     ".vscode-test",
     "bundle-analysis",
     "coverage",

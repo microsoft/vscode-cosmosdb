@@ -10,7 +10,8 @@
  * state, so pages stay self-contained and portable to a future wizard package.
  */
 
-import { makeStyles, Text, tokens } from '@fluentui/react-components';
+import { Button, makeStyles, Popover, PopoverSurface, PopoverTrigger, Text, tokens } from '@fluentui/react-components';
+import { InfoRegular } from '@fluentui/react-icons';
 import { type PropsWithChildren, type ReactNode } from 'react';
 
 const useStyles = makeStyles({
@@ -88,6 +89,29 @@ const useStyles = makeStyles({
         fontSize: tokens.fontSizeBase200,
         marginBottom: tokens.spacingVerticalS,
     },
+    infoSurface: {
+        maxWidth: '360px',
+        fontSize: tokens.fontSizeBase200,
+    },
+    infoButton: {
+        minWidth: 'unset',
+        height: 'auto',
+        padding: 0,
+        color: tokens.colorNeutralForeground4,
+        fontWeight: tokens.fontWeightRegular,
+        ':hover': { color: tokens.colorNeutralForeground2 },
+        ':hover:active': { color: tokens.colorNeutralForeground2 },
+    },
+    // Fluent sizes the icon slot larger than the glyph; match them so the button's bottom edge is the glyph's.
+    // 13px keeps the circle close to the height of capital letters in adjacent 14px semibold text.
+    infoIcon: {
+        width: '13px',
+        height: '13px',
+        fontSize: '13px',
+        // InfoRegular draws its circle inset by 10% of the icon box; shift it down so the circle, not the box,
+        // sits on the text baseline. Relative positioning leaves layout and baseline alignment unchanged.
+        '& svg': { display: 'block', position: 'relative', top: '0.1em' },
+    },
     guidanceSummary: {
         cursor: 'pointer',
         color: tokens.colorBrandForeground1,
@@ -113,6 +137,27 @@ export function InlineGuidance({ title, children }: PropsWithChildren<{ title: s
 export function InfoBox({ children }: PropsWithChildren) {
     const styles = useStyles();
     return <div className={styles.infoBox}>{children}</div>;
+}
+
+/** Icon-only (i) button that opens an explanation; `label` names both the button and the popover. */
+export function InfoButton({ label, children }: PropsWithChildren<{ label: string }>) {
+    const styles = useStyles();
+    return (
+        <Popover withArrow>
+            <PopoverTrigger disableButtonEnhancement>
+                <Button
+                    className={styles.infoButton}
+                    appearance="transparent"
+                    size="small"
+                    icon={{ children: <InfoRegular />, className: styles.infoIcon }}
+                    aria-label={label}
+                />
+            </PopoverTrigger>
+            <PopoverSurface className={styles.infoSurface} aria-label={label}>
+                {children}
+            </PopoverSurface>
+        </Popover>
+    );
 }
 
 export function MythBox({ icon = '💡', children }: PropsWithChildren<{ icon?: ReactNode }>) {

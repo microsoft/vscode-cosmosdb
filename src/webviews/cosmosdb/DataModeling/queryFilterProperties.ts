@@ -10,7 +10,6 @@ import {
     type SqlNode,
     type SqlScalarExpression,
 } from '@azure/cosmosdb-nosql-language-service';
-import { type ReadQuery } from './models';
 
 function isNode(value: unknown): value is SqlNode {
     return typeof value === 'object' && value !== null && 'kind' in value;
@@ -73,11 +72,11 @@ function collectAliases(expression: SqlCollectionExpression, aliases: Map<string
 }
 
 /** Resolve scoped collection aliases to property paths, excluding parameters, comments, and string values. */
-export function queryPropertyNames(query: string): { names: string[]; valid: boolean } {
+function queryPropertyNames(query: string): string[] {
     if (!query.trim()) {
-        return { names: [], valid: true };
+        return [];
     }
-    const { ast, errors } = parse(query);
+    const { ast } = parse(query);
     const names = new Set<string>();
     function visit(value: unknown, aliases: Map<string, string[]>): void {
         if (Array.isArray(value)) {
@@ -106,12 +105,12 @@ export function queryPropertyNames(query: string): { names: string[]; valid: boo
         }
     }
     visit(ast, new Map());
-    return { names: [...names], valid: errors.length === 0 };
+    return [...names];
 }
 
-/** Preserve saved selections and derive the initial selection from legacy/catalog predicates. */
-export function readFilterProperties(read: Pick<ReadQuery, 'filters'>): string[] {
+/** Display property names from recommendation results, including older predicate-based results. */
+export function readFilterProperties(read: { filters: string[] | string }): string[] {
     return Array.isArray(read.filters)
         ? read.filters
-        : queryPropertyNames(read.filters.trim() ? `SELECT ${read.filters} FROM c` : '').names;
+        : queryPropertyNames(read.filters.trim() ? `SELECT ${read.filters} FROM c` : '');
 }

@@ -5,7 +5,7 @@
 
 import { makeStyles, Tab, TabList, tokens } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
-import { type Ref, type SetStateAction, useEffect, useId } from 'react';
+import { type Ref, type SetStateAction, useEffect, useId, useRef } from 'react';
 import { modelingInputsEqual } from '../../../../dataModeling/modelingTelemetryMetrics';
 import { type ModelingSection, type ModelingTelemetryEvent } from '../../../../dataModeling/modelingTelemetrySchema';
 import { type DataModel } from '../dataModel';
@@ -40,6 +40,8 @@ export interface ContainerPageProps {
     tab: ContainerTab;
     onTabChange: (tab: ContainerTab) => void;
     queriesTabRef?: Ref<HTMLButtonElement>;
+    focusPath?: string[];
+    onFocused?: () => void;
     /** Data-tab edits change the schema, so the wizard re-derives partition-key candidates. */
     onChangeData: (next: SetStateAction<DataModel>) => void;
     /** Queries- and Scale-tab edits write their slice back unchanged. */
@@ -58,6 +60,8 @@ export function ContainerPage({
     tab,
     onTabChange,
     queriesTabRef,
+    focusPath,
+    onFocused,
     onChangeData,
     onChange,
     active = true,
@@ -69,6 +73,21 @@ export function ContainerPage({
 }: ContainerPageProps) {
     const styles = useStyles();
     const id = useId();
+    const rootRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (!active || !focusPath) return;
+        // Wait until the wizard has shown the step and performed its own heading focus.
+        const frame = requestAnimationFrame(() => {
+            const panel = rootRef.current?.querySelector<HTMLElement>('[role="tabpanel"]:not([hidden])');
+            const path = focusPath.join('.');
+            const field = Array.from(panel?.querySelectorAll<HTMLInputElement>('input[name]') ?? []).find(
+                (element) => element.name === path || element.name.startsWith(`${path}.`),
+            );
+            (field ?? panel)?.focus();
+            onFocused?.();
+        });
+        return () => cancelAnimationFrame(frame);
+    }, [active, focusPath, tab, onFocused]);
     const visible = useModelingPageVisible();
     useEffect(() => {
         if (active && visible && containerId) {
@@ -88,7 +107,7 @@ export function ContainerPage({
     };
 
     return (
-        <div className={styles.stack}>
+        <div className={styles.stack} ref={rootRef}>
             <TabList
                 className={styles.tabList}
                 selectedValue={tab}

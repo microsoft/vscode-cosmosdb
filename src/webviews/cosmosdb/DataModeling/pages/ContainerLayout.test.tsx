@@ -86,6 +86,7 @@ describe('single-column container tabs', () => {
         expect(writesCard).toContainElement(screen.getByRole('spinbutton', { name: 'Inserts / sec' }));
         expect(readsCard.nextElementSibling).toBe(writesCard);
         expect(writesCard.nextElementSibling).toContainElement(screen.getByText('Estimated request cost'));
+        await user.clear(pattern);
         await user.type(pattern, 'Find messages');
         expect(pattern).toHaveValue('Find messages');
         fireEvent.change(screen.getByRole('spinbutton', { name: 'Inserts / sec' }), { target: { value: '42' } });

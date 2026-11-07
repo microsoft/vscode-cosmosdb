@@ -6,10 +6,16 @@
 import * as l10n from '@vscode/l10n';
 import { z } from 'zod';
 import { type WizardState } from '../webviews/cosmosdb/DataModeling/dataModel';
-import { MAX_CONTAINERS, MAX_DOCUMENT_SIZE_KB, type ContainerModel } from '../webviews/cosmosdb/DataModeling/models';
+import {
+    hasReadEvidence,
+    MAX_CONTAINERS,
+    MAX_DOCUMENT_SIZE_KB,
+    type ContainerModel,
+} from '../webviews/cosmosdb/DataModeling/models';
 import {
     assessContainerThroughput,
     getArrayItemsOrderMessage,
+    getReadEvidenceMessage,
     getThroughputIssueMessage,
     MAX_ARRAY_ITEMS,
     MAX_ATTRIBUTE_COUNT,
@@ -61,7 +67,6 @@ const ContainerModelSchema: z.ZodType<ContainerModel> = z.object({
             id: z.string().min(1),
             pattern: z.string(),
             query: z.string().optional(),
-            filters: z.union([z.string(), z.array(z.string())]),
             qps: OperationsPerSecSchema,
         }),
     ),
@@ -157,6 +162,15 @@ export const WizardStateSchema: z.ZodType<WizardState> = StoredWizardStateSchema
                     code: 'custom',
                     message: getThroughputIssueMessage(issue),
                     path: ['dataModel', 'containers', index],
+                });
+            }
+        }
+        for (const [readIndex, read] of container.reads.entries()) {
+            if (!hasReadEvidence(read)) {
+                ctx.addIssue({
+                    code: 'custom',
+                    message: getReadEvidenceMessage(readIndex + 1),
+                    path: ['dataModel', 'containers', index, 'reads', readIndex],
                 });
             }
         }

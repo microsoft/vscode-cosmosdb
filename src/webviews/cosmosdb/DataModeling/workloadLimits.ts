@@ -29,6 +29,11 @@ export const MAX_ATTRIBUTE_COUNT = 10_000;
 /** Sanity ceiling for the number of items in one array. */
 export const MAX_ARRAY_ITEMS = 100_000;
 
+/** Message for a read that has neither a description nor a query. */
+export function getReadEvidenceMessage(readNumber: number): string {
+    return l10n.t('Read query {n} needs a description or a query.', { n: readNumber });
+}
+
 /** Rough planning-only RU estimate for a point read: ~1 RU per KB. */
 export function estimateReadRu(avgDocSizeKb: number): number {
     return Math.max(1, Math.round(avgDocSizeKb));

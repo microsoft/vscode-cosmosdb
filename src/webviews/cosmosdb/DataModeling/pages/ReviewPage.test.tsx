@@ -5,6 +5,7 @@
 
 // @vitest-environment jsdom
 
+import { tokens } from '@fluentui/react-components';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -17,8 +18,8 @@ function chatSession(): ContainerModel {
     container.partitionKey = '/sessionId';
     container.document.avgSizeKb = 1;
     container.reads = [
-        { id: 'r1', pattern: 'Get session by id', filters: 'id', qps: 20 },
-        { id: 'r2', pattern: 'Get all messages in a session', filters: 'sessionId', qps: 250 },
+        { id: 'r1', pattern: 'Get session by id', qps: 20 },
+        { id: 'r2', pattern: 'Get all messages in a session', qps: 250 },
     ];
     container.writes = { insertsPerSec: 50, updatesPerSec: 15, deletesPerSec: 5 };
     container.scale = { ...container.scale, items: 'medium', writes: 'even', growth: 'slow' };
@@ -151,16 +152,19 @@ describe('ReviewPage', () => {
         expect(screen.getByText('0 read QPS · 0 write TPS')).toBeVisible();
     });
 
-    it('falls back to the filtered attributes when the top read has no description', () => {
-        renderReview([createBlankContainer('Orders')]);
-        expect(screen.getByText('Read by id')).toBeVisible();
+    it('falls back to the query when the top read has no description', () => {
+        const container = createBlankContainer('Orders');
+        container.reads[0].pattern = '';
+        renderReview([container]);
+        expect(screen.getByText('SELECT * FROM c WHERE c.id = @id')).toBeVisible();
     });
 
-    it('summarizes multiselect property names when the read has no description', () => {
+    it('describes a top read without either a description or a query as undefined', () => {
         const container = createBlankContainer('Orders');
-        container.reads[0].filters = ['id', 'type'];
+        container.reads[0].pattern = '';
+        container.reads[0].query = ' ';
         renderReview([container]);
-        expect(screen.getByText('Read by id, type')).toBeVisible();
+        expect(screen.getByText('No read pattern defined')).toBeVisible();
     });
 
     it('omits the validation alert when there are no issues', () => {
@@ -168,23 +172,34 @@ describe('ReviewPage', () => {
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
-    it('lists validation issues in an error alert with a title', () => {
+    it('lists validation issues with individually described Fix buttons', async () => {
         const errors = ['Orders: First issue.', 'Users: Second issue.'];
+        const issues = errors.map((message) => ({ message, path: [] }));
+        const onFixIssue = vi.fn();
         render(
             <ReviewPage
                 workloadLabel="Other"
                 containers={[createBlankContainer('Orders')]}
-                validationErrors={errors}
+                validationErrors={issues}
+                onFixIssue={onFixIssue}
                 onEditWorkload={vi.fn()}
                 onEditContainer={vi.fn()}
             />,
         );
         const alert = screen.getByRole('alert');
         expect(alert).toHaveTextContent(/^Fix these issues before requesting a recommendation\./);
-        expect(
-            within(alert)
-                .getAllByRole('listitem')
-                .map((item) => item.textContent),
-        ).toEqual(errors);
+        const fixes = within(alert).getAllByRole('button', { name: 'Fix' });
+        for (const [index, fix] of fixes.entries()) {
+            expect(fix).toHaveTextContent('Fix');
+            expect(fix).toHaveAccessibleName('Fix');
+            expect(fix).toHaveAccessibleDescription(errors[index]);
+            expect(fix).toHaveStyle({ backgroundColor: tokens.colorBrandBackground });
+            expect(fix).not.toHaveClass('fui-Button--small');
+            const item = fix.closest('li')!;
+            expect(item).toHaveStyle({ display: 'flex', justifyContent: 'space-between' });
+            expect(item.lastElementChild).toBe(fix);
+            await userEvent.click(fix);
+            expect(onFixIssue).toHaveBeenLastCalledWith(issues[index]);
+        }
     });
 });

@@ -52,6 +52,8 @@ const useStyles = makeStyles({
     },
     error: {
         color: tokens.colorPaletteRedForeground1,
+        // Failure reports list one input fix per line.
+        whiteSpace: 'pre-line',
     },
 });
 

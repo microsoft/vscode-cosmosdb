@@ -207,6 +207,7 @@ test('runs the validation suites from a standalone Skill copy without peer or DD
         const capabilitySkips = new Set([
             'tracks consulted workspace files and rejects symlink escapes',
             'rejects output symlinks that escape the workspace',
+            'implicit schema evidence still validates file symlinks',
         ]);
         const skipped = [...result.stdout.matchAll(/^\s*\S+ (.+?) \([\d.]+ms\) # (?!TODO\b)/gmu)].map(match => match[1]);
         assert.equal(Number(/skipped (\d+)/u.exec(result.stdout)?.[1]), skipped.length, result.stdout);

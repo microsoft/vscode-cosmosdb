@@ -631,6 +631,7 @@ export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPa
                             max={MAX_ATTRIBUTE_COUNT}
                             step={1}
                             aria-label={attributeCountLabel}
+                            name="document.attributeCount"
                             value={countDrafts.attributeCount ?? String(active.document.attributeCount)}
                             onChange={(_, data) => patchCount('attributeCount', data.value)}
                         />
@@ -648,6 +649,7 @@ export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPa
                                 max={MAX_DOCUMENT_SIZE_KB}
                                 step="any"
                                 aria-label={l10n.t('Average document size')}
+                                name="document.avgSizeKb"
                                 value={String(active.document.avgSizeKb)}
                                 onChange={(_, data) => patchDocumentSize('avgSizeKb', data.value)}
                             />
@@ -667,6 +669,7 @@ export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPa
                                 max={MAX_DOCUMENT_SIZE_KB}
                                 step="any"
                                 aria-label={l10n.t('Maximum document size')}
+                                name="document.maxSizeKb"
                                 value={String(active.document.maxSizeKb)}
                                 onChange={(_, data) => patchDocumentSize('maxSizeKb', data.value)}
                             />
@@ -697,6 +700,7 @@ export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPa
                                 max={MAX_ARRAY_ITEMS}
                                 step="any"
                                 aria-label={averageItemsLabel}
+                                name="arrays.avgItems"
                                 value={countDrafts.avgItems ?? String(active.arrays.avgItems)}
                                 onChange={(_, data) => patchCount('avgItems', data.value)}
                                 onBlur={(event) => patchCount('avgItems', event.target.value, true)}
@@ -710,6 +714,7 @@ export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPa
                                 max={MAX_ARRAY_ITEMS}
                                 step={1}
                                 aria-label={maximumItemsLabel}
+                                name="arrays.maxItems"
                                 value={countDrafts.maxItems ?? String(active.arrays.maxItems)}
                                 onChange={(_, data) => patchCount('maxItems', data.value)}
                                 onBlur={(event) => patchCount('maxItems', event.target.value, true)}

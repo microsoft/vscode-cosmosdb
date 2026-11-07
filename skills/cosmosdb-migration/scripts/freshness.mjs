@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { MATRIX_VERSION } from './check-sdk-compatibility.mjs';
 import { requireOptionValue } from './cli-arguments.mjs';
 import { showHelp } from './cli-help.mjs';
+import { DOCUMENT_MAPPING_VERSION } from './mapping-examples.mjs';
 import { normalizePhaseName } from './phase-names.mjs';
 import { parseJson } from './phase-summary.mjs';
 import { readProjectState, updateProjectState } from './project-state.mjs';
@@ -260,6 +261,7 @@ function requiredInputs(workspace, project, phase) {
             ];
         case 'schema-conversion':
             return [
+                ...(sourceContractVersion(workspace) === 2 ? [projectInput('document-mapping-contract', DOCUMENT_MAPPING_VERSION)] : []),
                 fileInput(workspace, 'assessment-manifest', `${root}/phases/2-assessment/assessment-manifest.json`),
                 ...((assessment.domains ?? []).map((domain) =>
                     fileInput(

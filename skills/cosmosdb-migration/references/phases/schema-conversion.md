@@ -117,6 +117,17 @@ Process domains in stable name order. For each domain:
 10. Write the complete model to the domain's `cosmos-model.json`, validate and repair
   it, then write rationale, evidence, and example documents to its `summary.md`.
 
+For document-oriented datasets, start from the existing document shape, not a flattened table-like projection.
+Map whole objects and arrays; their copied descendants count toward field coverage. Preserve additional properties,
+literal field names, missing/null, array order, and nesting. Prefer compatible native string IDs over unnecessary
+re-encoding, and make native-value conversions consistent throughout subtrees. Identity and routing fields may need
+small adaptations, but avoid unrelated renaming or duplicate copies of every nested value.
+Require the [whole-document evidence](../contracts/source-inventory.md#document-preservation) contract.
+Only split, flatten, denormalize, or otherwise restructure when an evidenced Cosmos DB performance, reliability,
+cost, or service-limit benefit outweighs migration complexity. Record that benefit, alternatives, and tradeoffs.
+Without code, ask about intended lookups, writes, atomicity, retention, scale, and size before selecting partition
+or indexing optimizations. Unknown workload supports a provisional conservative design, not invented query evidence.
+
 Never reduce design depth because fewer model calls are preferred. Continue
 iteratively, making and documenting defensible choices within the requested scope
 while retaining assumptions and verification obligations.
@@ -190,7 +201,14 @@ the design but are not another copy of the model.
   evidence; duplicate authoritative owners and unaccounted source tables are errors.
 - Every standalone entity has one string `id` attribute deterministically derived
   from its evidenced source identity and matching typed `identity` or legacy `idTemplate`.
-- Default IDs prefix the entity name and include every primary-key component. A
+- For document sources, prefer direct compatible identities: `native-string` for a single string key,
+  `objectid-hex` for homogeneous BSON ObjectIds, or `native-uuid` for a UUID key. Do not blanket-prefix
+  or typed-hex encode already compatible single keys. Keep the original key field by default; an explicit
+  `identity.sourceKey: "rename"` decision may map a required root key directly to `id` without a duplicate
+  natural-key attribute. This is a lossless rename/representation conversion, not permission to drop other data.
+  Use type-preserving derived encoding for mixed types, composite keys, unsafe values, or required namespace
+  separation. Confirm target uniqueness scope and reject collisions or size violations without sanitizing or truncating.
+- For relational templates and identities requiring derivation, prefix the entity name and include every primary-key component. A
   single-column GUID/UUID primary key may use its source value directly when it is
   unique across all standalone entity types sharing the same container and complete
   partition-key tuple. Otherwise prefix it with the stable entity name, for example
@@ -211,9 +229,17 @@ the design but are not another copy of the model.
   resolve production identity separately before importing those rows.
 - Never sanitize IDs using lossy character replacement. Select the shared identity
   mapping in [validation-evidence.md](../contracts/validation-evidence.md) for unsafe or ambiguous
-  source keys, and use the same helper for sample generation and validation. Preserve
-  every source primary-key column losslessly even when it also contributes to `id`.
+  source keys, and use the same helper for sample generation and validation. Preserve every relational primary-key
+  column separately. A direct, explicitly renamed document key is preserved in `id` itself; other document keys
+  remain separately represented.
 - Every standalone entity in a container carries every ordered partition-key path.
+- Identity conversion does not choose the partition key. Compare `/id` with workload-supported business keys;
+  retaining a source ID does not imply `/id` is best. `/id` gives known-ID routing but does not co-locate different
+  items for grouped queries or transactional batches. Cosmos enforces uniqueness of `(partition key, id)`,
+  not `id` across arbitrary partitions. Explain how the source uniqueness scope is retained through routing or
+  an explicit enforcement design. Encoding does not repair duplicate source identities.
+  When multiple source collections share a container, preserve their identity namespaces in IDs or the complete
+  partition-key tuple; `docType` alone is not uniqueness enforcement. Keep unverified assumptions visible.
 - Embedded-only entities are represented but do not become standalone documents.
 - Relationships reference existing entities and use explicit embed/reference
   strategies. Every `sourceFK` table and column must resolve to the authoritative

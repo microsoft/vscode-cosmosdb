@@ -16,6 +16,11 @@ Schema and examples are sufficient to start a **schema-only migration**: an appl
 for source analysis, target modeling, or provisioning preparation. Application details and SDK integration wait
 until code is available. The agent can ask for intended access patterns and workload constraints without inventing code.
 
+For document-oriented sources, the default is to preserve document names, nesting, arrays, and additional fields.
+Restructuring needs an evidenced Cosmos DB performance, reliability, cost, or service-limit benefit that justifies
+the migration complexity. Whole-document examples verify preservation, including native-value conversion and identity;
+individual field coverage is not a reason to flatten or duplicate the source document.
+
 This README is for people installing and using the skill. The agent's entry point
 is [SKILL.md](./SKILL.md); its linked references define the workflow. You do not need
 to repeat those procedures in your requests.
@@ -526,7 +531,7 @@ These modules support the executable helpers and have no command-line entry poin
 | [phase-summary.mjs](./scripts/phase-summary.mjs) | Validators: read evidence/model JSON and Markdown sections |
 | [reconcile-capacity.mjs](./scripts/reconcile-capacity.mjs) | Model merge: reconcile capacity contributions before sizing |
 | [validate-source-evidence.mjs](./scripts/validate-source-evidence.mjs) | Completion and provisioning validators: inventory, hashes, source identity |
-| [source-contract.mjs](./scripts/source-contract.mjs) | Common inventory, validated legacy views, typed paths, field references, and dataset ownership |
+| [source-contract.mjs](./scripts/source-contract.mjs) | Common inventory, validated legacy views, typed paths, readable field IDs via `sourceFieldId(path)`, field references, and dataset ownership |
 | [mapping-examples.mjs](./scripts/mapping-examples.mjs) | Bounded executable JSON/BSON conversion, identity examples, and approved behavior decisions; never executes hooks |
 | [cli-help.mjs](./scripts/cli-help.mjs) | All executable helpers: side-effect-free help dispatch |
 | [cli-arguments.mjs](./scripts/cli-arguments.mjs) | Option-taking helpers: reject missing values before reading inputs or performing work |

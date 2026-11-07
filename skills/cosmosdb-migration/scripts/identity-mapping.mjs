@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { showHelp } from './cli-help.mjs';
 import { parseJson, readJsonObject } from './phase-summary.mjs';
+import { DIRECT_IDENTITY_ENCODINGS } from './source-contract.mjs';
 import {
     canonicalStringify,
     canonicalizeCosmosModel,
@@ -48,6 +49,34 @@ function checkIdByteLength(id) {
     }
 }
 
+export function objectIdHex(value) {
+    const hex = typeof value === 'string' ? value
+        : value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 1 ? value.$oid : undefined;
+    if (typeof hex !== 'string' || !/^[0-9a-f]{24}$/iu.test(hex)) throw new Error('ObjectId identity requires a canonical Extended JSON ObjectId or its 24-character hexadecimal value');
+    return hex.toLowerCase();
+}
+
+export function encodeSourceIdentity(entity, components) {
+    const identity = entity.identity;
+    if (identity?.kind !== 'fields' || !Array.isArray(components) || !components.length ||
+        components.length !== identity.fields?.length) throw new Error('Identity components must match the declared source fields');
+    if (DIRECT_IDENTITY_ENCODINGS.has(identity.encoding) && components.length !== 1) throw new Error('Direct identity requires one source value');
+    let id;
+    if (identity.encoding === 'objectid-hex') {
+        id = objectIdHex(components[0]);
+    } else {
+        components.forEach(typedValue);
+        if (!['typed-hex-v1', 'native-uuid', 'native-string'].includes(identity.encoding)) throw new Error('Unsupported identity encoding');
+        id = DIRECT_IDENTITY_ENCODINGS.has(identity.encoding) ? components[0]
+            : `v1-${typedValue(entity.sourceDataset)}-${typedValue(entity.name)}-${components.map(typedValue).join('-')}`;
+        if (identity.encoding === 'native-uuid' && (typeof id !== 'string' || !UUID_PATTERN.test(id))) throw new Error('Native identity must be a UUID');
+        if (identity.encoding === 'native-string' && (typeof id !== 'string' || !id.length ||
+            /[\/\\?#]/u.test(id) || /\s$/u.test(id))) throw new Error('Native string identity must be a non-empty Cosmos-compatible ID; do not sanitize or truncate it');
+    }
+    checkIdByteLength(id);
+    return id;
+}
+
 export function resolveItemId(entity, item, mapping) {
     const placeholders = [...(entity.idTemplate ?? '').matchAll(/\{([^{}]+)\}/gu)];
     const identityKind = classifyItemIdentity(entity);
@@ -66,19 +95,17 @@ export function resolveItemId(entity, item, mapping) {
     }
     if (entity.identity?.kind === 'fields') {
         if (mapping !== undefined) throw new Error('Typed identity cannot use a legacy identity mapping');
+        if (entity.identity.sourceKey === 'rename') {
+            if (!DIRECT_IDENTITY_ENCODINGS.has(entity.identity.encoding)) throw new Error('A renamed source identity must retain its value');
+            return encodeSourceIdentity(entity, [item.id]);
+        }
         const components = entity.identity.fields.map(reference => {
             const attributes = entity.attributes.filter(attribute => attribute.target !== 'id' &&
                 attribute.source?.dataset === reference.dataset && attribute.source?.field === reference.field);
             if (attributes.length !== 1 || !Object.hasOwn(item, attributes[0].target)) throw new Error('Identity source key is missing or ambiguous');
-            const value = item[attributes[0].target];
-            typedValue(value);
-            return value;
+            return item[attributes[0].target];
         });
-        const id = entity.identity.encoding === 'native-uuid' ? components[0]
-            : `v1-${typedValue(entity.sourceDataset)}-${typedValue(entity.name)}-${components.map(typedValue).join('-')}`;
-        if (entity.identity.encoding === 'native-uuid' && (typeof id !== 'string' || !UUID_PATTERN.test(id))) throw new Error('Native identity must be a UUID');
-        checkIdByteLength(id);
-        return id;
+        return encodeSourceIdentity(entity, components);
     }
     const components = placeholders.map(match => {
         const attributes = entity.attributes.filter(attribute => attribute.target !== 'id' && attribute.source?.column === match[1]);

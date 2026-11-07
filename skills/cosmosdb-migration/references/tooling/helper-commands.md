@@ -86,3 +86,6 @@ SQLGlot setup and invocation use ordinary host tools under the
 [DDL interpretation workflow](../workflow/ddl-interpretation.md), not a bundled helper.
 Use the listed CLI commands; supporting modules are not standalone commands. No helper
 needs to be invoked solely because it is packaged.
+
+For new inventory fields, follow [readable field identifiers](../contracts/source-inventory.md#readable-field-identifiers).
+The `sourceFieldId(path)` generator is an import-only helper, not a CLI or JSONPath evaluator.

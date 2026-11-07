@@ -6,9 +6,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { requireOptionValue } from './cli-arguments.mjs';
 import { showHelp } from './cli-help.mjs';
-import { readIdentityManifest, resolveItemId, validateIdentityManifest } from './identity-mapping.mjs';
+import { objectIdHex, readIdentityManifest, resolveItemId, validateIdentityManifest } from './identity-mapping.mjs';
 import { parseJson } from './phase-summary.mjs';
-import { splitIndexPathParts, validateCosmosModel } from './validate-cosmos-model.mjs';
+import { isObjectIdSourceType, splitIndexPathParts, validateCosmosModel } from './validate-cosmos-model.mjs';
 import { createSourceResolver, readSourceInventory, resolveForeignKey } from './validate-source-evidence.mjs';
 import { datasetKey, entitySource, sourceRefs, resolveField } from './source-contract.mjs';
 
@@ -85,7 +85,7 @@ function validateId(item, entity, jsonPath, errors, mapping) {
 function attributeForSource(entity, table, column, resolve) {
     const field = resolveField(table, column, table.legacy === true || !table.fields);
     const matches = entity.attributes.filter(attribute =>
-        attribute.isId !== true &&
+        (attribute.isId !== true || entity.identity?.sourceKey === 'rename') &&
         sourceRefs(attribute.source).some(reference =>
             datasetKey(resolve(reference.dataset)) === datasetKey(table) &&
             (attribute.source.table !== undefined ? reference.field === column : reference.field === field.id)),
@@ -97,7 +97,12 @@ function attributeForSource(entity, table, column, resolve) {
 }
 
 function keyValues(entity, item, table, columns, resolve) {
-    return columns.map(column => item[attributeForSource(entity, table, column, resolve).target]);
+    return columns.map(column => {
+        const attribute = attributeForSource(entity, table, column, resolve);
+        const value = item[attribute.target];
+        return value !== undefined && value !== null && isObjectIdSourceType(attribute.source.type)
+            ? objectIdHex(value) : value;
+    });
 }
 
 function sameValues(left, right) {

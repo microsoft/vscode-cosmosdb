@@ -192,6 +192,10 @@ regeneration is requested; regenerate stale inference from its underlying eviden
 3. Write the typed inventory directly in the preflight manifest. Use stable IDs and exact native names;
    never fabricate tables, foreign keys, or SQL for document/other sources. Register actual supporting inputs
    only within approved selection scope. An explicitly empty selection is not permission to broaden it.
+   Generate new field IDs from typed paths with `sourceFieldId` in `scripts/source-contract.mjs`; do not hash
+   field paths or assign opaque counters. Reuse those IDs in identities, relationships, and target mappings.
+   Preserve existing IDs on resume. Converting an existing inventory to readable IDs requires explicit regeneration
+   of affected references and checkpoints, not a read-time rewrite.
 4. Perform a second evidence-to-inventory completeness pass. Account for every selected artifact,
    retain provenance and conflicts, record observed sample scope/limitations, and distinguish code/inferred
    coverage from complete declared schema. Relational code inventories retain ordered keys and native constraints

@@ -3,6 +3,10 @@
 import { createHash } from 'node:crypto';
 
 export const SOURCE_CONTRACT_VERSION = 2;
+export const DIRECT_IDENTITY_ENCODINGS = new Set(['native-string', 'native-uuid', 'objectid-hex']);
+export function isObjectIdSourceType(sourceType) {
+    return typeof sourceType === 'string' && ['objectid', 'bson objectid'].includes(sourceType.toLocaleLowerCase('en-US'));
+}
 const text = value => typeof value === 'string' && value.trim().length > 0;
 const array = (value, label) => {
     if (!Array.isArray(value)) throw new Error(`${label} must be an array`);
@@ -24,6 +28,18 @@ export function validateFieldPath(value) {
         if (segment?.kind === 'array' && Object.keys(segment).length === 1) continue;
         throw new Error('Field paths use {kind:"property",name:string} or {kind:"array"}, never dotted strings');
     }
+}
+
+export function sourceFieldId(path) {
+    validateFieldPath(path);
+    return '$' + path.map(segment => segment.kind === 'array' ? '[*]'
+        : /^[A-Za-z_][A-Za-z0-9_]*$/u.test(segment.name) ? `.${segment.name}`
+        : `[${JSON.stringify(segment.name)}]`).join('');
+}
+
+export function isFieldPathPrefix(prefix, path) {
+    return prefix.length <= path.length && prefix.every((segment, index) =>
+        segment.kind === path[index].kind && (segment.kind === 'array' || segment.name === path[index].name));
 }
 
 export function domainSources(domain) {
@@ -58,6 +74,33 @@ export function resolveField(dataset, reference, legacy = false) {
         ? (value.name ?? (value.path?.length === 1 ? value.path[0].name : undefined)) === reference
         : value.id === reference);
     if (!field) throw new Error(`Unknown source field: ${datasetKey(dataset)}.${reference}`);
+    return field;
+}
+
+export function directIdentityField(entity, dataset) {
+    const identity = entity.identity;
+    if (!DIRECT_IDENTITY_ENCODINGS.has(identity?.encoding)) {
+        if (identity?.sourceKey === 'rename') throw new Error('A source-key rename requires a direct, lossless identity encoding');
+        return undefined;
+    }
+    if (identity.kind !== 'fields' || identity.fields?.length !== 1 || identity.fields[0].dataset !== dataset.id) {
+        throw new Error('A direct identity requires one field from the entity source dataset');
+    }
+    const field = resolveField(dataset, identity.fields[0].field);
+    if (field.nativeTypes.length !== 1 || field.nativeTypes[0] === 'unknown') {
+        throw new Error('Mixed or unknown identity types require a type-preserving mapping, not direct identity conversion');
+    }
+    if ((identity.encoding === 'native-string' && field.nativeTypes[0] !== 'string') ||
+        (identity.encoding === 'objectid-hex' && !isObjectIdSourceType(field.nativeTypes[0]))) {
+        throw new Error('Direct identity encoding must match the evidenced native source type');
+    }
+    if (identity.sourceKey === 'rename' &&
+        (entity.isEmbeddedOnly || dataset.kind !== 'document' || field.path.length !== 1 || field.path[0].kind !== 'property')) {
+        throw new Error('A lossless source-key rename is supported only for a standalone root document identity field');
+    }
+    if (identity.sourceKey === 'rename' && (field.presence !== 'required' || field.nullable !== false)) {
+        throw new Error('A renamed source identity must be required and non-null');
+    }
     return field;
 }
 

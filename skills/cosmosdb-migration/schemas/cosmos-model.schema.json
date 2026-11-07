@@ -99,7 +99,11 @@
           "required": ["dataset", "field", "type"],
           "properties": {
             "dataset": { "type": "string", "minLength": 1 },
-            "field": { "type": "string", "minLength": 1 },
+            "field": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Exact inventory field ID. New inventories use readable path labels such as $._id or $.items[*].sku; legacy opaque IDs remain valid. This is not evaluated as JSONPath."
+            },
             "type": { "type": "string", "minLength": 1 }
           }
         },
@@ -129,7 +133,11 @@
       "required": ["dataset", "field"],
       "properties": {
         "dataset": { "type": "string", "minLength": 1 },
-        "field": { "type": "string", "minLength": 1 }
+        "field": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Exact inventory field ID. New inventories use readable path labels such as $._id or $.items[*].sku; legacy opaque IDs remain valid. This is not evaluated as JSONPath."
+        }
       }
     },
     "identity": {
@@ -141,8 +149,19 @@
           "properties": {
             "kind": { "const": "fields" },
             "fields": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/fieldReference" } },
-            "encoding": { "enum": ["typed-hex-v1", "native-uuid"] }
-          }
+            "encoding": { "enum": ["typed-hex-v1", "native-uuid", "native-string", "objectid-hex"] },
+            "sourceKey": { "enum": ["preserve", "rename"] }
+          },
+          "allOf": [
+            {
+              "if": { "properties": { "encoding": { "enum": ["native-uuid", "native-string", "objectid-hex"] } } },
+              "then": { "properties": { "fields": { "maxItems": 1 } } }
+            },
+            {
+              "if": { "required": ["sourceKey"], "properties": { "sourceKey": { "const": "rename" } } },
+              "then": { "properties": { "encoding": { "enum": ["native-uuid", "native-string", "objectid-hex"] } } }
+            }
+          ]
         },
         {
           "type": "object",

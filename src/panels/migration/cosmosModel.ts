@@ -83,7 +83,8 @@ export type CosmosIdentity =
     | {
           kind: 'fields';
           fields: SourceFieldReference[];
-          encoding: 'typed-hex-v1' | 'native-uuid';
+          encoding: 'typed-hex-v1' | 'native-uuid' | 'native-string' | 'objectid-hex';
+          sourceKey?: 'preserve' | 'rename';
       }
     | { kind: 'generated-uuid' };
 

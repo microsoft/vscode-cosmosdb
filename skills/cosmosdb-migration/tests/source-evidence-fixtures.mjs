@@ -173,6 +173,10 @@ export function createSourceNeutralFixture(workspace, engine = 'ExampleDocumentS
                 operation: 'copy', examples: [{ inputs: [value('a')], output: value('a') }] },
         ],
         identityExamples: [{ domain: 'Orders', container: 'Orders', entity: 'Order', cases: [{ item, id: item.id }] }],
+        documentMappings: [{
+            domain: 'Orders', container: 'Orders', entity: 'Order', mode: 'preserve',
+            examples: [{ source: { _id: { $oid: item.sourceId }, tenant: 'a' }, output: structuredClone(item) }],
+        }],
         behaviorDecisions: [],
     };
     return { project, inventory, model, models, root, entity, item, evidence };

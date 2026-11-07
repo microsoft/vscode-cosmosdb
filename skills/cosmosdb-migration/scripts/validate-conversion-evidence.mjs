@@ -10,19 +10,31 @@ import { assertNoTerminalIssues, parseJson, readDomainModel, readPhaseEvidence }
 import { selectSchemaConversionDomains } from './select-schema-conversion-domains.mjs';
 import { canonicalStringify, canonicalizeCosmosModel, classifyItemIdentity } from './validate-cosmos-model.mjs';
 import { createSourceResolver, readSourceInventory, resolveForeignKey, validateNativeSourceInventory } from './validate-source-evidence.mjs';
-import { datasetFields, datasetKey, domainSources, entitySource, normalizeDomains, primaryFields, relationalDetails, resolvedSourceRefs } from './source-contract.mjs';
+import { datasetFields, datasetKey, directIdentityField, domainSources, entitySource, isFieldPathPrefix, normalizeDomains, primaryFields, relationalDetails, resolvedSourceRefs } from './source-contract.mjs';
 import { validateMappingEvidence } from './mapping-examples.mjs';
 
 export function modelHash(model) {
     return createHash('sha256').update(canonicalStringify(canonicalizeCosmosModel(model))).digest('hex');
 }
 
-function preservedSourceColumns(entity, table, resolve) {
-    return new Set(entity.attributes.filter(attribute =>
-        entity.isEmbeddedOnly === true || (attribute.target !== 'id' && attribute.isId !== true),
-    ).flatMap(attribute => resolvedSourceRefs(attribute.source, resolve)
+function preservedSourceColumns(entity, table, resolve, evidence) {
+    const attributes = entity.attributes.filter(attribute =>
+        entity.isEmbeddedOnly === true || entity.identity?.sourceKey === 'rename' ||
+            (attribute.target !== 'id' && attribute.isId !== true),
+    );
+    const fields = new Set(attributes.flatMap(attribute => resolvedSourceRefs(attribute.source, resolve)
         .filter(reference => datasetKey(reference.dataset) === datasetKey(table))
         .map(reference => reference.field.id)));
+    if (table.kind === 'document') for (const attribute of attributes) {
+        const references = resolvedSourceRefs(attribute.source, resolve);
+        const mapping = evidence.fieldMappings?.find(entry => entry.entity === entity.name && entry.target === attribute.target);
+        if (references.length !== 1 || datasetKey(references[0].dataset) !== datasetKey(table) ||
+            !['object', 'array'].includes(attribute.type) || mapping?.operation !== 'copy') continue;
+        const parent = references[0].field;
+        if (!parent.nativeTypes.some(type => ['object', 'array'].includes(type))) continue;
+        for (const field of table.fields) if (isFieldPathPrefix(parent.path, field.path)) fields.add(field.id);
+    }
+    return fields;
 }
 
 export function validateConversionEvidence(project, inventory, domainModels, root, evidence) {
@@ -58,6 +70,7 @@ export function validateConversionEvidence(project, inventory, domainModels, roo
             if (evidence.domainSha256[domainName] !== modelHash(model)) throw new Error(`Stale domain model hash: ${domainName}`);
             for (const container of model.containers) for (const entity of container.entities) {
                 const sourceTable = resolve(entitySource(entity));
+                directIdentityField(entity, sourceTable);
                 const source = datasetKey(sourceTable);
                 if (!owners.has(source)) throw new Error(`Unselected source mapping: ${source}`);
                 const key = JSON.stringify([domainName, container.name, entity.name]);
@@ -92,7 +105,7 @@ export function validateConversionEvidence(project, inventory, domainModels, roo
                         );
                     }
                 }
-                const preservedColumns = preservedSourceColumns(entity, sourceTable, resolve);
+                const preservedColumns = preservedSourceColumns(entity, sourceTable, resolve, evidence);
                 const native = relationalDetails(sourceTable);
                 const idColumns = entity.identity?.fields?.filter(reference => reference.dataset === source).map(reference => reference.field) ??
                     [...(entity.idTemplate ?? '').matchAll(/\{([^{}]+)\}/gu)].map(match =>
@@ -136,7 +149,7 @@ export function validateConversionEvidence(project, inventory, domainModels, roo
         if (covered.size !== owners.size) throw new Error('Conversion omits selected source tables');
         for (const [source, entity] of covered) {
             const table = resolve(source);
-            const preservedColumns = preservedSourceColumns(entity, table, resolve);
+            const preservedColumns = preservedSourceColumns(entity, table, resolve, evidence);
             for (const column of datasetFields(table)) {
                 if (!preservedColumns.has(column.id)) throw new Error(`Authoritative target omits source column: ${source}.${column.name ?? column.id}`);
             }

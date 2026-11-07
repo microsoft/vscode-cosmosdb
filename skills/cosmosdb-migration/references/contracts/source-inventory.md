@@ -54,7 +54,8 @@ cannot silently become the accepted handoff merely because the canonical model s
 ## Exact inventory shape
 
 All arrays below are required, even when empty, unless marked optional. IDs and native names are
-non-empty strings; IDs are stable across renames and reordering, unique within their documented scope.
+non-empty strings, unique within their documented scope. Dataset IDs remain stable across native dataset renames
+and reordering. New field IDs are derived from source paths; source-path changes require renewed dependent mappings.
 Engine/version are evidence, not feature switches. `errors` is an empty array at readiness.
 The example uses a fictional document-oriented database engine.
 
@@ -87,7 +88,7 @@ The example uses a fictional document-oriented database engine.
       "sampling": { "method": "first 100", "size": 100, "limitations": "No guarantee of rare variants or uniqueness." }
     },
     "fields": [{
-      "id": "order-id",
+      "id": "$._id",
       "path": [{ "kind": "property", "name": "_id" }],
       "nativeTypes": ["ObjectId"],
       "presence": "required",
@@ -97,7 +98,7 @@ The example uses a fictional document-oriented database engine.
     "identities": [{
       "id": "native-id",
       "kind": "native",
-      "fields": ["order-id"],
+      "fields": ["$._id"],
       "scope": "collection",
       "evidence": ["evidence/orders.json"]
     }]
@@ -138,6 +139,46 @@ The example uses a fictional document-oriented database engine.
   status is `known | unresolved`; required is boolean. IDs are inventory-wide.
   Unknown native behavior stays an explicit obligation, not an empty constraints list.
 
+### Readable field identifiers
+
+For new version-2 inventory fields, use `sourceFieldId(path)` from
+[`source-contract.mjs`](../../scripts/source-contract.mjs). Construct the typed path once, then use its generated
+identifier throughout inventory identities/relationships, target lineage, conversion inputs, and subtree conversions.
+The dataset remains a separate reference; do not repeat it in each field ID.
+
+| Typed source location | Canonical field ID |
+| --- | --- |
+| Root `_id` | `$._id` |
+| Nested `eventHeader` then `eventTimestamp` | `$.eventHeader.eventTimestamp` |
+| Literal root property `a.b` | `$["a.b"]` |
+| Nested `a` then `b` | `$.a.b` |
+| Whole `barcodes` array | `$.barcodes` |
+| Each element of `barcodes` | `$.barcodes[*]` |
+| Each item's `sku` | `$.items[*].sku` |
+| Literal `*` property under `items` | `$.items["*"]` |
+| Empty property name | `$[""]` |
+
+The generator starts with `$`, uses `.name` only for `[A-Za-z_][A-Za-z0-9_]*`, JSON-quoted brackets for all other
+property names (including Unicode, dots, quotes, and backslashes), and `[*]` only for array traversal.
+It preserves case and distinguishes repeated traversal, literal wildcard names, and numeric property names.
+This is a bounded labeling convention, **not an executable JSONPath expression**: no evaluator, filters,
+recursive descent, or inferred numeric array indexes. Typed `path` segments remain authoritative for traversal;
+`source.field` is resolved by exact inventory-ID lookup.
+
+```js
+import { sourceFieldId } from '<skill-root>/scripts/source-contract.mjs';
+
+const path = [{ kind: 'property', name: '_id' }];
+const field = { id: sourceFieldId(path), path, /* native types, presence, evidence, ... */ };
+// Corresponding target lineage: { dataset: 'orders', field: '$._id', type: 'string' }
+```
+
+Existing version-2 opaque identifiers and the validated version-1 normalization boundary remain accepted unchanged.
+Do not silently regenerate IDs while reading or resuming a project. If an engineer requests relabeling, regenerate
+the inventory and every dependent reference together, then renew affected analytical evidence/freshness normally.
+A target-property rename does not change the source field ID. Renaming a source property does change its canonical
+path-derived ID; do not claim that a path label or path hash tracks native source renames automatically.
+
 ### Exact relational details
 
 Every relational dataset additionally requires `relational` with exact legacy
@@ -165,12 +206,26 @@ The target schema stays version 1; additions are defined in `schemas/cosmos-mode
 - Attribute source: `{dataset,field,type}`, `{inputs:[{dataset,field}],type}`, or
   `{generated:"uuid"|"constant",type}`. Legacy `{table,column,type}` remains valid only through exact
   resolution. Multi-input order is meaningful; no fake column is needed.
+  These IDs are catalog references, never source record values or target document properties. In summaries and
+  identity decisions, show the native dataset name and human-readable field path alongside the internal references.
 - Attribute `optional` and `nullable` are optional booleans. Missing and null are different.
   Identity and partition routing remain required/non-null irrespective of optional source fields.
-- Standalone entity `identity` is `{kind:"fields",fields:[{dataset,field}],encoding:"typed-hex-v1"|"native-uuid"}`
-  or `{kind:"generated-uuid"}`, mutually exclusive with legacy `idTemplate`. Every source identity
-  component is preserved separately. The typed-hex encoding preserves scalar type and component order,
+- Standalone entity `identity` is `{kind:"fields",fields:[{dataset,field}],encoding:"typed-hex-v1"|"native-uuid"|"native-string"|"objectid-hex",sourceKey?}`
+  or `{kind:"generated-uuid"}`, mutually exclusive with legacy `idTemplate`. Source identity components are preserved
+  separately by default. The typed-hex encoding preserves scalar type and component order,
   rejects unsafe integers, never truncates IDs, and retains existing ID byte constraints.
+  Prefer `native-string` for a single evidenced string key already compatible with Cosmos item IDs and the
+  target uniqueness scope. It retains the exact value and rejects empty, forbidden, oversized, or invalid-Unicode
+  values rather than sanitizing them. Shared-container collision risks still require an explicit design.
+  For a single homogeneous `ObjectId`/`BSON ObjectId` source, `objectid-hex` yields canonical lowercase
+  24-character hex from a canonical `$oid` wrapper or its hexadecimal representation. It does not stringify arbitrary
+  BSON values. Direct encodings require one known native type; mixed or unknown types need an explicit type-preserving
+  mapping. Whole-document checks compare direct IDs with the original source key, not just a transformed target copy.
+  `sourceKey` is `preserve` (also the omitted default) or `rename`. `rename` is limited to direct encodings of a
+  required, non-null root field on a standalone document entity. The original property is removed only after its value
+  is assigned to `id`; no separate natural-key attribute or field mapping is then required. Whole-document source/output
+  examples prove that step. Relational and composite identities retain their separate-key requirements.
+  A source field named `id` is handled the same way; an unrelated existing `id` must be explicitly remapped, not overwritten.
 - Relationship `sourceRelationship` replaces `sourceFK`, never alongside it. Native relational
   constraints still resolve exactly; target endpoints must match.
 - Ownership/reference-registry entries use `sourceDataset` instead of `sourceTable`. Existing
@@ -185,12 +240,63 @@ The target schema stays version 1; additions are defined in `schemas/cosmos-mode
 Keep these arrays in the existing conversion manifest, with current `domainSha256`, `sourceSha256`,
 selection policy, ownership, and merge evidence. They are required for version-2 inventories.
 
+### Document preservation
+
+Document-oriented sources preserve field names, object nesting, arrays, order, and additional properties by default.
+Do not flatten every inventoried path or duplicate a subtree and all its descendants merely to satisfy coverage.
+A unary `copy` mapping of an object/array accounts for its descendant field paths, including literal names and
+array traversal. Relational column coverage remains exact and does not receive this subtree exemption.
+Identity/routing metadata and explicit source-property collisions are narrow exceptions to name preservation.
+
+Record one `documentMappings[]` entry per document-sourced target entity:
+
+```json
+{
+  "domain": "Sales",
+  "container": "orders",
+  "entity": "Order",
+  "mode": "preserve",
+  "examples": [{ "source": { "_id": "order-1", "details": { "notes": [] } },
+                 "output": { "id": "order-1", "docType": "order", "_id": "order-1", "details": { "notes": [] } } }]
+}
+```
+
+Examples must be complete documents matching the actual entity mappings, not isolated field samples.
+`executeDocumentMapping` in `mapping-examples.mjs` replays the field mappings, preserves unaccounted root properties,
+checks metadata collisions, and resolves identity. It takes the inventory, entity, that entity's field mappings,
+document decision, source object, and optional `{partitionKeys, generatedId}`. A generated UUID example supplies
+its already assigned ID; the helper does not generate production assignments. Source objects are not mutated.
+Copied subtrees preserve unlisted nested properties. A source `id`, `docType`, or Cosmos system-property collision
+must be inventoried and explicitly remapped; never silently overwrite or drop it.
+Fixed routing metadata may be supplied by a generated constant mapping (including a matching `docType` discriminator).
+This can preserve collection namespaces in a composite partition key without re-encoding otherwise compatible IDs.
+Examples from distinct target entities that collide on the same container, full partition tuple, and ID are rejected.
+Passing finite examples is not proof of population-wide uniqueness or application enforcement.
+
+Splitting, flattening, denormalization, or ordinary field renaming requires `mode:"reshape"` and
+`justification:{benefit,rationale,evidence,tradeoffs}`. Benefit is `performance`, `reliability`, `cost`, or
+`service-limit`. Explain the specific target advantage and additional migration/application complexity.
+Evidence references selected used source files or the reviewed access-pattern/volumetrics templates
+(workspace-relative paths, optionally with a fragment). Do not manufacture measurements. If evidence is missing,
+ask focused workload questions or retain the simpler source-shaped design.
+Reshaping still needs complete executable examples and full source coverage; justification is not permission
+to discard data. Splits requiring unrepresented joins or multi-item execution need an explicit supported mapping
+extension, not fabricated successful examples.
+
+This document-evidence requirement is a conversion-contract change. Existing version-2 document models lacking
+it need renewed conversion review; do not infer preservation or manufacture examples from old outputs.
+Freshness records the document-mapping contract version. Version-1 relational evidence is unchanged.
+
 `fieldMappings[]` has `{domain,container,entity,target,inputs,operation,examples,constant?}`.
 Inputs exactly match ordered attribute source references. Cover every non-id target attribute once.
 Supported bounded operations are `copy`, `tuple` (ordered present values), `constant`,
 `extended-json-string` (canonical BSON wrappers, exact digits), `json-string` (lossless JSON text),
 and `array-envelope` (typed traversal to JSON arrays with `{present:false}`, `{present:true,value}`,
 or nested `{items:[...]}` envelopes, preserving missing versus null and dimensions).
+`date-iso8601` explicitly converts a canonical Extended JSON date (UTC milliseconds string or exact
+`$numberLong` epoch milliseconds) to an ISO UTC string. Out-of-range or noncanonical values fail rather than
+losing precision. The existing `extended-json-string` operation retains its previous behavior for old evidence.
+Prefer the explicit date operation to storing JSON text inside a string when time queries require ISO dates.
 No scripts or arbitrary expressions execute. Example cases use
 `{inputs:[{state:"value",value:...}],output:{state:"value",value:...}}`; missing is `{state:"missing"}`.
 Typed path traversal produces `{state:"array",items:[...states]}`, preserving nested dimensions.
@@ -205,7 +311,7 @@ For example:
 ```json
 {
   "domain": "Sales", "container": "orders", "entity": "Order", "target": "sourceId",
-  "inputs": [{ "dataset": "orders", "field": "order-id" }],
+  "inputs": [{ "dataset": "orders", "field": "$._id" }],
   "operation": "extended-json-string",
   "examples": [{
     "inputs": [{ "state": "value", "value": { "$oid": "507f1f77bcf86cd799439011" } }],
@@ -213,6 +319,13 @@ For example:
   }]
 }
 ```
+
+A subtree `copy` may declare `conversions:[{field,operation}]`, referencing descendant field IDs in the same
+source dataset. Operations are bounded `date-iso8601` or `extended-json-string`; paths must not overlap.
+`executeFieldMapping` applies them recursively through the inventory's typed array/property paths while retaining
+names, array dimensions, order, missing/null distinctions, and unknown properties. Field examples show the complete
+subtree before and after conversion. Apply the same native-value policy consistently instead of keeping a raw copy
+and a separately converted projection of the same value.
 
 `identityExamples[]` has `{domain,container,entity,cases:[{item,id}]}`. Cover every standalone entity.
 The helper actually resolves each supplied item's identity and compares the expected ID.

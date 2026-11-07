@@ -47,6 +47,8 @@ a compatible destination API; this Skill targets NoSQL only.
    Preserve explicit selections, exclusions, unknown project properties, authority, user edits,
    native names, and ordered identities. Missing templates do not mean missing raw evidence.
    Omitted `files` remains dynamic; explicit `files: []` is empty, not permission to broaden scope.
+   For new inventory fields, use `sourceFieldId(path)` from `scripts/source-contract.mjs` to generate readable IDs
+   such as `$._id` and `$.items[*].sku`; copy these exact IDs into downstream references. Existing opaque IDs remain valid.
 
 ## Scope and Approvals
 
@@ -101,6 +103,13 @@ provide installation guidance. No direct REST substitute for an unsupported Cosm
 
 ## Checkpoint Invariants
 
+For document-oriented sources, preserve document names, nesting, arrays, and additional properties by default.
+Subtree lineage accounts for descendant fields without creating flattened copies. Split, flatten, denormalize, or
+rename ordinary fields only for an evidenced Cosmos DB performance, reliability, cost, or service-limit benefit;
+record the benefit and migration tradeoffs. Prefer a simple, compatible source identity and explicit native-value
+conversions. Require executable whole-document examples, not just independent field examples.
+Reuse compatible single source keys rather than automatically encoding them. Keep the original key by default;
+an explicitly approved lossless rename to `id` is also valid. Decide partition routing and uniqueness scope separately.
 Without code, ask about intended lookups, writes, transaction scope, retention, and scale. Distinguish user-declared
 requirements and schema-inferred candidates from measured workload; do not make code availability a modeling prerequisite.
 

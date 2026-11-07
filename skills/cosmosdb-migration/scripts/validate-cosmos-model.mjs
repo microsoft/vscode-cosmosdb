@@ -7,7 +7,9 @@ import { fileURLToPath } from 'node:url';
 import { requireOptionValue } from './cli-arguments.mjs';
 import { showHelp } from './cli-help.mjs';
 import { parseJson, readDomainModel, readPhaseEvidence } from './phase-summary.mjs';
-import { sourceRefs } from './source-contract.mjs';
+import { DIRECT_IDENTITY_ENCODINGS, isObjectIdSourceType, sourceRefs } from './source-contract.mjs';
+
+export { isObjectIdSourceType };
 
 const ROOT_KEYS = new Set([
     'version',
@@ -333,7 +335,7 @@ export function isUuidSourceType(sourceType) {
 
 export function classifyItemIdentity(entity) {
     if (entity?.identity) return entity.identity.kind === 'generated-uuid' ? 'generated-uuid'
-        : entity.identity.encoding === 'native-uuid' ? 'native-uuid' : 'derived';
+        : DIRECT_IDENTITY_ENCODINGS.has(entity.identity.encoding) ? entity.identity.encoding : 'derived';
     const template = typeof entity?.idTemplate === 'string' ? entity.idTemplate : '';
     const idSource = entity?.attributes?.find(attribute => attribute?.isId === true)?.source;
     const generatedSource = idSource?.table === '(generated)' || idSource?.column === '(uuid)';
@@ -350,19 +352,25 @@ export function classifyItemIdentity(entity) {
 }
 
 function checkIdTemplate(entity, jsonPath, errors) {
-    if (entity.isEmbeddedOnly === true) return;
+    if (entity.isEmbeddedOnly === true) {
+        if (entity.identity?.sourceKey === 'rename') addError(errors, jsonPath, 'an embedded identity cannot be renamed to standalone id');
+        return;
+    }
     if (entity.identity !== undefined) {
         if (entity.idTemplate !== undefined) addError(errors, jsonPath, 'identity and legacy idTemplate are mutually exclusive');
         const identity = entity.identity;
-        if (!checkObject(identity, `${jsonPath}.identity`, new Set(['kind', 'fields', 'encoding']), errors)) return;
+        if (!checkObject(identity, `${jsonPath}.identity`, new Set(['kind', 'fields', 'encoding', 'sourceKey']), errors)) return;
         if (identity.kind === 'generated-uuid') {
-            if (identity.fields !== undefined || identity.encoding !== undefined) addError(errors, jsonPath, 'generated UUID has no input fields or encoding');
+            if (identity.fields !== undefined || identity.encoding !== undefined || identity.sourceKey !== undefined) addError(errors, jsonPath, 'generated UUID has no input fields, encoding, or source key');
             if (entity.attributes.find(attribute => attribute.isId)?.source?.generated !== 'uuid') addError(errors, jsonPath, 'generated UUID requires a generated uuid id attribute');
             return;
         }
-        if (identity.kind !== 'fields' || !['typed-hex-v1', 'native-uuid'].includes(identity.encoding)) addError(errors, jsonPath, 'identity requires fields and a supported lossless encoding');
+        if (identity.kind !== 'fields' || (!DIRECT_IDENTITY_ENCODINGS.has(identity.encoding) && identity.encoding !== 'typed-hex-v1')) addError(errors, jsonPath, 'identity requires fields and a supported lossless encoding');
+        if (identity.sourceKey !== undefined && !['preserve', 'rename'].includes(identity.sourceKey)) addError(errors, jsonPath, 'sourceKey must be preserve or rename');
+        const rename = identity.sourceKey === 'rename';
+        if (rename && (!entity.sourceDataset || !DIRECT_IDENTITY_ENCODINGS.has(identity.encoding))) addError(errors, jsonPath, 'source-key rename requires inventory lineage and a direct identity encoding');
         if (checkArray(identity.fields, `${jsonPath}.identity.fields`, errors, { min: 1 })) {
-            if (identity.encoding === 'native-uuid' && identity.fields.length !== 1) addError(errors, jsonPath, 'native UUID requires one field');
+            if (DIRECT_IDENTITY_ENCODINGS.has(identity.encoding) && identity.fields.length !== 1) addError(errors, jsonPath, 'native identity requires one field');
             checkUnique(identity.fields.map(reference => JSON.stringify([reference?.dataset, reference?.field])), jsonPath, 'identity field', errors, true);
             const idRefs = sourceRefs(entity.attributes.find(attribute => attribute.isId)?.source);
             if (JSON.stringify(idRefs.map(reference => [reference.dataset, reference.field])) !==
@@ -372,8 +380,12 @@ function checkIdTemplate(entity, jsonPath, errors) {
             for (const reference of identity.fields) {
                 checkFieldReference(reference, jsonPath, errors);
                 const matches = entity.attributes.filter(attribute => attribute.target !== 'id' && attribute.source?.dataset === reference.dataset && attribute.source?.field === reference.field);
-                if (matches.length !== 1 || matches[0].optional || matches[0].nullable) addError(errors, jsonPath, 'identity inputs require one separate non-null required natural-key attribute');
-                if (identity.encoding === 'native-uuid' && !isUuidSourceType(matches[0]?.source?.type)) addError(errors, jsonPath, 'native UUID requires a UUID source type');
+                const attribute = rename ? entity.attributes.find(attribute => attribute.isId) : matches[0];
+                if (rename ? matches.length !== 0 : matches.length !== 1) addError(errors, jsonPath, 'identity inputs require one separate natural-key attribute unless explicitly renamed to id');
+                if (!attribute || attribute.optional || attribute.nullable) addError(errors, jsonPath, 'identity inputs require a non-null required attribute');
+                if (identity.encoding === 'native-uuid' && !isUuidSourceType(attribute?.source?.type)) addError(errors, jsonPath, 'native UUID requires a UUID source type');
+                if (identity.encoding === 'native-string' && attribute?.source?.type !== 'string') addError(errors, jsonPath, 'native string identity requires a string source type');
+                if (identity.encoding === 'objectid-hex' && !isObjectIdSourceType(attribute?.source?.type)) addError(errors, jsonPath, 'ObjectId identity requires an ObjectId source type');
             }
         }
         return;

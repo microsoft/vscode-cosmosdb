@@ -69,6 +69,9 @@
     "test": "node scripts/run-integration-tests.mjs",
     "test:proxy": "node scripts/test-proxy.mjs",
     "test:migration-skill": "node --test skills/cosmosdb-relational-migration/tests/*.test.mjs",
+    "eval": "cross-env VALLY_TELEMETRY_OPTOUT=1 node scripts/eval.mjs --output-dir .vally/results --workers 2 --max-retries 2 --require-pass",
+    "eval:lint": "cross-env VALLY_TELEMETRY_OPTOUT=1 vally lint --eval-spec evals --grader-plugin ./evals/cosmosdb-relational-migration/check-artifacts.mjs --grader-plugin ./evals/cosmosdb-relational-migration/adventureworks/check-artifacts.mjs",
+    "eval:test": "node --test evals/cosmosdb-relational-migration/*.test.mjs",
     "test:shell-mcp": "cross-env COSMOSDB_SHELL_MCP_INTEGRATION=1 vitest run src/cosmosDBShell/mcpProvider.test.ts",
     "vitest": "concurrently -P -n vitest,migration-skill -c magenta,cyan \"vitest run {@}\" \"npm run test:migration-skill\" --",
     "vitest:coverage": "concurrently -P -n vitest,migration-skill -c magenta,cyan \"vitest run --coverage {@}\" \"npm run test:migration-skill\" --",
@@ -119,6 +122,9 @@
     }
   },
   "devDependencies": {
+    "@github/copilot": "1.0.92",
+    "@microsoft/vally": "0.18.0",
+    "@microsoft/vally-cli": "0.18.0",
     "@playwright/test": "~1.64.0",
     "@testing-library/jest-dom": "~7.0.0",
     "@testing-library/react": "~16.3.2",

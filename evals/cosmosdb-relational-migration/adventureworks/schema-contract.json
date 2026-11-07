@@ -1,0 +1,190 @@
+{
+  "dbo.BuildVersion": {
+    "columns": ["SystemInformationID", "Database Version", "VersionDate", "ModifiedDate"],
+    "primaryKey": ["SystemInformationID"],
+    "foreignKeys": []
+  },
+  "dbo.ErrorLog": {
+    "columns": [
+      "ErrorLogID",
+      "ErrorTime",
+      "ErrorNumber",
+      "ErrorSeverity",
+      "ErrorState",
+      "ErrorProcedure",
+      "ErrorLine",
+      "ErrorMessage"
+    ],
+    "primaryKey": ["ErrorLogID"],
+    "foreignKeys": []
+  },
+  "SalesLT.Address": {
+    "columns": [
+      "AddressID",
+      "AddressLine1",
+      "AddressLine2",
+      "City",
+      "StateProvince",
+      "CountryRegion",
+      "PostalCode",
+      "rowguid",
+      "ModifiedDate"
+    ],
+    "primaryKey": ["AddressID"],
+    "foreignKeys": []
+  },
+  "SalesLT.Customer": {
+    "columns": [
+      "CustomerID",
+      "NameStyle",
+      "Title",
+      "FirstName",
+      "MiddleName",
+      "LastName",
+      "Suffix",
+      "CompanyName",
+      "SalesPerson",
+      "EmailAddress",
+      "Phone",
+      "PasswordHash",
+      "PasswordSalt",
+      "rowguid",
+      "ModifiedDate"
+    ],
+    "primaryKey": ["CustomerID"],
+    "foreignKeys": []
+  },
+  "SalesLT.CustomerAddress": {
+    "columns": ["CustomerID", "AddressID", "AddressType", "rowguid", "ModifiedDate"],
+    "primaryKey": ["CustomerID", "AddressID"],
+    "foreignKeys": [
+      { "columns": ["AddressID"], "referencedTable": "SalesLT.Address", "referencedColumns": ["AddressID"] },
+      { "columns": ["CustomerID"], "referencedTable": "SalesLT.Customer", "referencedColumns": ["CustomerID"] }
+    ]
+  },
+  "SalesLT.Product": {
+    "columns": [
+      "ProductID",
+      "Name",
+      "ProductNumber",
+      "Color",
+      "StandardCost",
+      "ListPrice",
+      "Size",
+      "Weight",
+      "ProductCategoryID",
+      "ProductModelID",
+      "SellStartDate",
+      "SellEndDate",
+      "DiscontinuedDate",
+      "ThumbNailPhoto",
+      "ThumbnailPhotoFileName",
+      "rowguid",
+      "ModifiedDate"
+    ],
+    "primaryKey": ["ProductID"],
+    "foreignKeys": [
+      {
+        "columns": ["ProductCategoryID"],
+        "referencedTable": "SalesLT.ProductCategory",
+        "referencedColumns": ["ProductCategoryID"]
+      },
+      {
+        "columns": ["ProductModelID"],
+        "referencedTable": "SalesLT.ProductModel",
+        "referencedColumns": ["ProductModelID"]
+      }
+    ]
+  },
+  "SalesLT.ProductCategory": {
+    "columns": ["ProductCategoryID", "ParentProductCategoryID", "Name", "rowguid", "ModifiedDate"],
+    "primaryKey": ["ProductCategoryID"],
+    "foreignKeys": [
+      {
+        "columns": ["ParentProductCategoryID"],
+        "referencedTable": "SalesLT.ProductCategory",
+        "referencedColumns": ["ProductCategoryID"]
+      }
+    ]
+  },
+  "SalesLT.ProductDescription": {
+    "columns": ["ProductDescriptionID", "Description", "rowguid", "ModifiedDate"],
+    "primaryKey": ["ProductDescriptionID"],
+    "foreignKeys": []
+  },
+  "SalesLT.ProductModel": {
+    "columns": ["ProductModelID", "Name", "CatalogDescription", "rowguid", "ModifiedDate"],
+    "primaryKey": ["ProductModelID"],
+    "foreignKeys": []
+  },
+  "SalesLT.ProductModelProductDescription": {
+    "columns": ["ProductModelID", "ProductDescriptionID", "Culture", "rowguid", "ModifiedDate"],
+    "primaryKey": ["ProductModelID", "ProductDescriptionID", "Culture"],
+    "foreignKeys": [
+      {
+        "columns": ["ProductDescriptionID"],
+        "referencedTable": "SalesLT.ProductDescription",
+        "referencedColumns": ["ProductDescriptionID"]
+      },
+      {
+        "columns": ["ProductModelID"],
+        "referencedTable": "SalesLT.ProductModel",
+        "referencedColumns": ["ProductModelID"]
+      }
+    ]
+  },
+  "SalesLT.SalesOrderDetail": {
+    "columns": [
+      "SalesOrderID",
+      "SalesOrderDetailID",
+      "OrderQty",
+      "ProductID",
+      "UnitPrice",
+      "UnitPriceDiscount",
+      "LineTotal",
+      "rowguid",
+      "ModifiedDate"
+    ],
+    "primaryKey": ["SalesOrderID", "SalesOrderDetailID"],
+    "foreignKeys": [
+      { "columns": ["ProductID"], "referencedTable": "SalesLT.Product", "referencedColumns": ["ProductID"] },
+      {
+        "columns": ["SalesOrderID"],
+        "referencedTable": "SalesLT.SalesOrderHeader",
+        "referencedColumns": ["SalesOrderID"]
+      }
+    ]
+  },
+  "SalesLT.SalesOrderHeader": {
+    "columns": [
+      "SalesOrderID",
+      "RevisionNumber",
+      "OrderDate",
+      "DueDate",
+      "ShipDate",
+      "Status",
+      "OnlineOrderFlag",
+      "SalesOrderNumber",
+      "PurchaseOrderNumber",
+      "AccountNumber",
+      "CustomerID",
+      "ShipToAddressID",
+      "BillToAddressID",
+      "ShipMethod",
+      "CreditCardApprovalCode",
+      "SubTotal",
+      "TaxAmt",
+      "Freight",
+      "TotalDue",
+      "Comment",
+      "rowguid",
+      "ModifiedDate"
+    ],
+    "primaryKey": ["SalesOrderID"],
+    "foreignKeys": [
+      { "columns": ["BillToAddressID"], "referencedTable": "SalesLT.Address", "referencedColumns": ["AddressID"] },
+      { "columns": ["ShipToAddressID"], "referencedTable": "SalesLT.Address", "referencedColumns": ["AddressID"] },
+      { "columns": ["CustomerID"], "referencedTable": "SalesLT.Customer", "referencedColumns": ["CustomerID"] }
+    ]
+  }
+}

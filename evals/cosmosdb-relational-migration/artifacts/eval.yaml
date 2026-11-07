@@ -1,0 +1,92 @@
+name: cosmosdb-relational-migration-artifacts
+description: Execute bounded phases in synthetic workspaces and independently validate the resulting artifacts.
+type: capability
+
+agent_environment:
+  skills:
+    - ../../../skills/cosmosdb-relational-migration
+    - ../../../skills/cosmosdb-best-practices
+  files:
+    - { src: ../setup.mjs, dest: setup.mjs }
+    - { src: ../fixtures.mjs, dest: fixtures.mjs }
+
+defaults:
+  executor: copilot-sdk
+  model: gpt-6.1-terra
+  reasoning_effort: high
+  judge_model: gpt-6.1-sol
+  judge_reasoning_effort: high
+  runs: 1
+  timeout: 15m
+
+scoring:
+  threshold: 1
+
+stimuli:
+  - name: preflight-artifacts
+    tags: { category: artifacts, phase: preflight }
+    agent_environment:
+      commands: [node setup.mjs preflight]
+    prompt: |
+      Run only preflight for the relational-to-Cosmos DB migration in ./app, autonomously.
+      Use model-only DDL interpretation; no Python, SQLGlot, custom DDL parser, installs,
+      source database access, or cloud calls. The existing DDL and application details
+      are authoritative. The supplied volumetrics and access-pattern tables are synthetic
+      evaluation inputs; preserve their values and disclose that they are not production
+      measurements. Complete and validate the phase artifacts. Do not execute discovery,
+      assessment, conversion, provisioning or code migration. Keep application files and
+      unknown project properties unchanged. Do not analyze projects outside ./app.
+    rubric:
+      - Produce a faithful source inventory for dbo.Orders with Id as primary key and all three supplied columns, without modifying DDL or application files.
+      - Report preflight completion only after validating required artifacts and freshness; do not evaluate SDK compatibility or advance discovery.
+      - Explicitly distinguish the synthetic workload values from production observations.
+    graders:
+      - type: completed
+      - type: skill-invocation
+        config: { required: [cosmosdb-relational-migration] }
+      - type: migration-artifacts
+        config: { phase: preflight }
+      - type: prompt
+        config: &artifact-judge
+          scoring: binary
+          threshold: 1
+          evidence: [trajectory, diff, repo]
+          prompt: >-
+            Evaluate every rubric criterion against the generated files and trajectory,
+            not just the final claims. Accept semantically equivalent explanations.
+            Reject substantive omissions, contradictions, fabricated evidence, and
+            incorrect advice. Do not demand exact prose or a particular tool sequence.
+      - type: output-matches
+        config: { pattern: '\S' }
+    artifacts:
+      include: [app/.cosmosdb-migration/**]
+
+  - name: assessment-artifacts
+    tags: { category: artifacts, phase: assessment }
+    agent_environment:
+      commands: [node setup.mjs assessment]
+    prompt: |
+      Run only assessment for the relational-to-Cosmos DB migration in ./app, autonomously.
+      Preflight and discovery are already complete. Assign the authoritative dbo.Orders
+      table to its business domain, retain its confirmed application mapping, produce
+      the assessment summary and domain evidence, and validate completion. These inputs
+      are synthetic; do not claim production measurements. Preserve existing source,
+      preflight and discovery artifacts and unknown project properties. Do not choose
+      final containers or partition keys, execute schema conversion, install dependencies,
+      contact databases or Azure, or change application code. Analyze no other project.
+    rubric:
+      - Assign dbo.Orders exactly once to a coherent, mapped business domain with its read pattern and evidence-backed rationale.
+      - Produce the root and domain assessment summaries and manifests and validate the assessment checkpoint, including freshness.
+      - Preserve accepted source and predecessor artifacts and stop before final Cosmos DB model design or any resource mutation.
+    graders:
+      - type: completed
+      - type: skill-invocation
+        config: { required: [cosmosdb-relational-migration] }
+      - type: migration-artifacts
+        config: { phase: assessment }
+      - type: prompt
+        config: *artifact-judge
+      - type: output-matches
+        config: { pattern: '\S' }
+    artifacts:
+      include: [app/.cosmosdb-migration/**]

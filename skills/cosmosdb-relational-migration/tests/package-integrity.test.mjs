@@ -74,6 +74,9 @@ test('defines a project boundary independent of the host workspace', () => {
     const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
     assert.match(skill, /default to the sole workspace folder\s+only when it is also the target project root/u);
     assert.match(skill, /directory containing its `\.cosmosdb-migration` folder/u);
+    assert.match(skill, /An explicit `workspace` and a selected existing migration are two constraints, not a\s+precedence order/u);
+    assert.match(skill, /Do not select either root, inspect either project, initialize another migration/u);
+    assert.match(skill, /If the host cannot ask, report the unresolved\s+scope and stop rather than choosing a root/u);
     assert.match(skill, /If multiple projects could match, ask the user to select one/u);
     assert.match(skill, /not the collection of open folders or a containing repository/u);
     assert.match(skill, /Scope search tools\s+explicitly and discard results outside it/u);

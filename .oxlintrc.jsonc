@@ -25,6 +25,7 @@
     ".azure-pipelines",
     ".config",
     ".cosmosdb-data/",
+    ".vally/",
     ".github",
     ".vscode-test",
     "bundle-analysis/",

@@ -1,0 +1,179 @@
+name: Migration Skill Evaluations
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'skills/cosmosdb-relational-migration/**'
+      - 'skills/cosmosdb-best-practices/**'
+      - 'evals/**'
+      - 'scripts/eval.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/migration-evals.yml'
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migration-evals-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Detect migration skill changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      offline: ${{ steps.filter.outputs.offline }}
+      live: ${{ steps.filter.outputs.live }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Check changed inputs
+        id: filter
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+        shell: bash
+        run: |
+          if [ "$EVENT_NAME" = workflow_dispatch ]; then
+            echo "offline=true" >> "$GITHUB_OUTPUT"
+            echo "live=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$EVENT_NAME" = pull_request ]; then
+            base=HEAD^1
+          elif [[ "$BEFORE_SHA" =~ ^0+$ ]]; then
+            base=$(git hash-object -t tree /dev/null)
+          else
+            base=$BEFORE_SHA
+          fi
+          git diff --no-renames --name-only -z "$base" HEAD -- > "$RUNNER_TEMP/migration-eval-paths"
+          offline=false
+          live=false
+          while IFS= read -r -d '' path; do
+            case "$path" in
+              skills/cosmosdb-relational-migration/*|skills/cosmosdb-best-practices/*)
+                offline=true
+                live=true
+                ;;
+              evals/*|scripts/eval.mjs|package.json|package-lock.json|.github/workflows/migration-evals.yml)
+                offline=true
+                ;;
+            esac
+          done < "$RUNNER_TEMP/migration-eval-paths"
+          echo "offline=$offline" >> "$GITHUB_OUTPUT"
+          echo "live=$live" >> "$GITHUB_OUTPUT"
+
+  validate:
+    name: Validate migration evaluations offline
+    needs: changes
+    if: needs.changes.outputs.offline == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run eval:lint
+      - run: npm run eval:test
+
+  live:
+    name: Run live migration evaluations
+    needs: [changes, validate]
+    if: >-
+      needs.changes.outputs.live == 'true' &&
+      (github.event_name != 'pull_request' ||
+       (github.event.pull_request.head.repo.full_name == github.repository &&
+        github.actor != 'dependabot[bot]' &&
+        github.event.pull_request.user.login != 'dependabot[bot]'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    permissions:
+      contents: read
+      copilot-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Evaluate migration skill
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run eval -- --tag category!=extended
+      - name: Evaluate AdventureWorks migration
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run eval -- --tag category=extended --max-retries 0
+      - name: Publish reports
+        if: always()
+        shell: bash
+        run: |
+          if [ -d .vally/results ]; then
+            while IFS= read -r -d '' report; do
+              cat "$report" >> "$GITHUB_STEP_SUMMARY"
+              printf '\n' >> "$GITHUB_STEP_SUMMARY"
+            done < <(find .vally/results -name eval-results.md -type f -print0)
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: migration-vally-results-${{ github.run_attempt }}
+          path: .vally/results/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
+
+  gate:
+    name: Migration evaluation gate
+    needs: [changes, validate, live]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Report outcome
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          OFFLINE: ${{ needs.changes.outputs.offline }}
+          LIVE: ${{ needs.changes.outputs.live }}
+          VALIDATION_RESULT: ${{ needs.validate.result }}
+          LIVE_RESULT: ${{ needs.live.result }}
+          TRUSTED: >-
+            ${{ github.event_name != 'pull_request' ||
+                (github.event.pull_request.head.repo.full_name == github.repository &&
+                 github.actor != 'dependabot[bot]' &&
+                 github.event.pull_request.user.login != 'dependabot[bot]') }}
+        shell: bash
+        run: |
+          [ "$CHANGES_RESULT" = success ] || { echo "::error::Change detection failed."; exit 1; }
+          case "$OFFLINE" in
+            false) echo "No evaluation inputs changed; skipped." >> "$GITHUB_STEP_SUMMARY"; exit 0 ;;
+            true) ;;
+            *) echo "::error::Invalid change detection result."; exit 1 ;;
+          esac
+          [ "$VALIDATION_RESULT" = success ] || { echo "::error::Offline evaluation checks failed."; exit 1; }
+          if [ "$LIVE" = true ] && [ "$TRUSTED" = true ]; then
+            [ "$LIVE_RESULT" = success ] || { echo "::error::Live evaluations did not succeed."; exit 1; }
+            echo "Offline and live evaluations passed." >> "$GITHUB_STEP_SUMMARY"
+          else
+            [ "$LIVE_RESULT" = skipped ] || { echo "::error::Unexpected live evaluation result."; exit 1; }
+            echo "Offline checks passed. Live evaluations skipped: unchanged skills or untrusted PR." >> "$GITHUB_STEP_SUMMARY"
+          fi

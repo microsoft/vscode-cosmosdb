@@ -288,3 +288,6 @@ junit.xml
 **/junit.xml
 
 coverage/
+
+# Vally reports and preserved trial workspaces
+.vally/

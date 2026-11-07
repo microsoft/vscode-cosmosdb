@@ -1,11 +1,13 @@
 # Test Configuration Documentation
 
-This project uses **two test frameworks**:
+This project uses the following test runners and evaluation tools:
 
 - **Vitest** — unit tests (Node, mocked `vscode`) and integration tests
   (real `vscode` API inside the Extension Host).
 - **Playwright** — end-to-end tests that drive the React webviews inside a
   real downloaded VS Code instance, against a Cosmos DB emulator in Docker.
+- **Node's built-in test runner** — portable migration skill tests and offline evaluation tests.
+- **Vally** — live migration skill capability and artifact evaluations using GitHub Copilot.
 
 ## 📋 Test Structure Overview
 
@@ -15,6 +17,11 @@ vscode-cosmosdb/
 │   └── **/*.test.ts              # Vitest unit tests (run in Node, vscode is mocked)
 ├── packages/*/src/
 │   └── **/*.test.ts              # Vitest unit tests for workspace packages
+├── skills/cosmosdb-relational-migration/tests/
+│   └── *.test.mjs                # Portable migration helper and contract tests
+├── evals/cosmosdb-relational-migration/
+│   ├── **/eval.yaml              # Vally capability and artifact evaluation specs
+│   └── *.test.mjs                # Offline grader, fixture, and CI gating tests
 ├── test/                         # Integration tests (Vitest in Extension Host)
 │   ├── index.ts                  # Custom @vitest/runner entry executed inside VS Code
 │   ├── **/*.test.ts              # Vitest integration tests (real vscode API)
@@ -25,6 +32,7 @@ vscode-cosmosdb/
 │       ├── fixtures/workspace/   # Workspace folder copied into each worker temp dir
 │       └── README.md             # Detailed e2e architecture notes
 ├── scripts/
+│   ├── eval.mjs                  # Runs Vally specs in isolated trial workspaces
 │   ├── run-integration-tests.mjs # Downloads VS Code + launches the integration host
 │   ├── test-proxy.mjs            # Isolated proxy-routing matrix launcher
 │   ├── test-proxy-host.mjs       # SDK/adapter comparison inside the Extension Host
@@ -62,6 +70,7 @@ Instead, we drive `@vitest/runner.startTests()` directly from a small entry scri
 
 - Use Node's built-in test runner so the standalone skill does not depend on Vitest.
 - Run alone with `npm run test:migration-skill`, or as part of the main `npm run vitest` command.
+- For live agent behavior and artifact checks, see [Migration skill evaluations (Vally)](#migration-skill-evaluations-vally).
 
 ### Integration tests (`test/**/*.test.ts`)
 
@@ -146,6 +155,147 @@ npm run vitest         # one-shot Vitest and migration skill tests
 npm run vitest:coverage # one-shot tests with Vitest coverage
 npm run vitest:ui      # Vitest watch UI (excludes migration skill tests)
 ```
+
+### Migration skill evaluations (Vally)
+
+The [Vally suite](../evals/cosmosdb-relational-migration/) follows the live capability-evaluation approach in
+[AzureCosmosDB/cosmosdb-agent-kit#277](https://github.com/AzureCosmosDB/cosmosdb-agent-kit/pull/277).
+It supplements, rather than replaces, `npm run test:migration-skill` and the extension's unit and UI tests.
+
+Use the Node.js version in `.nvmrc` and install the pinned development dependencies with `npm ci`.
+
+```bash
+# No model calls or credentials required.
+npm run eval:lint
+npm run eval:test
+
+# Requires Copilot authentication and access to both configured models.
+npm run eval
+npm run eval -- --tag category=guidance
+npm run eval -- --tag category=artifacts --tag phase=preflight
+# Real-sample migration and inference; fetches the pinned application once.
+npm run eval -- --tag category=extended --max-retries 0
+# Run the smaller suite without downloading the external sample.
+npm run eval -- --tag category!=extended
+# Optional model overrides, without changing the committed specs.
+npm run eval -- --model <agent-model> --judge-model <judge-model>
+```
+
+The suite includes:
+
+- Guidance scenarios for all six phases, parser consent and fallback, source authority, SDK eligibility,
+  domain ownership, peer-skill design guidance, approval gates, target changes, reruns, project scope,
+  historical code-migration completion, and project-local memory.
+- An unrelated PostgreSQL prompt that must activate neither migration nor best-practices skills.
+- Two artifact-producing scenarios: preflight from supplied synthetic inputs, and assessment from a valid
+  discovery checkpoint. Each trial gets a separate `app` fixture and local copies of both skills.
+  A host-side grader plugin reruns trusted migration completion validators, checks source inventory and ownership,
+  and rejects source edits, changed predecessor evidence, lost user metadata, and out-of-phase artifacts.
+  The model judge also inspects the generated files, not just the agent's completion claim.
+- Two extended AdventureWorks scenarios: a multi-turn migration from discovery through assessment,
+  schema conversion, artifact-only provisioning and code-migration planning; and a separate discovery
+  run that infers DDL from the real Entity Framework application without receiving the supplied schema.
+
+Every scenario requires completion, correct skill activation, a nonempty answer, and binary correctness
+at threshold `1`. Guidance scenarios also require no workspace edits. Offline fake-judge tests exercise
+grading and rejection paths; they do **not** establish model quality. Artifact checks validate recorded
+contracts and source hashes, not SQL-engine fidelity or real deployment success. No scenario deploys
+resources, executes generated seed scripts, rewrites application code, or builds the sample application.
+
+Live runs consume Copilot requests. Authenticate through the Copilot CLI or set `COPILOT_GITHUB_TOKEN`
+in your environment; never put tokens in specs or fixtures. Acceptance evaluations use frontier models
+to match the recommended migration workflow:
+
+| Suite                                 | Agent           | Judge         | Agent / judge reasoning effort |
+| ------------------------------------- | --------------- | ------------- | ------------------------------ |
+| Guidance and small artifact scenarios | `gpt-6.1-terra` | `gpt-6.1-sol` | `high` / `high`                |
+| Extended AdventureWorks scenarios     | `gpt-6.1-sol`   | `gpt-6-astra` | `high` / `high`                |
+
+Model IDs and reasoning effort are pinned in each spec. Local model access does not establish access for
+the Actions job token: confirm both agent and judge access in CI when changing these defaults. Unavailable
+models must fail the run rather than silently falling back to a different model.
+
+Vally telemetry is disabled by the npm commands. Trials prohibit deployment, source
+database access and dependency installation, and need no Azure credentials or emulator. Local Vally
+workspaces are isolated directories, **not an OS security sandbox**; run only trusted skills and fixtures.
+The runner rejects `--in-place`. Do not point workspace overrides at a real application.
+
+Reports, trajectories and optional preserved workspaces belong under the ignored `.vally/` directory.
+Use `--workspace .vally/workspaces` to retain trial workspaces for diagnosis. Vally retries executor timeouts
+and rate limits at most twice; failed correctness verdicts are not retried or relaxed.
+The extended CI step disables executor retries to avoid repeating an expensive full migration after a timeout.
+
+The [evaluation workflow](../.github/workflows/migration-evals.yml) runs offline checks when evaluation inputs
+change. Automatic live runs require changes under `skills/cosmosdb-relational-migration/` or its required
+`skills/cosmosdb-best-practices/` peer; evaluation-only and unrelated changes skip model calls.
+Fork and Dependabot PRs are always offline-only. A manual workflow dispatch explicitly runs the whole suite.
+Live CI uses a job-scoped token with `copilot-requests: write`, publishes reports and retains artifacts for
+14 days. The aggregate check reports success for intentional skips and fails for incomplete required jobs.
+
+When adding scenarios, use synthetic inputs, meaningful behavioral rubrics and category/phase tags.
+Keep answer keys and executable artifact checks outside agent-visible fixtures. The artifact grader plugin
+loads validators from the repository, not from potentially modified copies in the trial workspace.
+Extend the offline tests with a passing case and focused malformed-output cases for each new artifact contract.
+
+#### Comparing migration models
+
+Use the same judge and reasoning effort for every candidate, keeping fixtures, prompts, rubrics, validators
+and thresholds unchanged:
+
+```bash
+npm run eval -- --tag category=extended \
+  --model gpt-6.1-terra,gpt-6.1-sol --judge-model gpt-6-astra \
+  --reasoning-effort high --judge-reasoning-effort high \
+  --runs 1 --max-retries 0
+```
+
+Vally reports each agent model separately. One trial per scenario is a diagnostic comparison, not a
+statistically reliable ranking; use repeated trials before drawing reliability conclusions. Preserve failed
+outputs and inspect substantive findings manually. A stronger judge does not replace deterministic checks,
+and a passing frontier-model run does not erase a demonstrated omission in another model's output.
+With the pinned Vally version, omit `--workspace` for multi-model runs to avoid workspace-path collisions;
+configured output artifacts are still retained. To preserve complete workspaces, run each model separately
+with a distinct workspace root.
+
+#### AdventureWorks inputs and assertions
+
+The [extended specs](../evals/cosmosdb-relational-migration/adventureworks/eval.yaml) use
+[Azure-Samples/AdventureWorks.Web](https://github.com/Azure-Samples/AdventureWorks.Web) at commit
+`d548c0ddb3e3a464fa34c1fdc39c2333506b42cc`. The repository is MIT-licensed, archived, and targets
+.NET Core 2.1. It is intentionally analyzed as legacy source, not restored, built, or started.
+Framework modernization belongs in the generated plan, not in evaluation setup.
+
+The runner fetches that exact commit once into `.vally/fixtures/adventureworks-web/` before starting
+matching live stimuli, then copies the checkout into each isolated trial without its Git metadata.
+Its license is retained. A cached checkout must have the pinned HEAD and no local changes; mismatches
+fail explicitly rather than resetting or overwriting files. Offline lint/tests and filtered runs that
+exclude the extended scenarios do not download it. Initial preparation requires Git and GitHub access.
+
+[AdventureworksLT.sql](../evals/cosmosdb-relational-migration/adventureworks/AdventureworksLT.sql) is the
+supplied EF-aligned AdventureWorksLT schema export, normalized to LF line endings. It is a versioned test
+input, not downloaded from the application's branch or regenerated during CI. Only the supplied-DDL
+scenario receives it; the inference scenario receives application code and synthetic workload assumptions.
+No database backup, production rows, credentials, or live source database are required.
+
+The host-side [schema contract](../evals/cosmosdb-relational-migration/adventureworks/schema-contract.json)
+records reviewed table/column inventories, ordered primary keys, and foreign-key endpoints. Deterministic
+graders compare the agent's evidence with those facts, require read/write evidence from all three CRUD
+controllers, check inference provenance, and rerun the portable phase validators. The full scenario also
+requires exact table coverage in assessment and conversion, model-consistent Bicep/seed artifacts, a valid
+plan-only manifest, untouched application/DDL bytes, preserved user metadata, and no fabricated deployment
+verification or application-build results.
+
+The model judge covers semantic details without a fixed container layout: case-insensitive uniqueness,
+composite relationships, cascade behavior, self-reference, sequence-generated IDs, exact financial/computed
+values, XML/binary preservation, modernization and rollback. Workload numbers and source collation are
+explicit synthetic planning assumptions, not facts measured from the sample. Passing these checks does
+not prove source-engine validity, production performance, successful deployment or executable migrated code.
+
+Extended trials have a 60-minute timeout. CI runs them after the smaller live suite under the same
+skill-change/trusted-PR gate; the whole live job is capped at 150 minutes. Changes to the sample pin,
+DDL or graders alone still receive offline checks only, so use a manual dispatch to evaluate those changes.
+When updating the pin or DDL, review the independent contract and semantic rubrics rather than regenerating
+expected answers from the agent's output.
 
 ### Integration tests (slow, real VS Code)
 

@@ -4,7 +4,7 @@
   "cosmosdb.command.account.delete": "Odstranit účet...",
   "cosmosdb.command.account.unsupported": "Otevřít nepodporovaný účet",
   "cosmosdb.command.account.overview.open": "Otevřít přehled účtu",
-  "cosmosdb.command.account.databaseHub.open": "View in Database Hub",
+  "cosmosdb.command.account.databaseHub.open": "Zobrazit v centru databází",
   "cosmosdb.command.account.overview.menu": "Přehled účtu (Preview)",
   "cosmosdb.command.account.overview.overview": "Přehled",
   "cosmosdb.command.account.overview.normalizedRu": "Normalizovaná RU",

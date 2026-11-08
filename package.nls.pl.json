@@ -4,7 +4,7 @@
   "cosmosdb.command.account.delete": "Usuń konto…",
   "cosmosdb.command.account.unsupported": "Otwórz nieobsługiwane konto",
   "cosmosdb.command.account.overview.open": "Otwórz przegląd konta",
-  "cosmosdb.command.account.databaseHub.open": "View in Database Hub",
+  "cosmosdb.command.account.databaseHub.open": "Wyświetl w centrum bazy danych",
   "cosmosdb.command.account.overview.menu": "Omówienie konta (wersja zapoznawcza)",
   "cosmosdb.command.account.overview.overview": "Przegląd",
   "cosmosdb.command.account.overview.normalizedRu": "Znormalizowane jednostki RU",

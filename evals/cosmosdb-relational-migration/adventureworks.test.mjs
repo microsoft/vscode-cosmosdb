@@ -3,20 +3,32 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { filterStimuli, loadEvalSpec } from '@microsoft/vally';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { resolveEvalSelection } from '../../scripts/eval-options.mjs';
+import { checkPhaseCompletions } from '../../skills/cosmosdb-relational-migration/scripts/check-phase-completion.mjs';
 import {
     applicationSnapshot,
     checkAdventureWorks,
     checkAdventureWorksInventory,
     checkControllerCoverage,
     checkPlanningBoundary,
+    checkPhaseBoundary,
 } from './adventureworks/check-artifacts.mjs';
+import {
+    analyticalPhases,
+    checkpointRoot,
+    materializePrerequisites,
+    phaseOrder,
+    prerequisiteStages,
+    readCheckpoint,
+} from './adventureworks/checkpoints.mjs';
 import { fetchSample, verifySample } from './adventureworks/sample.mjs';
 import { setupAdventureWorks } from './adventureworks/setup.mjs';
 
@@ -64,7 +76,7 @@ test('pinned checkout is fetched once, reused offline, and never resets modified
     assert.equal(readFileSync(join(cache, 'sample.txt'), 'utf8'), 'user edit');
 });
 
-test('fixture setup copies source and optional DDL without leaking DDL into inference', (t) => {
+test('fixture setup copies source and optional DDL without leaking DDL into inference', async (t) => {
     const root = temporary(t);
     const source = join(root, 'source');
     mkdirSync(join(source, '.git'), { recursive: true });
@@ -72,8 +84,8 @@ test('fixture setup copies source and optional DDL without leaking DDL into infe
     writeFileSync(join(source, 'LICENSE.md'), 'synthetic license');
     const supplied = join(root, 'supplied');
     const inferred = join(root, 'inferred');
-    setupAdventureWorks(supplied, source, ddl);
-    setupAdventureWorks(inferred, source);
+    await setupAdventureWorks(supplied, source, ddl);
+    await setupAdventureWorks(inferred, source);
     assert.deepEqual(applicationSnapshot(supplied), applicationSnapshot(source));
     assert.deepEqual(applicationSnapshot(inferred), applicationSnapshot(source));
     assert.equal(existsSync(join(supplied, '.git')), false);
@@ -82,9 +94,103 @@ test('fixture setup copies source and optional DDL without leaking DDL into infe
         readFileSync(ddl),
     );
     assert.equal(existsSync(join(inferred, '.cosmosdb-migration/phases/1-discovery/schema-ddl')), false);
-    assert.throws(() => setupAdventureWorks(supplied, source, ddl), /overwrite/);
+    await assert.rejects(setupAdventureWorks(supplied, source, ddl), /overwrite/);
     writeFileSync(join(supplied, '.cosmosdb-migration/phases/1-discovery/volumetrics/workload.json'), '{}');
     assert.throws(() => checkAdventureWorks(supplied, 'supplied-ddl', source), /workload evidence changed/);
+});
+
+function fixtureSource(root) {
+    const source = join(root, 'sample');
+    mkdirSync(source);
+    // These placeholders exercise materialization/path contracts, not live application interpretation.
+    for (const stage of analyticalPhases) {
+        for (const path of readCheckpoint(stage).consulted.filter((path) => !path.startsWith('.cosmosdb-migration/'))) {
+            const file = join(source, path);
+            mkdirSync(dirname(file), { recursive: true });
+            writeFileSync(file, `Synthetic offline source for ${path}\n`);
+        }
+    }
+    return source;
+}
+
+for (const phase of phaseOrder) {
+    test(`${phase}: only validated predecessors are staged; current outputs are absent`, async (t) => {
+        const root = temporary(t);
+        const sample = fixtureSource(root);
+        const app = join(root, 'app');
+        await setupAdventureWorks(app, sample, ddl, phase);
+        const results = checkPhaseCompletions(app, [...prerequisiteStages(phase), phase]);
+        for (const predecessor of prerequisiteStages(phase)) assert.equal(results[predecessor].complete, true);
+        assert.equal(results[phase].complete, false);
+        const projectPath = join(app, '.cosmosdb-migration/project.json');
+        const project = JSON.parse(readFileSync(projectPath, 'utf8'));
+        checkPhaseBoundary(app, phase, project);
+        assert.throws(() => checkAdventureWorks(app, phase, sample));
+        if (analyticalPhases.includes(phase)) {
+            await materializePrerequisites(app, phaseOrder[phaseOrder.indexOf(phase) + 1]);
+            checkAdventureWorks(app, phase, sample);
+        }
+    });
+}
+
+test('isolated grading rejects predecessor mutations and future-phase artifacts', async (t) => {
+    const root = temporary(t);
+    const sample = fixtureSource(root);
+    const app = join(root, 'app');
+    await setupAdventureWorks(app, sample, ddl, 'provisioning');
+    const migration = join(app, '.cosmosdb-migration');
+    const project = JSON.parse(readFileSync(join(migration, 'project.json'), 'utf8'));
+    checkPhaseBoundary(app, 'provisioning', project);
+    writeFileSync(join(migration, 'code-migration-plan.md'), 'Premature plan');
+    assert.throws(() => checkPhaseBoundary(app, 'provisioning', project), /Out-of-phase artifact/);
+    rmSync(join(migration, 'code-migration-plan.md'));
+    project.phases.assessment.domains[0].isMapped = false;
+    assert.throws(() => checkPhaseBoundary(app, 'provisioning', project), /predecessor phase state/);
+    project.phases.assessment.domains[0].isMapped = true;
+    writeFileSync(join(migration, 'phases/3-schema-conversion/summary.md'), 'Changed accepted design');
+    assert.throws(() => checkPhaseBoundary(app, 'provisioning', project), /predecessor artifact/);
+});
+
+test('checkpoint drift fails before an agent can use it', async (t) => {
+    const root = temporary(t);
+    const fixtures = join(root, 'fixtures');
+    cpSync(join(checkpointRoot, 'preflight'), join(fixtures, 'preflight'), { recursive: true });
+    writeFileSync(join(fixtures, 'preflight/phases/1-discovery/preflight-summary.md'), 'Unreviewed edit');
+    assert.throws(() => readCheckpoint('preflight', fixtures), /changed without review/);
+    const sample = fixtureSource(root);
+    const app = join(root, 'app');
+    await setupAdventureWorks(app, sample, ddl);
+    writeFileSync(join(app, '.cosmosdb-migration/phases/1-discovery/schema-ddl/AdventureworksLT.sql'), 'changed DDL');
+    await assert.rejects(materializePrerequisites(app, 'discovery'), /DDL differs/);
+});
+
+test('integration is opt-in and each extended phase has a separate session and budget', async () => {
+    const phases = await loadEvalSpec(fileURLToPath(new URL('./adventureworks/eval.yaml', import.meta.url)));
+    const integration = await loadEvalSpec(
+        fileURLToPath(new URL('./adventureworks/integration/eval.yaml', import.meta.url)),
+    );
+    const count = (spec, args) =>
+        filterStimuli(spec.stimuli, spec.tags, resolveEvalSelection(args).filter).matched.length;
+    assert.equal(count(phases, []), 7);
+    assert.equal(count(integration, []), 0);
+    assert.equal(count(integration, ['--tag', 'sample=adventureworks']), 0);
+    assert.equal(count(integration, ['--tag', 'category!=extended']), 0);
+    assert.equal(count(integration, ['--tag=category=integration']), 1);
+    assert.equal(count(phases, ['--tag', 'category=integration']), 0);
+    assert.equal(count(phases, ['--tag', 'phase=provisioning']), 1);
+    for (const phase of phaseOrder) {
+        const stimulus = phases.stimuli.find((entry) => entry.tags.phase === phase);
+        assert.equal(stimulus.turns, undefined, 'Independent phases must not share conversation history');
+        assert.equal(
+            stimulus.constraints?.max_duration ?? phases.defaults.timeout,
+            phase === 'schema-conversion' ? '45m' : '20m',
+        );
+        const staged = (stimulus.environment?.files ?? []).filter(({ src }) => src.startsWith('checkpoints/'));
+        assert.deepEqual(
+            staged.map(({ src }) => src.slice('checkpoints/'.length)),
+            prerequisiteStages(phase),
+        );
+    }
 });
 
 test('independent inventory checks accept quoted references and reject lost relational structure', () => {

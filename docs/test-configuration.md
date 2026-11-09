@@ -173,8 +173,12 @@ npm run eval:test
 npm run eval
 npm run eval -- --tag category=guidance
 npm run eval -- --tag category=artifacts --tag phase=preflight
-# Real-sample migration and inference; fetches the pinned application once.
+# Independent real-sample phases and inference; fetches the pinned application once.
 npm run eval -- --tag category=extended --max-retries 0
+# Run one phase from reviewed prerequisites, without rerunning earlier phases.
+npm run eval -- --tag category=extended --tag phase=provisioning --max-retries 0
+# Explicit opt-in: one conversation chaining discovery through planning.
+npm run eval -- --tag category=integration --max-retries 0
 # Run the smaller suite without downloading the external sample.
 npm run eval -- --tag category!=extended
 # Optional model overrides, without changing the committed specs.
@@ -192,9 +196,11 @@ The suite includes:
   A host-side grader plugin reruns trusted migration completion validators, checks source inventory and ownership,
   and rejects source edits, changed predecessor evidence, lost user metadata, and out-of-phase artifacts.
   The model judge also inspects the generated files, not just the agent's completion claim.
-- Two extended AdventureWorks scenarios: a multi-turn migration from discovery through assessment,
-  schema conversion, artifact-only provisioning and code-migration planning; and a separate discovery
-  run that infers DDL from the real Entity Framework application without receiving the supplied schema.
+- Seven extended AdventureWorks scenarios: independent preflight, discovery, assessment, schema conversion,
+  artifact-only provisioning and code-migration planning, plus discovery that infers DDL from the real
+  Entity Framework application without receiving the supplied schema.
+- An opt-in integration scenario chaining discovery through planning in one conversation. The runner
+  excludes it unless `--tag category=integration` explicitly selects it, including on an unfiltered `npm run eval`.
 
 Every scenario requires completion, correct skill activation, a nonempty answer, and binary correctness
 at threshold `1`. Guidance scenarios also require no workspace edits. Offline fake-judge tests exercise
@@ -228,7 +234,8 @@ The extended CI step disables executor retries to avoid repeating an expensive f
 The [evaluation workflow](../.github/workflows/migration-evals.yml) runs offline checks when evaluation inputs
 change. Automatic live runs require changes under `skills/cosmosdb-relational-migration/` or its required
 `skills/cosmosdb-best-practices/` peer; evaluation-only and unrelated changes skip model calls.
-Fork and Dependabot PRs are always offline-only. A manual workflow dispatch explicitly runs the whole suite.
+Fork and Dependabot PRs are always offline-only. A manual workflow dispatch runs the default suites;
+its `integration` input additionally enables the chained scenario.
 Live CI uses a job-scoped token with `copilot-requests: write`, publishes reports and retains artifacts for
 14 days. The aggregate check reports success for intentional skips and fails for incomplete required jobs.
 
@@ -273,17 +280,17 @@ exclude the extended scenarios do not download it. Initial preparation requires 
 
 [AdventureworksLT.sql](../evals/cosmosdb-relational-migration/adventureworks/AdventureworksLT.sql) is the
 supplied EF-aligned AdventureWorksLT schema export, normalized to LF line endings. It is a versioned test
-input, not downloaded from the application's branch or regenerated during CI. Only the supplied-DDL
-scenario receives it; the inference scenario receives application code and synthetic workload assumptions.
+input, not downloaded from the application's branch or regenerated during CI. The supplied-DDL phases and integration scenario receive it; the inference scenario receives application
+code and synthetic workload assumptions.
 No database backup, production rows, credentials, or live source database are required.
 
 The host-side [schema contract](../evals/cosmosdb-relational-migration/adventureworks/schema-contract.json)
 records reviewed table/column inventories, ordered primary keys, and foreign-key endpoints. Deterministic
 graders compare the agent's evidence with those facts, require read/write evidence from all three CRUD
-controllers, check inference provenance, and rerun the portable phase validators. The full scenario also
-requires exact table coverage in assessment and conversion, model-consistent Bicep/seed artifacts, a valid
-plan-only manifest, untouched application/DDL bytes, preserved user metadata, and no fabricated deployment
-verification or application-build results.
+controllers, check inference provenance, and rerun the portable phase validators. Phase-specific checks
+require exact table coverage in assessment/conversion, model-consistent Bicep/seed artifacts during
+provisioning, or a valid plan-only manifest during code-migration planning. All phases preserve application/DDL
+bytes, user metadata and the planned target. They must not fabricate deployment verification or build results.
 
 The model judge covers semantic details without a fixed container layout: case-insensitive uniqueness,
 composite relationships, cascade behavior, self-reference, sequence-generated IDs, exact financial/computed
@@ -291,11 +298,36 @@ values, XML/binary preservation, modernization and rollback. Workload numbers an
 explicit synthetic planning assumptions, not facts measured from the sample. Passing these checks does
 not prove source-engine validity, production performance, successful deployment or executable migrated code.
 
-Extended trials have a 60-minute timeout. CI runs them after the smaller live suite under the same
-skill-change/trusted-PR gate; the whole live job is capped at 150 minutes. Changes to the sample pin,
-DDL or graders alone still receive offline checks only, so use a manual dispatch to evaluate those changes.
+Each isolated phase gets a fresh session, separate workspace, timeout, grading verdict and artifact export.
+The budget is 20 minutes per trial, except schema conversion at 45 minutes. A failed phase does not prevent
+other independent phase trials from running; there is no shared conversation deadline.
+The opt-in integration scenario retains its 60-minute shared deadline.
+CI runs the independent phases after the smaller live suite under the same skill-change/trusted-PR gate;
+the live job is capped at 150 minutes, or 210 when a manual dispatch also requests integration.
+Changes to the sample pin, DDL or graders alone still receive offline checks only, so use a manual dispatch to evaluate those changes.
 When updating the pin or DDL, review the independent contract and semantic rubrics rather than regenerating
 expected answers from the agent's output.
+
+#### Prerequisite fixtures and phase boundaries
+
+The [versioned checkpoint snapshots](../evals/cosmosdb-relational-migration/adventureworks/checkpoints/README.md)
+contain reviewed analytical artifacts, project-state projections and integrity metadata. Discovery starts
+from preflight; assessment from discovery; conversion from assessment; provisioning and planning from
+conversion. Planning does not need a deployed target or provisioning completion. Preflight starts from
+the raw supplied inputs; inference discovery still performs its necessary preflight work itself.
+
+Only predecessor snapshots are staged for a trial: conversion never sees the reference converted model,
+and provisioning/planning never see reference outputs for their own phase. Setup checks the pinned source
+revision, schema/workload hashes and fixture file hashes, reconstructs workspace-local freshness, and
+validates every prerequisite before the agent starts. This fixture-only initialization does not permit
+the agent to rebaseline stale evidence. Grading rejects changed predecessor files/state, future-phase
+completion and artifacts outside the requested phase. Snapshots are never refreshed from current run outputs.
+
+The agent can use installed shell tools to process inputs, including Node.js or Python for bounded JSON/log
+aggregation. These scenarios explicitly select model-only DDL interpretation, so Python/SQLGlot or custom
+parser scripts must not be used to interpret DDL. They also forbid dependency installation, application
+execution and external-resource calls. The workload fixture contains estimates, not generated database rows.
+Shell access is a capability, not a sandbox guarantee or permission to ignore those restrictions.
 
 ### Integration tests (slow, real VS Code)
 

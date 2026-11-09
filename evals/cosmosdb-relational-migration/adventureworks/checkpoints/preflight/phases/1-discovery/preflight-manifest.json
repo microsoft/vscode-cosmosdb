@@ -1,0 +1,273 @@
+{
+  "version": 1,
+  "sourceSha256": "51ef1032804f5b78d2d97f3cc08c14c72a10a1630fd0724ddb93e4d6f6438ad1",
+  "blockingIssues": [],
+  "workloadInputs": [
+    {
+      "source": "volumetrics",
+      "path": ".cosmosdb-migration/phases/1-discovery/volumetrics/workload.json",
+      "sha256": "dda8bfa6104878e3fd9cecfc091020a13671c5e731cadef73c335fa886a05c0c",
+      "disposition": "used",
+      "evidenceKind": "synthetic",
+      "rationale": "Reviewed all 12 table assumptions and collation; values are synthetic planning inputs, not observed measurements. BuildVersion row count is incompatible with its TINYINT primary key and is not used as a feasible estimate."
+    }
+  ],
+  "sourceInventory": {
+    "version": 1,
+    "dialect": "tsql",
+    "parser": {"method": "model"},
+    "sha256": "51ef1032804f5b78d2d97f3cc08c14c72a10a1630fd0724ddb93e4d6f6438ad1",
+    "files": [{"path": ".cosmosdb-migration/phases/1-discovery/schema-ddl/AdventureworksLT.sql", "sha256": "837602bee5baca4cf026663627007c6e70df5896093f9cf31c0f804cb05d1065"}],
+    "errors": [],
+    "context": {
+      "source": "AdventureworksLT.sql",
+      "batchAndSettings": "USE AdventureWorks; GO batches; ANSI_NULLS, QUOTED_IDENTIFIER, ANSI_PADDING, ANSI_WARNINGS, ARITHABORT and CONCAT_NULL_YIELDS_NULL ON; NUMERIC_ROUNDABORT OFF, lines 4-14.",
+      "schemas": "dbo and conditional SalesLT creation; SalesLT authorized to dbo, lines 16-18.",
+      "collation": "Not declared in DDL; workload.json supplies SQL_Latin1_General_CP1_CI_AS as a synthetic assumption, not a verified database setting.",
+      "aliasTypes": [
+        {"name": "dbo.Name", "baseType": "NVARCHAR(50)", "aliasNullable": true, "line": 21},
+        {"name": "dbo.NameStyle", "baseType": "BIT", "aliasNullable": false, "line": 25},
+        {"name": "dbo.Phone", "baseType": "NVARCHAR(25)", "aliasNullable": true, "line": 29},
+        {"name": "dbo.Flag", "baseType": "BIT", "aliasNullable": false, "line": 33},
+        {"name": "dbo.AccountNumber", "baseType": "NVARCHAR(15)", "aliasNullable": true, "line": 37},
+        {"name": "dbo.OrderNumber", "baseType": "NVARCHAR(25)", "aliasNullable": true, "line": 41}
+      ],
+      "sequences": [{"name": "SalesLT.SalesOrderNumber", "type": "INT", "start": 1, "increment": 1, "lines": "44-47"}],
+      "otherConstructs": "No views, procedures, triggers, explicit CHECK constraints, or additional ALTER statements are declared in the selected file. Existing conditional alias types and schema could differ in a live database; not inspected.",
+      "indexDefaults": "No explicit ASC/DESC, INCLUDE, filter, or clustered option is declared in CREATE INDEX statements; SQL Server defaults apply. No source collation is declared."
+    },
+    "tables": [
+      {
+        "name": "dbo.BuildVersion", "identity": [{"name": "dbo", "quoted": true}, {"name": "BuildVersion", "quoted": true}], "location": "lines 50-56",
+        "columns": [
+          {"name": "SystemInformationID", "type": "TINYINT", "nullable": false, "identity": "IDENTITY(1,1)", "line": 51},
+          {"name": "Database Version", "type": "NVARCHAR(25)", "nullable": false, "line": 52},
+          {"name": "VersionDate", "type": "DATETIME", "nullable": false, "line": 53},
+          {"name": "ModifiedDate", "type": "DATETIME", "nullable": false, "default": "getdate()", "line": 54}
+        ],
+        "primaryKey": ["SystemInformationID"], "primaryKeyName": "PK_BuildVersion_SystemInformationID", "foreignKeys": []
+      },
+      {
+        "name": "dbo.ErrorLog", "identity": [{"name": "dbo", "quoted": true}, {"name": "ErrorLog", "quoted": true}], "location": "lines 59-69",
+        "columns": [
+          {"name": "ErrorLogID", "type": "INT", "nullable": false, "identity": "IDENTITY(1,1)", "line": 60},
+          {"name": "ErrorTime", "type": "DATETIME", "nullable": false, "default": "getdate()", "line": 61},
+          {"name": "ErrorNumber", "type": "INT", "nullable": false, "line": 62},
+          {"name": "ErrorSeverity", "type": "INT", "nullable": true, "line": 63},
+          {"name": "ErrorState", "type": "INT", "nullable": true, "line": 64},
+          {"name": "ErrorProcedure", "type": "NVARCHAR(126)", "nullable": true, "line": 65},
+          {"name": "ErrorLine", "type": "INT", "nullable": true, "line": 66},
+          {"name": "ErrorMessage", "type": "NVARCHAR(4000)", "nullable": false, "line": 67}
+        ],
+        "primaryKey": ["ErrorLogID"], "primaryKeyName": "PK_ErrorLog_ErrorLogID", "foreignKeys": []
+      },
+      {
+        "name": "SalesLT.Address", "identity": [{"name": "SalesLT", "quoted": true}, {"name": "Address", "quoted": true}], "location": "lines 72-83",
+        "columns": [
+          {"name": "AddressID", "type": "INT", "nullable": false, "identity": "IDENTITY(1,1)", "line": 73},
+          {"name": "AddressLine1", "type": "NVARCHAR(60)", "nullable": false, "line": 74},
+          {"name": "AddressLine2", "type": "NVARCHAR(60)", "nullable": true, "line": 75},
+          {"name": "City", "type": "NVARCHAR(30)", "nullable": false, "line": 76},
+          {"name": "StateProvince", "type": "dbo.Name", "resolvedType": "NVARCHAR(50)", "nullable": false, "line": 77},
+          {"name": "CountryRegion", "type": "dbo.Name", "resolvedType": "NVARCHAR(50)", "nullable": false, "line": 78},
+          {"name": "PostalCode", "type": "NVARCHAR(15)", "nullable": false, "line": 79},
+          {"name": "rowguid", "type": "UNIQUEIDENTIFIER", "nullable": false, "default": "newid()", "line": 80},
+          {"name": "ModifiedDate", "type": "DATETIME", "nullable": false, "default": "getdate()", "line": 81}
+        ],
+        "primaryKey": ["AddressID"], "primaryKeyName": "PK_Address_AddressID", "foreignKeys": []
+      },
+      {
+        "name": "SalesLT.Customer", "identity": [{"name": "SalesLT", "quoted": true}, {"name": "Customer", "quoted": true}], "location": "lines 86-103",
+        "columns": [
+          {"name": "CustomerID", "type": "INT", "nullable": false, "identity": "IDENTITY(1,1)", "line": 87},
+          {"name": "NameStyle", "type": "dbo.NameStyle", "resolvedType": "BIT", "nullable": false, "default": "0", "line": 88},
+          {"name": "Title", "type": "NVARCHAR(8)", "nullable": true, "line": 89},
+          {"name": "FirstName", "type": "dbo.Name", "resolvedType": "NVARCHAR(50)", "nullable": false, "line": 90},
+          {"name": "MiddleName", "type": "dbo.Name", "resolvedType": "NVARCHAR(50)", "nullable": true, "line": 91},
+          {"name": "LastName", "type": "dbo.Name", "resolvedType": "NVARCHAR(50)", "nullable": false, "line": 92},
+          {"name": "Suffix", "type": "NVARCHAR(10)", "nullable": true, "line": 93},
+          {"name": "CompanyName", "type": "NVARCHAR(128)", "nullable": true, "line": 94},
+          {"name": "SalesPerson", "type": "NVARCHAR(256)", "nullable": true, "line": 95},
+          {"name": "EmailAddress", "type": "NVARCHAR(50)", "nullable": true, "line": 96},
+          {"name": "Phone", "type": "dbo.Phone", "resolvedType": "NVARCHAR(25)", "nullable": true, "line": 97},
+          {"name": "PasswordHash", "type": "VARCHAR(128)", "nullable": false, "line": 98},
+          {"name": "PasswordSalt", "type": "VARCHAR(10)", "nullable": false, "line": 99},
+          {"name": "rowguid", "type": "UNIQUEIDENTIFIER", "nullable": false, "default": "newid()", "line": 100},
+          {"name": "ModifiedDate", "type": "DATETIME", "nullable": false, "default": "getdate()", "line": 101}
+        ],
+        "primaryKey": ["CustomerID"], "primaryKeyName": "PK_Customer_CustomerID", "foreignKeys": []
+      },
+      {
+        "name": "SalesLT.CustomerAddress", "identity": [{"name": "SalesLT", "quoted": true}, {"name": "CustomerAddress", "quoted": true}], "location": "lines 106-113",
+        "columns": [
+          {"name": "CustomerID", "type": "INT", "nullable": false, "line": 107},
+          {"name": "AddressID", "type": "INT", "nullable": false, "line": 108},
+          {"name": "AddressType", "type": "dbo.Name", "resolvedType": "NVARCHAR(50)", "nullable": false, "line": 109},
+          {"name": "rowguid", "type": "UNIQUEIDENTIFIER", "nullable": false, "default": "newid()", "line": 110},
+          {"name": "ModifiedDate", "type": "DATETIME", "nullable": false, "default": "getdate()", "line": 111}
+        ],
+        "primaryKey": ["CustomerID", "AddressID"], "primaryKeyName": "PK_CustomerAddress_CustomerID_AddressID",
+        "foreignKeys": [
+          {"name": "FK_CustomerAddress_Address_AddressID", "columns": ["AddressID"], "referencedTable": "SalesLT.Address", "referencedColumns": ["AddressID"], "onDelete": "NO ACTION (implicit)", "lines": "220-223"},
+          {"name": "FK_CustomerAddress_Customer_CustomerID", "columns": ["CustomerID"], "referencedTable": "SalesLT.Customer", "referencedColumns": ["CustomerID"], "onDelete": "NO ACTION (implicit)", "lines": "226-229"}
+        ]
+      },
+      {
+        "name": "SalesLT.Product", "identity": [{"name": "SalesLT", "quoted": true}, {"name": "Product", "quoted": true}], "location": "lines 116-135",
+        "columns": [
+          {"name": "ProductID", "type": "INT", "nullable": false, "identity": "IDENTITY(1,1)", "line": 117},
+          {"name": "Name", "type": "dbo.Name", "resolvedType": "NVARCHAR(50)", "nullable": false, "line": 118},
+          {"name": "ProductNumber", "type": "NVARCHAR(25)", "nullable": false, "line": 119},
+          {"name": "Color", "type": "NVARCHAR(15)", "nullable": true, "line": 120},
+          {"name": "StandardCost", "type": "MONEY", "nullable": false, "line": 121},
+          {"name": "ListPrice", "type": "MONEY", "nullable": false, "line": 122},
+          {"name": "Size", "type": "NVARCHAR(5)", "nullable": true, "line": 123},
+          {"name": "Weight", "type": "DECIMAL(8,2)", "nullable": true, "line": 124},
+          {"name": "ProductCategoryID", "type": "INT", "nullable": true, "line": 125},
+          {"name": "ProductModelID", "type": "INT", "nullable": true, "line": 126},
+          {"name": "SellStartDate", "type": "DATETIME", "nullable": false, "line": 127},
+          {"name": "SellEndDate", "type": "DATETIME", "nullable": true, "line": 128},
+          {"name": "DiscontinuedDate", "type": "DATETIME", "nullable": true, "line": 129},
+          {"name": "ThumbNailPhoto", "type": "VARBINARY(MAX)", "nullable": true, "line": 130},
+          {"name": "ThumbnailPhotoFileName", "type": "NVARCHAR(50)", "nullable": true, "line": 131},
+          {"name": "rowguid", "type": "UNIQUEIDENTIFIER", "nullable": false, "default": "newid()", "line": 132},
+          {"name": "ModifiedDate", "type": "DATETIME", "nullable": false, "default": "getdate()", "line": 133}
+        ],
+        "primaryKey": ["ProductID"], "primaryKeyName": "PK_Product_ProductID",
+        "foreignKeys": [
+          {"name": "FK_Product_ProductCategory_ProductCategoryID", "columns": ["ProductCategoryID"], "referencedTable": "SalesLT.ProductCategory", "referencedColumns": ["ProductCategoryID"], "onDelete": "NO ACTION (implicit)", "lines": "232-235"},
+          {"name": "FK_Product_ProductModel_ProductModelID", "columns": ["ProductModelID"], "referencedTable": "SalesLT.ProductModel", "referencedColumns": ["ProductModelID"], "onDelete": "NO ACTION (implicit)", "lines": "238-241"}
+        ]
+      },
+      {
+        "name": "SalesLT.ProductCategory", "identity": [{"name": "SalesLT", "quoted": true}, {"name": "ProductCategory", "quoted": true}], "location": "lines 138-145",
+        "columns": [
+          {"name": "ProductCategoryID", "type": "INT", "nullable": false, "identity": "IDENTITY(1,1)", "line": 139},
+          {"name": "ParentProductCategoryID", "type": "INT", "nullable": true, "line": 140},
+          {"name": "Name", "type": "dbo.Name", "resolvedType": "NVARCHAR(50)", "nullable": false, "line": 141},
+          {"name": "rowguid", "type": "UNIQUEIDENTIFIER", "nullable": false, "default": "newid()", "line": 142},
+          {"name": "ModifiedDate", "type": "DATETIME", "nullable": false, "default": "getdate()", "line": 143}
+        ],
+        "primaryKey": ["ProductCategoryID"], "primaryKeyName": "PK_ProductCategory_ProductCategoryID",
+        "foreignKeys": [{"name": "FK_ProductCategory_ProductCategory_ParentProductCategoryID_ProductCategoryID", "columns": ["ParentProductCategoryID"], "referencedTable": "SalesLT.ProductCategory", "referencedColumns": ["ProductCategoryID"], "onDelete": "NO ACTION (implicit)", "lines": "244-247"}]
+      },
+      {
+        "name": "SalesLT.ProductDescription", "identity": [{"name": "SalesLT", "quoted": true}, {"name": "ProductDescription", "quoted": true}], "location": "lines 148-154",
+        "columns": [
+          {"name": "ProductDescriptionID", "type": "INT", "nullable": false, "identity": "IDENTITY(1,1)", "line": 149},
+          {"name": "Description", "type": "NVARCHAR(400)", "nullable": false, "line": 150},
+          {"name": "rowguid", "type": "UNIQUEIDENTIFIER", "nullable": false, "default": "newid()", "line": 151},
+          {"name": "ModifiedDate", "type": "DATETIME", "nullable": false, "default": "getdate()", "line": 152}
+        ],
+        "primaryKey": ["ProductDescriptionID"], "primaryKeyName": "PK_ProductDescription_ProductDescriptionID", "foreignKeys": []
+      },
+      {
+        "name": "SalesLT.ProductModel", "identity": [{"name": "SalesLT", "quoted": true}, {"name": "ProductModel", "quoted": true}], "location": "lines 157-164",
+        "columns": [
+          {"name": "ProductModelID", "type": "INT", "nullable": false, "identity": "IDENTITY(1,1)", "line": 158},
+          {"name": "Name", "type": "dbo.Name", "resolvedType": "NVARCHAR(50)", "nullable": false, "line": 159},
+          {"name": "CatalogDescription", "type": "XML", "nullable": true, "line": 160},
+          {"name": "rowguid", "type": "UNIQUEIDENTIFIER", "nullable": false, "default": "newid()", "line": 161},
+          {"name": "ModifiedDate", "type": "DATETIME", "nullable": false, "default": "getdate()", "line": 162}
+        ],
+        "primaryKey": ["ProductModelID"], "primaryKeyName": "PK_ProductModel_ProductModelID", "foreignKeys": []
+      },
+      {
+        "name": "SalesLT.ProductModelProductDescription", "identity": [{"name": "SalesLT", "quoted": true}, {"name": "ProductModelProductDescription", "quoted": true}], "location": "lines 167-174",
+        "columns": [
+          {"name": "ProductModelID", "type": "INT", "nullable": false, "line": 168},
+          {"name": "ProductDescriptionID", "type": "INT", "nullable": false, "line": 169},
+          {"name": "Culture", "type": "NVARCHAR(6)", "nullable": false, "line": 170},
+          {"name": "rowguid", "type": "UNIQUEIDENTIFIER", "nullable": false, "default": "newid()", "line": 171},
+          {"name": "ModifiedDate", "type": "DATETIME", "nullable": false, "default": "getdate()", "line": 172}
+        ],
+        "primaryKey": ["ProductModelID", "ProductDescriptionID", "Culture"], "primaryKeyName": "PK_ProductModelProductDescription_ProductModelID_ProductDescriptionID_Culture",
+        "foreignKeys": [
+          {"name": "FK_ProductModelProductDescription_ProductDescription_ProductDescriptionID", "columns": ["ProductDescriptionID"], "referencedTable": "SalesLT.ProductDescription", "referencedColumns": ["ProductDescriptionID"], "onDelete": "NO ACTION (implicit)", "lines": "250-253"},
+          {"name": "FK_ProductModelProductDescription_ProductModel_ProductModelID", "columns": ["ProductModelID"], "referencedTable": "SalesLT.ProductModel", "referencedColumns": ["ProductModelID"], "onDelete": "NO ACTION (implicit)", "lines": "256-259"}
+        ]
+      },
+      {
+        "name": "SalesLT.SalesOrderDetail", "identity": [{"name": "SalesLT", "quoted": true}, {"name": "SalesOrderDetail", "quoted": true}], "location": "lines 177-188",
+        "columns": [
+          {"name": "SalesOrderID", "type": "INT", "nullable": false, "line": 178},
+          {"name": "SalesOrderDetailID", "type": "INT", "nullable": false, "identity": "IDENTITY(1,1)", "line": 179},
+          {"name": "OrderQty", "type": "SMALLINT", "nullable": false, "line": 180},
+          {"name": "ProductID", "type": "INT", "nullable": false, "line": 181},
+          {"name": "UnitPrice", "type": "MONEY", "nullable": false, "line": 182},
+          {"name": "UnitPriceDiscount", "type": "MONEY", "nullable": false, "default": "0.0", "line": 183},
+          {"name": "LineTotal", "type": "computed expression", "nullable": "unknown", "computed": "isnull(([UnitPrice]*((1.0)-[UnitPriceDiscount]))*[OrderQty],(0.0))", "efType": "numeric(38,6)", "line": 184},
+          {"name": "rowguid", "type": "UNIQUEIDENTIFIER", "nullable": false, "default": "newid()", "line": 185},
+          {"name": "ModifiedDate", "type": "DATETIME", "nullable": false, "default": "getdate()", "line": 186}
+        ],
+        "primaryKey": ["SalesOrderID", "SalesOrderDetailID"], "primaryKeyName": "PK_SalesOrderDetail_SalesOrderID_SalesOrderDetailID",
+        "foreignKeys": [
+          {"name": "FK_SalesOrderDetail_Product_ProductID", "columns": ["ProductID"], "referencedTable": "SalesLT.Product", "referencedColumns": ["ProductID"], "onDelete": "NO ACTION (implicit)", "lines": "262-265"},
+          {"name": "FK_SalesOrderDetail_SalesOrderHeader_SalesOrderID", "columns": ["SalesOrderID"], "referencedTable": "SalesLT.SalesOrderHeader", "referencedColumns": ["SalesOrderID"], "onDelete": "CASCADE", "lines": "268-272"}
+        ]
+      },
+      {
+        "name": "SalesLT.SalesOrderHeader", "identity": [{"name": "SalesLT", "quoted": true}, {"name": "SalesOrderHeader", "quoted": true}], "location": "lines 191-215",
+        "columns": [
+          {"name": "SalesOrderID", "type": "INT", "nullable": false, "default": "NEXT VALUE FOR [SalesLT].[SalesOrderNumber]", "line": 192},
+          {"name": "RevisionNumber", "type": "TINYINT", "nullable": false, "default": "0", "line": 193},
+          {"name": "OrderDate", "type": "DATETIME", "nullable": false, "default": "getdate()", "line": 194},
+          {"name": "DueDate", "type": "DATETIME", "nullable": false, "line": 195},
+          {"name": "ShipDate", "type": "DATETIME", "nullable": true, "line": 196},
+          {"name": "Status", "type": "TINYINT", "nullable": false, "default": "1", "line": 197},
+          {"name": "OnlineOrderFlag", "type": "dbo.Flag", "resolvedType": "BIT", "nullable": false, "default": "1", "line": 198},
+          {"name": "SalesOrderNumber", "type": "computed expression", "nullable": "unknown", "computed": "isnull(N'SO'+CONVERT([nvarchar](23),[SalesOrderID],(0)),N'*** ERROR ***')", "efType": "NVARCHAR(25)", "line": 199},
+          {"name": "PurchaseOrderNumber", "type": "dbo.OrderNumber", "resolvedType": "NVARCHAR(25)", "nullable": true, "line": 200},
+          {"name": "AccountNumber", "type": "dbo.AccountNumber", "resolvedType": "NVARCHAR(15)", "nullable": true, "line": 201},
+          {"name": "CustomerID", "type": "INT", "nullable": false, "line": 202},
+          {"name": "ShipToAddressID", "type": "INT", "nullable": true, "line": 203},
+          {"name": "BillToAddressID", "type": "INT", "nullable": true, "line": 204},
+          {"name": "ShipMethod", "type": "NVARCHAR(50)", "nullable": false, "line": 205},
+          {"name": "CreditCardApprovalCode", "type": "VARCHAR(15)", "nullable": true, "line": 206},
+          {"name": "SubTotal", "type": "MONEY", "nullable": false, "default": "0.00", "line": 207},
+          {"name": "TaxAmt", "type": "MONEY", "nullable": false, "default": "0.00", "line": 208},
+          {"name": "Freight", "type": "MONEY", "nullable": false, "default": "0.00", "line": 209},
+          {"name": "TotalDue", "type": "computed expression", "nullable": "unknown", "computed": "isnull(([SubTotal]+[TaxAmt])+[Freight],(0))", "efType": "money", "line": 210},
+          {"name": "Comment", "type": "NVARCHAR(MAX)", "nullable": true, "line": 211},
+          {"name": "rowguid", "type": "UNIQUEIDENTIFIER", "nullable": false, "default": "newid()", "line": 212},
+          {"name": "ModifiedDate", "type": "DATETIME", "nullable": false, "default": "getdate()", "line": 213}
+        ],
+        "primaryKey": ["SalesOrderID"], "primaryKeyName": "PK_SalesOrderHeader_SalesOrderID",
+        "foreignKeys": [
+          {"name": "FK_SalesOrderHeader_Address_BillTo_AddressID", "columns": ["BillToAddressID"], "referencedTable": "SalesLT.Address", "referencedColumns": ["AddressID"], "onDelete": "NO ACTION (implicit)", "lines": "275-278"},
+          {"name": "FK_SalesOrderHeader_Address_ShipTo_AddressID", "columns": ["ShipToAddressID"], "referencedTable": "SalesLT.Address", "referencedColumns": ["AddressID"], "onDelete": "NO ACTION (implicit)", "lines": "281-284"},
+          {"name": "FK_SalesOrderHeader_Customer_CustomerID", "columns": ["CustomerID"], "referencedTable": "SalesLT.Customer", "referencedColumns": ["CustomerID"], "onDelete": "NO ACTION (implicit)", "lines": "287-290"}
+        ]
+      }
+    ],
+    "indexes": [
+      {"name":"AK_Address_rowguid","table":"SalesLT.Address","keys":["rowguid"],"unique":true,"lines":"293-294"},
+      {"name":"IX_Address_StateProvince","table":"SalesLT.Address","keys":["StateProvince"],"unique":false,"lines":"297-298"},
+      {"name":"IX_Address_AddressLine1_AddressLine2_City_StateProvince_PostalCode_CountryRegion","table":"SalesLT.Address","keys":["AddressLine1","AddressLine2","City","StateProvince","PostalCode","CountryRegion"],"unique":false,"lines":"301-302"},
+      {"name":"IX_Customer_EmailAddress","table":"SalesLT.Customer","keys":["EmailAddress"],"unique":false,"lines":"305-306"},
+      {"name":"AK_Customer_rowguid","table":"SalesLT.Customer","keys":["rowguid"],"unique":true,"lines":"309-310"},
+      {"name":"AK_CustomerAddress_rowguid","table":"SalesLT.CustomerAddress","keys":["rowguid"],"unique":true,"lines":"313-314"},
+      {"name":"IX_CustomerAddress_AddressID","table":"SalesLT.CustomerAddress","keys":["AddressID"],"unique":false,"lines":"317-318"},
+      {"name":"AK_Product_Name","table":"SalesLT.Product","keys":["Name"],"unique":true,"lines":"321-322"},
+      {"name":"AK_Product_ProductNumber","table":"SalesLT.Product","keys":["ProductNumber"],"unique":true,"lines":"325-326"},
+      {"name":"AK_Product_rowguid","table":"SalesLT.Product","keys":["rowguid"],"unique":true,"lines":"329-330"},
+      {"name":"IX_Product_ProductCategoryID","table":"SalesLT.Product","keys":["ProductCategoryID"],"unique":false,"lines":"333-334"},
+      {"name":"IX_Product_ProductModelID","table":"SalesLT.Product","keys":["ProductModelID"],"unique":false,"lines":"337-338"},
+      {"name":"AK_ProductCategory_Name","table":"SalesLT.ProductCategory","keys":["Name"],"unique":true,"lines":"341-342"},
+      {"name":"AK_ProductCategory_rowguid","table":"SalesLT.ProductCategory","keys":["rowguid"],"unique":true,"lines":"345-346"},
+      {"name":"IX_ProductCategory_ParentProductCategoryID","table":"SalesLT.ProductCategory","keys":["ParentProductCategoryID"],"unique":false,"lines":"349-350"},
+      {"name":"AK_ProductDescription_rowguid","table":"SalesLT.ProductDescription","keys":["rowguid"],"unique":true,"lines":"353-354"},
+      {"name":"AK_ProductModel_Name","table":"SalesLT.ProductModel","keys":["Name"],"unique":true,"lines":"357-358"},
+      {"name":"AK_ProductModel_rowguid","table":"SalesLT.ProductModel","keys":["rowguid"],"unique":true,"lines":"361-362"},
+      {"name":"AK_ProductModelProductDescription_rowguid","table":"SalesLT.ProductModelProductDescription","keys":["rowguid"],"unique":true,"lines":"365-366"},
+      {"name":"IX_ProductModelProductDescription_ProductDescriptionID","table":"SalesLT.ProductModelProductDescription","keys":["ProductDescriptionID"],"unique":false,"lines":"369-370"},
+      {"name":"IX_SalesOrderDetail_ProductID","table":"SalesLT.SalesOrderDetail","keys":["ProductID"],"unique":false,"lines":"373-374"},
+      {"name":"AK_SalesOrderDetail_rowguid","table":"SalesLT.SalesOrderDetail","keys":["rowguid"],"unique":true,"lines":"377-378"},
+      {"name":"IX_SalesOrderHeader_CustomerID","table":"SalesLT.SalesOrderHeader","keys":["CustomerID"],"unique":false,"lines":"381-382"},
+      {"name":"AK_SalesOrderHeader_rowguid","table":"SalesLT.SalesOrderHeader","keys":["rowguid"],"unique":true,"lines":"385-386"},
+      {"name":"AK_SalesOrderHeader_SalesOrderNumber","table":"SalesLT.SalesOrderHeader","keys":["SalesOrderNumber"],"unique":true,"lines":"389-390"},
+      {"name":"IX_SalesOrderHeader_BillToAddressID","table":"SalesLT.SalesOrderHeader","keys":["BillToAddressID"],"unique":false,"lines":"393-394"},
+      {"name":"IX_SalesOrderHeader_ShipToAddressID","table":"SalesLT.SalesOrderHeader","keys":["ShipToAddressID"],"unique":false,"lines":"397-398"}
+    ]
+  }
+}

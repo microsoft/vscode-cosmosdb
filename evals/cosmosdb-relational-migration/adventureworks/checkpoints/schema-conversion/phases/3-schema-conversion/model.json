@@ -1,0 +1,1814 @@
+{
+  "version": 1,
+  "databaseName": "adventureworks-eval",
+  "capacityMode": "serverless",
+  "domain": "all",
+  "sourceType": "SQL Server",
+  "containers": [
+    {
+      "name": "Catalog",
+      "partitionKeys": [
+        {
+          "path": "/id"
+        }
+      ],
+      "entities": [
+        {
+          "name": "Product",
+          "docType": "product",
+          "sourceTable": "SalesLT.Product",
+          "attributes": [
+            {
+              "target": "color",
+              "source": {
+                "table": "SalesLT.Product",
+                "column": "Color",
+                "type": "NVARCHAR(15)"
+              },
+              "type": "string"
+            },
+            {
+              "target": "discontinuedDate",
+              "source": {
+                "table": "SalesLT.Product",
+                "column": "DiscontinuedDate",
+                "type": "DATETIME"
+              },
+              "type": "string"
+            },
+            {
+              "target": "id",
+              "source": {
+                "table": "SalesLT.Product",
+                "column": "ProductID",
+                "type": "INT"
+              },
+              "type": "string",
+              "isPartitionKey": true,
+              "isId": true
+            },
+            {
+              "target": "listPrice",
+              "source": {
+                "table": "SalesLT.Product",
+                "column": "ListPrice",
+                "type": "MONEY"
+              },
+              "type": "string"
+            },
+            {
+              "target": "modifiedDate",
+              "source": {
+                "table": "SalesLT.Product",
+                "column": "ModifiedDate",
+                "type": "DATETIME"
+              },
+              "type": "string"
+            },
+            {
+              "target": "name",
+              "source": {
+                "table": "SalesLT.Product",
+                "column": "Name",
+                "type": "dbo.Name"
+              },
+              "type": "string"
+            },
+            {
+              "target": "productCategoryId",
+              "source": {
+                "table": "SalesLT.Product",
+                "column": "ProductCategoryID",
+                "type": "INT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "productId",
+              "source": {
+                "table": "SalesLT.Product",
+                "column": "ProductID",
+                "type": "INT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "productModelId",
+              "source": {
+                "table": "SalesLT.Product",
+                "column": "ProductModelID",
+                "type": "INT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "productNumber",
+              "source": {
+                "table": "SalesLT.Product",
+                "column": "ProductNumber",
+                "type": "NVARCHAR(25)"
+              },
+              "type": "string"
+            },
+            {
+              "target": "rowguid",
+              "source": {
+                "table": "SalesLT.Product",
+                "column": "rowguid",
+                "type": "UNIQUEIDENTIFIER"
+              },
+              "type": "string"
+            },
+            {
+              "target": "sellEndDate",
+              "source": {
+                "table": "SalesLT.Product",
+                "column": "SellEndDate",
+                "type": "DATETIME"
+              },
+              "type": "string"
+            },
+            {
+              "target": "sellStartDate",
+              "source": {
+                "table": "SalesLT.Product",
+                "column": "SellStartDate",
+                "type": "DATETIME"
+              },
+              "type": "string"
+            },
+            {
+              "target": "size",
+              "source": {
+                "table": "SalesLT.Product",
+                "column": "Size",
+                "type": "NVARCHAR(5)"
+              },
+              "type": "string"
+            },
+            {
+              "target": "standardCost",
+              "source": {
+                "table": "SalesLT.Product",
+                "column": "StandardCost",
+                "type": "MONEY"
+              },
+              "type": "string"
+            },
+            {
+              "target": "thumbNailPhoto",
+              "source": {
+                "table": "SalesLT.Product",
+                "column": "ThumbNailPhoto",
+                "type": "VARBINARY(MAX)"
+              },
+              "type": "object"
+            },
+            {
+              "target": "thumbnailPhotoFileName",
+              "source": {
+                "table": "SalesLT.Product",
+                "column": "ThumbnailPhotoFileName",
+                "type": "NVARCHAR(50)"
+              },
+              "type": "string"
+            },
+            {
+              "target": "weight",
+              "source": {
+                "table": "SalesLT.Product",
+                "column": "Weight",
+                "type": "DECIMAL(8,2)"
+              },
+              "type": "string"
+            }
+          ],
+          "relationships": [
+            {
+              "targetEntity": "ProductCategory",
+              "sourceFK": {
+                "table": "SalesLT.Product",
+                "column": "ProductCategoryID",
+                "constraintName": "FK_Product_ProductCategory_ProductCategoryID"
+              },
+              "type": "one-to-many",
+              "strategy": "reference"
+            },
+            {
+              "targetEntity": "ProductModel",
+              "sourceFK": {
+                "table": "SalesLT.Product",
+                "column": "ProductModelID",
+                "constraintName": "FK_Product_ProductModel_ProductModelID"
+              },
+              "type": "one-to-many",
+              "strategy": "reference"
+            },
+            {
+              "targetEntity": "SalesOrderDetail",
+              "sourceFK": {
+                "table": "SalesLT.SalesOrderDetail",
+                "column": "ProductID",
+                "constraintName": "FK_SalesOrderDetail_Product_ProductID"
+              },
+              "type": "one-to-many",
+              "strategy": "reference"
+            }
+          ],
+          "idTemplate": "product-{ProductID}"
+        },
+        {
+          "name": "ProductCategory",
+          "docType": "productCategory",
+          "sourceTable": "SalesLT.ProductCategory",
+          "attributes": [
+            {
+              "target": "id",
+              "source": {
+                "table": "SalesLT.ProductCategory",
+                "column": "ProductCategoryID",
+                "type": "INT"
+              },
+              "type": "string",
+              "isPartitionKey": true,
+              "isId": true
+            },
+            {
+              "target": "modifiedDate",
+              "source": {
+                "table": "SalesLT.ProductCategory",
+                "column": "ModifiedDate",
+                "type": "DATETIME"
+              },
+              "type": "string"
+            },
+            {
+              "target": "name",
+              "source": {
+                "table": "SalesLT.ProductCategory",
+                "column": "Name",
+                "type": "dbo.Name"
+              },
+              "type": "string"
+            },
+            {
+              "target": "parentProductCategoryId",
+              "source": {
+                "table": "SalesLT.ProductCategory",
+                "column": "ParentProductCategoryID",
+                "type": "INT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "productCategoryId",
+              "source": {
+                "table": "SalesLT.ProductCategory",
+                "column": "ProductCategoryID",
+                "type": "INT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "rowguid",
+              "source": {
+                "table": "SalesLT.ProductCategory",
+                "column": "rowguid",
+                "type": "UNIQUEIDENTIFIER"
+              },
+              "type": "string"
+            }
+          ],
+          "relationships": [
+            {
+              "targetEntity": "ProductCategory",
+              "sourceFK": {
+                "table": "SalesLT.ProductCategory",
+                "column": "ParentProductCategoryID",
+                "constraintName": "FK_ProductCategory_ProductCategory_ParentProductCategoryID_ProductCategoryID"
+              },
+              "type": "one-to-many",
+              "strategy": "reference"
+            }
+          ],
+          "idTemplate": "productCategory-{ProductCategoryID}"
+        },
+        {
+          "name": "ProductDescription",
+          "docType": "productDescription",
+          "sourceTable": "SalesLT.ProductDescription",
+          "attributes": [
+            {
+              "target": "description",
+              "source": {
+                "table": "SalesLT.ProductDescription",
+                "column": "Description",
+                "type": "NVARCHAR(400)"
+              },
+              "type": "string"
+            },
+            {
+              "target": "id",
+              "source": {
+                "table": "SalesLT.ProductDescription",
+                "column": "ProductDescriptionID",
+                "type": "INT"
+              },
+              "type": "string",
+              "isPartitionKey": true,
+              "isId": true
+            },
+            {
+              "target": "modifiedDate",
+              "source": {
+                "table": "SalesLT.ProductDescription",
+                "column": "ModifiedDate",
+                "type": "DATETIME"
+              },
+              "type": "string"
+            },
+            {
+              "target": "productDescriptionId",
+              "source": {
+                "table": "SalesLT.ProductDescription",
+                "column": "ProductDescriptionID",
+                "type": "INT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "rowguid",
+              "source": {
+                "table": "SalesLT.ProductDescription",
+                "column": "rowguid",
+                "type": "UNIQUEIDENTIFIER"
+              },
+              "type": "string"
+            }
+          ],
+          "idTemplate": "productDescription-{ProductDescriptionID}"
+        },
+        {
+          "name": "ProductModel",
+          "docType": "productModel",
+          "sourceTable": "SalesLT.ProductModel",
+          "attributes": [
+            {
+              "target": "catalogDescription",
+              "source": {
+                "table": "SalesLT.ProductModel",
+                "column": "CatalogDescription",
+                "type": "XML"
+              },
+              "type": "object"
+            },
+            {
+              "target": "id",
+              "source": {
+                "table": "SalesLT.ProductModel",
+                "column": "ProductModelID",
+                "type": "INT"
+              },
+              "type": "string",
+              "isPartitionKey": true,
+              "isId": true
+            },
+            {
+              "target": "modifiedDate",
+              "source": {
+                "table": "SalesLT.ProductModel",
+                "column": "ModifiedDate",
+                "type": "DATETIME"
+              },
+              "type": "string"
+            },
+            {
+              "target": "name",
+              "source": {
+                "table": "SalesLT.ProductModel",
+                "column": "Name",
+                "type": "dbo.Name"
+              },
+              "type": "string"
+            },
+            {
+              "target": "productModelId",
+              "source": {
+                "table": "SalesLT.ProductModel",
+                "column": "ProductModelID",
+                "type": "INT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "rowguid",
+              "source": {
+                "table": "SalesLT.ProductModel",
+                "column": "rowguid",
+                "type": "UNIQUEIDENTIFIER"
+              },
+              "type": "string"
+            }
+          ],
+          "idTemplate": "productModel-{ProductModelID}"
+        },
+        {
+          "name": "ProductModelProductDescription",
+          "docType": "productModelProductDescription",
+          "sourceTable": "SalesLT.ProductModelProductDescription",
+          "attributes": [
+            {
+              "target": "culture",
+              "source": {
+                "table": "SalesLT.ProductModelProductDescription",
+                "column": "Culture",
+                "type": "NVARCHAR(6)"
+              },
+              "type": "string"
+            },
+            {
+              "target": "id",
+              "source": {
+                "table": "SalesLT.ProductModelProductDescription",
+                "column": "ProductModelID",
+                "type": "INT"
+              },
+              "type": "string",
+              "isPartitionKey": true,
+              "isId": true
+            },
+            {
+              "target": "modifiedDate",
+              "source": {
+                "table": "SalesLT.ProductModelProductDescription",
+                "column": "ModifiedDate",
+                "type": "DATETIME"
+              },
+              "type": "string"
+            },
+            {
+              "target": "productDescriptionId",
+              "source": {
+                "table": "SalesLT.ProductModelProductDescription",
+                "column": "ProductDescriptionID",
+                "type": "INT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "productModelId",
+              "source": {
+                "table": "SalesLT.ProductModelProductDescription",
+                "column": "ProductModelID",
+                "type": "INT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "rowguid",
+              "source": {
+                "table": "SalesLT.ProductModelProductDescription",
+                "column": "rowguid",
+                "type": "UNIQUEIDENTIFIER"
+              },
+              "type": "string"
+            }
+          ],
+          "relationships": [
+            {
+              "targetEntity": "ProductDescription",
+              "sourceFK": {
+                "table": "SalesLT.ProductModelProductDescription",
+                "column": "ProductDescriptionID",
+                "constraintName": "FK_ProductModelProductDescription_ProductDescription_ProductDescriptionID"
+              },
+              "type": "one-to-many",
+              "strategy": "reference"
+            },
+            {
+              "targetEntity": "ProductModel",
+              "sourceFK": {
+                "table": "SalesLT.ProductModelProductDescription",
+                "column": "ProductModelID",
+                "constraintName": "FK_ProductModelProductDescription_ProductModel_ProductModelID"
+              },
+              "type": "one-to-many",
+              "strategy": "reference"
+            }
+          ],
+          "idTemplate": "productModelProductDescription-{ProductModelID}-{ProductDescriptionID}-{Culture}"
+        }
+      ],
+      "indexingPolicy": {
+        "indexingMode": "consistent",
+        "automatic": true,
+        "includedPaths": [
+          {
+            "path": "/docType/?"
+          },
+          {
+            "path": "/parentProductCategoryId/?"
+          },
+          {
+            "path": "/productCategoryId/?"
+          },
+          {
+            "path": "/productDescriptionId/?"
+          },
+          {
+            "path": "/productModelId/?"
+          }
+        ],
+        "excludedPaths": [
+          {
+            "path": "/\"_etag\"/?"
+          },
+          {
+            "path": "/*"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Customers",
+      "partitionKeys": [
+        {
+          "path": "/id"
+        }
+      ],
+      "entities": [
+        {
+          "name": "Address",
+          "docType": "address",
+          "sourceTable": "SalesLT.Address",
+          "attributes": [
+            {
+              "target": "addressId",
+              "source": {
+                "table": "SalesLT.Address",
+                "column": "AddressID",
+                "type": "INT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "addressLine1",
+              "source": {
+                "table": "SalesLT.Address",
+                "column": "AddressLine1",
+                "type": "NVARCHAR(60)"
+              },
+              "type": "string"
+            },
+            {
+              "target": "addressLine2",
+              "source": {
+                "table": "SalesLT.Address",
+                "column": "AddressLine2",
+                "type": "NVARCHAR(60)"
+              },
+              "type": "string"
+            },
+            {
+              "target": "city",
+              "source": {
+                "table": "SalesLT.Address",
+                "column": "City",
+                "type": "NVARCHAR(30)"
+              },
+              "type": "string"
+            },
+            {
+              "target": "countryRegion",
+              "source": {
+                "table": "SalesLT.Address",
+                "column": "CountryRegion",
+                "type": "dbo.Name"
+              },
+              "type": "string"
+            },
+            {
+              "target": "id",
+              "source": {
+                "table": "SalesLT.Address",
+                "column": "AddressID",
+                "type": "INT"
+              },
+              "type": "string",
+              "isPartitionKey": true,
+              "isId": true
+            },
+            {
+              "target": "modifiedDate",
+              "source": {
+                "table": "SalesLT.Address",
+                "column": "ModifiedDate",
+                "type": "DATETIME"
+              },
+              "type": "string"
+            },
+            {
+              "target": "postalCode",
+              "source": {
+                "table": "SalesLT.Address",
+                "column": "PostalCode",
+                "type": "NVARCHAR(15)"
+              },
+              "type": "string"
+            },
+            {
+              "target": "rowguid",
+              "source": {
+                "table": "SalesLT.Address",
+                "column": "rowguid",
+                "type": "UNIQUEIDENTIFIER"
+              },
+              "type": "string"
+            },
+            {
+              "target": "stateProvince",
+              "source": {
+                "table": "SalesLT.Address",
+                "column": "StateProvince",
+                "type": "dbo.Name"
+              },
+              "type": "string"
+            }
+          ],
+          "relationships": [
+            {
+              "targetEntity": "SalesOrderHeader",
+              "sourceFK": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "BillToAddressID",
+                "constraintName": "FK_SalesOrderHeader_Address_BillTo_AddressID"
+              },
+              "type": "one-to-many",
+              "strategy": "reference"
+            },
+            {
+              "targetEntity": "SalesOrderHeader",
+              "sourceFK": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "ShipToAddressID",
+                "constraintName": "FK_SalesOrderHeader_Address_ShipTo_AddressID"
+              },
+              "type": "one-to-many",
+              "strategy": "reference"
+            }
+          ],
+          "idTemplate": "address-{AddressID}"
+        },
+        {
+          "name": "Customer",
+          "docType": "customer",
+          "sourceTable": "SalesLT.Customer",
+          "attributes": [
+            {
+              "target": "companyName",
+              "source": {
+                "table": "SalesLT.Customer",
+                "column": "CompanyName",
+                "type": "NVARCHAR(128)"
+              },
+              "type": "string"
+            },
+            {
+              "target": "customerId",
+              "source": {
+                "table": "SalesLT.Customer",
+                "column": "CustomerID",
+                "type": "INT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "emailAddress",
+              "source": {
+                "table": "SalesLT.Customer",
+                "column": "EmailAddress",
+                "type": "NVARCHAR(50)"
+              },
+              "type": "string"
+            },
+            {
+              "target": "firstName",
+              "source": {
+                "table": "SalesLT.Customer",
+                "column": "FirstName",
+                "type": "dbo.Name"
+              },
+              "type": "string"
+            },
+            {
+              "target": "id",
+              "source": {
+                "table": "SalesLT.Customer",
+                "column": "CustomerID",
+                "type": "INT"
+              },
+              "type": "string",
+              "isPartitionKey": true,
+              "isId": true
+            },
+            {
+              "target": "lastName",
+              "source": {
+                "table": "SalesLT.Customer",
+                "column": "LastName",
+                "type": "dbo.Name"
+              },
+              "type": "string"
+            },
+            {
+              "target": "middleName",
+              "source": {
+                "table": "SalesLT.Customer",
+                "column": "MiddleName",
+                "type": "dbo.Name"
+              },
+              "type": "string"
+            },
+            {
+              "target": "modifiedDate",
+              "source": {
+                "table": "SalesLT.Customer",
+                "column": "ModifiedDate",
+                "type": "DATETIME"
+              },
+              "type": "string"
+            },
+            {
+              "target": "nameStyle",
+              "source": {
+                "table": "SalesLT.Customer",
+                "column": "NameStyle",
+                "type": "dbo.NameStyle"
+              },
+              "type": "boolean"
+            },
+            {
+              "target": "passwordHash",
+              "source": {
+                "table": "SalesLT.Customer",
+                "column": "PasswordHash",
+                "type": "VARCHAR(128)"
+              },
+              "type": "string"
+            },
+            {
+              "target": "passwordSalt",
+              "source": {
+                "table": "SalesLT.Customer",
+                "column": "PasswordSalt",
+                "type": "VARCHAR(10)"
+              },
+              "type": "string"
+            },
+            {
+              "target": "phone",
+              "source": {
+                "table": "SalesLT.Customer",
+                "column": "Phone",
+                "type": "dbo.Phone"
+              },
+              "type": "string"
+            },
+            {
+              "target": "rowguid",
+              "source": {
+                "table": "SalesLT.Customer",
+                "column": "rowguid",
+                "type": "UNIQUEIDENTIFIER"
+              },
+              "type": "string"
+            },
+            {
+              "target": "salesPerson",
+              "source": {
+                "table": "SalesLT.Customer",
+                "column": "SalesPerson",
+                "type": "NVARCHAR(256)"
+              },
+              "type": "string"
+            },
+            {
+              "target": "suffix",
+              "source": {
+                "table": "SalesLT.Customer",
+                "column": "Suffix",
+                "type": "NVARCHAR(10)"
+              },
+              "type": "string"
+            },
+            {
+              "target": "title",
+              "source": {
+                "table": "SalesLT.Customer",
+                "column": "Title",
+                "type": "NVARCHAR(8)"
+              },
+              "type": "string"
+            }
+          ],
+          "relationships": [
+            {
+              "targetEntity": "SalesOrderHeader",
+              "sourceFK": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "CustomerID",
+                "constraintName": "FK_SalesOrderHeader_Customer_CustomerID"
+              },
+              "type": "one-to-many",
+              "strategy": "reference"
+            }
+          ],
+          "idTemplate": "customer-{CustomerID}"
+        },
+        {
+          "name": "CustomerAddress",
+          "docType": "customerAddress",
+          "sourceTable": "SalesLT.CustomerAddress",
+          "attributes": [
+            {
+              "target": "addressId",
+              "source": {
+                "table": "SalesLT.CustomerAddress",
+                "column": "AddressID",
+                "type": "INT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "addressType",
+              "source": {
+                "table": "SalesLT.CustomerAddress",
+                "column": "AddressType",
+                "type": "dbo.Name"
+              },
+              "type": "string"
+            },
+            {
+              "target": "customerId",
+              "source": {
+                "table": "SalesLT.CustomerAddress",
+                "column": "CustomerID",
+                "type": "INT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "id",
+              "source": {
+                "table": "SalesLT.CustomerAddress",
+                "column": "CustomerID",
+                "type": "INT"
+              },
+              "type": "string",
+              "isPartitionKey": true,
+              "isId": true
+            },
+            {
+              "target": "modifiedDate",
+              "source": {
+                "table": "SalesLT.CustomerAddress",
+                "column": "ModifiedDate",
+                "type": "DATETIME"
+              },
+              "type": "string"
+            },
+            {
+              "target": "rowguid",
+              "source": {
+                "table": "SalesLT.CustomerAddress",
+                "column": "rowguid",
+                "type": "UNIQUEIDENTIFIER"
+              },
+              "type": "string"
+            }
+          ],
+          "relationships": [
+            {
+              "targetEntity": "Address",
+              "sourceFK": {
+                "table": "SalesLT.CustomerAddress",
+                "column": "AddressID",
+                "constraintName": "FK_CustomerAddress_Address_AddressID"
+              },
+              "type": "one-to-many",
+              "strategy": "reference"
+            },
+            {
+              "targetEntity": "Customer",
+              "sourceFK": {
+                "table": "SalesLT.CustomerAddress",
+                "column": "CustomerID",
+                "constraintName": "FK_CustomerAddress_Customer_CustomerID"
+              },
+              "type": "one-to-many",
+              "strategy": "reference"
+            }
+          ],
+          "idTemplate": "customerAddress-{CustomerID}-{AddressID}"
+        }
+      ],
+      "indexingPolicy": {
+        "indexingMode": "consistent",
+        "automatic": true,
+        "includedPaths": [
+          {
+            "path": "/*"
+          }
+        ],
+        "excludedPaths": [
+          {
+            "path": "/\"_etag\"/?"
+          },
+          {
+            "path": "/passwordHash/?"
+          },
+          {
+            "path": "/passwordSalt/?"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Operations",
+      "partitionKeys": [
+        {
+          "path": "/id"
+        }
+      ],
+      "entities": [
+        {
+          "name": "BuildVersion",
+          "docType": "buildVersion",
+          "sourceTable": "dbo.BuildVersion",
+          "attributes": [
+            {
+              "target": "databaseVersion",
+              "source": {
+                "table": "dbo.BuildVersion",
+                "column": "Database Version",
+                "type": "NVARCHAR(25)"
+              },
+              "type": "string"
+            },
+            {
+              "target": "id",
+              "source": {
+                "table": "dbo.BuildVersion",
+                "column": "SystemInformationID",
+                "type": "TINYINT"
+              },
+              "type": "string",
+              "isPartitionKey": true,
+              "isId": true
+            },
+            {
+              "target": "modifiedDate",
+              "source": {
+                "table": "dbo.BuildVersion",
+                "column": "ModifiedDate",
+                "type": "DATETIME"
+              },
+              "type": "string"
+            },
+            {
+              "target": "systemInformationId",
+              "source": {
+                "table": "dbo.BuildVersion",
+                "column": "SystemInformationID",
+                "type": "TINYINT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "versionDate",
+              "source": {
+                "table": "dbo.BuildVersion",
+                "column": "VersionDate",
+                "type": "DATETIME"
+              },
+              "type": "string"
+            }
+          ],
+          "idTemplate": "buildVersion-{SystemInformationID}"
+        },
+        {
+          "name": "ErrorLog",
+          "docType": "errorLog",
+          "sourceTable": "dbo.ErrorLog",
+          "attributes": [
+            {
+              "target": "errorLine",
+              "source": {
+                "table": "dbo.ErrorLog",
+                "column": "ErrorLine",
+                "type": "INT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "errorLogId",
+              "source": {
+                "table": "dbo.ErrorLog",
+                "column": "ErrorLogID",
+                "type": "INT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "errorMessage",
+              "source": {
+                "table": "dbo.ErrorLog",
+                "column": "ErrorMessage",
+                "type": "NVARCHAR(4000)"
+              },
+              "type": "string"
+            },
+            {
+              "target": "errorNumber",
+              "source": {
+                "table": "dbo.ErrorLog",
+                "column": "ErrorNumber",
+                "type": "INT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "errorProcedure",
+              "source": {
+                "table": "dbo.ErrorLog",
+                "column": "ErrorProcedure",
+                "type": "NVARCHAR(126)"
+              },
+              "type": "string"
+            },
+            {
+              "target": "errorSeverity",
+              "source": {
+                "table": "dbo.ErrorLog",
+                "column": "ErrorSeverity",
+                "type": "INT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "errorState",
+              "source": {
+                "table": "dbo.ErrorLog",
+                "column": "ErrorState",
+                "type": "INT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "errorTime",
+              "source": {
+                "table": "dbo.ErrorLog",
+                "column": "ErrorTime",
+                "type": "DATETIME"
+              },
+              "type": "string"
+            },
+            {
+              "target": "id",
+              "source": {
+                "table": "dbo.ErrorLog",
+                "column": "ErrorLogID",
+                "type": "INT"
+              },
+              "type": "string",
+              "isPartitionKey": true,
+              "isId": true
+            }
+          ],
+          "idTemplate": "errorLog-{ErrorLogID}"
+        }
+      ],
+      "indexingPolicy": {
+        "indexingMode": "consistent",
+        "automatic": true,
+        "includedPaths": [
+          {
+            "path": "/*"
+          }
+        ],
+        "excludedPaths": [
+          {
+            "path": "/\"_etag\"/?"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Orders",
+      "partitionKeys": [
+        {
+          "path": "/salesOrderId"
+        }
+      ],
+      "entities": [
+        {
+          "name": "SalesOrderDetail",
+          "docType": "salesOrderDetail",
+          "sourceTable": "SalesLT.SalesOrderDetail",
+          "attributes": [
+            {
+              "target": "id",
+              "source": {
+                "table": "SalesLT.SalesOrderDetail",
+                "column": "SalesOrderID",
+                "type": "INT"
+              },
+              "type": "string",
+              "isId": true
+            },
+            {
+              "target": "lineTotal",
+              "source": {
+                "table": "SalesLT.SalesOrderDetail",
+                "column": "LineTotal",
+                "type": "computed expression"
+              },
+              "type": "string"
+            },
+            {
+              "target": "modifiedDate",
+              "source": {
+                "table": "SalesLT.SalesOrderDetail",
+                "column": "ModifiedDate",
+                "type": "DATETIME"
+              },
+              "type": "string"
+            },
+            {
+              "target": "orderQty",
+              "source": {
+                "table": "SalesLT.SalesOrderDetail",
+                "column": "OrderQty",
+                "type": "SMALLINT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "productId",
+              "source": {
+                "table": "SalesLT.SalesOrderDetail",
+                "column": "ProductID",
+                "type": "INT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "rowguid",
+              "source": {
+                "table": "SalesLT.SalesOrderDetail",
+                "column": "rowguid",
+                "type": "UNIQUEIDENTIFIER"
+              },
+              "type": "string"
+            },
+            {
+              "target": "salesOrderDetailId",
+              "source": {
+                "table": "SalesLT.SalesOrderDetail",
+                "column": "SalesOrderDetailID",
+                "type": "INT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "salesOrderId",
+              "source": {
+                "table": "SalesLT.SalesOrderDetail",
+                "column": "SalesOrderID",
+                "type": "INT"
+              },
+              "type": "integer",
+              "isPartitionKey": true
+            },
+            {
+              "target": "unitPrice",
+              "source": {
+                "table": "SalesLT.SalesOrderDetail",
+                "column": "UnitPrice",
+                "type": "MONEY"
+              },
+              "type": "string"
+            },
+            {
+              "target": "unitPriceDiscount",
+              "source": {
+                "table": "SalesLT.SalesOrderDetail",
+                "column": "UnitPriceDiscount",
+                "type": "MONEY"
+              },
+              "type": "string"
+            }
+          ],
+          "relationships": [
+            {
+              "targetEntity": "Product",
+              "sourceFK": {
+                "table": "SalesLT.SalesOrderDetail",
+                "column": "ProductID",
+                "type": "INT",
+                "constraintName": "FK_SalesOrderDetail_Product_ProductID"
+              },
+              "type": "one-to-many",
+              "strategy": "reference"
+            },
+            {
+              "targetEntity": "SalesOrderHeader",
+              "sourceFK": {
+                "table": "SalesLT.SalesOrderDetail",
+                "column": "SalesOrderID",
+                "type": "INT",
+                "constraintName": "FK_SalesOrderDetail_SalesOrderHeader_SalesOrderID"
+              },
+              "type": "one-to-many",
+              "strategy": "reference"
+            }
+          ],
+          "idTemplate": "salesOrderDetail-{SalesOrderID}-{SalesOrderDetailID}"
+        },
+        {
+          "name": "SalesOrderHeader",
+          "docType": "salesOrderHeader",
+          "sourceTable": "SalesLT.SalesOrderHeader",
+          "attributes": [
+            {
+              "target": "accountNumber",
+              "source": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "AccountNumber",
+                "type": "dbo.AccountNumber"
+              },
+              "type": "string"
+            },
+            {
+              "target": "billToAddressId",
+              "source": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "BillToAddressID",
+                "type": "INT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "comment",
+              "source": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "Comment",
+                "type": "NVARCHAR(MAX)"
+              },
+              "type": "object"
+            },
+            {
+              "target": "creditCardApprovalCode",
+              "source": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "CreditCardApprovalCode",
+                "type": "VARCHAR(15)"
+              },
+              "type": "string"
+            },
+            {
+              "target": "customerId",
+              "source": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "CustomerID",
+                "type": "INT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "dueDate",
+              "source": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "DueDate",
+                "type": "DATETIME"
+              },
+              "type": "string"
+            },
+            {
+              "target": "freight",
+              "source": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "Freight",
+                "type": "MONEY"
+              },
+              "type": "string"
+            },
+            {
+              "target": "id",
+              "source": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "SalesOrderID",
+                "type": "INT"
+              },
+              "type": "string",
+              "isId": true
+            },
+            {
+              "target": "modifiedDate",
+              "source": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "ModifiedDate",
+                "type": "DATETIME"
+              },
+              "type": "string"
+            },
+            {
+              "target": "onlineOrderFlag",
+              "source": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "OnlineOrderFlag",
+                "type": "dbo.Flag"
+              },
+              "type": "boolean"
+            },
+            {
+              "target": "orderDate",
+              "source": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "OrderDate",
+                "type": "DATETIME"
+              },
+              "type": "string"
+            },
+            {
+              "target": "purchaseOrderNumber",
+              "source": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "PurchaseOrderNumber",
+                "type": "dbo.OrderNumber"
+              },
+              "type": "string"
+            },
+            {
+              "target": "revisionNumber",
+              "source": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "RevisionNumber",
+                "type": "TINYINT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "rowguid",
+              "source": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "rowguid",
+                "type": "UNIQUEIDENTIFIER"
+              },
+              "type": "string"
+            },
+            {
+              "target": "salesOrderId",
+              "source": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "SalesOrderID",
+                "type": "INT"
+              },
+              "type": "integer",
+              "isPartitionKey": true
+            },
+            {
+              "target": "salesOrderNumber",
+              "source": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "SalesOrderNumber",
+                "type": "computed expression"
+              },
+              "type": "string"
+            },
+            {
+              "target": "shipDate",
+              "source": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "ShipDate",
+                "type": "DATETIME"
+              },
+              "type": "string"
+            },
+            {
+              "target": "shipMethod",
+              "source": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "ShipMethod",
+                "type": "NVARCHAR(50)"
+              },
+              "type": "string"
+            },
+            {
+              "target": "shipToAddressId",
+              "source": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "ShipToAddressID",
+                "type": "INT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "status",
+              "source": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "Status",
+                "type": "TINYINT"
+              },
+              "type": "integer"
+            },
+            {
+              "target": "subTotal",
+              "source": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "SubTotal",
+                "type": "MONEY"
+              },
+              "type": "string"
+            },
+            {
+              "target": "taxAmt",
+              "source": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "TaxAmt",
+                "type": "MONEY"
+              },
+              "type": "string"
+            },
+            {
+              "target": "totalDue",
+              "source": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "TotalDue",
+                "type": "computed expression"
+              },
+              "type": "string"
+            }
+          ],
+          "relationships": [
+            {
+              "targetEntity": "Address",
+              "sourceFK": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "BillToAddressID",
+                "type": "INT",
+                "constraintName": "FK_SalesOrderHeader_Address_BillTo_AddressID"
+              },
+              "type": "one-to-many",
+              "strategy": "reference"
+            },
+            {
+              "targetEntity": "Address",
+              "sourceFK": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "ShipToAddressID",
+                "type": "INT",
+                "constraintName": "FK_SalesOrderHeader_Address_ShipTo_AddressID"
+              },
+              "type": "one-to-many",
+              "strategy": "reference"
+            },
+            {
+              "targetEntity": "Customer",
+              "sourceFK": {
+                "table": "SalesLT.SalesOrderHeader",
+                "column": "CustomerID",
+                "type": "INT",
+                "constraintName": "FK_SalesOrderHeader_Customer_CustomerID"
+              },
+              "type": "one-to-many",
+              "strategy": "reference"
+            }
+          ],
+          "idTemplate": "salesOrderHeader-{SalesOrderID}"
+        }
+      ],
+      "indexingPolicy": {
+        "indexingMode": "consistent",
+        "automatic": true,
+        "includedPaths": [
+          {
+            "path": "/billToAddressId/?"
+          },
+          {
+            "path": "/customerId/?"
+          },
+          {
+            "path": "/docType/?"
+          },
+          {
+            "path": "/productId/?"
+          },
+          {
+            "path": "/rowguid/?"
+          },
+          {
+            "path": "/salesOrderId/?"
+          },
+          {
+            "path": "/salesOrderNumber/?"
+          },
+          {
+            "path": "/shipToAddressId/?"
+          }
+        ],
+        "excludedPaths": [
+          {
+            "path": "/\"_etag\"/?"
+          },
+          {
+            "path": "/*"
+          }
+        ]
+      }
+    }
+  ],
+  "accessPatterns": [
+    {
+      "name": "Catalog: R003 category list with parent",
+      "source": {
+        "type": "EF Core",
+        "query": "List categories and include parent"
+      },
+      "target": {
+        "type": "query",
+        "container": "Catalog",
+        "operation": "Query categories then hydrate non-null parents by point read",
+        "query": "SELECT * FROM c WHERE c.docType = @docType",
+        "isCrossPartition": true
+      }
+    },
+    {
+      "name": "Catalog: R004 category key with parent",
+      "source": {
+        "type": "EF Core",
+        "query": "Find category by ProductCategoryID, optionally include parent"
+      },
+      "target": {
+        "type": "point read",
+        "container": "Catalog",
+        "operation": "Read productCategory-{ProductCategoryID} and hydrate parent if requested",
+        "isCrossPartition": false
+      }
+    },
+    {
+      "name": "Catalog: R005 category selection",
+      "source": {
+        "type": "EF Core",
+        "query": "List categories for parent selection"
+      },
+      "target": {
+        "type": "query",
+        "container": "Catalog",
+        "operation": "Query categories with projection",
+        "query": "SELECT c.id, c.productCategoryId, c.name FROM c WHERE c.docType = @docType",
+        "isCrossPartition": true
+      }
+    },
+    {
+      "name": "Catalog: R006 product list with category and model",
+      "source": {
+        "type": "EF Core",
+        "query": "List products with category and model"
+      },
+      "target": {
+        "type": "query",
+        "container": "Catalog",
+        "operation": "Query products then hydrate category and model with point reads",
+        "query": "SELECT * FROM c WHERE c.docType = @docType",
+        "isCrossPartition": true
+      }
+    },
+    {
+      "name": "Catalog: R007 product key with relationships",
+      "source": {
+        "type": "EF Core",
+        "query": "Find product by ProductID, optionally include category and model"
+      },
+      "target": {
+        "type": "point read",
+        "container": "Catalog",
+        "operation": "Read product-{ProductID} and hydrate non-null relationships if requested",
+        "isCrossPartition": false
+      }
+    },
+    {
+      "name": "Catalog: R008 category and model selection",
+      "source": {
+        "type": "EF Core",
+        "query": "List categories and models for product selection"
+      },
+      "target": {
+        "type": "query",
+        "container": "Catalog",
+        "operation": "Run two projected docType queries",
+        "query": "SELECT c.id, c.name FROM c WHERE c.docType = @docType",
+        "isCrossPartition": true
+      }
+    },
+    {
+      "name": "Catalog: W004 W005 W006 category writes",
+      "source": {
+        "type": "EF Core",
+        "query": "Create, update, or delete one category"
+      },
+      "target": {
+        "type": "coordinator",
+        "container": "Catalog",
+        "operation": "Coordinated create, conditional replace, or delete with integrity checks",
+        "isCrossPartition": true
+      }
+    },
+    {
+      "name": "Catalog: W007 W008 W009 product writes",
+      "source": {
+        "type": "EF Core",
+        "query": "Create, update, or delete one product"
+      },
+      "target": {
+        "type": "coordinator",
+        "container": "Catalog",
+        "operation": "Coordinated create, conditional replace, or delete with integrity checks",
+        "isCrossPartition": true
+      }
+    },
+    {
+      "name": "Customers: R001 List customers",
+      "source": {
+        "type": "EF Core",
+        "query": "List Customer without filter"
+      },
+      "target": {
+        "type": "query",
+        "container": "Customers",
+        "operation": "Parameterized paginated cross-partition query",
+        "query": "SELECT * FROM c WHERE c.docType = @docType",
+        "isCrossPartition": true
+      }
+    },
+    {
+      "name": "Customers: R002 Customer by key and existence",
+      "source": {
+        "type": "EF Core",
+        "query": "Find Customer by CustomerID"
+      },
+      "target": {
+        "type": "pointRead",
+        "container": "Customers",
+        "operation": "Read item by derived id and identical partition key",
+        "partitionKeyValue": "customer-{CustomerID}",
+        "isCrossPartition": false
+      }
+    },
+    {
+      "name": "Customers: W001 Create customer",
+      "source": {
+        "type": "EF Core",
+        "query": "Insert Customer"
+      },
+      "target": {
+        "type": "write",
+        "container": "Customers",
+        "operation": "Coordinated create with derived id and identical partition key",
+        "partitionKeyValue": "customer-{CustomerID}",
+        "isCrossPartition": false
+      }
+    },
+    {
+      "name": "Customers: W002 Update customer",
+      "source": {
+        "type": "EF Core",
+        "query": "Update Customer by CustomerID"
+      },
+      "target": {
+        "type": "write",
+        "container": "Customers",
+        "operation": "Coordinated conditional replace with id and identical partition key",
+        "partitionKeyValue": "customer-{CustomerID}",
+        "isCrossPartition": false
+      }
+    },
+    {
+      "name": "Customers: W003 Delete customer",
+      "source": {
+        "type": "EF Core",
+        "query": "Delete Customer by CustomerID"
+      },
+      "target": {
+        "type": "write",
+        "container": "Customers",
+        "operation": "Coordinated delete after integrity checks",
+        "partitionKeyValue": "customer-{CustomerID}",
+        "isCrossPartition": false
+      }
+    },
+    {
+      "name": "Orders: Hypothetical customer orders",
+      "source": {
+        "type": "schema-inferred",
+        "query": "SalesOrderHeader lookup by CustomerID source index; no controller access observed"
+      },
+      "target": {
+        "type": "query",
+        "container": "Orders",
+        "operation": "Parameterized fan-out query through coordinator",
+        "query": "SELECT * FROM c WHERE c.docType = @docType AND c.customerId = @customerId",
+        "isCrossPartition": true
+      }
+    },
+    {
+      "name": "Orders: Hypothetical details by order",
+      "source": {
+        "type": "schema-inferred",
+        "query": "SalesOrderDetail lookup by SalesOrderID; no controller access observed"
+      },
+      "target": {
+        "type": "query",
+        "container": "Orders",
+        "operation": "Parameterized partition-routed query through coordinator",
+        "query": "SELECT * FROM c WHERE c.docType = @docType AND c.salesOrderId = @salesOrderId",
+        "partitionKeyValue": "SalesOrderID",
+        "isCrossPartition": false
+      }
+    },
+    {
+      "name": "Orders: Hypothetical order by primary key",
+      "source": {
+        "type": "schema-inferred",
+        "query": "SalesOrderHeader lookup by SalesOrderID; no controller access observed"
+      },
+      "target": {
+        "type": "point-read",
+        "container": "Orders",
+        "operation": "Read header by deterministic id and salesOrderId through coordinator",
+        "partitionKeyValue": "SalesOrderID",
+        "isCrossPartition": false
+      }
+    },
+    {
+      "name": "Orders: Hypothetical product references",
+      "source": {
+        "type": "schema-inferred",
+        "query": "SalesOrderDetail lookup by ProductID source index; no controller access observed"
+      },
+      "target": {
+        "type": "query",
+        "container": "Orders",
+        "operation": "Parameterized fan-out query through coordinator",
+        "query": "SELECT * FROM c WHERE c.docType = @docType AND c.productId = @productId",
+        "isCrossPartition": true
+      }
+    }
+  ],
+  "crossPartitionQueries": [
+    {
+      "name": "Catalog: Category and product lists",
+      "container": "Catalog",
+      "query": "SELECT * FROM c WHERE c.docType = @docType",
+      "reason": "Lists have no source ID and each row has a distinct partition key.",
+      "estimatedRUCost": "medium, unmeasured planning class",
+      "optimizations": [
+        "Consider a maintained read model only with an approved consistency contract",
+        "Continuation-based paging and projection"
+      ]
+    },
+    {
+      "name": "Catalog: Dependent FK lookup",
+      "container": "Catalog",
+      "query": "SELECT c.id FROM c WHERE c.docType = @docType AND c.productCategoryId = @categoryId",
+      "reason": "Category dependents occupy separate ID partitions; modeled coordinator maintains authoritative references.",
+      "estimatedRUCost": "medium, unmeasured planning class",
+      "optimizations": [
+        "Use a durable coordinator-owned reverse-reference registry",
+        "Use an indexed reconciliation query, not query-then-write as an integrity guarantee"
+      ]
+    },
+    {
+      "name": "Catalog: Selection lists",
+      "container": "Catalog",
+      "query": "SELECT c.id, c.name FROM c WHERE c.docType = @docType",
+      "reason": "No partition key is available for all category or model choices.",
+      "estimatedRUCost": "medium, unmeasured planning class",
+      "optimizations": [
+        "Consider a bounded cache with explicit freshness",
+        "Continuation-based paging and projection"
+      ]
+    },
+    {
+      "name": "Customers: R001 List customers",
+      "container": "Customers",
+      "query": "SELECT * FROM c WHERE c.docType = @docType",
+      "reason": "No id or partition key is supplied for the list.",
+      "estimatedRUCost": "unknown; fan-out depends on partition count and results",
+      "optimizations": [
+        "Consider a read model only after workload and consistency requirements are measured.",
+        "Use continuation tokens and project only necessary non-sensitive fields."
+      ]
+    }
+  ]
+}

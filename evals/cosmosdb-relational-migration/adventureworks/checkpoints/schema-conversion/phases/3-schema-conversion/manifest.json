@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "sourceSha256": "51ef1032804f5b78d2d97f3cc08c14c72a10a1630fd0724ddb93e4d6f6438ad1",
+  "includeUnmappedDomains": true,
+  "databaseName": "adventureworks-eval",
+  "capacityMode": "serverless",
+  "domainSha256": {
+    "Catalog": "39b9465e5bd440ab76e5fd73ca309fd4c1aedbd7f3b9e052319730bbc48075b2",
+    "Customers": "8efd48607203b34d4d036899d7ee9248952b5ec1a16aac3b6cab9e92eb3bf7b7",
+    "Operations": "84306bd11c238b73b9dd143c92ecd402ce04298c5c901c50b63ddb512514b2ce",
+    "Orders": "0dffa7179421960e47f7b27e4dff21b49b9b21b661117d0a3f41bf92c8af5cf6"
+  },
+  "identityMapping": {
+    "version": 1,
+    "modelSha256": "0eb9978e5d2c314d1c43f86a11809fa14a7e023b9b89b74a538284d986f5e6b5",
+    "mappings": [
+      {
+        "containerName": "Catalog",
+        "docType": "productModelProductDescription",
+        "sourceTable": "SalesLT.ProductModelProductDescription",
+        "idTemplate": "productModelProductDescription-{ProductModelID}-{ProductDescriptionID}-{Culture}",
+        "encoding": "typed-hex-v1",
+        "rule": "rules/model-id-constraints.md"
+      },
+      {
+        "containerName": "Customers",
+        "docType": "customerAddress",
+        "sourceTable": "SalesLT.CustomerAddress",
+        "idTemplate": "customerAddress-{CustomerID}-{AddressID}",
+        "encoding": "typed-hex-v1",
+        "rule": "rules/model-id-constraints.md"
+      },
+      {
+        "containerName": "Orders",
+        "docType": "salesOrderDetail",
+        "sourceTable": "SalesLT.SalesOrderDetail",
+        "idTemplate": "salesOrderDetail-{SalesOrderID}-{SalesOrderDetailID}",
+        "encoding": "typed-hex-v1",
+        "rule": "rules/model-id-constraints.md"
+      }
+    ]
+  },
+  "blockingIssues": [
+    {
+      "kind": "design-decision",
+      "message": "The serialized transaction coordinator, exact source-collation comparator, overflow store, and sequence allocator are proposed designs requiring implementation and verification before any migration writes."
+    },
+    {
+      "kind": "design-decision",
+      "message": "Serverless eligibility, capacity, source collation, SDK compatibility, source-data extremes, and SQL-derived computed metadata remain unverified."
+    }
+  ],
+  "referenceRegistry": [
+    { "domain": "Catalog", "name": "Product", "sourceTable": "SalesLT.Product" },
+    { "domain": "Catalog", "name": "ProductCategory", "sourceTable": "SalesLT.ProductCategory" },
+    { "domain": "Catalog", "name": "ProductDescription", "sourceTable": "SalesLT.ProductDescription" },
+    { "domain": "Catalog", "name": "ProductModel", "sourceTable": "SalesLT.ProductModel" },
+    { "domain": "Catalog", "name": "ProductModelProductDescription", "sourceTable": "SalesLT.ProductModelProductDescription" },
+    { "domain": "Customers", "name": "Address", "sourceTable": "SalesLT.Address" },
+    { "domain": "Customers", "name": "Customer", "sourceTable": "SalesLT.Customer" },
+    { "domain": "Customers", "name": "CustomerAddress", "sourceTable": "SalesLT.CustomerAddress" },
+    { "domain": "Operations", "name": "BuildVersion", "sourceTable": "dbo.BuildVersion" },
+    { "domain": "Operations", "name": "ErrorLog", "sourceTable": "dbo.ErrorLog" },
+    { "domain": "Orders", "name": "SalesOrderDetail", "sourceTable": "SalesLT.SalesOrderDetail" },
+    { "domain": "Orders", "name": "SalesOrderHeader", "sourceTable": "SalesLT.SalesOrderHeader" }
+  ]
+}

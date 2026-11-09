@@ -352,7 +352,7 @@
   "Change page size": "Seitengröße ändern",
   "Change view mode": "Ansichtsmodus ändern",
   "Changing connection. Result actions are temporarily unavailable.": "Verbindung wird geändert. Ergebnisaktionen sind vorübergehend nicht verfügbar.",
-  "Changing the model will discard the current recommendation. You will need a new recommendation before deploying.": "Changing the model will discard the current recommendation. You will need a new recommendation before deploying.",
+  "Changing the model will discard the current recommendation. You will need a new recommendation before deploying.": "Durch das Ändern des Modells wird die aktuelle Empfehlung verworfen. Vor der Bereitstellung benötigen Sie eine neue Empfehlung.",
   "Charts generated at {time}": "Diagramme erstellt um {time}",
   "Chat & Sessions": "Chat und Sitzungen",
   "Chat sessions, AI assistants, helpdesks": "Chatsitzungen, KI-Assistenten, Helpdesks",

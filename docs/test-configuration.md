@@ -317,12 +317,41 @@ code and synthetic workload assumptions.
 No database backup, production rows, credentials, or live source database are required.
 
 The host-side [schema contract](../evals/cosmosdb-relational-migration/adventureworks/schema-contract.json)
-records reviewed table/column inventories, ordered primary keys, and foreign-key endpoints. Deterministic
+records reviewed table/column inventories, scalar types and nullability, ordered primary keys, foreign-key
+endpoints/delete actions, and separate unique/nonunique indexes. Deterministic
 graders compare the agent's evidence with those facts, require read/write evidence from all three CRUD
 controllers, check inference provenance, and rerun the portable phase validators. Phase-specific checks
 require exact table coverage in assessment/conversion, model-consistent Bicep/seed artifacts during
 provisioning, or a valid plan-only manifest during code-migration planning. All phases preserve application/DDL
 bytes, user metadata and the planned target. They must not fabricate deployment verification or build results.
+
+The [source-contract checker](../evals/cosmosdb-relational-migration/adventureworks/source-contract.mjs)
+normalizes case/whitespace, the fixture's six SQL alias base types, `INTEGER`/`INT` and `NUMERIC`/`DECIMAL`,
+and length/precision/scale supplied either in the type string or separate fields. Conflicting representations
+fail rather than letting one field override another. Known scalar nullability must be explicit (`nullable`
+or `isNullable`); it is not guessed from a missing field. Indexes can be recorded globally or per table,
+with `keys`, `columns`, or `keyColumns`, and unique entries can use `uniqueConstraints`. Uniqueness is
+never inferred from an `AK_` name. Missing, duplicate, reordered, filtered, combined or invented constraints
+fail. In particular, Product Name and ProductNumber remain separate constraints.
+
+Source mode is selected by the evaluation scenario, not by an agent-controlled `origin` field:
+
+- **Supplied DDL:** require the recorded delete action for every FK and every declared index, including
+  nonunique indexes. An explicit update-action claim must match the source's `NO ACTION` behavior.
+- **EF inference:** still require known mapped scalar facts and explicitly mapped indexes. Seven nonunique
+  FK-convention indexes are optional because they are not explicitly declared in the pinned EF configuration.
+  Physical FK actions may be missing or `unknown`; any concrete database-action claim must agree with the
+  mapped relationship. ORM `ClientSetNull` descriptions are not treated as database `SET NULL`.
+- **Computed columns:** retain their computed nature; allow explicit unknown physical type/nullability
+  metadata instead of pretending SQL Server ran. Concrete mapped types are checked against the EF mapping,
+  including `LineTotal` precision/scale. This does not independently validate computed expressions.
+
+These are deterministic checks of recorded source facts, not a SQL parser or source-engine validation.
+Mutation tests cover wrong types, narrowed lengths, precision/scale changes, missing or contradictory
+nullability, changed FK actions, lost uniqueness and fabricated email uniqueness. The oracle is reviewed
+against the versioned DDL and pinned EF source, not generated from the answer under evaluation.
+Target-side collation equivalence, global-versus-partition uniqueness and application enforcement designs
+remain the bounded judge's responsibility; matching source index metadata does not prove target preservation.
 
 The model judge covers semantic details without a fixed container layout: case-insensitive uniqueness,
 composite relationships, cascade behavior, self-reference, sequence-generated IDs, exact financial/computed

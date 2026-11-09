@@ -16,11 +16,12 @@ import { phaseOrder, prerequisiteStages, readCheckpoint, sha256 } from './checkp
 import { createAdventureWorksJudge } from './judge.mjs';
 import { verifySample } from './sample.mjs';
 import { plannedTarget, workloadContent } from './setup.mjs';
+import { checkAdventureWorksInventory, tableNames } from './source-contract.mjs';
 
-const schema = JSON.parse(readFileSync(new URL('./schema-contract.json', import.meta.url), 'utf8'));
+export { checkAdventureWorksInventory } from './source-contract.mjs';
+
 const suppliedDdl = readFileSync(new URL('./AdventureworksLT.sql', import.meta.url));
 const schemaPath = '.cosmosdb-migration/phases/1-discovery/schema-ddl/AdventureworksLT.sql';
-const tableNames = Object.keys(schema).sort();
 const identity = (table) => table.identity.map(({ name }) => name).join('.');
 const evidencePath = (source) => posix.normalize(source.split('#')[0].replaceAll('\\', '/'));
 const phaseKeys = {
@@ -95,38 +96,6 @@ export function applicationSnapshot(root) {
     return new Map([...files].sort(([left], [right]) => left.localeCompare(right, 'en')));
 }
 
-export function checkAdventureWorksInventory(inventory) {
-    assert.deepEqual(
-        inventory.tables.map(identity).sort(),
-        tableNames,
-        'Source table inventory differs from the fixture',
-    );
-    const resolve = createSourceResolver(inventory);
-    for (const [name, expected] of Object.entries(schema)) {
-        const actual = resolve(name);
-        assert.deepEqual(
-            actual.columns.map((column) => column.name).sort(),
-            [...expected.columns].sort(),
-            `${name} columns`,
-        );
-        assert.deepEqual(actual.primaryKey, expected.primaryKey, `${name} primary-key order`);
-        const actualForeignKeys = actual.foreignKeys
-            .map((key) =>
-                JSON.stringify({
-                    columns: key.columns,
-                    referencedTable: identity(resolve(key.referencedTable)),
-                    referencedColumns: key.referencedColumns,
-                }),
-            )
-            .sort();
-        assert.deepEqual(
-            actualForeignKeys,
-            expected.foreignKeys.map((key) => JSON.stringify(key)).sort(),
-            `${name} foreign keys`,
-        );
-    }
-}
-
 export function checkControllerCoverage(discovery) {
     for (const controller of ['Customers', 'Products', 'ProductCategories']) {
         for (const kind of ['read', 'write']) {
@@ -187,7 +156,7 @@ export function checkAdventureWorks(workspace, scenario, sample) {
     }
     if (isolated) checkPhaseBoundary(workspace, scenario, project);
     const inventory = json('phases/1-discovery/preflight-manifest.json').sourceInventory;
-    checkAdventureWorksInventory(inventory);
+    checkAdventureWorksInventory(inventory, { source: scenario === 'inferred-ddl' ? 'inferred' : 'supplied' });
     const phases = isolated
         ? [...prerequisiteStages(scenario), ...(scenario === 'provisioning' ? [] : [scenario])]
         : scenario === 'supplied-ddl'

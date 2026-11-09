@@ -10,6 +10,7 @@
 
 ### Fixed
 
+- Fixed **Data Modeler** schema imports to preserve edits made while an import is pending and discard superseded imports. ([#3546](https://github.com/microsoft/vscode-cosmosdb/pull/3546))
 - Fixed stale **Data Modeler** recommendations after inputs change, started a fresh Copilot Chat for each recommendation request, and improved recommendation cancellation and result handling. ([#3545](https://github.com/microsoft/vscode-cosmosdb/pull/3545), [#3523](https://github.com/microsoft/vscode-cosmosdb/pull/3523), [#3520](https://github.com/microsoft/vscode-cosmosdb/pull/3520), [#3525](https://github.com/microsoft/vscode-cosmosdb/pull/3525))
 - Fixed **Data Modeler** Workload selection highlighting and moved error messages into the wizard footer. ([#3543](https://github.com/microsoft/vscode-cosmosdb/pull/3543), [#3519](https://github.com/microsoft/vscode-cosmosdb/pull/3519))
 - Fixed migration provisioning to preserve saved targets and approved capacity choices, allow deployment target names independent of the model, and scope throughput overrides to the recorded model. ([#3474](https://github.com/microsoft/vscode-cosmosdb/pull/3474), [#3472](https://github.com/microsoft/vscode-cosmosdb/pull/3472), [#3478](https://github.com/microsoft/vscode-cosmosdb/pull/3478))
@@ -20,6 +21,7 @@
 
 ### Changed
 
+- Reworked **Data Modeler** query inputs to accept a description, a query, or both; removed the Filters on dropdown, added actionable validation, and corrected default query syntax. Clarified Copilot Chat recommendation and deployment guidance. ([#3549](https://github.com/microsoft/vscode-cosmosdb/pull/3549), [#3556](https://github.com/microsoft/vscode-cosmosdb/pull/3556))
 - Improved **Account Overview** with creation progress, directly visible account properties, grouped account actions, and links from Advisor recommendations to the Azure portal. ([#3513](https://github.com/microsoft/vscode-cosmosdb/pull/3513), [#3526](https://github.com/microsoft/vscode-cosmosdb/pull/3526), [#3514](https://github.com/microsoft/vscode-cosmosdb/pull/3514), [#3544](https://github.com/microsoft/vscode-cosmosdb/pull/3544))
 - Marked **Account Overview** as Preview and unified Preview badges and tooltips across Account Overview, Migration Assistant, and Data Modeler. ([#3484](https://github.com/microsoft/vscode-cosmosdb/pull/3484), [#3486](https://github.com/microsoft/vscode-cosmosdb/pull/3486))
 - Improved **Migration Assistant** tooltip theming and clarified which actions use Copilot Chat; expanded migration tooling, Bicep MCP, and emulator verification guidance. ([#3536](https://github.com/microsoft/vscode-cosmosdb/pull/3536), [#3538](https://github.com/microsoft/vscode-cosmosdb/pull/3538), [#3476](https://github.com/microsoft/vscode-cosmosdb/pull/3476), [#3473](https://github.com/microsoft/vscode-cosmosdb/pull/3473))

@@ -38,6 +38,107 @@ export async function checkArtifacts(workspace, phase, skillRoot) {
         const applicationFiles = (files) =>
             [...files].filter(([path]) => !path.startsWith('.cosmosdb-migration/')).sort();
         assert.deepEqual(applicationFiles(after), applicationFiles(before), 'Application files changed');
+        if (phase === 'provisioning') {
+            const { buildProvisioningArtifacts } = await import(
+                pathToFileURL(join(skillRoot, 'scripts/generate-provisioning-artifacts.mjs')).href
+            );
+            const provisioning = '.cosmosdb-migration/phases/4-provisioning';
+            const mutable = new Set([
+                projectPath,
+                '.cosmosdb-migration/memory.md',
+                ...['main.bicep', 'main.bicepparam', 'seed-data.csh', 'summary.md', 'manifest.json'].map(
+                    (name) => `${provisioning}/${name}`,
+                ),
+            ]);
+            for (const [path, content] of before) {
+                if (!mutable.has(path))
+                    assert.equal(after.get(path), content, `Supplied or predecessor artifact changed: ${path}`);
+            }
+            for (const path of after.keys()) {
+                assert.ok(before.has(path) || mutable.has(path), `Out-of-phase artifact: ${path}`);
+            }
+            for (const [key, value] of Object.entries(initial)) {
+                if (!['phases', 'freshness'].includes(key)) {
+                    assert.deepEqual(project[key], value, `Changed project identity or metadata: ${key}`);
+                }
+            }
+            for (const [key, value] of Object.entries(initial.phases)) {
+                if (!['targetEnvironment', 'provisioning'].includes(key)) {
+                    assert.deepEqual(project.phases[key], value, `Changed accepted phase state: ${key}`);
+                }
+            }
+            for (const phaseName of ['preflight', 'discovery', 'assessment', 'schema-conversion']) {
+                assert.deepEqual(
+                    project.freshness?.[phaseName],
+                    initial.freshness[phaseName],
+                    `Changed upstream freshness: ${phaseName}`,
+                );
+                const result = checkPhaseCompletion(workspace, phaseName);
+                assert.equal(result.complete, true, JSON.stringify(result, null, 2));
+            }
+            const target = project.phases.targetEnvironment;
+            assert.equal(target?.databaseName, 'orders-next-target', 'Approved target database was not persisted');
+            for (const [key, value] of Object.entries(initial.phases.targetEnvironment)) {
+                if (!['databaseName', 'verified', 'verifiedAt'].includes(key)) {
+                    assert.deepEqual(target[key], value, `Changed saved account coordinate: ${key}`);
+                }
+            }
+            assert.notEqual(target.verified, true, 'Replacement target is not verified');
+            if (target.verifiedAt !== undefined)
+                assert.equal(
+                    target.verifiedAt,
+                    initial.phases.targetEnvironment.verifiedAt,
+                    'Fabricated target verification time',
+                );
+            assert.equal(
+                project.phases.provisioning.status,
+                'in-progress',
+                'Target switch must invalidate provisioning completion',
+            );
+            if (project.phases.provisioning.completedAt !== undefined)
+                assert.equal(
+                    project.phases.provisioning.completedAt,
+                    initial.phases.provisioning.completedAt,
+                    'Fabricated provisioning completion time',
+                );
+            if (project.freshness?.provisioning !== undefined) {
+                assert.deepEqual(
+                    project.freshness.provisioning,
+                    initial.freshness.provisioning,
+                    'Do not record fresh provisioning verification',
+                );
+            }
+            const manifestPath = `${provisioning}/manifest.json`;
+            const verification = after.has(manifestPath) ? JSON.parse(after.get(manifestPath)).verification : undefined;
+            if (verification !== undefined) {
+                assert.deepEqual(
+                    verification,
+                    JSON.parse(before.get(manifestPath)).verification,
+                    'Historical readback must not be rewritten as new verification',
+                );
+            }
+            const model = JSON.parse(before.get('.cosmosdb-migration/phases/3-schema-conversion/model.json'));
+            const sampleData = JSON.parse(before.get(`${provisioning}/sample-data.json`));
+            for (const [name, content] of Object.entries(buildProvisioningArtifacts(model, sampleData, project))) {
+                assert.equal(
+                    after.get(`${provisioning}/${name}`),
+                    content,
+                    `Target-dependent artifact was not regenerated: ${name}`,
+                );
+            }
+            assert.ok(after.get(`${provisioning}/summary.md`)?.trim(), 'Missing provisioning summary');
+            assert.notEqual(
+                after.get(`${provisioning}/summary.md`),
+                before.get(`${provisioning}/summary.md`),
+                'Record the target-switch decision in the summary',
+            );
+            assert.equal(
+                checkPhaseCompletion(workspace, 'provisioning').complete,
+                false,
+                'Artifact regeneration does not verify deployment',
+            );
+            return;
+        }
         const discovery = '.cosmosdb-migration/phases/1-discovery';
         const immutable =
             phase === 'assessment'
@@ -99,7 +200,10 @@ export function registerGraders(registry) {
         },
         async grade({ trajectory, config }) {
             assert.ok(trajectory?.workDir, 'Artifact grading requires a trial workspace');
-            assert.ok(['preflight', 'assessment'].includes(config?.phase), 'Unknown artifact grading phase');
+            assert.ok(
+                ['preflight', 'assessment', 'provisioning'].includes(config?.phase),
+                'Unknown artifact grading phase',
+            );
             try {
                 await checkArtifacts(
                     join(trajectory.workDir, 'app'),
@@ -111,7 +215,7 @@ export function registerGraders(registry) {
                     kind: 'code',
                     passed: true,
                     score: 1,
-                    evidence: `${config.phase} artifacts validate; supplied inputs and phase boundaries are preserved.`,
+                    evidence: `${config.phase} artifact contract validates; supplied inputs and phase boundaries are preserved.`,
                 };
             } catch (error) {
                 return {

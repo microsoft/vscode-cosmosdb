@@ -61,6 +61,43 @@ stimuli:
     artifacts:
       include: [app/.cosmosdb-migration/**]
 
+  - name: provisioning-target-switch
+    tags: { category: artifacts, phase: provisioning, contract: target-switch }
+    agent_environment:
+      commands: [node setup.mjs provisioning]
+    prompt: |
+      Continue the relational-to-Cosmos DB migration in ./app. I approve changing only
+      the saved target database from orders-previous-target to orders-next-target on
+      the same saved account. Persist this selection and regenerate the existing
+      target-dependent provisioning artifacts using the accepted model and sample data.
+      Keep the migration's identity, accepted upstream artifacts and freshness, saved
+      account coordinates, application files and user metadata unchanged. Do not
+      redesign the model or rerun upstream phases.
+
+      This is artifact-only work: allow-provisioning is false. Do not contact Azure or
+      any database, install dependencies, deploy, execute seed scripts or change data.
+      The previous completed checkpoint and readback are synthetic fixture history,
+      not evidence for the replacement target. Leave provisioning in progress and the
+      new target unverified. In the provisioning summary, record the approved switch,
+      preservation of the old database and unrelated data, and the verification still
+      required before any future completion claim. Work only inside ./app.
+    rubric:
+      - Record the approved database switch and distinguish regenerated local artifacts from deployment or verification; require fresh target, resource and sample checks before completion.
+      - Preserve the previous database and unrelated data; the target-name approval does not authorize deployment, seeding or other resource or data mutations.
+      - Do not contact external resources or execute deployment or seed commands; historical synthetic readback is not new observed evidence.
+    graders:
+      - type: completed
+      - type: skill-invocation
+        config: { required: [cosmosdb-relational-migration] }
+      - type: migration-artifacts
+        config: { phase: provisioning }
+      - type: prompt
+        config: *artifact-judge
+      - type: output-matches
+        config: { pattern: '\S' }
+    artifacts:
+      include: [app/.cosmosdb-migration/**]
+
   - name: assessment-artifacts
     tags: { category: artifacts, phase: assessment }
     agent_environment:

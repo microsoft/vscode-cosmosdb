@@ -149,18 +149,6 @@ stimuli:
       - Artifact generation alone does not establish a deployed or verified target and must not be reported as completed provisioning.
     graders: *guidance
 
-  - name: provisioning-target-switch
-    tags: { category: guidance, phase: provisioning, contract: target-switch }
-    prompt: |
-      My accepted relational-to-Cosmos model is unchanged, but I explicitly choose a
-      different target database. Explain what to regenerate and reverify and what to
-      preserve. Do not contact Azure, write files, or run any migration phase.
-    rubric:
-      - Persist the approved target database and regenerate target-dependent provisioning artifacts and verification, leaving provisioning incomplete until verified.
-      - Preserve the project name and accepted root/domain models and upstream analytical artifacts; a database-name change is not a schema redesign.
-      - Preserve unrelated existing data and do not infer mutation permission solely from a target-name change.
-    graders: *guidance
-
   - name: code-migration-plan-only
     tags: { category: guidance, phase: code-migration, contract: code-approval }
     prompt: |

@@ -19,6 +19,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { checkPhaseCompletion } from '../../skills/cosmosdb-relational-migration/scripts/check-phase-completion.mjs';
 import { buildFreshnessManifest } from '../../skills/cosmosdb-relational-migration/scripts/freshness.mjs';
+import { buildProvisioningArtifacts } from '../../skills/cosmosdb-relational-migration/scripts/generate-provisioning-artifacts.mjs';
 import {
     assessmentFixture,
     evidenceReport,
@@ -43,6 +44,29 @@ function workspace(t) {
 
 async function completeFixture(root, phase) {
     const { project, inventory } = await prepareFixture(root, phase, skillRoot);
+    if (phase === 'provisioning') {
+        project.phases.targetEnvironment.databaseName = 'orders-next-target';
+        project.phases.targetEnvironment.verified = false;
+        project.phases.provisioning.status = 'in-progress';
+        const model = JSON.parse(
+            readFileSync(join(root, '.cosmosdb-migration/phases/3-schema-conversion/model.json'), 'utf8'),
+        );
+        const sampleData = JSON.parse(
+            readFileSync(join(root, '.cosmosdb-migration/phases/4-provisioning/sample-data.json'), 'utf8'),
+        );
+        for (const [name, content] of Object.entries(buildProvisioningArtifacts(model, sampleData, project))) {
+            writeFixture(root, `phases/4-provisioning/${name}`, content);
+        }
+        writeFixture(
+            root,
+            'phases/4-provisioning/summary.md',
+            '# Approved target switch\n\nRegenerated local artifacts for orders-next-target; no deployment or seeding. ' +
+                'Preserved orders-previous-target and unrelated data. Prior readback is historical synthetic evidence only. ' +
+                'Target, resource and sample verification remain required before completion.\n',
+        );
+        writeFixture(root, 'project.json', JSON.stringify(project));
+        return;
+    }
     if (phase === 'preflight') {
         writeFixture(
             root,
@@ -126,7 +150,7 @@ test('coverage includes every phase, critical workflow boundaries and negative a
             .filter(({ tags }) => tags.category === 'artifacts')
             .map(({ tags }) => tags.phase)
             .sort(),
-        ['assessment', 'preflight'],
+        ['assessment', 'preflight', 'provisioning'],
     );
 });
 
@@ -266,9 +290,125 @@ for (const spec of specs) {
                     false,
                 );
             }
+            if (stimulus.tags.contract === 'target-switch') {
+                updateProject(join(root, 'app'), (project) => {
+                    project.name = 'orders-next-target';
+                });
+                assert.equal(
+                    await grade(spec, stimulus, root, { output: 'The migration identity was preserved.' }),
+                    false,
+                    'An optimistic model verdict cannot override a changed project name',
+                );
+            }
         });
     }
 }
+
+test('target-switch fixture preserves accepted checkpoints and rejects unchanged historical completion', async (t) => {
+    const root = workspace(t);
+    await prepareFixture(root, 'provisioning', skillRoot);
+    for (const phase of ['preflight', 'discovery', 'assessment', 'schema-conversion', 'provisioning']) {
+        const result = checkPhaseCompletion(root, phase);
+        assert.equal(result.complete, true, JSON.stringify(result, null, 2));
+    }
+    await assert.rejects(checkArtifacts(root, 'provisioning', skillRoot), /Approved target database/);
+    await completeFixture(root, 'provisioning');
+    await checkArtifacts(root, 'provisioning', skillRoot);
+    rmSync(join(root, '.cosmosdb-migration/phases/4-provisioning/manifest.json'));
+    updateProject(root, (project) => {
+        delete project.freshness.provisioning;
+        delete project.phases.targetEnvironment.verifiedAt;
+        delete project.phases.provisioning.completedAt;
+    });
+    await checkArtifacts(root, 'provisioning', skillRoot);
+});
+
+test('target-switch checks reject identity, upstream, regeneration and verification regressions', async (t) => {
+    const mutations = [
+        [
+            'renamed project',
+            (root) =>
+                updateProject(root, (project) => {
+                    project.name = 'orders-next-target';
+                }),
+        ],
+        [
+            'changed account',
+            (root) =>
+                updateProject(root, (project) => {
+                    project.phases.targetEnvironment.accountName = 'another-account';
+                }),
+        ],
+        [
+            'unpersisted target',
+            (root) =>
+                updateProject(root, (project) => {
+                    project.phases.targetEnvironment.databaseName = 'orders-previous-target';
+                }),
+        ],
+        ['rewritten root model', (root) => writeFixture(root, 'phases/3-schema-conversion/model.json', '{}')],
+        [
+            'rewritten domain model',
+            (root) => writeFixture(root, 'phases/3-schema-conversion/domains/Orders/cosmos-model.json', '{}'),
+        ],
+        [
+            'rewritten upstream freshness',
+            (root) =>
+                updateProject(root, (project) => {
+                    project.freshness.assessment = {};
+                }),
+        ],
+        [
+            'stale target artifacts',
+            (root) => {
+                const path = join(root, '.cosmosdb-migration/phases/4-provisioning/main.bicepparam');
+                writeFileSync(
+                    path,
+                    readFileSync(path, 'utf8').replaceAll('orders-next-target', 'orders-previous-target'),
+                );
+            },
+        ],
+        [
+            'uninvalidated completion',
+            (root) =>
+                updateProject(root, (project) => {
+                    project.phases.provisioning.status = 'complete';
+                }),
+        ],
+        [
+            'claimed target verification',
+            (root) =>
+                updateProject(root, (project) => {
+                    project.phases.targetEnvironment.verified = true;
+                }),
+        ],
+        [
+            'retargeted historical readback',
+            (root) => {
+                const path = join(root, '.cosmosdb-migration/phases/4-provisioning/manifest.json');
+                const manifest = JSON.parse(readFileSync(path, 'utf8'));
+                manifest.verification.databaseName = 'orders-next-target';
+                writeFileSync(path, JSON.stringify(manifest));
+            },
+        ],
+        [
+            'refreshed unverified provisioning',
+            (root) =>
+                updateProject(root, (project) => {
+                    project.freshness.provisioning = buildFreshnessManifest(root, project, 'provisioning');
+                }),
+        ],
+    ];
+    for (const [name, mutate] of mutations) {
+        await t.test(name, async (subtest) => {
+            const root = workspace(subtest);
+            await completeFixture(root, 'provisioning');
+            await checkArtifacts(root, 'provisioning', skillRoot);
+            mutate(root);
+            await assert.rejects(checkArtifacts(root, 'provisioning', skillRoot));
+        });
+    }
+});
 
 for (const phase of ['preflight', 'assessment']) {
     test(`${phase}: fixtures start incomplete and have valid prerequisites`, async (t) => {

@@ -173,6 +173,8 @@ npm run eval:test
 npm run eval
 npm run eval -- --tag category=guidance
 npm run eval -- --tag category=artifacts --tag phase=preflight
+# Check persisted project identity and artifact regeneration for an approved database switch.
+npm run eval -- --tag contract=target-switch --max-retries 0
 # Independent real-sample phases and inference; fetches the pinned application once.
 npm run eval -- --tag category=extended --max-retries 0
 # Run one phase from reviewed prerequisites, without rerunning earlier phases.
@@ -188,14 +190,21 @@ npm run eval -- --model <agent-model> --judge-model <judge-model>
 The suite includes:
 
 - Guidance scenarios for all six phases, parser consent and fallback, source authority, SDK eligibility,
-  domain ownership, peer-skill design guidance, approval gates, target changes, reruns, project scope,
+  domain ownership, peer-skill design guidance, approval gates, reruns, project scope,
   historical code-migration completion, and project-local memory.
 - An unrelated PostgreSQL prompt that must activate neither migration nor best-practices skills.
-- Two artifact-producing scenarios: preflight from supplied synthetic inputs, and assessment from a valid
-  discovery checkpoint. Each trial gets a separate `app` fixture and local copies of both skills.
+- Three artifact-producing scenarios: preflight from supplied synthetic inputs, assessment from a valid
+  discovery checkpoint, and a database target switch from a synthetic completed provisioning checkpoint.
+  Each trial gets a separate `app` fixture and local copies of both skills.
   A host-side grader plugin reruns trusted migration completion validators, checks source inventory and ownership,
   and rejects source edits, changed predecessor evidence, lost user metadata, and out-of-phase artifacts.
   The model judge also inspects the generated files, not just the agent's completion claim.
+  The target-switch case replaces the prose-only identity-preservation check: it verifies the saved project name,
+  accepted root/domain models, upstream state and freshness, account coordinates, and reused sample data.
+  It requires the approved database in saved state, exact target-dependent artifact regeneration, and incomplete,
+  unverified provisioning. Old readback may be removed or retained unchanged as historical evidence, but must not be
+  retargeted or refreshed into new verification. The semantic judge checks the decision summary and execution
+  boundaries without requiring the final reply to enumerate every preserved field.
 - Seven extended AdventureWorks scenarios: independent preflight, discovery, assessment, schema conversion,
   artifact-only provisioning and code-migration planning, plus discovery that infers DDL from the real
   Entity Framework application without receiving the supplied schema.

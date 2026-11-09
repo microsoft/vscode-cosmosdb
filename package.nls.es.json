@@ -4,7 +4,7 @@
   "cosmosdb.command.account.delete": "Eliminar cuenta…",
   "cosmosdb.command.account.unsupported": "Abrir cuenta no compatible",
   "cosmosdb.command.account.overview.open": "Abrir información general de la cuenta",
-  "cosmosdb.command.account.databaseHub.open": "View in Database Hub",
+  "cosmosdb.command.account.databaseHub.open": "Ver en el Centro de bases de datos",
   "cosmosdb.command.account.overview.menu": "Información general de la cuenta (versión preliminar)",
   "cosmosdb.command.account.overview.overview": "Información general",
   "cosmosdb.command.account.overview.normalizedRu": "RU normalizado",

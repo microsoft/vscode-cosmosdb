@@ -30,7 +30,7 @@ import {
     readCheckpoint,
 } from './adventureworks/checkpoints.mjs';
 import { fetchSample, verifySample } from './adventureworks/sample.mjs';
-import { setupAdventureWorks } from './adventureworks/setup.mjs';
+import { setupAdventureWorks, workloadContent } from './adventureworks/setup.mjs';
 
 const ddl = fileURLToPath(new URL('./adventureworks/AdventureworksLT.sql', import.meta.url));
 
@@ -51,6 +51,128 @@ function schemaInventory() {
         ),
     ).sourceInventory;
 }
+
+test('synthetic workload fits source key domains and relationship populations', () => {
+    const workload = JSON.parse(workloadContent);
+    const schema = JSON.parse(readFileSync(new URL('./adventureworks/schema-contract.json', import.meta.url), 'utf8'));
+    const rows = new Map(workload.tables.map((row) => [row.table, row]));
+    assert.deepEqual(workload.tables.map(({ table }) => table).sort(), Object.keys(schema).sort());
+    assert.match(workload.provenance, /Synthetic.*not production measurements/);
+    assert.match(workload.rowSizeUnit, /1 KB = 1000 bytes/);
+    assert.match(workload.rateInterpretation, /not continuous averages/);
+    const keyCardinality = { BIT: 2, TINYINT: 256, SMALLINT: 2 ** 16, INT: 2 ** 32 };
+    for (const [table, definition] of Object.entries(schema)) {
+        const row = rows.get(table);
+        assert.ok(Number.isSafeInteger(row.estimatedRows) && row.estimatedRows >= 0, table);
+        assert.ok(Number.isFinite(row.estimatedAverageRowSizeKB) && row.estimatedAverageRowSizeKB > 0, table);
+        for (const field of ['estimatedMonthlyGrowthPercent', 'estimatedReadTPS', 'estimatedWriteTPS']) {
+            assert.ok(Number.isFinite(row[field]) && row[field] >= 0, `${table}.${field}`);
+        }
+        if (definition.primaryKey.length === 1) {
+            const column = definition.columns.find(({ name }) => name === definition.primaryKey[0]);
+            const maximum = keyCardinality[column.type];
+            if (maximum !== undefined) {
+                assert.ok(row.estimatedRows <= maximum, `${table}: estimated rows exceed the key domain`);
+                assert.ok(
+                    row.estimatedRows * (1 + row.estimatedMonthlyGrowthPercent / 100) ** 12 <= maximum,
+                    `${table}: twelve-month projection exceeds the key domain`,
+                );
+            }
+        }
+        const keyReferences = definition.foreignKeys.filter((key) =>
+            key.columns.every((column) => definition.primaryKey.includes(column)),
+        );
+        const referencedColumns = new Set(keyReferences.flatMap((key) => key.columns));
+        if (definition.primaryKey.every((column) => referencedColumns.has(column))) {
+            const possibleKeys = keyReferences.reduce(
+                (count, key) => count * rows.get(key.referencedTable).estimatedRows,
+                1,
+            );
+            assert.ok(
+                row.estimatedRows <= possibleKeys,
+                `${table}: link population exceeds available parent combinations`,
+            );
+        }
+    }
+});
+
+test('snapshot volumetrics and root payload estimates match the workload profile', () => {
+    const workload = JSON.parse(workloadContent);
+    const preflight = readCheckpoint('preflight');
+    const manifest = JSON.parse(
+        readFileSync(join(checkpointRoot, 'preflight/phases/1-discovery/preflight-manifest.json'), 'utf8'),
+    );
+    assert.equal(manifest.workloadInputs[0].sha256, preflight.workloadSha256);
+    const markdown = readFileSync(
+        join(checkpointRoot, 'preflight/phases/1-discovery/volumetrics/volumetrics.md'),
+        'utf8',
+    );
+    const rows = new Map(
+        markdown
+            .split('\n')
+            .filter((line) => /^\| \d+ \|/.test(line))
+            .map((line) => {
+                const cells = line
+                    .split('|')
+                    .slice(1, -1)
+                    .map((cell) => cell.trim());
+                return [
+                    `${cells[1]}.${cells[2]}`,
+                    cells.slice(3, 8).map((cell) => {
+                        const match = /^(\d+(?:\.\d+)?)%? \(estimated\)$/.exec(cell);
+                        assert.ok(match, `Expected a labeled synthetic value: ${cell}`);
+                        return Number(match[1]);
+                    }),
+                ];
+            }),
+    );
+    assert.equal(rows.size, workload.tables.length);
+    for (const row of workload.tables) {
+        assert.deepEqual(
+            rows.get(row.table),
+            [
+                row.estimatedRows,
+                row.estimatedAverageRowSizeKB,
+                row.estimatedMonthlyGrowthPercent,
+                row.estimatedReadTPS,
+                row.estimatedWriteTPS,
+            ],
+            row.table,
+        );
+    }
+    const summary = readFileSync(
+        join(checkpointRoot, 'schema-conversion/phases/3-schema-conversion/summary.md'),
+        'utf8',
+    );
+    for (const domain of readCheckpoint('assessment').project.phases.assessment.domains) {
+        const line = summary.split('\n').find((line) => line.startsWith(`| ${domain.name}:`));
+        assert.ok(line, `Missing ${domain.name} payload estimate`);
+        const cells = line
+            .split('|')
+            .slice(1, -1)
+            .map((cell) => cell.trim());
+        const inputs = workload.tables.filter(({ table }) => domain.tables.includes(table));
+        for (const [position, months] of [
+            [1, 0],
+            [2, 12],
+        ]) {
+            const bytes = inputs.reduce(
+                (sum, row) =>
+                    sum +
+                    row.estimatedRows *
+                        row.estimatedAverageRowSizeKB *
+                        1000 *
+                        (1 + row.estimatedMonthlyGrowthPercent / 100) ** months,
+                0,
+            );
+            assert.equal(
+                cells[position],
+                `about ${(bytes / 1024 ** 2).toFixed(2)} MiB`,
+                `${domain.name}: ${months} months`,
+            );
+        }
+    }
+});
 
 test('pinned checkout is fetched once, reused offline, and never resets modified files', (t) => {
     const root = temporary(t);

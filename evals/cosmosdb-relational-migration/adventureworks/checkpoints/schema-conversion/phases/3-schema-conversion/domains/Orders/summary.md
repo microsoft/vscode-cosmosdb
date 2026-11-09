@@ -241,10 +241,10 @@ Their effects are reflected in the decisions and caveats above; no service or so
 
 | Evidence | Estimate and qualification |
 |---|---|
-| [volumetrics] | Synthetic assumptions: 1,000 header and 1,000 detail rows, 2 KB average source row each, 5% monthly growth, and per-table 1 read/s plus 0.1 write/s. These are not measurements or proven separate operations. |
+| [volumetrics] | Synthetic assumptions: 10,000 headers at 1 KB and 40,000 details at 0.128 KB, both with 5% net monthly growth. Hypothetical busy-window rates are 2 read / 0.2 write TPS for headers and 4 read / 0.8 write TPS for details. These are not continuous averages, measurements or proven separate operations. Four details per header is only a population-wide mean, not a bound. |
 | [access patterns] | No observed order controller access or operation mix; actual frequency, latency, peak and transaction size unknown. No measured or fabricated RU estimate. |
-| [volumetrics] [default assumed] | Source-size fallback: 4,000 KB of source rows currently; assuming 1.2x/1.5x/2x JSON payload factors gives approximately 4,800/6,000/8,000 KB target payload, not billable storage or bounds. Input KB definition, external comment sizes and source-row allocation/compression are unknown, so factors are illustrative only. |
-| [volumetrics] [default assumed] | With unchanged average payload, 5% monthly compounded growth and no retention cap, source rows scale by about 1.8x over 12 months; corresponding illustrative payload is about 8,600/11,000/14,000 KB. Blob payload, index and per-item metadata remain unknown; no total GiB is asserted. |
+| [volumetrics] [default assumed] | Source-size fallback: 15,120 decimal KB currently; assuming 1.2x/1.5x/2x JSON payload factors gives 18,144/22,680/30,240 KB target payload, not billable storage or bounds. KB is 1,000 bytes; external comment sizes and source-row allocation/compression remain unknown, so factors are illustrative only. |
+| [volumetrics] [default assumed] | With unchanged average payload and 5% net monthly compounded growth, the 12-month source proxy is about 27,153.3 KB; corresponding illustrative payload is about 32,584/40,730/54,307 KB. This is not a forecast or retention policy. Blob payload, index and per-item metadata remain unknown; no total GiB is asserted. |
 | [access patterns] | Serverless is requested for this development model and has no provisioned throughput field. Check single-region/feature compatibility, service limits, peak demand, logical-partition tails, and post-import storage against current account rules before deployment; no runtime guarantee follows from synthetic inputs. |
 
 No Azure resources, application files, source database or data were modified. Root integration owns validation,

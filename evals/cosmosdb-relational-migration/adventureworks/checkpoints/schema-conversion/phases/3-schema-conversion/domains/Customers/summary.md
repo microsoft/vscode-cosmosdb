@@ -216,9 +216,11 @@ individual conditional updates but not cross-item uniqueness or FK checks (`rule
 
 ## Throughput & Storage Recommendations
 
-[volumetrics] Each table has synthetic assumptions of 1,000 rows, 2 KB average row size, 5% monthly growth and
-1 read / 0.1 write TPS; none is a measured table workload. The raw three-table payload assumption is about 6,000 KB
-initially and 10,775 KB after 12 months at 5% compounded monthly, before JSON expansion, metadata and indexes;
+[volumetrics] Synthetic assumptions are 1,500 Addresses at 0.5 KB, 1,000 Customers at 1 KB, and 2,000 links at
+0.128 KB, all with 2% net monthly growth. The raw three-table payload is 2,006 decimal KB initially and about
+2,544.1 KB after 12 months of compounded growth, before JSON expansion, metadata and indexes. KB is 1,000 bytes.
+Customer's assumed 5 read / 0.1 write TPS and the other table-specific rates describe hypothetical short busy windows,
+not continuous averages, additive requests or net row insertion. None is a measured table workload;
 retention, P95/P99 sizes, burst and query result sizes are unknown. Do not equate synthetic SQL row size to Cosmos
 item size or add synthetic rates to observed controller patterns.
 

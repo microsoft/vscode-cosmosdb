@@ -17,7 +17,8 @@ ownership establishes separate boundaries; current source evidence does not esta
 
 Both appear in [EF mapping](../../../../Models/sampledbContext.cs). Neither has an application pattern in
 [discovery](../../1-discovery/discovery-report.md); external producers, log retention and administration are unknown.
-The synthetic 1,000-row assumption for BuildVersion is incompatible with its unique TINYINT key.
+BuildVersion assumes one row and zero growth within its TINYINT keyspace; ErrorLog assumes 2,000 rows and 10% net
+monthly growth. These are scenario inputs, not observed populations or evidence of operational access.
 
 ## Access Patterns
 

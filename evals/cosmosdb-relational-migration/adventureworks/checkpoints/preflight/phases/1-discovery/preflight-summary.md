@@ -21,9 +21,9 @@ record code evidence and explicitly retain eight tables with no discovered appli
   structure and hashes, not SQL syntax, source-engine behavior, completeness of interpretation, or live database state.
   Computed-column metadata nullability and exact SQL-derived types are not independently verified; EF type hints are
   distinguished from DDL declarations. Conditional existing alias types and schema could differ on a live server.
-- **Synthetic contradiction:** BuildVersion's assumed 1,000 rows cannot coexist with a unique TINYINT primary key
-  (at most 256 distinct values). The assumption is recorded, but the feasible row count is unknown. All other repeated
-  row counts, TPS, growth and sizes remain illustrative, not measurements.
+- **Synthetic inputs:** BuildVersion has one assumed row and zero assumed growth, within its TINYINT key domain.
+  Table-specific counts, sizes and growth remain illustrative, not measurements. TPS describes hypothetical short
+  busy windows, not continuous averages, observed access or net row insertion rates. KB means 1,000 bytes.
 - DDL does not declare collation. The workload's collation is a synthetic assumption and must be verified before relying
   on case/accent-sensitive equality and uniqueness. Peak, percentiles, retention, latency, skew, and traffic mix are unknown.
 - EF maps `OnlineOrderFlag` as nullable CLR `bool?` but explicitly marks it required; DDL declares NOT NULL. The CLR
@@ -38,5 +38,5 @@ record code evidence and explicitly retain eight tables with no discovered appli
 - The user selected model-only interpretation, forbade custom parsers and external calls, and made the supplied DDL
   immutable. All supplied tables remain in scope; absence of application access is not exclusion.
 - Pattern TPS is unknown: synthetic per-table figures do not establish individual operation rates or a common observation
-  window. The impossible BuildVersion row-count assumption is not substituted with a fabricated number.
+  window. Net growth is a separate scenario assumption; writes may include updates and deletes.
 - No target container, partition key, deployment, or application-code decision is made during preflight.

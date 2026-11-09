@@ -19,10 +19,11 @@ targeting `netcoreapp2.1`, using C# and EF Core's SQL Server provider configured
 | SalesLT | SalesOrderDetail, SalesOrderHeader | No application reads or writes found; source cascade and computed values remain in scope. |
 
 No observed application access means no access found in the inspected code, not proof of no other clients or production
-activity. The [synthetic workload](volumetrics/workload.json) assumes 1,000 rows, 2 KB, 5% monthly growth, 1 read TPS,
-and 0.1 write TPS for each table; these are not measurements. BuildVersion's 1,000 rows are impossible for a unique
-TINYINT key, so its feasible count is unknown. Estimated 2 KB does not bound binary, XML or MAX text. Peak windows,
-percentiles, retention, skew, regional requirements, latency and actual operation counts are unknown.
+activity. The [synthetic workload](volumetrics/workload.json) supplies table-specific counts, decimal-KB sizes,
+net monthly growth and hypothetical busy-window rates; these are not measurements. BuildVersion assumes one row
+and zero growth, while order history assumes 10,000 headers and 40,000 details. This ratio is not a per-order bound.
+Rates are not continuous averages or proof of additive operations, and average sizes do not bound binary, XML or MAX text.
+Actual peak windows, percentiles, retention, skew, regional requirements, latency and operation counts are unknown.
 
 Offline SDK matrix: C# has a stable first-party .NET SDK family, `Microsoft.Azure.Cosmos`. This is a language-level
 classification, not proof that a particular SDK release supports this old `netcoreapp2.1` application, its dependencies,

@@ -6,10 +6,10 @@
     {
       "source": "volumetrics",
       "path": ".cosmosdb-migration/phases/1-discovery/volumetrics/workload.json",
-      "sha256": "dda8bfa6104878e3fd9cecfc091020a13671c5e731cadef73c335fa886a05c0c",
+      "sha256": "fdab033da5cabe5813778bc8e147409532f878ef6599dcbb60e86782a3319a1a",
       "disposition": "used",
       "evidenceKind": "synthetic",
-      "rationale": "Reviewed all 12 table assumptions and collation; values are synthetic planning inputs, not observed measurements. BuildVersion row count is incompatible with its TINYINT primary key and is not used as a feasible estimate."
+      "rationale": "Reviewed all 12 table-specific counts, decimal-KB sizes, net growth rates, hypothetical busy-window rates and collation. These are synthetic inputs, not observations. BuildVersion assumes one row and zero growth; rates are not additive or a basis for deriving net inserts."
     }
   ],
   "sourceInventory": {

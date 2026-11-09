@@ -39,8 +39,13 @@ the committed DDL's normalized trailing newline; no SQL definitions were changed
 historical instructions, provisioning outputs, application plans and memory were omitted.
 The Orders summary's inconsistent detail docType table label was corrected to `salesOrderDetail`,
 matching both the canonical and domain models; identity templates and model content were unchanged.
-Known synthetic workload limitations, including the BuildVersion row-count warning, are retained;
-phase isolation does not revise workload assumptions.
+The 2026-11-09 workload revision replaces the uniform estimates with a table-specific synthetic profile:
+one BuildVersion row with zero growth, a small catalog hierarchy, relationship tables and larger order history.
+KB is explicitly decimal and TPS represents hypothetical busy windows, not continuous averages or net inserts.
+The volumetrics, affected summaries and derived twelve-month payload examples were reviewed and updated together.
+The original completion timestamps remain historical provenance, not evidence that the revised profile was observed
+or executed in a database. Source DDL, domain ownership, canonical models and identity contracts are unchanged.
+The impossible 1,000-row BuildVersion example is retained only in the separate contradiction guidance scenario.
 
 Each `checkpoint.json` binds the application revision, exact schema/workload bytes, phase file hashes,
 project state and consulted paths. Setup verifies these bindings before copying anything. It then

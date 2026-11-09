@@ -3,7 +3,7 @@
   "phase": "discovery",
   "sourceRevision": "d548c0ddb3e3a464fa34c1fdc39c2333506b42cc",
   "schemaSha256": "837602bee5baca4cf026663627007c6e70df5896093f9cf31c0f804cb05d1065",
-  "workloadSha256": "dda8bfa6104878e3fd9cecfc091020a13671c5e731cadef73c335fa886a05c0c",
+  "workloadSha256": "fdab033da5cabe5813778bc8e147409532f878ef6599dcbb60e86782a3319a1a",
   "project": {
     "version": 1,
     "name": "AdventureWorksEvaluation",
@@ -73,6 +73,6 @@
   ],
   "files": {
     "phases/1-discovery/discovery-manifest.json": "6ec9c2ba630d0c8f341bd68fc99528193692d3fa27989187be12a6a9ffb0553c",
-    "phases/1-discovery/discovery-report.md": "623b60ed96b6dd35f1bc990dc8f88a68c46a0801b52e667aa3ebbed07d6ea31f"
+    "phases/1-discovery/discovery-report.md": "450cb20fdfec48d7243e92c4047981f4ed5d420a2e31fadb92cd796fb5d76e0d"
   }
 }

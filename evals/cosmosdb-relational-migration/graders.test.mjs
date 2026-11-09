@@ -99,6 +99,7 @@ test('coverage includes every phase, critical workflow boundaries and negative a
     for (const contract of [
         'supplied-ddl',
         'inferred-ddl',
+        'workload-contradiction',
         'parser-consent',
         'sdk-eligibility',
         'domain-ownership',

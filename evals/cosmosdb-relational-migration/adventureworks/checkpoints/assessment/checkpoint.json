@@ -3,7 +3,7 @@
   "phase": "assessment",
   "sourceRevision": "d548c0ddb3e3a464fa34c1fdc39c2333506b42cc",
   "schemaSha256": "837602bee5baca4cf026663627007c6e70df5896093f9cf31c0f804cb05d1065",
-  "workloadSha256": "dda8bfa6104878e3fd9cecfc091020a13671c5e731cadef73c335fa886a05c0c",
+  "workloadSha256": "fdab033da5cabe5813778bc8e147409532f878ef6599dcbb60e86782a3319a1a",
   "project": {
     "version": 1,
     "name": "AdventureWorksEvaluation",
@@ -364,13 +364,13 @@
   ],
   "files": {
     "phases/2-assessment/assessment-manifest.json": "328d55677f5e80021bc7edaf2caf7abd54fa9273cbdd4ea264bea7c7e4d95944",
-    "phases/2-assessment/assessment-summary.md": "dc1b9ac0483ad6b4dbd65e3137d03831b2b6e29fe6a112da1498b4dfa04f6652",
+    "phases/2-assessment/assessment-summary.md": "59139b5244589873156d292bfcd129884d684080bf08082b3086f4853e18dd53",
     "phases/2-assessment/domains/Catalog.manifest.json": "db6355e0186836e8b4b0124b0a857f58f0dec2095fbb14e89f7ebaa34206fefd",
     "phases/2-assessment/domains/Catalog.md": "fe2e0e0524c6ce5461e7c3f454df96896a4fbc1e0ff2c18a0ce9a71be8d16ff3",
     "phases/2-assessment/domains/Customers.manifest.json": "caa9098d6c442c4fd1954c2a8924135ae4cdf4c13ffd4373c06b4efe41f531bc",
     "phases/2-assessment/domains/Customers.md": "ac4681549d83a85293d49edccebc0014fb5284d3f4184a9614a6f5c954d37526",
     "phases/2-assessment/domains/Operations.manifest.json": "94cdf7fe423384b3191331cb03b380f91b94f338eef1fb0675b46517bbea7da2",
-    "phases/2-assessment/domains/Operations.md": "6ce7cce01cc98f5fbc5060d86d111f7f59919be9ec62f619a3278a60c585be5e",
+    "phases/2-assessment/domains/Operations.md": "967246e3f224e0d5d8850240f0b254fb99c5090f7dfe075caf0b142ebbe70bfa",
     "phases/2-assessment/domains/Orders.manifest.json": "b4e0fb2597fbd97da5a45facf678252afc1bad9c8bd5cd6ce2081fb58a0ad7ef",
     "phases/2-assessment/domains/Orders.md": "f241c5c23874bea5a6e858530a2ad5bad8b74f76132967e113f05dd27ac5b4e8"
   }

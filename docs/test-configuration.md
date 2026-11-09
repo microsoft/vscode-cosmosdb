@@ -353,6 +353,14 @@ against the versioned DDL and pinned EF source, not generated from the answer un
 Target-side collation equivalence, global-versus-partition uniqueness and application enforcement designs
 remain the bounded judge's responsibility; matching source index metadata does not prove target preservation.
 
+The synthetic workload is table-specific: one BuildVersion row with zero growth, 50 categories, 250 models,
+1,000 products, 10,000 order headers and 40,000 details, with different sizes, growth and busy-window rates.
+These are illustrative fixture assumptions, **not counts measured from AdventureWorks**. Sizes use decimal KB
+(1,000 bytes); TPS is not a continuous duty cycle or a basis for deriving net inserts. The aggregate order ratio
+is not a maximum number of children per order. Snapshot volumetrics and domain/root payload examples are reconciled
+with the same profile. A separate `workload-contradiction` guidance case keeps the impossible 1,000-row TINYINT-key
+example out of the default artifact inputs and checks that the agent flags it without silently inventing a replacement.
+
 The model judge covers semantic details without a fixed container layout: case-insensitive uniqueness,
 composite relationships, cascade behavior, self-reference, sequence-generated IDs, exact financial/computed
 values, XML/binary preservation, modernization and rollback. Workload numbers and source collation are

@@ -13,6 +13,7 @@ import { readIdentityManifest } from '../../../skills/cosmosdb-relational-migrat
 import { validateCodeMigrationPlan } from '../../../skills/cosmosdb-relational-migration/scripts/validate-code-migration-plan.mjs';
 import { createSourceResolver } from '../../../skills/cosmosdb-relational-migration/scripts/validate-source-evidence.mjs';
 import { phaseOrder, prerequisiteStages, readCheckpoint, sha256 } from './checkpoints.mjs';
+import { createAdventureWorksJudge } from './judge.mjs';
 import { verifySample } from './sample.mjs';
 import { plannedTarget, workloadContent } from './setup.mjs';
 
@@ -276,6 +277,7 @@ export function checkAdventureWorks(workspace, scenario, sample) {
 }
 
 export function registerGraders(registry) {
+    registry.register(createAdventureWorksJudge({ checkArtifacts: checkAdventureWorks }));
     registry.register({
         metadata: {
             name: 'adventureworks-artifacts',

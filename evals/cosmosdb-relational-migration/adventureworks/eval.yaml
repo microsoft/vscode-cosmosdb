@@ -53,11 +53,10 @@ stimuli:
       - type: adventureworks-artifacts
         config: { scenario: preflight }
       - &judge
-        type: prompt
+        type: adventureworks-judge
         config:
           scoring: binary
           threshold: 1
-          evidence: [trajectory, diff, repo]
           prompt: >-
             Inspect the source evidence, generated artifacts and trajectory for the
             requested phase only. Grade substantive correctness, not keyword presence

@@ -4,16 +4,17 @@
  *--------------------------------------------------------------------------------------------*/
 
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 
+const workflow = readFileSync(new URL('../../.github/workflows/migration-evals.yml', import.meta.url), 'utf8');
+
 test('CI runs models only for skill changes or manual dispatch', { skip: process.platform === 'win32' }, (t) => {
     const root = mkdtempSync(join(tmpdir(), 'migration-vally-workflow-'));
     t.after(() => rmSync(root, { recursive: true, force: true }));
-    const workflow = readFileSync(new URL('../../.github/workflows/migration-evals.yml', import.meta.url), 'utf8');
     const script = workflow.match(/        run: \|\n([\s\S]*?)\n\n  validate:/)[1].replace(/^          /gm, '');
     const git = (...args) =>
         execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
@@ -65,3 +66,88 @@ test('CI runs models only for skill changes or manual dispatch', { skip: process
     }
     assert.equal(detect('workflow_dispatch'), 'offline=true\nlive=true');
 });
+
+test('live suites run independently and retain separate reports without masking failures', () => {
+    const live = workflow.match(/^  live:\n([\s\S]*?)^  gate:/m)[1];
+    assert.match(live, /needs: \[changes, validate\]/);
+    assert.match(live, /strategy:\n\s+fail-fast: false\n\s+matrix:/);
+    assert.doesNotMatch(live, /continue-on-error:/);
+
+    const selection = live.match(/suite: >-\s+\$\{\{ fromJSON\(([\s\S]*?)&&\s*'([^']+)' \|\| '([^']+)'\) }}/);
+    assert.ok(selection, 'Suite selection must explicitly gate the integration job');
+    assert.equal(selection[1].trim(), "github.event_name == 'workflow_dispatch' && inputs.integration");
+    const requestedSuites = JSON.parse(selection[2]);
+    const defaultSuites = JSON.parse(selection[3]);
+    assert.deepEqual(defaultSuites, ['small', 'adventureworks']);
+    assert.deepEqual(requestedSuites, [...defaultSuites, 'integration']);
+
+    const evaluationSteps = [
+        ...live.matchAll(
+            /^      - name: Evaluate[^\n]*\n        if: matrix.suite == '([^']+)'[\s\S]*?^        run: (.+)$/gm,
+        ),
+    ];
+    assert.equal(evaluationSteps.length, requestedSuites.length);
+    for (const suite of requestedSuites) {
+        assert.equal(
+            evaluationSteps.filter(([, selectedSuite]) => selectedSuite === suite).length,
+            1,
+            `${suite} must run exactly one evaluation step regardless of the other suites' outcomes`,
+        );
+    }
+    const commands = Object.fromEntries(evaluationSteps.map(([, suite, command]) => [suite, command]));
+    assert.match(commands.small, /--tag category!=extended$/);
+    assert.match(commands.adventureworks, /--tag category=extended --max-retries 0$/);
+    assert.match(commands.integration, /--tag category=integration --max-retries 0$/);
+    assert.match(live, /- name: Publish reports\n\s+if: always\(\)/);
+    assert.match(live, /SUITE: \$\{\{ matrix\.suite }}/);
+    assert.match(live, /uses: actions\/upload-artifact@[^\n]+\n\s+if: always\(\)/);
+    assert.match(live, /name: migration-vally-results-\$\{\{ matrix\.suite }}-\$\{\{ github\.run_attempt }}/);
+});
+
+test(
+    'the aggregate gate rejects unsuccessful live matrices but permits intentional skips',
+    {
+        skip: process.platform === 'win32',
+    },
+    (t) => {
+        const root = mkdtempSync(join(tmpdir(), 'migration-vally-gate-'));
+        t.after(() => rmSync(root, { recursive: true, force: true }));
+        const gate = workflow.match(/^  gate:\n([\s\S]*)/m)[1];
+        assert.match(gate, /needs: \[changes, validate, live\]/);
+        assert.match(gate, /if: always\(\)/);
+        assert.match(gate, /LIVE_RESULT: \$\{\{ needs\.live\.result }}/);
+        const script = gate.match(/        run: \|\n([\s\S]*)/)[1].replace(/^          /gm, '');
+
+        function check(overrides, expectedStatus) {
+            const result = spawnSync('bash', ['-e', '-o', 'pipefail', '-c', script], {
+                cwd: root,
+                encoding: 'utf8',
+                env: {
+                    ...process.env,
+                    CHANGES_RESULT: 'success',
+                    OFFLINE: 'true',
+                    LIVE: 'true',
+                    VALIDATION_RESULT: 'success',
+                    LIVE_RESULT: 'success',
+                    TRUSTED: 'true',
+                    GITHUB_STEP_SUMMARY: join(root, 'summary'),
+                    ...overrides,
+                },
+            });
+            assert.ifError(result.error);
+            assert.equal(
+                result.status,
+                expectedStatus,
+                `${JSON.stringify(overrides)}: ${result.stdout}${result.stderr}`,
+            );
+        }
+
+        check({}, 0);
+        for (const result of ['failure', 'cancelled', 'skipped']) {
+            check({ LIVE_RESULT: result }, 1);
+        }
+        check({ LIVE: 'false', LIVE_RESULT: 'skipped' }, 0);
+        check({ TRUSTED: 'false', LIVE_RESULT: 'skipped' }, 0);
+        check({ LIVE: 'false', LIVE_RESULT: 'success' }, 1);
+    },
+);

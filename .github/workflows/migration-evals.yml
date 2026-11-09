@@ -95,7 +95,7 @@ jobs:
       - run: npm run eval:test
 
   live:
-    name: Run live migration evaluations
+    name: Run live migration evaluations (${{ matrix.suite }})
     needs: [changes, validate]
     if: >-
       needs.changes.outputs.live == 'true' &&
@@ -104,7 +104,13 @@ jobs:
         github.actor != 'dependabot[bot]' &&
         github.event.pull_request.user.login != 'dependabot[bot]'))
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ github.event_name == 'workflow_dispatch' && inputs.integration && 210 || 150 }}
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: >-
+          ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.integration &&
+              '["small","adventureworks","integration"]' || '["small","adventureworks"]') }}
     permissions:
       contents: read
       copilot-requests: write
@@ -118,25 +124,30 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Evaluate migration skill
+        if: matrix.suite == 'small'
         env:
           COPILOT_GITHUB_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
         run: npm run eval -- --tag category!=extended
       - name: Evaluate AdventureWorks migration
+        if: matrix.suite == 'adventureworks'
         env:
           COPILOT_GITHUB_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
         run: npm run eval -- --tag category=extended --max-retries 0
       - name: Evaluate chained AdventureWorks integration
-        if: github.event_name == 'workflow_dispatch' && inputs.integration
+        if: matrix.suite == 'integration'
         env:
           COPILOT_GITHUB_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
         run: npm run eval -- --tag category=integration --max-retries 0
       - name: Publish reports
         if: always()
+        env:
+          SUITE: ${{ matrix.suite }}
         shell: bash
         run: |
+          printf '## Migration evaluations: %s\n\n' "$SUITE" >> "$GITHUB_STEP_SUMMARY"
           if [ -d .vally/results ]; then
             while IFS= read -r -d '' report; do
               cat "$report" >> "$GITHUB_STEP_SUMMARY"
@@ -146,7 +157,7 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: migration-vally-results-${{ github.run_attempt }}
+          name: migration-vally-results-${{ matrix.suite }}-${{ github.run_attempt }}
           path: .vally/results/
           include-hidden-files: true
           if-no-files-found: warn

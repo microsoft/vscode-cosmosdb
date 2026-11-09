@@ -229,15 +229,18 @@ The runner rejects `--in-place`. Do not point workspace overrides at a real appl
 Reports, trajectories and optional preserved workspaces belong under the ignored `.vally/` directory.
 Use `--workspace .vally/workspaces` to retain trial workspaces for diagnosis. Vally retries executor timeouts
 and rate limits at most twice; failed correctness verdicts are not retried or relaxed.
-The extended CI step disables executor retries to avoid repeating an expensive full migration after a timeout.
+The extended CI job disables executor retries to avoid repeating an expensive full migration after a timeout.
 
 The [evaluation workflow](../.github/workflows/migration-evals.yml) runs offline checks when evaluation inputs
 change. Automatic live runs require changes under `skills/cosmosdb-relational-migration/` or its required
 `skills/cosmosdb-best-practices/` peer; evaluation-only and unrelated changes skip model calls.
 Fork and Dependabot PRs are always offline-only. A manual workflow dispatch runs the default suites;
 its `integration` input additionally enables the chained scenario.
-Live CI uses a job-scoped token with `copilot-requests: write`, publishes reports and retains artifacts for
-14 days. The aggregate check reports success for intentional skips and fails for incomplete required jobs.
+The small and AdventureWorks suites run in independent matrix jobs after offline validation, with fail-fast
+disabled so a failed suite cannot cancel or suppress another. Requested integration runs in its own matrix job.
+Each live job uses a job-scoped token with `copilot-requests: write`, publishes its own report summary and retains
+suite-named artifacts for 14 days. The aggregate check requires every requested suite to succeed, reports success
+for intentional skips and fails for incomplete required jobs.
 
 When adding scenarios, use synthetic inputs, meaningful behavioral rubrics and category/phase tags.
 Keep answer keys and executable artifact checks outside agent-visible fixtures. The artifact grader plugin
@@ -371,8 +374,8 @@ Each isolated phase gets a fresh session, separate workspace, timeout, grading v
 The budget is 20 minutes per trial, except schema conversion at 45 minutes. A failed phase does not prevent
 other independent phase trials from running; there is no shared conversation deadline.
 The opt-in integration scenario retains its 60-minute shared deadline.
-CI runs the independent phases after the smaller live suite under the same skill-change/trusted-PR gate;
-the live job is capped at 150 minutes, or 210 when a manual dispatch also requests integration.
+CI runs the independent phases separately from the smaller live suite under the same skill-change/trusted-PR gate.
+Each suite has its own 150-minute job limit, including the optional integration suite; there is no shared CI deadline.
 Changes to the sample pin, DDL or graders alone still receive offline checks only, so use a manual dispatch to evaluate those changes.
 When updating the pin or DDL, review the independent contract and semantic rubrics rather than regenerating
 expected answers from the agent's output.

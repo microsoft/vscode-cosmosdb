@@ -13,7 +13,9 @@ import { readIdentityManifest } from '../../../skills/cosmosdb-relational-migrat
 import { validateCodeMigrationPlan } from '../../../skills/cosmosdb-relational-migration/scripts/validate-code-migration-plan.mjs';
 import { createSourceResolver } from '../../../skills/cosmosdb-relational-migration/scripts/validate-source-evidence.mjs';
 import { phaseOrder, prerequisiteStages, readCheckpoint, sha256 } from './checkpoints.mjs';
+import { captureHandoffBaseline, checkHandoffBoundary } from './handoff.mjs';
 import { createAdventureWorksJudge } from './judge.mjs';
+import { checkPlanTasks } from './plan-contract.mjs';
 import { verifySample } from './sample.mjs';
 import { plannedTarget, workloadContent } from './setup.mjs';
 import { checkAdventureWorksInventory, tableNames } from './source-contract.mjs';
@@ -137,9 +139,14 @@ export function checkPlanningBoundary(project, plan, provisioningManifest) {
     );
 }
 
-export function checkAdventureWorks(workspace, scenario, sample) {
+export function checkAdventureWorks(workspace, scenario, sample, handoffBaseline) {
     const isolated = phaseOrder.includes(scenario);
-    assert.ok(isolated || ['supplied-ddl', 'inferred-ddl'].includes(scenario), 'Unknown AdventureWorks scenario');
+    const handoff = scenario === 'handoff-planning';
+    const planning = scenario === 'code-migration' || handoff;
+    assert.ok(
+        isolated || handoff || ['supplied-ddl', 'inferred-ddl'].includes(scenario),
+        'Unknown AdventureWorks scenario',
+    );
     assert.deepEqual(applicationSnapshot(workspace), applicationSnapshot(sample), 'Application source changed');
     const root = join(workspace, '.cosmosdb-migration');
     const read = (path) => readFileSync(join(root, path), 'utf8');
@@ -155,11 +162,12 @@ export function checkAdventureWorks(workspace, scenario, sample) {
         assert.equal(project.phases.targetEnvironment?.[field], value, `Changed planned target ${field}`);
     }
     if (isolated) checkPhaseBoundary(workspace, scenario, project);
+    if (handoff) checkHandoffBoundary(workspace, handoffBaseline);
     const inventory = json('phases/1-discovery/preflight-manifest.json').sourceInventory;
     checkAdventureWorksInventory(inventory, { source: scenario === 'inferred-ddl' ? 'inferred' : 'supplied' });
     const phases = isolated
         ? [...prerequisiteStages(scenario), ...(scenario === 'provisioning' ? [] : [scenario])]
-        : scenario === 'supplied-ddl'
+        : scenario === 'supplied-ddl' || handoff
           ? ['preflight', 'discovery', 'assessment', 'schema-conversion', 'code-migration']
           : ['preflight', 'discovery'];
     const completion = checkPhaseCompletions(workspace, phases);
@@ -215,7 +223,7 @@ export function checkAdventureWorks(workspace, scenario, sample) {
         'Conversion must map every selected table exactly once',
     );
     if (scenario === 'schema-conversion') return;
-    if (scenario !== 'code-migration') {
+    if (!planning) {
         const samples = json('phases/4-provisioning/sample-data.json');
         const expected = buildProvisioningArtifacts(
             model,
@@ -235,6 +243,7 @@ export function checkAdventureWorks(workspace, scenario, sample) {
     if (scenario === 'provisioning') return;
     const plan = json('code-migration-manifest.json');
     checkPlanningBoundary(project, plan, provisioningManifest);
+    checkPlanTasks(read('code-migration-plan.md'));
     const result = validateCodeMigrationPlan(read('code-migration-plan.md'), plan, {
         workspace,
         project,
@@ -246,7 +255,11 @@ export function checkAdventureWorks(workspace, scenario, sample) {
 }
 
 export function registerGraders(registry) {
-    registry.register(createAdventureWorksJudge({ checkArtifacts: checkAdventureWorks }));
+    const baseline = process.env.MIGRATION_EVAL_HANDOFF_BASELINE
+        ? captureHandoffBaseline(process.env.MIGRATION_EVAL_HANDOFF_BASELINE)
+        : undefined;
+    const checkArtifacts = (workspace, scenario, sample) => checkAdventureWorks(workspace, scenario, sample, baseline);
+    registry.register(createAdventureWorksJudge({ checkArtifacts }));
     registry.register({
         metadata: {
             name: 'adventureworks-artifacts',
@@ -263,7 +276,7 @@ export function registerGraders(registry) {
             assert.ok(sample, 'The runner must provide the pinned sample checkout');
             verifySample(sample);
             try {
-                checkAdventureWorks(join(trajectory.workDir, 'app'), config?.scenario, sample);
+                checkArtifacts(join(trajectory.workDir, 'app'), config?.scenario, sample);
                 return {
                     name: 'adventureworks-artifacts',
                     kind: 'code',

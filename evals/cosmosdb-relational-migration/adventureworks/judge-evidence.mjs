@@ -38,6 +38,54 @@ export function evidencePhase(stimulus) {
     return phase;
 }
 
+export function judgeEvidenceGroups(stimulus, config) {
+    const phase = evidencePhase(stimulus);
+    const groups = config.evidence_groups ?? { complete: stimulus.rubric.map((_, index) => index) };
+    const allowed =
+        phase === 'schema-conversion'
+            ? ['design', 'boundary']
+            : phase === 'code-migration'
+              ? ['implementation', 'dependencies', 'boundary']
+              : [];
+    if (!groups || typeof groups !== 'object' || Array.isArray(groups)) {
+        throw new JudgeEvidenceError('evidence-configuration', 'Evidence groups must map scopes to rubric indices');
+    }
+    const entries = Object.entries(groups);
+    const complete = entries.length === 1 && entries[0][0] === 'complete';
+    if (
+        new Set(stimulus.rubric).size !== stimulus.rubric.length ||
+        (!complete && JSON.stringify(entries.map(([scope]) => scope).sort()) !== JSON.stringify([...allowed].sort()))
+    ) {
+        throw new JudgeEvidenceError(
+            'evidence-configuration',
+            'Use unique rubric criteria and every required evidence scope',
+        );
+    }
+    const indices = [];
+    for (const [scope, selected] of entries) {
+        if (
+            (!complete && !allowed.includes(scope)) ||
+            !Array.isArray(selected) ||
+            !selected.length ||
+            selected.some((index) => !Number.isInteger(index) || index < 0 || index >= stimulus.rubric.length)
+        ) {
+            throw new JudgeEvidenceError('evidence-configuration', `Invalid rubric evidence group: ${scope}`);
+        }
+        indices.push(...selected);
+    }
+    if (JSON.stringify(indices.sort((a, b) => a - b)) !== JSON.stringify(stimulus.rubric.map((_, index) => index))) {
+        throw new JudgeEvidenceError(
+            'evidence-configuration',
+            'Evidence groups must cover every rubric criterion exactly once',
+        );
+    }
+    return entries.map(([scope, indices]) => ({
+        scope,
+        indices,
+        rubric: indices.map((index) => stimulus.rubric[index]),
+    }));
+}
+
 function confinedFile(root, path) {
     if (isAbsolute(path) || path.split(/[\\/]/).some((part) => part === '..' || part === '')) {
         throw new JudgeEvidenceError('evidence-path', `Unsafe evidence path: ${path}`);
@@ -119,8 +167,17 @@ function auditEvents(events) {
     });
 }
 
-export function buildJudgeEvidence(trajectory, stimulus, structuralValidation) {
+export function buildJudgeEvidence(trajectory, stimulus, structuralValidation, scope = 'complete') {
     const phase = evidencePhase(stimulus);
+    const scoped = scope !== 'complete';
+    if (
+        scoped &&
+        !(
+            (phase === 'schema-conversion' && ['design', 'boundary'].includes(scope)) ||
+            (phase === 'code-migration' && ['implementation', 'dependencies', 'boundary'].includes(scope))
+        )
+    )
+        throw new JudgeEvidenceError('evidence-configuration', `Unsupported ${phase} evidence scope: ${scope}`);
     const workDir = realpathSync(trajectory.workDir);
     if (lstatSync(join(workDir, 'app')).isSymbolicLink()) {
         throw new JudgeEvidenceError('evidence-path', 'The application root must not be a symlink');
@@ -192,7 +249,13 @@ export function buildJudgeEvidence(trajectory, stimulus, structuralValidation) {
     };
     add(`${migration}project.json`, 'checkpoint state', { project: true });
     add(`${discovery}volumetrics/workload.json`, 'synthetic input assumptions');
-    if (['preflight', 'discovery', 'inferred-ddl'].includes(phase)) {
+    if (scope === 'boundary' || scope === 'dependencies') {
+        add(`${conversion}summary.md`, 'accepted design and clearance context');
+        if (phase === 'code-migration') {
+            add(`${migration}code-migration-plan.md`, 'complete generated plan');
+            add(`${migration}code-migration-manifest.json`, 'generated plan evidence');
+        }
+    } else if (['preflight', 'discovery', 'inferred-ddl'].includes(phase)) {
         source();
         inventory();
         directoryFiles(
@@ -239,17 +302,26 @@ export function buildJudgeEvidence(trajectory, stimulus, structuralValidation) {
     const packet = {
         version: 1,
         phase,
+        scope,
         structuralValidation,
         files,
         absentOptionalFiles,
         agentOutput: trajectory.output,
-        audit: auditEvents(trajectory.events),
+        audit: !scoped || scope === 'boundary' ? auditEvents(trajectory.events) : [],
         exclusions: [
             'Only the listed phase-selected files are delivered; this is not a complete repository snapshot.',
             'Project freshness/activity/history fields are omitted; the independent artifact checker validates freshness and boundaries.',
             'Tool-result bodies and reasoning/token events are omitted. Success flags alone do not prove command exit codes.',
             'Migration artifact patch bodies may be represented by paths and hashes; full selected final files are supplied.',
             'Skills, setup files, staged reference checkpoints, caches, UI assets and unrelated phases are not judge evidence.',
+            ...(scoped
+                ? [
+                      'This packet grades only its assigned criteria. Other criteria are independently graded in their own complete packets.',
+                      scope === 'boundary'
+                          ? 'Detailed source/model files are graded in the design/implementation packet; the complete execution audit is included here.'
+                          : 'Execution audit is graded separately in the boundary packet, not discarded or treated as verified by this packet.',
+                  ]
+                : []),
         ],
     };
     const text = JSON.stringify(packet);

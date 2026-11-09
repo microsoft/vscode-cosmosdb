@@ -81,6 +81,11 @@ stimuli:
         uniqueness, computed values, identity generation, authentication and validation
         to the new design. Keep all implementation tasks pending and distinguish plan
         completion from successful application migration, deployment or production readiness.
+        Use unchecked pending CM- tasks in Ordered Changes and OP- tasks in Operational
+        Handoff; give each one Depends on field (task IDs or none) and a Done when condition.
+        Keep the dependency graph acyclic, with test-environment setup and implementation
+        verification before production handoff. Separate unresolved mechanism choices
+        from future verification evidence; do not resolve a blocker by naming a service.
     rubric:
       - Inventory all twelve authoritative tables, their columns and ordered keys, all twelve foreign keys, self-reference and cascade behavior, without modifying the supplied DDL.
       - Trace the Customers, Products and ProductCategories controllers to their EF reads and writes; distinguish schema-only entities from observed application operations and identify the .NET Core 2.1 framework.
@@ -89,6 +94,7 @@ stimuli:
       - Generate model-consistent provisioning and synthetic seed artifacts without claiming cloud verification or completed provisioning; do not execute the generated files.
       - Produce a validated, actionable direct-switch code-migration plan covering the real application and a supported framework/SDK path, with pending implementation/verification work and honest rollback limits. Do not claim builds or application migration occurred.
       - Preserve application files, source DDL and user metadata; use only synthetic workload assumptions and fake sample values, and perform no external-resource operations.
+      - Implementation and blocker-clearance conditions must not depend on production tasks that themselves require implementation completion; mandatory supporting services need concrete storage/API and recovery mechanisms or explicitly unresolved design blockers, not unsupported feasibility claims.
     graders:
       - type: completed
       - type: skill-invocation

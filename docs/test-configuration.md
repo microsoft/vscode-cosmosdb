@@ -181,6 +181,8 @@ npm run eval -- --tag category=extended --max-retries 0
 npm run eval -- --tag category=extended --tag phase=provisioning --max-retries 0
 # Explicit opt-in: one conversation chaining discovery through planning.
 npm run eval -- --tag category=integration --max-retries 0
+# Opt-in handoff: fresh conversion, then a separate planning session using those exact outputs.
+npm run eval:handoff
 # Run the smaller suite without downloading the external sample.
 npm run eval -- --tag category!=extended
 # Optional model overrides, without changing the committed specs.
@@ -210,6 +212,9 @@ The suite includes:
   Entity Framework application without receiving the supplied schema.
 - An opt-in integration scenario chaining discovery through planning in one conversation. The runner
   excludes it unless `--tag category=integration` explicitly selects it, including on an unfiltered `npm run eval`.
+- An opt-in conversion-to-planning handoff, reusing the isolated phase specifications and their current rubrics.
+  It runs fresh conversion first, then passes its exact accepted outputs to a new planning session instead of
+  substituting the reviewed conversion fixture. It is not included in an unfiltered `npm run eval`.
 
 Every scenario requires completion, correct skill activation, a nonempty answer, and binary correctness
 at threshold `1`. Guidance scenarios also require no workspace edits. Offline fake-judge tests exercise
@@ -244,9 +249,10 @@ The [evaluation workflow](../.github/workflows/migration-evals.yml) runs offline
 change. Automatic live runs require changes under `skills/cosmosdb-relational-migration/` or its required
 `skills/cosmosdb-best-practices/` peer; evaluation-only and unrelated changes skip model calls.
 Fork and Dependabot PRs are always offline-only. A manual workflow dispatch runs the default suites;
-its `integration` input additionally enables the chained scenario.
+its `integration` input additionally enables the chained scenario, and its independent `handoff` input enables
+the conversion-to-planning handoff.
 The small and AdventureWorks suites run in independent matrix jobs after offline validation, with fail-fast
-disabled so a failed suite cannot cancel or suppress another. Requested integration runs in its own matrix job.
+disabled so a failed suite cannot cancel or suppress another. Requested integration and handoff each run in their own matrix job.
 Each live job uses a job-scoped token with `copilot-requests: write`, publishes its own report summary and retains
 suite-named artifacts for 14 days. The aggregate check requires every requested suite to succeed, reports success
 for intentional skips and fails for incomplete required jobs.
@@ -260,14 +266,19 @@ Extend the offline tests with a passing case and focused malformed-output cases 
 
 The isolated phase specs use the [bounded judge](../evals/cosmosdb-relational-migration/adventureworks/judge.mjs),
 not a full repository snapshot. A host-side builder selects the requested phase's source evidence,
-prerequisites and output artifacts and supplies them **inline** to the configured judge. The judge runs in
+prerequisites and output artifacts and supplies them **inline** to the configured judge. Conversion uses separate
+design and execution-boundary packets; planning uses implementation, dependency-ordering and execution-boundary
+packets. Other phases retain one complete packet. Every rubric criterion belongs to exactly one scope, and every
+scope must pass; missing or duplicate criterion assignments fail before model invocation. The judge runs in
 an empty temporary workspace with no readable evidence files, so it need not spend tool calls searching
-the repository. Its model, reasoning effort, rubric criteria, binary threshold and 120-second response
-timeout are unchanged. The opt-in chained integration case and smaller suites retain their existing graders.
+the repository. Models, reasoning effort, binary threshold and the 120-second response timeout **per call** are unchanged.
+Conversion requires two calls and planning three; these are separate assessments, not retries or a vote.
+The opt-in chained integration case and smaller suites retain their existing graders.
 
-Each packet is limited to **384,000 UTF-8 bytes**. This bound accommodates the measured conversion packet
-(about 343 KB across all domain summaries and its audit) and the retained 74 KB planning document together
-with its source and accepted-model context; it is not permission to clip oversized files.
+Each packet is limited to **384,000 UTF-8 bytes**; it is not permission to clip oversized files.
+Splitting separates design/source evidence from the execution audit and isolates dependency reasoning over
+the complete plan. Boundary packets retain the complete audit; design/implementation packets explicitly state
+that it is assessed separately. Shared contextual files are repeated where necessary, not shortened.
 Selected text files are complete, JSON is compactly serialized, and the project-state projection explicitly
 lists omitted freshness/activity/history fields. Every selected file carries its path, role, original byte
 count and SHA-256. The packet also includes the independent structural-validation result, final agent answer,
@@ -276,17 +287,58 @@ artifact patch bodies are represented by names/paths and hashes instead of dupli
 patches are retained. The packet lists its exclusions; it is not an exhaustive source or execution audit,
 and tool success flags alone do not prove shell exit codes.
 
-The complete packet is retained in the grader's `metadata.evidence_packet` in `results.jsonl`, together
-with its byte count, judge timing, token usage and rubric scores. This makes the actual judge input auditable
+Single-packet evidence is retained in `metadata.evidence_packet`; scoped evidence uses `metadata.evidence_packets`,
+with each scope's assigned rubric indices, complete packet and byte count. `metadata.group_results` records each
+response's timing, token usage and scores; `evidence_bytes` is the sum across packets, not a per-packet limit.
+This makes the actual judge input auditable
 and avoids the pinned Vally repository snapshot's 32 KB per-file truncation and 64,000-character retrieval
 budget. It does not expand the agent's permissions or replace independent artifact validation.
 
-Missing, unreadable, unsafe or oversized evidence fails **before** a model call with `status: error`.
+All packets are built and bounded before any judge call. Missing, unreadable, unsafe or oversized evidence fails
+**before** a model call with `status: error`.
 Judge timeouts, malformed/incomplete score sets and an explicit inability to grade also return errors.
 A fully graded incorrect output remains a normal failed verdict, not an infrastructure error. Both fail
 the strict CI gate; neither silently passes, retries, drops criteria or substitutes a different model.
 Review oversized-packet diagnostics and narrow the scenario/evidence design deliberately rather than
 truncating evidence to obtain a verdict.
+
+#### Plan dependencies and implementation feasibility
+
+Planning artifact checks require unchecked, pending `CM-` tasks in `Ordered Changes` and optional `OP-` tasks
+in `Operational Handoff`. Each task declares one `Depends on:` field with existing task IDs or `none`, and a
+`Done when:` condition. Duplicate IDs, unknown prerequisites, self-dependencies, cycles, and code tasks depending
+on production handoff tasks fail deterministically. This is an evaluation contract, not a change to the migration
+skill or its portable validators.
+
+The judge additionally checks **implied** dependencies: a task cannot require blocker-clearance evidence produced
+only by a later task that itself depends on the first. Isolated test-environment setup and implementation
+verification must be distinguished from production inventory, deployment and cutover readiness. An acyclic list
+of explicit task IDs does not establish a feasible execution order.
+
+Conversion and planning rubrics also distinguish a concrete implementation mechanism from a named future service.
+Mandatory supporting components need identified storage/API primitives, ownership, publication/fencing and recovery
+behavior, plus verification obligations. Unresolved technology, supplier or protocol choices remain explicit
+conditions/blockers, rather than being marked resolved by a promise to implement them. Prohibited execution is not
+required during planning: evidence still to collect is different from a mechanism not yet selected.
+
+#### Opt-in conversion-to-planning handoff
+
+`npm run eval:handoff` runs one conversion trial (45-minute budget) followed by one planning trial (20-minute
+budget), in separate sessions and workspaces, with zero executor retries. It uses the same pinned agent/judge
+models, phase prompts, strict graders, and separate bounded evidence packets as the default isolated suite.
+The normal source fetch/cache behavior is unchanged.
+
+Planning starts only after conversion execution and every required grader succeed. The host captures the accepted
+application/artifacts before planning; planning must preserve source files, all analytical artifacts, project identity,
+phase state and upstream freshness. The plan manifest must reference the exact generated model hash. The baseline
+is captured outside the agent workspace for grading and checked again after planning; this is not an OS sandbox.
+No reference snapshots are refreshed or promoted automatically.
+
+Each phase retains its ordinary Vally reports and workspace under a unique `handoff-*` result directory.
+`handoff.json` records the source model hash, completed phase trial identities and the overall outcome. Failed,
+missing, skipped or ungradeable conversion results stop the handoff, never falling back to checked-in conversion.
+Use `-- --output-dir <directory>` to choose another result parent. The handoff does not provision, seed, build,
+apply the application plan or prove production feasibility. Packet overflow still fails without truncation.
 
 #### Comparing migration models
 

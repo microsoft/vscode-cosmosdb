@@ -7,6 +7,10 @@ on:
         description: Also run the chained AdventureWorks integration scenario
         type: boolean
         default: false
+      handoff:
+        description: Also evaluate fresh conversion outputs in a separate planning session
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths:
@@ -109,8 +113,9 @@ jobs:
       fail-fast: false
       matrix:
         suite: >-
-          ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.integration &&
-              '["small","adventureworks","integration"]' || '["small","adventureworks"]') }}
+          ${{ fromJSON(format('["small","adventureworks"{0}{1}]',
+              github.event_name == 'workflow_dispatch' && inputs.integration && ',"integration"' || '',
+              github.event_name == 'workflow_dispatch' && inputs.handoff && ',"handoff"' || '')) }}
     permissions:
       contents: read
       copilot-requests: write
@@ -141,6 +146,12 @@ jobs:
           COPILOT_GITHUB_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
         run: npm run eval -- --tag category=integration --max-retries 0
+      - name: Evaluate conversion to planning handoff
+        if: matrix.suite == 'handoff'
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run eval:handoff
       - name: Publish reports
         if: always()
         env:

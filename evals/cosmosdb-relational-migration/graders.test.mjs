@@ -195,6 +195,30 @@ async function grade(
                 };
             },
         });
+        if (stimulus.graders.some(({ type }) => type === 'adventureworks-judge')) {
+            registry.register({
+                metadata: {
+                    name: 'adventureworks-judge',
+                    description: 'Synthetic semantic verdict for pipeline wiring tests',
+                    behavior: { requiresLlmClient: true },
+                    determinism: 'llm',
+                    reference: 'reference-based',
+                    temporalScope: 'trajectory-level',
+                    costProfile: 'free',
+                },
+                async grade({ config }) {
+                    assert.equal(config.model, spec.defaults.judge_model);
+                    assert.equal(config.reasoning_effort, spec.defaults.judge_reasoning_effort);
+                    return {
+                        name: 'adventureworks-judge',
+                        kind: 'llm',
+                        passed: verdict === 1,
+                        score: verdict,
+                        evidence: 'Synthetic verdict; packet delivery has separate tests.',
+                    };
+                },
+            });
+        }
     }
     const result = await gradeTrajectory(
         {
@@ -208,7 +232,13 @@ async function grade(
             metadata: { model: 'offline', executor: 'test', sessionID: 'offline' },
         },
         stimulus.graders,
-        { registry, stimulus, judgeModel: spec.defaults.judge_model, weights: spec.scoring.weights },
+        {
+            registry,
+            stimulus,
+            judgeModel: spec.defaults.judge_model,
+            judgeReasoningEffort: spec.defaults.judge_reasoning_effort,
+            weights: spec.scoring.weights,
+        },
     );
     assert.notEqual(result.status, 'error', result.evidence);
     return resolveGradePass(result, spec.scoring.threshold);

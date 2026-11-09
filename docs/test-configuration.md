@@ -244,6 +244,38 @@ Keep answer keys and executable artifact checks outside agent-visible fixtures. 
 loads validators from the repository, not from potentially modified copies in the trial workspace.
 Extend the offline tests with a passing case and focused malformed-output cases for each new artifact contract.
 
+#### Bounded evidence for isolated AdventureWorks judges
+
+The isolated phase specs use the [bounded judge](../evals/cosmosdb-relational-migration/adventureworks/judge.mjs),
+not a full repository snapshot. A host-side builder selects the requested phase's source evidence,
+prerequisites and output artifacts and supplies them **inline** to the configured judge. The judge runs in
+an empty temporary workspace with no readable evidence files, so it need not spend tool calls searching
+the repository. Its model, reasoning effort, rubric criteria, binary threshold and 120-second response
+timeout are unchanged. The opt-in chained integration case and smaller suites retain their existing graders.
+
+Each packet is limited to **384,000 UTF-8 bytes**. This bound accommodates the measured conversion packet
+(about 343 KB across all domain summaries and its audit) and the retained 74 KB planning document together
+with its source and accepted-model context; it is not permission to clip oversized files.
+Selected text files are complete, JSON is compactly serialized, and the project-state projection explicitly
+lists omitted freshness/activity/history fields. Every selected file carries its path, role, original byte
+count and SHA-256. The packet also includes the independent structural-validation result, final agent answer,
+assistant messages, full command arguments and tool-result success flags. Repeated skill bodies and migration
+artifact patch bodies are represented by names/paths and hashes instead of duplicated text. Executable
+patches are retained. The packet lists its exclusions; it is not an exhaustive source or execution audit,
+and tool success flags alone do not prove shell exit codes.
+
+The complete packet is retained in the grader's `metadata.evidence_packet` in `results.jsonl`, together
+with its byte count, judge timing, token usage and rubric scores. This makes the actual judge input auditable
+and avoids the pinned Vally repository snapshot's 32 KB per-file truncation and 64,000-character retrieval
+budget. It does not expand the agent's permissions or replace independent artifact validation.
+
+Missing, unreadable, unsafe or oversized evidence fails **before** a model call with `status: error`.
+Judge timeouts, malformed/incomplete score sets and an explicit inability to grade also return errors.
+A fully graded incorrect output remains a normal failed verdict, not an infrastructure error. Both fail
+the strict CI gate; neither silently passes, retries, drops criteria or substitutes a different model.
+Review oversized-packet diagnostics and narrow the scenario/evidence design deliberately rather than
+truncating evidence to obtain a verdict.
+
 #### Comparing migration models
 
 Use the same judge and reasoning effort for every candidate, keeping fixtures, prompts, rubrics, validators

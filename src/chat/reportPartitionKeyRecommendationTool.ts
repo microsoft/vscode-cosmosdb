@@ -186,7 +186,7 @@ export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_INPUT_SCHEMA = {
             minLength: 1,
             pattern: '\\S',
             description:
-                'Why a recommendation cannot be provided and what information or guidance is needed. Send with wizardTabId only; omit summary and containers.',
+                'Why a recommendation cannot be provided, shown to the user: one short line per input to fix, naming the container, read query, problem, and fix. Send with wizardTabId only; omit summary and containers.',
         },
         summary: {
             type: 'string',
@@ -292,7 +292,7 @@ export const REPORT_PARTITION_KEY_RECOMMENDATION_TOOL_INPUT_SCHEMA = {
                                             type: 'array',
                                             items: { type: 'string' },
                                             description:
-                                                'Property names from the matching read in the Queries tab, e.g. ["customerId", "status"]. Use [] for no filters. Do not include SQL predicates, operators, parameter names, or values.',
+                                                'Property names the read filters on, taken from its query or inferred from its description, e.g. ["customerId", "status"]. Use [] for no filters. Do not include SQL predicates, operators, parameter names, or values.',
                                         },
                                         qps: { type: 'string', description: 'Peak QPS as displayed, e.g. "200/s".' },
                                         routing: {

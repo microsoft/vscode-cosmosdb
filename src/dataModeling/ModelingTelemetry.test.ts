@@ -315,6 +315,55 @@ describe('ModelingTelemetry', () => {
         expect(event('summary')[0].context.telemetry.measurements.recommendationRetries).toBe(2);
     });
 
+    it('ends local waiting once, ignores abandoned and no-ID results, and accepts an identified retry', () => {
+        let now = 0;
+        const tracker = new ModelingTelemetry(true, () => now);
+        tracker.beginRecommendation(first, ['PRIVATE ENTITY']);
+        now = 100;
+        expect(tracker.stopWaiting(first)).toBe(true);
+        expect(tracker.stopWaiting(first)).toBe(false);
+        expect(tracker.recommendationReceived(result, first)).toBe(false);
+        expect(tracker.recommendationReceived(result)).toBe(false);
+        expect(tracker.recommendationFailed(first, 'ai')).toBe(false);
+        expect(tracker.acceptsResponse()).toBe(false);
+        expect(event('recommendationOutcome')).toHaveLength(1);
+        expect(event('recommendationOutcome')[0].context.telemetry).toMatchObject({
+            properties: { outcome: 'stoppedWaiting', resultReceived: 'false' },
+            measurements: { durationMs: 100, attemptNumber: 1 },
+        });
+        expect(event('action')[0].context.telemetry.properties.action).toBe('stopWaiting');
+
+        tracker.beginRecommendation(second, ['PRIVATE ENTITY']);
+        expect(tracker.recommendationReceived(result, first)).toBe(false);
+        expect(tracker.recommendationReceived(result)).toBe(false);
+        expect(tracker.stopWaiting(first)).toBe(false);
+        expect(tracker.recommendationReceived(result, second)).toBe(true);
+        expect(tracker.stopWaiting(second)).toBe(false);
+        tracker.record({ type: 'recommendationDisplayed', requestId: second });
+        tracker.dispose();
+        expect(event('recommendationOutcome')).toHaveLength(1);
+        expect(event('summary')[0].context.telemetry.measurements).toMatchObject({
+            recommendationFailures: 0,
+            recommendationsDisplayed: 1,
+        });
+        expect(JSON.stringify(events)).not.toContain(first);
+        expect(JSON.stringify(events)).not.toContain('PRIVATE');
+    });
+
+    it('remembers a local stop before dispatch and cannot revive the abandoned request', () => {
+        const tracker = new ModelingTelemetry(false);
+        expect(tracker.stopWaiting(first)).toBe(true);
+        expect(tracker.beginRecommendation(first, [])).toBe(false);
+        expect(tracker.recommendationReceived(result, first)).toBe(false);
+        expect(event('recommendationRequested')).toHaveLength(0);
+        expect(event('recommendationOutcome')).toHaveLength(0);
+        expect(tracker.beginRecommendation(second, [])).toBe(true);
+        expect(tracker.stopWaiting(first)).toBe(false);
+        expect(tracker.acceptsResponse(second)).toBe(true);
+        tracker.dispose();
+        expect(tracker.stopWaiting(second)).toBe(false);
+    });
+
     it('keeps legacy delivery and restored display uncorrelated with a known ID attempt', () => {
         const tracker = new ModelingTelemetry(true);
         tracker.beginRecommendation(first, ['PRIVATE ENTITY']);

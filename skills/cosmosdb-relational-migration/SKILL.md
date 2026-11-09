@@ -4,8 +4,8 @@ description: |
   Orchestrate relational database migrations to Azure Cosmos DB for NoSQL from source
   discovery through schema conversion, provisioning, and application code migration.
   Use when asked to migrate an RDBMS application, run or resume a
-  .cosmosdb-migration project, infer relational DDL from application code when no DDL
-  was supplied, verify whether the application language has a supported Cosmos DB
+  .cosmosdb-migration project, infer relational DDL from code or other artifacts when
+  no DDL is available, verify whether the application language has a supported Cosmos DB
   SDK, execute one migration phase, or remember migration findings, decisions, or a
   generated Cosmos DB model for another application, or review migration blockers
   and propose fixes for approval. Requires the
@@ -21,6 +21,10 @@ metadata:
 Run a checkpointed relational-to-Cosmos DB migration using ordinary file, search,
 edit, and command-execution capabilities. The workflow must work in any compatible
 agent host. Do not require host-specific APIs, an MCP server, or chat history.
+
+User-supplied DDL is optional. [Schema acquisition](./references/phases/preflight.md#2-schema-acquisition)
+uses supplied DDL or infers it from code and supporting artifacts, retaining provenance
+and uncertainty. Processable DDL and a source inventory remain required outputs.
 
 ## Reference Guide
 
@@ -121,6 +125,10 @@ be inferred safely.
   dependencies mean `model`. Otherwise reuse the saved user choice, ask interactively,
   or default to SQLGlot unattended. Persist the effective method and any automatic
   fallback before interpretation begins.
+- `schema-source`: optional `auto` (default) or `infer` for schema acquisition or
+  Discovery. `auto` reuses current schema evidence or prepares what is missing;
+  `infer` explicitly requests inference or regeneration of inferred DDL. Neither
+  permits overwriting supplied DDL or user edits. Follow the [preflight rules](./references/phases/preflight.md#2-schema-acquisition).
 - `preflight-step`: optional when `phase` is `preflight`; one of `schema-acquisition`,
   `application-details`, `volumetrics`, or `access-patterns`. Execute only that
   `preflight` step, then recompute and report the shared readiness gate without
@@ -216,6 +224,7 @@ Examples:
 - "Run a relational database migration to Azure Cosmos DB."
 - "Run a relational database migration to Azure Cosmos DB autonomously through schema conversion."
 - "Run the preflight phase of a relational database migration to Azure Cosmos DB."
+- "Infer the source schema from this application's code and artifacts; no DDL is available."
 - "Run the discovery phase of a relational database migration to Azure Cosmos DB."
 - "Run the assessment phase of a relational database migration to Azure Cosmos DB."
 - "Run the schema conversion phase of a relational database migration to Azure Cosmos DB."
@@ -248,9 +257,10 @@ Examples:
   routine checkpoints but stops for consequential unresolved decisions.
   When preflight runs inside a Discovery request, report its checkpoint and continue
   into discovery without a routine pause; consequential decisions still require confirmation.
-6. Any selected schema DDL is authoritative. Compare source code for discrepancies,
+6. Supplied schema DDL is authoritative. Compare source code for discrepancies,
    but never infer, repair, extend, or replace supplied DDL.
-7. Infer DDL from source code only when the resolved selected DDL set is empty.
+7. Infer DDL from code or artifacts when no supplied DDL is selected. Preserve inferred
+  provenance and user edits as required by [schema acquisition](./references/phases/preflight.md#2-schema-acquisition).
 8. During `discovery`, evaluate every application language declared in the authoritative
   project details against the bundled Cosmos DB for NoSQL SDK matrix. SDK absence never blocks any phase from `discovery` through
   `provisioning`; it blocks only `code-migration`.

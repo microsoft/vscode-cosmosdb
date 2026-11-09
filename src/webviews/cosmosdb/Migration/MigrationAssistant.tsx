@@ -34,7 +34,6 @@ import {
     SplitButton,
     Text,
     Textarea,
-    Tooltip,
     useAnnounce,
     type ButtonProps,
     type MenuButtonProps,
@@ -63,6 +62,7 @@ import {
     SparkleRegular,
     WarningRegular,
 } from '@fluentui/react-icons';
+import { useActiveVSCodeThemeKind } from '@microsoft/vscode-ext-webview-fluentui';
 import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
@@ -75,6 +75,7 @@ import {
     type MigrationModelReason,
     type MigrationModelTier,
 } from '../../../utils/modelUtils';
+import { ThemedTooltip as Tooltip } from '../../common/ThemedTooltip';
 import { PreviewBadge } from '../../components/PreviewBadge';
 import { CosmosDBIcon } from '../../icons/CosmosDBIcon';
 import { BaseContextProvider, type DispatchToastFn } from '../../utils/context/BaseContextProvider';
@@ -497,9 +498,12 @@ function MigrationActionButton({
                   : l10n.t('In Chat');
     const openChatLabel = l10n.t('Open Chat');
     const resetStatusLabel = l10n.t('Reset Status');
+    const actionDescription = l10n.t('{action} using Copilot Chat', { action: actionLabel });
     const statusDescription = active
         ? `${actionLabel}. ${statusLabel} ${resetStatusLabel}. ${l10n.t('This only resets local tracking; it does not stop the agent in Chat.')}${activity?.detail ? ` ${activity.detail}` : ''}`
-        : (buttonProps['aria-description'] ?? actionLabel);
+        : buttonProps['aria-description']
+          ? `${actionDescription}. ${buttonProps['aria-description']}`
+          : actionDescription;
     useEffect(() => {
         if (active) announce(`${actionLabel}. ${statusLabel}`);
     }, [active, actionLabel, statusLabel, announce]);
@@ -540,7 +544,7 @@ function MigrationActionButton({
                         : `${resetStatusLabel}. ${actionLabel}`
                     : buttonProps['aria-label']
             }
-            aria-description={active ? statusDescription : buttonProps['aria-description']}
+            aria-description={statusDescription}
         >
             {children && (
                 <span className={styles.actionLabel}>
@@ -853,6 +857,10 @@ export function MigrationPhaseDiagnostics({
             setReviewPending(false);
         }
     };
+    const reviewDescription = l10n.t(
+        '{phase}: review blockers and propose fixes using Copilot Chat. Changes require your approval.',
+        { phase: phaseLabel },
+    );
     return (
         <section
             className={styles.diagnostics}
@@ -1013,27 +1021,26 @@ export function MigrationPhaseDiagnostics({
             )}
             <div className={styles.actionGroup}>
                 {onReview && outcome && (
-                    <Button
-                        appearance="primary"
-                        size="small"
-                        icon={
-                            reviewPending ? (
-                                <Spinner size="extra-tiny" appearance="inverted" aria-hidden="true" />
-                            ) : (
-                                <SparkleRegular />
-                            )
-                        }
-                        disabled={reviewDisabled || reviewPending || isMigrationRunActive(activity)}
-                        aria-description={l10n.t(
-                            '{phase}: review blockers and propose fixes. Changes require your approval.',
-                            { phase: phaseLabel },
-                        )}
-                        onClick={() => {
-                            void startReview();
-                        }}
-                    >
-                        {l10n.t('Review and Fix')}
-                    </Button>
+                    <Tooltip content={reviewDescription} relationship="description" withArrow>
+                        <Button
+                            appearance="primary"
+                            size="small"
+                            icon={
+                                reviewPending ? (
+                                    <Spinner size="extra-tiny" appearance="inverted" aria-hidden="true" />
+                                ) : (
+                                    <SparkleRegular />
+                                )
+                            }
+                            disabled={reviewDisabled || reviewPending || isMigrationRunActive(activity)}
+                            aria-description={reviewDescription}
+                            onClick={() => {
+                                void startReview();
+                            }}
+                        >
+                            {l10n.t('Review and Fix')}
+                        </Button>
+                    </Tooltip>
                 )}
                 <Button size="small" icon={<ArrowClockwiseRegular />} onClick={onReload}>
                     {l10n.t('Refresh Status')}
@@ -1089,7 +1096,7 @@ function FileListExpander({
         return { dir: relative.slice(0, lastSep), name: relative.slice(lastSep) };
     };
 
-    const renderPath = (absolutePath: string, extraClass?: string) => {
+    const renderFileLink = (absolutePath: string, extraClass?: string) => {
         const { dir, name } = splitPath(absolutePath);
         const cleanName = name.startsWith('/') ? name.slice(1) : name;
         const fullRelative = dir ? `${dir}/${cleanName}` : cleanName;
@@ -1107,24 +1114,22 @@ function FileListExpander({
             }
         }
         return (
-            <>
-                {dirHead && (
-                    <span className={`${styles.filePathDir}${extraClass ? ' ' + extraClass : ''}`} title={fullRelative}>
-                        {dirHead}
-                    </span>
-                )}
-                {dirTail && (
-                    <span
-                        className={`${styles.filePathDirTail}${extraClass ? ' ' + extraClass : ''}`}
-                        title={fullRelative}
-                    >
-                        {dirTail}
-                    </span>
-                )}
-                <span className={`${styles.filePathName}${extraClass ? ' ' + extraClass : ''}`} title={fullRelative}>
-                    {name}
-                </span>
-            </>
+            <Tooltip content={fullRelative} relationship="description">
+                <Link
+                    className={`${styles.fileLink}${extraClass ? ' ' + extraClass : ''}`}
+                    onClick={() => onOpenFile(absolutePath)}
+                >
+                    {dirHead && (
+                        <span className={`${styles.filePathDir}${extraClass ? ' ' + extraClass : ''}`}>{dirHead}</span>
+                    )}
+                    {dirTail && (
+                        <span className={`${styles.filePathDirTail}${extraClass ? ' ' + extraClass : ''}`}>
+                            {dirTail}
+                        </span>
+                    )}
+                    <span className={`${styles.filePathName}${extraClass ? ' ' + extraClass : ''}`}>{name}</span>
+                </Link>
+            </Tooltip>
         );
     };
 
@@ -1161,9 +1166,7 @@ function FileListExpander({
                         const name = basename(f);
                         return (
                             <div key={`a-${f}`} className={styles.fileRow}>
-                                <Link className={styles.fileLink} onClick={() => onOpenFile(f)}>
-                                    {renderPath(f)}
-                                </Link>
+                                {renderFileLink(f)}
                                 {name !== protectedFileName ? (
                                     <Tooltip content={l10n.t('Exclude file')} relationship="description" withArrow>
                                         <Button
@@ -1189,12 +1192,7 @@ function FileListExpander({
                         const name = basename(f);
                         return (
                             <div key={`x-${f}`} className={`${styles.fileRow} ${styles.fileRowExcluded}`}>
-                                <Link
-                                    className={`${styles.fileLink} ${styles.fileLinkExcluded}`}
-                                    onClick={() => onOpenFile(f)}
-                                >
-                                    {renderPath(f, styles.fileLinkExcluded)}
-                                </Link>
+                                {renderFileLink(f, styles.fileLinkExcluded)}
                                 <Tooltip content={l10n.t('Include file')} relationship="description" withArrow>
                                     <Button
                                         appearance="subtle"
@@ -1246,8 +1244,9 @@ function InfoPopoverIcon({
     ariaLabel: string;
     styles: ReturnType<typeof useStyles>;
 }) {
+    const themeKind = useActiveVSCodeThemeKind();
     return (
-        <Popover withArrow>
+        <Popover appearance={themeKind === 'vscode-dark' ? 'inverted' : undefined} withArrow>
             <PopoverTrigger>
                 <button type="button" aria-label={ariaLabel} className={styles.infoIcon}>
                     <InfoRegular />
@@ -1393,7 +1392,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
     const { announce } = useAnnounce();
     const previousRunActivity = useRef(state.runActivity);
     const previousConnectionTestState = useRef(state.connectionTestState);
-    const schemaFilesDescription = l10n.t('Database Schema Files, required');
+    const schemaFilesDescription = l10n.t('Optional DDL or supporting schema artifacts');
     const volumetricsLabel = l10n.t('Volumetrics:');
     const accessPatternsLabel = l10n.t('Access Patterns:');
     useEffect(() => {
@@ -1509,9 +1508,13 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
         : !state.isAIFeaturesEnabled
           ? l10n.t('GitHub Copilot must be active to use this action.')
           : undefined;
-    const generateSchemaLabel = l10n.t('Generate schema files from workspace code using AI');
-    const updateVolumetricsLabel = l10n.t('Update volumetrics template using AI');
-    const updateAccessPatternsLabel = l10n.t('Update access-patterns template using AI');
+    const generateSchemaLabel = l10n.t('Generate schema files from workspace code');
+    const updateVolumetricsLabel = l10n.t('Update volumetrics template');
+    const updateAccessPatternsLabel = l10n.t('Update access-patterns template');
+    const codeMigrationDescription =
+        state.codeMigrationAction === 'plan'
+            ? l10n.t('Plan Migration using Copilot Chat')
+            : l10n.t('Migrate Application using Copilot Chat');
     const isPhase2Disabled = isRunActive || phase1State !== 'complete' || !hasAllAnalysisFields;
     const isPhase3Disabled = isRunActive || phase2State !== 'complete';
     const isPhase4Disabled = isRunActive || phase1State !== 'complete' || !hasAllAnalysisFields;
@@ -2040,7 +2043,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
 
                 <Text size={200} style={{ color: 'var(--vscode-descriptionForeground)' }}>
                     {l10n.t(
-                        'Provide your database schema files and optionally volumetric data and access pattern descriptions to improve analysis accuracy.',
+                        'Database DDL is optional. Infer the schema from code and supporting artifacts when no DDL is available.',
                     )}
                 </Text>
 
@@ -2049,14 +2052,13 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                     <div className={styles.filePickerGrid}>
                         {/* Schema Files */}
                         <Text weight="semibold" size={200}>
-                            <span id={`${analysisLabelId}-schema-files`}>{l10n.t('Database Schema Files:')}</span>{' '}
-                            <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
+                            <span id={`${analysisLabelId}-schema-files`}>{l10n.t('Source Schema:')}</span>{' '}
                             <InfoPopoverIcon
                                 content={
                                     <>
                                         <p style={tooltipParagraphStyle}>
                                             {l10n.t(
-                                                'Provide the source database schema as one or more DDL/structure files. Supported file types: .sql, .json, .xml, .csv, .log, .out.',
+                                                'Select DDL (.sql, .ddl) or supporting artifacts such as ORM mappings, metadata exports, schema documentation, and sample data. Supporting artifacts are evidence, not authoritative DDL.',
                                             )}
                                         </p>
                                         <p style={tooltipParagraphStyle}>
@@ -2068,12 +2070,12 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                         </p>
                                         <p style={tooltipParagraphLastStyle}>
                                             {l10n.t(
-                                                "If you don't have a schema file at hand, use the AI button (sparkle icon) to reverse-engineer the schema from your workspace code: it scans entity definitions, ORM mappings, repositories, and raw SQL, then writes one consolidated .sql file per discovered domain into the schema-ddl/ folder.",
+                                                'Schema inference uses workspace code and selected artifacts to generate DDL with provenance and explicit assumptions. Supplied DDL is preserved.',
                                             )}
                                         </p>
                                     </>
                                 }
-                                ariaLabel={l10n.t('Database schema files help')}
+                                ariaLabel={l10n.t('Source schema help')}
                                 styles={styles}
                             />
                         </Text>
@@ -2104,7 +2106,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                             size="small"
                             icon={<SparkleRegular />}
                             aria-label={generateSchemaLabel}
-                            aria-description={`${l10n.t('Database Schema Files, required')}${aiActionDisabledDescription ? ` ${aiActionDisabledDescription}` : ''}`}
+                            aria-description={aiActionDisabledDescription}
                             onClick={handleAnalyzeDatabaseSchema}
                             disabled={isAiActionDisabled}
                         />
@@ -2460,7 +2462,11 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                     </MigrationActionButton>
                                 );
                                 return autoDetectTooltip ? (
-                                    <Tooltip content={autoDetectTooltip} relationship="description" withArrow>
+                                    <Tooltip
+                                        content={`${l10n.t('Auto-Detect using Copilot Chat')}. ${autoDetectTooltip}`}
+                                        relationship="description"
+                                        withArrow
+                                    >
                                         <span>{button}</span>
                                     </Tooltip>
                                 ) : (
@@ -3347,26 +3353,29 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         <Menu>
                             <MenuTrigger>
                                 {(triggerProps: MenuButtonProps) => (
-                                    <SplitButton
-                                        appearance="primary"
-                                        size="small"
-                                        icon={<SparkleRegular />}
-                                        disabled={!allComplete}
-                                        menuButton={{
-                                            ...triggerProps,
-                                            'aria-label': l10n.t('Select migration action'),
-                                        }}
-                                        primaryActionButton={
-                                            {
-                                                onClick: handleCodeMigration,
-                                                'data-testid': 'migration-action-button',
-                                            } as SplitButtonProps['primaryActionButton']
-                                        }
-                                    >
-                                        {state.codeMigrationAction === 'plan'
-                                            ? l10n.t('Plan Migration')
-                                            : l10n.t('Migrate Application')}
-                                    </SplitButton>
+                                    <Tooltip content={codeMigrationDescription} relationship="description" withArrow>
+                                        <SplitButton
+                                            appearance="primary"
+                                            size="small"
+                                            icon={<SparkleRegular />}
+                                            disabled={!allComplete}
+                                            menuButton={{
+                                                ...triggerProps,
+                                                'aria-label': l10n.t('Select migration action'),
+                                            }}
+                                            primaryActionButton={
+                                                {
+                                                    onClick: handleCodeMigration,
+                                                    'aria-description': codeMigrationDescription,
+                                                    'data-testid': 'migration-action-button',
+                                                } as SplitButtonProps['primaryActionButton']
+                                            }
+                                        >
+                                            {state.codeMigrationAction === 'plan'
+                                                ? l10n.t('Plan Migration')
+                                                : l10n.t('Migrate Application')}
+                                        </SplitButton>
+                                    </Tooltip>
                                 )}
                             </MenuTrigger>
                             <MenuPopover>

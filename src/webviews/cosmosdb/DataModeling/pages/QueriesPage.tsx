@@ -3,14 +3,36 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Button, Dropdown, Field, Input, makeStyles, Option, shorthands, tokens } from '@fluentui/react-components';
+import {
+    Button,
+    Field,
+    Input,
+    makeStyles,
+    mergeClasses,
+    MessageBar,
+    MessageBarBody,
+    shorthands,
+    tokens,
+} from '@fluentui/react-components';
 import { AddRegular, DismissRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { InlineGuidance, MetricPill, PillRow, SubPanel } from '../components/primitives';
+import { useId, useState } from 'react';
+import { InfoButton, InlineGuidance, MetricPill, PillRow, SubPanel } from '../components/primitives';
 import { getActiveContainer, getAvgDocSizeKb, updateActiveContainer, type DataModel } from '../dataModel';
-import { type ReadQuery, type WriteOps } from '../models';
-import { queryPropertyNames, readFilterProperties } from '../queryFilterProperties';
+import { hasReadEvidence, type ReadQuery, type WriteOps } from '../models';
 import { nextId } from '../scenarios';
+import {
+    assessContainerThroughput,
+    estimateContainerThroughput,
+    estimateReadRu,
+    estimateWriteRu,
+    getCountErrorMessage,
+    getReadEvidenceMessage,
+    getThroughputIssueMessage,
+    MAX_OPERATIONS_PER_SEC,
+    parseCountInput,
+    validateCount,
+} from '../workloadLimits';
 
 /**
  * Queries tab of a container step. Self-contained editor for the active container's read
@@ -27,25 +49,44 @@ const useStyles = makeStyles({
         backgroundColor: tokens.colorNeutralBackground1,
     },
     readLegend: {
+        display: 'inline-flex',
+        // An icon-only button has no text baseline, so its bottom edge sits on the legend text's baseline.
+        alignItems: 'baseline',
+        gap: tokens.spacingHorizontalS,
         paddingInline: tokens.spacingHorizontalXS,
         fontWeight: tokens.fontWeightSemibold,
     },
     readRow: {
         display: 'grid',
-        gridTemplateColumns: 'minmax(0, 1fr) 160px 32px',
+        gridTemplateColumns: 'minmax(0, 1fr) 32px',
         gap: tokens.spacingHorizontalS,
         alignItems: 'start',
-        '@media (max-width: 560px)': {
-            gridTemplateColumns: 'minmax(0, 1fr) 120px 32px',
-        },
     },
-    queryRow: {
-        gridColumn: '1 / -1',
-        display: 'grid',
-        gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)',
-        gap: tokens.spacingHorizontalS,
-        alignItems: 'start',
+    describeGroup: {
         minWidth: 0,
+        margin: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: tokens.spacingVerticalS,
+        padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM} ${tokens.spacingVerticalM}`,
+        ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
+        borderRadius: tokens.borderRadiusMedium,
+    },
+    describeGroupWarning: {
+        ...shorthands.borderColor(tokens.colorPaletteDarkOrangeBorder2),
+    },
+    describeLegend: {
+        paddingInline: tokens.spacingHorizontalXS,
+        fontWeight: tokens.fontWeightSemibold,
+    },
+    describeWarning: {
+        color: tokens.colorPaletteDarkOrangeForeground1,
+        fontSize: tokens.fontSizeBase200,
+        lineHeight: tokens.lineHeightBase200,
+    },
+    rateRow: {
+        gridColumn: '1 / -1',
+        maxWidth: '180px',
     },
     input: {
         minWidth: 0,
@@ -78,6 +119,11 @@ const useStyles = makeStyles({
         minWidth: 0,
         gap: tokens.spacingVerticalM,
     },
+    infoText: {
+        marginTop: 0,
+        marginBottom: tokens.spacingVerticalS,
+        ':last-child': { marginBottom: 0 },
+    },
 });
 
 export interface QueriesPageProps {
@@ -87,45 +133,93 @@ export interface QueriesPageProps {
 
 export function QueriesPage({ model, onChange }: QueriesPageProps) {
     const styles = useStyles();
+    const readId = useId();
+    const describeLabel = l10n.t('Describe the read (at least one)');
     const patternLabel = l10n.t('Description');
     const queryLabel = l10n.t('Query');
-    const filtersLabel = l10n.t('Filters on');
     const qpsLabel = l10n.t('Peak QPS');
     const patternHint = l10n.t('What this read retrieves.');
     const queryHint = l10n.t('Full NoSQL SELECT query.');
-    const filtersHint = l10n.t('Properties used in the query.');
     const qpsHint = l10n.t('Peak queries/sec, all users.');
+    const readInputsInfo = (
+        <>
+            <p className={styles.infoText}>
+                {l10n.t(
+                    "Copilot uses each read's description, query, and peak QPS, together with the container's schema, writes, and scale, to recommend a partition key.",
+                )}
+            </p>
+            <p className={styles.infoText}>
+                {l10n.t(
+                    'Enter a description, a query, or both. A description alone is enough: Copilot infers which properties the read filters on from it and the schema. Copilot does not generate a query from it, so you do not need to write SQL.',
+                )}
+            </p>
+            <p className={styles.infoText}>
+                {l10n.t(
+                    'If you enter both, the query defines the access pattern and the description adds context. If they disagree, for example on which property is filtered, Copilot asks you to fix the read instead of guessing.',
+                )}
+            </p>
+            <p className={styles.infoText}>{l10n.t('Queries are never run against your account.')}</p>
+        </>
+    );
 
     // Queries are per-container: edit the active container's reads and write rates.
     const active = getActiveContainer(model);
     const reads = active?.reads ?? [];
-    const propertyNames = [...new Set(active?.properties.map((property) => property.name).filter(Boolean) ?? [])];
     const writes = active?.writes ?? { insertsPerSec: 0, updatesPerSec: 0, deletesPerSec: 0 };
     const avgDocSizeKb = getAvgDocSizeKb(model);
     const onChangeReads = (next: ReadQuery[]) => onChange(updateActiveContainer(model, (c) => ({ ...c, reads: next })));
     const onChangeWrites = (next: WriteOps) => onChange(updateActiveContainer(model, (c) => ({ ...c, writes: next })));
 
+    // Rejected entries keep the last valid value in the model; errors are keyed per container and field.
+    const [rateErrors, setRateErrors] = useState<Record<string, string | undefined>>({});
+    const rateErrorKey = (field: string) => `${active?.id ?? ''}:${field}`;
+    const rateError = (field: string) => rateErrors[rateErrorKey(field)];
+    const applyRate = (field: string, raw: string, apply: (value: number) => void) => {
+        const value = parseCountInput(raw);
+        const error = validateCount(value, MAX_OPERATIONS_PER_SEC);
+        setRateErrors((previous) => ({
+            ...previous,
+            [rateErrorKey(field)]: error ? getCountErrorMessage(error, MAX_OPERATIONS_PER_SEC) : undefined,
+        }));
+        if (!error) {
+            apply(value);
+        }
+    };
+    const rateValidation = (field: string) => {
+        const error = rateError(field);
+        return {
+            validationState: error ? ('error' as const) : ('none' as const),
+            validationMessage: error ? { children: error, role: 'alert' } : undefined,
+        };
+    };
+
     const patchRead = (id: string, patch: Partial<ReadQuery>) =>
         onChangeReads(reads.map((r) => (r.id === id ? { ...r, ...patch } : r)));
 
-    const addRead = () =>
-        onChangeReads([...reads, { id: nextId('read'), pattern: '', query: '', filters: [], qps: 0 }]);
+    const addRead = () => onChangeReads([...reads, { id: nextId('read'), pattern: '', query: '', qps: 0 }]);
 
     const removeRead = (id: string) => onChangeReads(reads.filter((r) => r.id !== id));
 
     const totalTps = writes.insertsPerSec + writes.updatesPerSec + writes.deletesPerSec;
-    // Rough planning-only RU estimates: ~1 RU per KB for a point read, doubled for a write.
-    const readRu = Math.max(1, Math.round(avgDocSizeKb));
-    const writeRu = Math.max(2, Math.round(avgDocSizeKb * 3));
+    const readRu = estimateReadRu(avgDocSizeKb);
+    const writeRu = estimateWriteRu(avgDocSizeKb);
+    const totalRu = active ? estimateContainerThroughput(active).totalRuPerSec : 0;
+    const throughputIssues = active ? assessContainerThroughput(active) : [];
 
     return (
         <div className={styles.stack}>
             <SubPanel
                 title={'📖 ' + l10n.t('Reads')}
                 count={l10n.t('{count} queries', { count: reads.length })}
-                subtitle={l10n.t(
-                    'List each read pattern, its full SQL query, filter properties, and peak queries per second (QPS). The highest-QPS query should drive the partition key.',
-                )}
+                subtitle={
+                    l10n.t(
+                        'Describe each read in words, as a full SQL query, or both. One is enough; if you give both, keep them consistent.',
+                    ) +
+                    ' ' +
+                    l10n.t(
+                        'Add its peak queries per second (QPS). The highest-QPS query should drive the partition key.',
+                    )
+                }
             >
                 <InlineGuidance title={l10n.t('Query alignment is critical')}>
                     <ul>
@@ -136,54 +230,88 @@ export function QueriesPage({ model, onChange }: QueriesPageProps) {
                     <p>{l10n.t('“Get all X for Y” → Y is your partition key candidate.')}</p>
                 </InlineGuidance>
                 {reads.map((r, index) => {
-                    const selected = readFilterProperties(r);
-                    const referenced = queryPropertyNames(r.query ?? '');
-                    const missing = selected.filter((name) => !referenced.names.includes(name));
-                    const unknown = selected.filter((name) => !propertyNames.includes(name));
-                    const warning = unknown.length
-                        ? l10n.t('Properties no longer in this container: {properties}', {
-                              properties: unknown.join(', '),
-                          })
-                        : !referenced.valid
-                          ? l10n.t('Finish the SQL query to validate selected properties.')
-                          : missing.length
-                            ? l10n.t('Selected properties not referenced in the query: {properties}', {
-                                  properties: missing.join(', '),
-                              })
-                            : undefined;
+                    const missingEvidence = !hasReadEvidence(r);
+                    const warningId = `${readId}-${index}-describe-warning`;
+                    const qpsField = (
+                        <Field
+                            label={qpsLabel}
+                            className={styles.input}
+                            hint={{ children: qpsHint, className: styles.hint, title: qpsHint }}
+                            {...rateValidation(`read:${r.id}`)}
+                        >
+                            <Input
+                                name={`reads.${index}.qps`}
+                                className={styles.input}
+                                aria-label={l10n.t('{label} for read {n}', { label: qpsLabel, n: index + 1 })}
+                                type="number"
+                                min={0}
+                                max={MAX_OPERATIONS_PER_SEC}
+                                step={1}
+                                value={String(r.qps)}
+                                onChange={(_, data) =>
+                                    applyRate(`read:${r.id}`, data.value, (qps) => patchRead(r.id, { qps }))
+                                }
+                            />
+                        </Field>
+                    );
+                    const legendId = `${readId}-${index}-legend`;
                     return (
-                        <fieldset key={r.id} className={styles.readGroup}>
-                            <legend className={styles.readLegend}>{l10n.t('Read query {n}', { n: index + 1 })}</legend>
+                        <fieldset key={r.id} className={styles.readGroup} aria-labelledby={legendId}>
+                            <legend className={styles.readLegend}>
+                                <span id={legendId}>{l10n.t('Read query {n}', { n: index + 1 })}</span>
+                                <InfoButton label={l10n.t('How Copilot uses read query {n}', { n: index + 1 })}>
+                                    {readInputsInfo}
+                                </InfoButton>
+                            </legend>
                             <div className={styles.readRow}>
-                                <Field
-                                    label={patternLabel}
-                                    className={styles.input}
-                                    hint={{ children: patternHint, className: styles.hint, title: patternHint }}
+                                <fieldset
+                                    className={mergeClasses(
+                                        styles.describeGroup,
+                                        missingEvidence && styles.describeGroupWarning,
+                                    )}
+                                    aria-describedby={missingEvidence ? warningId : undefined}
                                 >
-                                    <Input
+                                    <legend className={styles.describeLegend}>{describeLabel}</legend>
+                                    <Field
+                                        label={patternLabel}
                                         className={styles.input}
-                                        aria-label={l10n.t('{label} for read {n}', {
-                                            label: patternLabel,
-                                            n: index + 1,
-                                        })}
-                                        value={r.pattern}
-                                        placeholder={l10n.t('e.g., Get all orders for a customer')}
-                                        onChange={(_, data) => patchRead(r.id, { pattern: data.value })}
-                                    />
-                                </Field>
-                                <Field
-                                    label={qpsLabel}
-                                    className={styles.input}
-                                    hint={{ children: qpsHint, className: styles.hint, title: qpsHint }}
-                                >
-                                    <Input
+                                        hint={{ children: patternHint, className: styles.hint, title: patternHint }}
+                                    >
+                                        <Input
+                                            name={`reads.${index}.pattern`}
+                                            className={styles.input}
+                                            aria-label={l10n.t('{label} for read {n}', {
+                                                label: patternLabel,
+                                                n: index + 1,
+                                            })}
+                                            value={r.pattern}
+                                            placeholder={l10n.t('e.g., Get all orders for a customer')}
+                                            onChange={(_, data) => patchRead(r.id, { pattern: data.value })}
+                                        />
+                                    </Field>
+                                    <Field
+                                        label={queryLabel}
                                         className={styles.input}
-                                        aria-label={l10n.t('{label} for read {n}', { label: qpsLabel, n: index + 1 })}
-                                        type="number"
-                                        value={String(r.qps)}
-                                        onChange={(_, data) => patchRead(r.id, { qps: Number(data.value) || 0 })}
-                                    />
-                                </Field>
+                                        hint={{ children: queryHint, className: styles.hint, title: queryHint }}
+                                    >
+                                        <Input
+                                            name={`reads.${index}.query`}
+                                            className={styles.input}
+                                            aria-label={l10n.t('{label} for read {n}', {
+                                                label: queryLabel,
+                                                n: index + 1,
+                                            })}
+                                            value={r.query ?? ''}
+                                            placeholder="SELECT * FROM c WHERE c.customerId = @customerId"
+                                            onChange={(_, data) => patchRead(r.id, { query: data.value })}
+                                        />
+                                    </Field>
+                                    {missingEvidence ? (
+                                        <output id={warningId} className={styles.describeWarning}>
+                                            {getReadEvidenceMessage(index + 1)}
+                                        </output>
+                                    ) : null}
+                                </fieldset>
                                 <Button
                                     icon={<DismissRegular />}
                                     appearance="subtle"
@@ -191,67 +319,7 @@ export function QueriesPage({ model, onChange }: QueriesPageProps) {
                                     aria-label={l10n.t('Remove read query')}
                                     onClick={() => removeRead(r.id)}
                                 />
-                                <div className={styles.queryRow}>
-                                    <Field
-                                        label={queryLabel}
-                                        className={styles.input}
-                                        hint={{ children: queryHint, className: styles.hint, title: queryHint }}
-                                    >
-                                        <Input
-                                            className={styles.input}
-                                            aria-label={l10n.t('{label} for read {n}', {
-                                                label: queryLabel,
-                                                n: index + 1,
-                                            })}
-                                            value={r.query ?? ''}
-                                            placeholder="SELECT * FROM c WHERE customerId = @customerId"
-                                            onChange={(_, data) => {
-                                                const next = queryPropertyNames(data.value);
-                                                patchRead(r.id, {
-                                                    query: data.value,
-                                                    filters: next.valid
-                                                        ? [
-                                                              ...new Set([
-                                                                  ...selected,
-                                                                  ...propertyNames.filter((name) =>
-                                                                      next.names.includes(name),
-                                                                  ),
-                                                              ]),
-                                                          ]
-                                                        : selected,
-                                                });
-                                            }}
-                                        />
-                                    </Field>
-                                    <Field
-                                        label={filtersLabel}
-                                        className={styles.input}
-                                        hint={{ children: filtersHint, className: styles.hint, title: filtersHint }}
-                                        validationState={warning ? 'warning' : 'none'}
-                                        validationMessage={warning ? { children: warning, role: 'status' } : undefined}
-                                    >
-                                        <Dropdown
-                                            className={styles.input}
-                                            aria-label={l10n.t('{label} for read {n}', {
-                                                label: filtersLabel,
-                                                n: index + 1,
-                                            })}
-                                            multiselect
-                                            selectedOptions={selected}
-                                            value={selected.join(', ')}
-                                            placeholder={l10n.t('Select properties')}
-                                            onOptionSelect={(_, data) =>
-                                                patchRead(r.id, { filters: data.selectedOptions })
-                                            }
-                                        >
-                                            {[...propertyNames, ...unknown].map((name) => (
-                                                <Option key={name} value={name}>
-                                                    {name}
-                                                </Option>
-                                            ))}
-                                        </Dropdown>
-                                    </Field>
-                                </div>
+                                <div className={styles.rateRow}>{qpsField}</div>
                             </div>
                         </fieldset>
                     );
@@ -269,36 +337,30 @@ export function QueriesPage({ model, onChange }: QueriesPageProps) {
                 )}
             >
                 <div className={styles.writeGrid}>
-                    <Field className={styles.writeCell} label={l10n.t('Inserts / sec')}>
-                        <Input
-                            className={styles.input}
-                            type="number"
-                            value={String(writes.insertsPerSec)}
-                            onChange={(_, data) =>
-                                onChangeWrites({ ...writes, insertsPerSec: Number(data.value) || 0 })
-                            }
-                        />
-                    </Field>
-                    <Field className={styles.writeCell} label={l10n.t('Updates / sec')}>
-                        <Input
-                            className={styles.input}
-                            type="number"
-                            value={String(writes.updatesPerSec)}
-                            onChange={(_, data) =>
-                                onChangeWrites({ ...writes, updatesPerSec: Number(data.value) || 0 })
-                            }
-                        />
-                    </Field>
-                    <Field className={styles.writeCell} label={l10n.t('Deletes / sec')}>
-                        <Input
-                            className={styles.input}
-                            type="number"
-                            value={String(writes.deletesPerSec)}
-                            onChange={(_, data) =>
-                                onChangeWrites({ ...writes, deletesPerSec: Number(data.value) || 0 })
-                            }
-                        />
-                    </Field>
+                    {(
+                        [
+                            ['insertsPerSec', l10n.t('Inserts / sec')],
+                            ['updatesPerSec', l10n.t('Updates / sec')],
+                            ['deletesPerSec', l10n.t('Deletes / sec')],
+                        ] as const
+                    ).map(([field, label]) => (
+                        <Field key={field} className={styles.writeCell} label={label} {...rateValidation(field)}>
+                            <Input
+                                name={`writes.${field}`}
+                                className={styles.input}
+                                type="number"
+                                min={0}
+                                max={MAX_OPERATIONS_PER_SEC}
+                                step={1}
+                                value={String(writes[field])}
+                                onChange={(_, data) =>
+                                    applyRate(field, data.value, (value) =>
+                                        onChangeWrites({ ...writes, [field]: value }),
+                                    )
+                                }
+                            />
+                        </Field>
+                    ))}
                 </div>
             </SubPanel>
 
@@ -311,7 +373,19 @@ export function QueriesPage({ model, onChange }: QueriesPageProps) {
                 <PillRow>
                     <MetricPill>{l10n.t('~{ru} RU / point read', { ru: readRu })}</MetricPill>
                     <MetricPill>{l10n.t('~{ru} RU / write', { ru: writeRu })}</MetricPill>
+                    <MetricPill>
+                        {l10n.t('~{ru} RU/s at peak', { ru: Math.round(totalRu).toLocaleString() })}
+                    </MetricPill>
                 </PillRow>
+                {throughputIssues.map((issue) => (
+                    <MessageBar
+                        key={issue.kind}
+                        intent={issue.severity}
+                        role={issue.severity === 'error' ? 'alert' : 'status'}
+                    >
+                        <MessageBarBody>{getThroughputIssueMessage(issue)}</MessageBarBody>
+                    </MessageBar>
+                ))}
             </SubPanel>
         </div>
     );

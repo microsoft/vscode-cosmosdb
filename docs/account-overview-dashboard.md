@@ -21,8 +21,9 @@ This guide explains the current repository implementation. Maintainers and codin
 4. Open **Advisories** for suggested investigations, Azure Advisor recommendations and Azure Monitor alerts.
 5. Select **Refresh** when you want a new snapshot. Overview does not update automatically.
 
-The header remains visible across the three tabs. Expand **Account details** for provisioning status,
-capacity mode and account properties. **View Cost** and **View JSON** are alongside **Add database**
+The header remains visible across the three tabs. **Account details** is expanded by default and shows
+all account properties in one grid, including API type, consistency and automatic failover, without a nested expander.
+**View Cost** and **View JSON** are alongside **Add database**
 and **Add container** in the account actions row, even when Account details is collapsed.
 The Explorer's metric shortcuts select a chart in the same dashboard, preserving your filters.
 Use the smiley **Provide Feedback** button beside **Refresh**, then choose **Provide Feedback** in its menu,
@@ -237,6 +238,9 @@ See [Account Overview settings](#account-overview-settings).
 ### Azure Advisor recommendations
 
 These are recommendations from Azure, separate from the extension's derived findings.
+**View in Azure portal** opens the recommendation details for the affected resource in Azure Advisor.
+If Azure omits the recommendation type, it opens the account's recommendations page instead.
+**Learn more** also appears when Azure supplies a documentation link.
 Only **High-impact Performance or Cost** recommendations raise account health to Needs Attention.
 Refresh may reuse an Advisor response collected in the last 55 seconds; it does not ask Azure to rerun its analysis.
 

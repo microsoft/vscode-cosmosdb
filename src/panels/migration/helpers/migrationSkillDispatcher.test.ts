@@ -787,6 +787,7 @@ describe('migrationSkillDispatcher', () => {
         { allowProvisioning: true },
         { provisioningStep: 'resources-and-data' as const },
         { preflightStep: 'volumetrics' as const },
+        { schemaSource: 'infer' as const },
         { codeMigrationAction: 'migrate' as const },
     ])('rejects conflicting execution authorization on a blocker review: %j', (change) => {
         expect(() =>
@@ -862,6 +863,30 @@ describe('migrationSkillDispatcher', () => {
         expect(prompt).toContain('Run the preflight phase');
         expect(prompt).toContain('Run only the volumetrics preflight step.');
         expect(prompt).not.toContain('readiness gate');
+    });
+
+    it('passes explicit schema inference intent without duplicating the Skill procedure', () => {
+        const invocation = {
+            workspacePath: '/workspace/shop',
+            phase: 'preflight' as const,
+            preflightStep: 'schema-acquisition' as const,
+        };
+        const prompt = buildMigrationSkillPrompt({ ...invocation, schemaSource: 'infer' });
+        expect(prompt).toContain('Run only the schema-acquisition preflight step.');
+        expect(prompt).toContain(
+            'Infer the source schema from workspace code and selected artifacts (schema-source: infer).',
+        );
+        expect(prompt).not.toContain('project.json');
+        expect(buildMigrationSkillPrompt(invocation)).not.toContain('schema-source:');
+        expect(buildMigrationSkillPrompt({ ...invocation, schemaSource: 'auto' })).toBe(
+            buildMigrationSkillPrompt(invocation),
+        );
+        expect(() =>
+            buildMigrationSkillPrompt({ ...invocation, preflightStep: 'volumetrics', schemaSource: 'infer' }),
+        ).toThrow('schemaSource requires');
+        expect(() =>
+            buildMigrationSkillPrompt({ workspacePath: '/workspace/shop', phase: 'assessment', schemaSource: 'infer' }),
+        ).toThrow('schemaSource requires');
     });
 
     it('does not infer assessment artifacts from the phase alone', () => {

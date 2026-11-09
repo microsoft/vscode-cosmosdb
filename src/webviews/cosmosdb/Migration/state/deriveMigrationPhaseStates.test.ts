@@ -715,7 +715,7 @@ describe('migration phase outcomes', () => {
         const review = screen.getByRole('button', { name: 'Review and Fix' });
         expect(review).toHaveAccessibleName('Review and Fix');
         expect(review).toHaveAccessibleDescription(
-            'Schema Conversion: review blockers and propose fixes. Changes require your approval.',
+            'Schema Conversion: review blockers and propose fixes using Copilot Chat. Changes require your approval.',
         );
         expect(review.parentElement?.firstElementChild).toBe(review);
         fireEvent.click(review);
@@ -872,7 +872,7 @@ describe('migration phase outcomes', () => {
             'schema.sql: Source schema changed\naccess-patterns.md: Access patterns changed',
         );
         expect(screen.getByRole('button', { name: 'Review and Fix' })).toHaveAccessibleDescription(
-            'Schema Conversion: review blockers and propose fixes. Changes require your approval.',
+            'Schema Conversion: review blockers and propose fixes using Copilot Chat. Changes require your approval.',
         );
     });
 
@@ -1058,7 +1058,7 @@ describe('migration phase outcomes', () => {
         expect(onRestart).not.toHaveBeenCalled();
         const review = screen.getByRole('button', { name: 'Review and Fix' });
         expect(review).toHaveAccessibleDescription(
-            'Domain Assessment: review blockers and propose fixes. Changes require your approval.',
+            'Domain Assessment: review blockers and propose fixes using Copilot Chat. Changes require your approval.',
         );
         fireEvent.click(review);
         expect(onRestart).toHaveBeenCalledWith('assessment');

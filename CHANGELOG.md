@@ -1,15 +1,46 @@
 # Change Log
 
+## 0.39.1 (Preview)
+
+### Added
+
+- Added **View in Database Hub** for Azure Cosmos DB for NoSQL accounts in public Azure. ([#3529](https://github.com/microsoft/vscode-cosmosdb/pull/3529))
+- Added relational migration support for inferring DDL from application code and schema artifacts when supplied DDL is unavailable. ([#3528](https://github.com/microsoft/vscode-cosmosdb/pull/3528))
+- Added **Data Modeler** input validation and workload throughput warnings. ([#3518](https://github.com/microsoft/vscode-cosmosdb/pull/3518))
+
+### Fixed
+
+- Fixed **Data Modeler** schema imports to preserve edits made while an import is pending and discard superseded imports. ([#3546](https://github.com/microsoft/vscode-cosmosdb/pull/3546))
+- Fixed stale **Data Modeler** recommendations after inputs change, started a fresh Copilot Chat for each recommendation request, and improved recommendation cancellation and result handling. ([#3545](https://github.com/microsoft/vscode-cosmosdb/pull/3545), [#3523](https://github.com/microsoft/vscode-cosmosdb/pull/3523), [#3520](https://github.com/microsoft/vscode-cosmosdb/pull/3520), [#3525](https://github.com/microsoft/vscode-cosmosdb/pull/3525))
+- Fixed **Data Modeler** Workload selection highlighting and moved error messages into the wizard footer. ([#3543](https://github.com/microsoft/vscode-cosmosdb/pull/3543), [#3519](https://github.com/microsoft/vscode-cosmosdb/pull/3519))
+- Fixed migration provisioning to preserve saved targets and approved capacity choices, allow deployment target names independent of the model, and scope throughput overrides to the recorded model. ([#3474](https://github.com/microsoft/vscode-cosmosdb/pull/3474), [#3472](https://github.com/microsoft/vscode-cosmosdb/pull/3472), [#3478](https://github.com/microsoft/vscode-cosmosdb/pull/3478))
+- Fixed migration JSON readers to accept UTF-8 byte-order marks, made canonical ordering locale-independent, and validated portable domain names. ([#3483](https://github.com/microsoft/vscode-cosmosdb/pull/3483), [#3482](https://github.com/microsoft/vscode-cosmosdb/pull/3482), [#3485](https://github.com/microsoft/vscode-cosmosdb/pull/3485))
+- Fixed stored procedure parameter validation so invalid JSON and non-array values are rejected instead of silently discarded. ([#3481](https://github.com/microsoft/vscode-cosmosdb/pull/3481))
+- Fixed packaged translations, the **Account Overview** Cost Analysis portal link, and account selection in the overview command. ([#3517](https://github.com/microsoft/vscode-cosmosdb/pull/3517), [#3515](https://github.com/microsoft/vscode-cosmosdb/pull/3515), [#3516](https://github.com/microsoft/vscode-cosmosdb/pull/3516))
+- Fixed floating Preview badge positioning across webviews. ([#3512](https://github.com/microsoft/vscode-cosmosdb/pull/3512))
+
+### Changed
+
+- Reworked **Data Modeler** query inputs to accept a description, a query, or both; removed the Filters on dropdown, added actionable validation, and corrected default query syntax. Clarified Copilot Chat recommendation and deployment guidance. ([#3549](https://github.com/microsoft/vscode-cosmosdb/pull/3549), [#3556](https://github.com/microsoft/vscode-cosmosdb/pull/3556))
+- Improved **Account Overview** with creation progress, directly visible account properties, grouped account actions, and links from Advisor recommendations to the Azure portal. ([#3513](https://github.com/microsoft/vscode-cosmosdb/pull/3513), [#3526](https://github.com/microsoft/vscode-cosmosdb/pull/3526), [#3514](https://github.com/microsoft/vscode-cosmosdb/pull/3514), [#3544](https://github.com/microsoft/vscode-cosmosdb/pull/3544))
+- Marked **Account Overview** as Preview and unified Preview badges and tooltips across Account Overview, Migration Assistant, and Data Modeler. ([#3484](https://github.com/microsoft/vscode-cosmosdb/pull/3484), [#3486](https://github.com/microsoft/vscode-cosmosdb/pull/3486))
+- Improved **Migration Assistant** tooltip theming and clarified which actions use Copilot Chat; expanded migration tooling, Bicep MCP, and emulator verification guidance. ([#3536](https://github.com/microsoft/vscode-cosmosdb/pull/3536), [#3538](https://github.com/microsoft/vscode-cosmosdb/pull/3538), [#3476](https://github.com/microsoft/vscode-cosmosdb/pull/3476), [#3473](https://github.com/microsoft/vscode-cosmosdb/pull/3473))
+- Improved build and end-to-end test reliability, including external skill download recovery and flaky-test reporting.
+- Updated localization.
+- Updated dependencies.
+
 ## 0.39.0 (Preview)
 
 ### Added
 
+- Added always-visible folding controls for nested objects and arrays in Query Results JSON, including large-result previews. ([#3299](https://github.com/microsoft/vscode-cosmosdb/issues/3299), [#3305](https://github.com/microsoft/vscode-cosmosdb/issues/3305))
 - Added an experimental **Cosmos DB Data Modeler** for designing document models and receiving partition key recommendations, with configuration options to enable the experience. ([#3341](https://github.com/microsoft/vscode-cosmosdb/issues/3341), [#3450](https://github.com/microsoft/vscode-cosmosdb/issues/3450))
 - Added a portable **relational migration Skill** for agent-guided source analysis, assessment, document-model design, authorized provisioning, and application code migration. Supports resumable project-local checkpoints, shared and hybrid throughput models, and reusable migration decisions and model snapshots. ([#3403](https://github.com/microsoft/vscode-cosmosdb/issues/3403))
 - Added configurable connection timeouts for attached accounts. ([#3456](https://github.com/microsoft/vscode-cosmosdb/issues/3456))
 
 ### Fixed
 
+- Fixed webview development server collisions with other extensions by using a distinct, `.env`-configurable port shared with the extension host and failing immediately when that port is occupied. ([#3216](https://github.com/microsoft/vscode-cosmosdb/issues/3216))
 - Fixed Query Editor result ownership after connection changes, copying selected JSON text, and copying or exporting a single selected result; clarified copy and export scope labels and prevented freezes with large JSON results. ([#3138](https://github.com/microsoft/vscode-cosmosdb/issues/3138), [#3336](https://github.com/microsoft/vscode-cosmosdb/issues/3336), [#3302](https://github.com/microsoft/vscode-cosmosdb/issues/3302), [#3328](https://github.com/microsoft/vscode-cosmosdb/issues/3328), [#3348](https://github.com/microsoft/vscode-cosmosdb/issues/3348), [#3192](https://github.com/microsoft/vscode-cosmosdb/issues/3192))
 - Fixed NoSQL parsing of subquery collection ranges and aggregate functions, validated ranking directions, and bounded parser complexity. ([#3405](https://github.com/microsoft/vscode-cosmosdb/issues/3405), [#3361](https://github.com/microsoft/vscode-cosmosdb/issues/3361), [#3379](https://github.com/microsoft/vscode-cosmosdb/issues/3379))
 - Fixed schema analysis of document fields, BSON values, and browser byte arrays, preserved simplified schemas, and corrected variant navigation and failed-update handling. ([#3373](https://github.com/microsoft/vscode-cosmosdb/issues/3373), [#3374](https://github.com/microsoft/vscode-cosmosdb/issues/3374), [#3375](https://github.com/microsoft/vscode-cosmosdb/issues/3375), [#3376](https://github.com/microsoft/vscode-cosmosdb/issues/3376))

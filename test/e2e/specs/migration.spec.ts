@@ -330,16 +330,36 @@ test.describe('Migration Assistant', () => {
         await expect(migration.analysisField('frameworks')).toHaveAccessibleName('Frameworks:');
         await expect(migration.analysisField('frameworks')).toHaveJSProperty('required', false);
 
-        const schemaFilesDescription = 'Database Schema Files, required';
+        const schemaFilesDescription = 'Optional DDL or supporting schema artifacts';
         await expect(
             frame.getByRole('button', { name: 'Select Files…', description: schemaFilesDescription }),
         ).toHaveAccessibleDescription(schemaFilesDescription);
         await expect(
             frame.getByRole('button', { name: 'Select Folder…', description: schemaFilesDescription }),
         ).toHaveAccessibleDescription(schemaFilesDescription);
-        await expect(
-            frame.getByRole('button', { name: 'Generate schema files from workspace code using AI' }),
-        ).toHaveAccessibleDescription(schemaFilesDescription);
+        for (const [button, label, description] of [
+            [
+                migration.generateSchemaButton,
+                'Generate schema files from workspace code',
+                'Generate schema files from workspace code using Copilot Chat',
+            ],
+            [
+                migration.updateVolumetricsButton,
+                'Update volumetrics template',
+                'Update volumetrics template using Copilot Chat',
+            ],
+            [
+                migration.updateAccessPatternsButton,
+                'Update access-patterns template',
+                'Update access-patterns template using Copilot Chat',
+            ],
+        ] as const) {
+            await expect(button).toHaveText('');
+            await expect(button).toHaveAccessibleName(label);
+            await expect(button).toHaveAccessibleDescription(description);
+            await button.hover();
+            await expect(frame.getByRole('tooltip')).toHaveText(description);
+        }
         for (const description of [schemaFilesDescription, 'Volumetrics:', 'Access Patterns:']) {
             for (const name of ['Select Files…', 'Select Folder…']) {
                 const picker = frame.getByRole('button', { name, description, exact: true });
@@ -349,8 +369,8 @@ test.describe('Migration Assistant', () => {
             }
         }
         await expect(
-            frame.getByRole('button', { name: /file\(s\) selected/, description: 'Database Schema Files:' }),
-        ).toHaveAccessibleDescription('Database Schema Files:');
+            frame.getByRole('button', { name: /file\(s\) selected/, description: 'Source Schema:' }),
+        ).toHaveAccessibleDescription('Source Schema:');
 
         await frame.getByRole('button', { name: new RegExp(PHASE_HEADERS.phase4) }).click();
         await expect(frame.getByRole('radiogroup', { name: /Target Environment/ })).toHaveAttribute(
@@ -416,7 +436,7 @@ test.describe('Migration Assistant', () => {
     test('interactive help links are keyboard accessible', async ({ vscodeWindow }) => {
         const frame = await openMigrationSeeded(vscodeWindow);
         const helpLinks = [
-            ['Database schema files help', 'schema-ddl/'],
+            ['Source schema help', 'schema-ddl/'],
             ['Volumetrics help', 'volumetrics/'],
             ['Access patterns help', 'access-patterns/'],
         ] as const;
@@ -506,15 +526,21 @@ test.describe('Migration Assistant', () => {
         await expect(migration.runDiscoveryButton()).toBeDisabled();
 
         const consentDescription = 'AI consent is required to use this action.';
-        await expect(migration.generateSchemaButton).toHaveAccessibleDescription(new RegExp(consentDescription));
-        await expect(migration.updateVolumetricsButton).toHaveAccessibleDescription(consentDescription);
-        await expect(migration.updateAccessPatternsButton).toHaveAccessibleDescription(consentDescription);
-
         for (const [button, description] of [
-            [migration.generateSchemaButton, `Database Schema Files, required ${consentDescription}`],
-            [migration.updateVolumetricsButton, consentDescription],
-            [migration.updateAccessPatternsButton, consentDescription],
+            [
+                migration.generateSchemaButton,
+                `Generate schema files from workspace code using Copilot Chat. ${consentDescription}`,
+            ],
+            [
+                migration.updateVolumetricsButton,
+                `Update volumetrics template using Copilot Chat. ${consentDescription}`,
+            ],
+            [
+                migration.updateAccessPatternsButton,
+                `Update access-patterns template using Copilot Chat. ${consentDescription}`,
+            ],
         ] as const) {
+            await expect(button).toHaveAccessibleDescription(description);
             await button.hover();
             await expect(frame.getByRole('tooltip')).toHaveText(description);
         }
@@ -666,6 +692,7 @@ test.describe('Migration Assistant', () => {
             await expect(frame.getByTestId('migration-run-activity')).toHaveCount(0);
             await migration.generateSchemaButton.click();
             await expect.poll(() => readCapturedPrompts().length).toBe(promptCount + 1);
+            await expect(frame.getByTestId('migration-run-activity')).toHaveAttribute('data-activity', 'running');
         } finally {
             await resetNativeDialogStubs(vscodeApp);
         }
@@ -734,7 +761,8 @@ test.describe('Migration Assistant', () => {
             const reopenedButton = frame.getByTestId('migration-run-activity').getByRole('button');
             await reopenedButton.press('Shift+F10');
             const refresh = frame.getByRole('menuitem', { name: 'Refresh Status', exact: true });
-            await refresh.click();
+            await refresh.focus();
+            await refresh.press('Enter');
             await expect(reopenedButton).toBeFocused();
             await expect(migration.autoDetectButton).toBeDisabled();
 
@@ -798,27 +826,30 @@ test.describe('Migration Assistant', () => {
                 name: 'Authoritative schema DDL Invalid',
                 exact: true,
             });
-            await schemaToggle.click();
+            await schemaToggle.focus();
+            await schemaToggle.press('Enter');
             await expect(inventoryToggle).toHaveAttribute('aria-expanded', 'true');
             await expect(schemaToggle).toHaveAttribute('aria-expanded', 'true');
             await expect(schemaFailure.getByRole('button', { name: 'Open Artifact', exact: true })).toBeVisible();
             await diagnostics.screenshot({ path: testInfo.outputPath('blocked-phase-expanded.png') });
             await inventoryToggle.press('Space');
             await expect(inventoryToggle).toHaveAttribute('aria-expanded', 'false');
-            await schemaToggle.click();
+            await schemaToggle.focus();
+            await schemaToggle.press('Enter');
             await expect(schemaToggle).toHaveAttribute('aria-expanded', 'false');
             const restart = diagnostics.getByRole('button', { name: 'Review and Fix', exact: true });
             await expect(restart).toBeEnabled();
             await expect(restart).toHaveText('Review and Fix');
             await expect(restart).toHaveAccessibleName('Review and Fix');
             await expect(restart).toHaveAccessibleDescription(
-                'Preflight: review blockers and propose fixes. Changes require your approval.',
+                'Preflight: review blockers and propose fixes using Copilot Chat. Changes require your approval.',
             );
             expect(await restart.evaluate((element) => element.parentElement?.firstElementChild === element)).toBe(
                 true,
             );
             const refreshBlocked = diagnostics.getByRole('button', { name: 'Refresh Status', exact: true });
-            await refreshBlocked.click();
+            await refreshBlocked.focus();
+            await refreshBlocked.press('Enter');
             await expect(refreshBlocked).toBeFocused();
             await expect(diagnostics.getByRole('button', { name: /Open (in )?Chat/ })).toHaveCount(0);
             expect(readCapturedPrompts()).toHaveLength(count);
@@ -829,7 +860,8 @@ test.describe('Migration Assistant', () => {
             expect(await diagnostics.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
             await expect(schemaToggle).toHaveAttribute('aria-expanded', 'false');
             await schemaToggle.scrollIntoViewIfNeeded();
-            await schemaToggle.click();
+            await schemaToggle.focus();
+            await schemaToggle.press('Enter');
             await expect(schemaToggle).toHaveAttribute('aria-expanded', 'true');
             expect(await diagnostics.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
             await diagnostics.screenshot({ path: testInfo.outputPath('blocked-phase-narrow.png') });
@@ -1168,7 +1200,15 @@ test.describe('Migration Assistant', () => {
             expect(dimensions.content).toBeGreaterThan(dimensions.height);
             await list.focus();
             await expect(list).toBeFocused();
-            await list.press('PageDown');
+            await Promise.all([
+                list.evaluate(
+                    (element) =>
+                        new Promise<void>((resolve) => {
+                            element.addEventListener('scrollend', () => resolve(), { once: true });
+                        }),
+                ),
+                list.press('PageDown'),
+            ]);
             await expect.poll(() => list.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
             await list.evaluate((element) => {
                 element.scrollTop = element.scrollHeight;
@@ -1231,7 +1271,9 @@ test.describe('Migration Assistant', () => {
         );
         await expect(phase.getByTestId('migration-phase2-status-complete')).toHaveCount(0);
         await expect(diagnostics.getByText('Project validation failed', { exact: true })).toHaveCount(0);
-        await diagnostics.getByRole('button', { name: 'Compatibility adjustments (2)', exact: true }).click();
+        const compatibility = diagnostics.getByRole('button', { name: 'Compatibility adjustments (2)', exact: true });
+        await compatibility.press('Enter');
+        await expect(compatibility).toHaveAttribute('aria-expanded', 'true');
         await expect(
             diagnostics.getByRole('textbox', { name: 'Compatibility adjustments (2)', exact: true }),
         ).toHaveJSProperty('readOnly', true);
@@ -1247,7 +1289,7 @@ test.describe('Migration Assistant', () => {
         await expect(review).toBeEnabled();
         await expect(review).toHaveAccessibleName('Review and Fix');
         await expect(review).toHaveAccessibleDescription(
-            'Domain Assessment: review blockers and propose fixes. Changes require your approval.',
+            'Domain Assessment: review blockers and propose fixes using Copilot Chat. Changes require your approval.',
         );
         expect(await review.evaluate((element) => element.parentElement?.firstElementChild === element)).toBe(true);
         await diagnostics.screenshot({ path: testInfo.outputPath('historical-completion.png') });
@@ -1358,7 +1400,7 @@ test.describe('Migration Assistant', () => {
                     )?.promptText ?? '',
                 { timeout: 15_000 },
             )
-            .toContain('Run only the schema-acquisition preflight step.');
+            .toContain('Infer the source schema from workspace code and selected artifacts (schema-source: infer).');
         await migration.completeSkillRun(
             readFlowPrompts().findLast(
                 (prompt) =>

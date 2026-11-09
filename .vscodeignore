@@ -23,6 +23,7 @@ testWorkspace/**
 *.ts
 *.zip
 .editorconfig
+.env*
 .eslintignore
 .eslintrc.js
 .gitignore

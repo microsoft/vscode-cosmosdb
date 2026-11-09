@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Button, Field, Input, Link, makeStyles, Text, tokens } from '@fluentui/react-components';
+import { Button, Field, Input, Link, makeStyles, Text, tokens, Tooltip } from '@fluentui/react-components';
 import {
     AddRegular,
     CheckmarkRegular,
@@ -11,6 +11,8 @@ import {
     DeleteRegular,
     DismissRegular,
     EditRegular,
+    ErrorCircleRegular,
+    InfoRegular,
     SparkleRegular,
 } from '@fluentui/react-icons';
 import {
@@ -21,13 +23,24 @@ import {
 } from '@microsoft/vscode-ext-webview-fluentui/components';
 import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
-import { type CSSProperties, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+    type CSSProperties,
+    type SetStateAction,
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import { validateDeploymentContainerName } from '../../../dataModeling/deploymentModel';
+import { WizardStateSchema } from '../../../dataModeling/modelingAdvisorSchema';
+import { modelingInputsEqual } from '../../../dataModeling/modelingTelemetryMetrics';
 import { PartitionKeyRecommendationSchema } from '../../../dataModeling/recommendationSchema';
 import { type DataModelingAppRouter, type DataModelingEvent } from '../../api/types';
 import { PreviewBadge } from '../../components/PreviewBadge';
 import {
-    applyScenario,
+    buildDataModel,
     createBlankContainer,
     withDerivedCandidates,
     type DataModel,
@@ -38,9 +51,10 @@ import { MAX_CONTAINERS, type ScenarioId } from './models';
 import { ContainerPage, type ContainerTab } from './pages/ContainerPage';
 import { createDeploymentDraft, DeployPage, type DeploymentDraft } from './pages/DeployPage';
 import { ResultPage } from './pages/ResultPage';
-import { ReviewPage } from './pages/ReviewPage';
+import { ReviewPage, type ReviewValidationIssue } from './pages/ReviewPage';
 import { WorkloadPage } from './pages/WorkloadPage';
 import { getScenarioList } from './scenarios';
+import { SchemaImportTracker } from './schemaImports';
 import { useModelingPageVisible, useModelingTelemetryReporter, useModelingUsage } from './useModelingTelemetry';
 import { useNativeConfirmation } from './useNativeConfirmation';
 
@@ -74,6 +88,25 @@ function buildStepValues(model: DataModel): string[] {
     return [WORKLOAD_STEP, ...model.containers.map((c) => containerStep(c.id)), REVIEW_STEP, RESULT_STEP];
 }
 
+function getWorkloadIssues(wizard: WizardState): ReviewValidationIssue[] {
+    const validation = WizardStateSchema.safeParse(wizard);
+    // Name the container each issue belongs to so users know which card to edit.
+    return validation.success
+        ? []
+        : validation.error.issues.map((issue) => {
+              const [scope, collection, index] = issue.path;
+              const container =
+                  scope === 'dataModel' && collection === 'containers' && typeof index === 'number'
+                      ? wizard.dataModel.containers[index]
+                      : undefined;
+              return {
+                  message: container?.entity ? `${container.entity}: ${issue.message}` : issue.message,
+                  containerId: container?.id,
+                  path: issue.path.slice(3).map(String),
+              };
+          });
+}
+
 // Separate from useStyles so the outer shell does not change the insertion order of the Wizard overrides.
 const useViewportStyles = makeStyles({
     // Status rows share the viewport with the wizard instead of pushing its full-height surface below the fold.
@@ -98,6 +131,13 @@ const useStyles = makeStyles({
     },
     workloadTitle: {
         overflowWrap: 'anywhere',
+    },
+    recommendationNotice: {
+        display: 'flex',
+        alignItems: 'center',
+        columnGap: tokens.spacingHorizontalXS,
+        marginBottom: tokens.spacingVerticalS,
+        color: tokens.colorNeutralForeground3,
     },
     fullWidthWizard: {
         position: 'relative',
@@ -124,6 +164,25 @@ const useStyles = makeStyles({
     },
     // The footer's contentEnd is a single slot, so give its buttons and the link their own gap.
     endGroup: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS },
+    footer: { flexShrink: 0 },
+    containerError: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        flexWrap: 'wrap',
+        gap: tokens.spacingHorizontalS,
+        padding: '8px 24px',
+        backgroundColor: tokens.colorPaletteRedBackground1,
+        color: tokens.colorPaletteRedForeground1,
+    },
+    containerErrorMessage: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: tokens.spacingHorizontalS,
+        minWidth: 0,
+        overflowWrap: 'anywhere',
+    },
+    containerErrorIcon: { flexShrink: 0 },
     // Fluent 9 has no built-in danger appearance; tint the destructive action red.
     dangerButton: {
         color: tokens.colorPaletteRedForeground1,
@@ -159,7 +218,9 @@ function footerHint(value: string): string {
         return l10n.t('Pick the closest workload to pre-fill typical containers, keys, and defaults.');
     }
     if (value === REVIEW_STEP) {
-        return l10n.t('Next: we send your inputs to Copilot and open the Result page with a ranked recommendation.');
+        return l10n.t(
+            'Next: get a recommendation for your inputs using Copilot Chat and open the Result page with a ranked recommendation.',
+        );
     }
     if (value.startsWith(CONTAINER_PREFIX)) {
         return l10n.t('Model this container across the Data, Queries and Scale tabs — it gets its own recommendation.');
@@ -170,20 +231,12 @@ function footerHint(value: string): string {
 export const DataModelingWizard = () => {
     const styles = useViewportStyles();
     const trpcClient = useTrpcClient<DataModelingAppRouter>();
-    const report = useModelingTelemetryReporter();
-    const choiceMade = useRef(false);
     const load = useCallback(() => trpcClient.dataModeling.loadState.query(), [trpcClient]);
     const save = useCallback(
         (snapshot: ReturnType<typeof createInitialSnapshot>) => trpcClient.dataModeling.saveState.mutate(snapshot),
         [trpcClient],
     );
     const persistence = useModelingAdvisorPersistence({ load, save });
-    useEffect(() => {
-        if (persistence.loadStatus === 'ready' && !choiceMade.current) {
-            choiceMade.current = true;
-            report({ type: 'sessionChoice', choice: 'new' });
-        }
-    }, [persistence.loadStatus, report]);
     const loadMessage = l10n.t('Loading saved modeling advisor state…');
     const loadError = l10n.t('Could not load the modeling advisor state. Retry before making changes.');
     const saveError = l10n.t('Could not save the modeling advisor state. Keep this tab open and retry.');
@@ -198,23 +251,6 @@ export const DataModelingWizard = () => {
                     <Button onClick={persistence.retryLoad}>{l10n.t('Retry loading')}</Button>
                 ) : null}
             </div>
-        );
-    }
-
-    if (persistence.loadStatus === 'choice') {
-        return (
-            <SavedModelChoice
-                onContinue={() => {
-                    choiceMade.current = true;
-                    report({ type: 'sessionChoice', choice: 'continued' });
-                    persistence.continueExisting();
-                }}
-                onStartNew={() => {
-                    choiceMade.current = true;
-                    report({ type: 'sessionChoice', choice: 'replaced' });
-                    persistence.startNew();
-                }}
-            />
         );
     }
 
@@ -237,46 +273,9 @@ export const DataModelingWizard = () => {
     );
 };
 
-function SavedModelChoice({ onContinue, onStartNew }: { onContinue: () => void; onStartNew: () => void }) {
-    const { confirm, confirmationError } = useNativeConfirmation();
-    const prompted = useRef(false);
-    const buttonRef = useRef<HTMLButtonElement>(null);
-    const [awaitingAnswer, setAwaitingAnswer] = useState(true);
-    const choose = useCallback(async () => {
-        setAwaitingAnswer(true);
-        const result = await confirm(
-            l10n.t('Continue your data model?'),
-            l10n.t(
-                'A saved data model was found. Choose Yes to continue where you left off, or No to start a new model and replace the saved one.',
-            ),
-        );
-        if (result === true) onContinue();
-        else if (result === false) onStartNew();
-        else setAwaitingAnswer(false);
-    }, [confirm, onContinue, onStartNew]);
-    useEffect(() => {
-        if (!prompted.current) {
-            prompted.current = true;
-            void choose();
-        }
-    }, [choose]);
-    useEffect(() => {
-        if (!awaitingAnswer) buttonRef.current?.focus();
-    }, [awaitingAnswer]);
-
-    return awaitingAnswer ? null : (
-        <div>
-            {confirmationError ? <Text role="alert">{confirmationError}</Text> : null}
-            <Button ref={buttonRef} onClick={() => void choose()}>
-                {l10n.t('Continue your data model?')}
-            </Button>
-        </div>
-    );
-}
-
 const HydratedDataModelingWizard = ({
     snapshot,
-    setSnapshot,
+    setSnapshot: commitSnapshot,
     flush,
 }: Pick<ReturnType<typeof useModelingAdvisorPersistence>, 'snapshot' | 'setSnapshot' | 'flush'>) => {
     const styles = useStyles();
@@ -289,49 +288,25 @@ const HydratedDataModelingWizard = ({
     const advanceButtonRef = useRef<HTMLButtonElement>(null);
     const queriesTabRef = useRef<HTMLButtonElement>(null);
     const [containerTab, setContainerTab] = useState<ContainerTab>('data');
+    const [fixTarget, setFixTarget] = useState<ReviewValidationIssue>();
+    const clearFixTarget = useCallback(() => setFixTarget(undefined), []);
     const removeButtonRef = useRef<HTMLButtonElement>(null);
+    const addButtonRef = useRef<HTMLButtonElement>(null);
     const requestGeneration = useRef(0);
     const requestId = useRef<string | undefined>(undefined);
     const deliveredRequestId = useRef<string | undefined>(undefined);
-    const requestPending = useRef(false);
-    const containerNameRequest = useRef(0);
-    const containerNamePending = useRef(false);
-    useEffect(
-        () => () => {
-            requestGeneration.current += 1;
-            containerNameRequest.current += 1;
-        },
-        [],
+    // The waiting state also identifies queued updates without reading mutable refs in state updaters.
+    const requestPending = useRef<typeof snapshot.recommendation | undefined>(undefined);
+    const requireCorrelatedResponse = useRef(
+        snapshot.recommendation.status === 'stopped' || snapshot.recommendation.status === 'error',
     );
-    const state = snapshot.wizard;
-    const { visit, markEdited, visits } = useModelingUsage(state, report);
-    const setState = useCallback(
-        (update: SetStateAction<WizardState>) =>
-            setSnapshot((previous) => ({
-                ...previous,
-                wizard: typeof update === 'function' ? update(previous.wizard) : update,
-            })),
-        [setSnapshot],
-    );
-    const reachedSteps =
-        state.reachedSteps ??
-        buildStepValues(state.dataModel).slice(0, snapshot.recommendation.value ? undefined : state.step);
-    const [addingContainer, setAddingContainer] = useState(false);
-    const [addContainerError, setAddContainerError] = useState('');
-    const currentDataModel = useRef(state.dataModel);
-    useEffect(() => {
-        currentDataModel.current = state.dataModel;
-    }, [state.dataModel]);
-    const [editingContainerId, setEditingContainerId] = useState<string>();
-    const [containerNameDraft, setContainerNameDraft] = useState('');
-    const containerNameInputRef = useRef<HTMLInputElement>(null);
-    const containerNameError = validateDeploymentContainerName(
-        containerNameDraft,
-        state.dataModel.containers
-            .filter((container) => container.id !== editingContainerId)
-            .map((container) => container.entity),
-    );
-
+    const abandonRecommendation = useCallback(() => {
+        requestGeneration.current += 1;
+        requestId.current = undefined;
+        deliveredRequestId.current = undefined;
+        requestPending.current = undefined;
+        requireCorrelatedResponse.current = true;
+    }, []);
     const { status: recommendationStatus, value: recommendation, error: recommendationError } = snapshot.recommendation;
     const [feedback, setFeedback] = useState<{
         recommendation: typeof recommendation;
@@ -346,6 +321,118 @@ const HydratedDataModelingWizard = ({
         owner: typeof recommendation;
         value: DeploymentDraft;
     }>();
+    const currentSnapshot = useRef<typeof snapshot | undefined>(snapshot);
+    const containerNameRequest = useRef(0);
+    const containerNamePending = useRef(false);
+    useEffect(
+        () => () => {
+            abandonRecommendation();
+            currentSnapshot.current = undefined;
+            containerNameRequest.current += 1;
+        },
+        [abandonRecommendation],
+    );
+    // Apply all snapshot actions to the latest pending state before handing a value to React. This keeps
+    // batched functional edits ordered and fences host work immediately, without effects in replayable updaters.
+    const setSnapshot = useCallback(
+        (update: SetStateAction<typeof snapshot>) => {
+            const previous = currentSnapshot.current;
+            if (!previous) return;
+            const next = typeof update === 'function' ? update(previous) : update;
+            currentSnapshot.current = next;
+            if (
+                previous.wizard.scenario !== next.wizard.scenario ||
+                !modelingInputsEqual(previous.wizard.dataModel, next.wizard.dataModel)
+            ) {
+                abandonRecommendation();
+                setDeployOwner(undefined);
+                setDeploymentDraft(undefined);
+                setDeploymentBusy(false);
+            }
+            commitSnapshot(next);
+        },
+        [commitSnapshot, abandonRecommendation],
+    );
+    const state = snapshot.wizard;
+    const { visit, markEdited, visits } = useModelingUsage(state, report);
+    const [schemaImports] = useState(() => new SchemaImportTracker());
+    // A mounted Data page acknowledges its own committed import; this covers imports that outlived their page.
+    useEffect(() => {
+        schemaImports.acknowledge(state.dataModel).forEach(() => report({ type: 'schemaImport', outcome: 'success' }));
+    }, [schemaImports, state.dataModel, report]);
+    const setState = useCallback(
+        (update: SetStateAction<WizardState>) =>
+            setSnapshot((previous) => {
+                const wizard = typeof update === 'function' ? update(previous.wizard) : update;
+                if (wizard === previous.wizard) return previous;
+                if (
+                    wizard.scenario === previous.wizard.scenario &&
+                    modelingInputsEqual(wizard.dataModel, previous.wizard.dataModel)
+                ) {
+                    return { ...previous, wizard };
+                }
+                // Clear the persisted result atomically with every input edit, including native prompt completions.
+                return {
+                    ...previous,
+                    wizard: {
+                        ...wizard,
+                        reachedSteps:
+                            wizard.reachedSteps ??
+                            (previous.recommendation.value ? buildStepValues(previous.wizard.dataModel) : undefined),
+                    },
+                    recommendation:
+                        previous.recommendation.status === 'idle'
+                            ? previous.recommendation
+                            : {
+                                  status: 'error',
+                                  error: l10n.t('The model has changed. Get a new recommendation before deploying.'),
+                              },
+                    deployment: undefined,
+                };
+            }),
+        [setSnapshot],
+    );
+    const reachedSteps =
+        state.reachedSteps ??
+        buildStepValues(state.dataModel).slice(0, snapshot.recommendation.value ? undefined : state.step);
+    const [addingContainer, setAddingContainer] = useState(false);
+    const [addContainerError, setAddContainerError] = useState('');
+    const restoreAddFocus = useRef(false);
+    useEffect(() => {
+        if (!addingContainer && restoreAddFocus.current) {
+            restoreAddFocus.current = false;
+            const focusTarget = [addButtonRef.current, advanceButtonRef.current].find(
+                (button) => button && !button.disabled,
+            );
+            focusTarget?.focus();
+        }
+    }, [addingContainer, addContainerError]);
+    const [editingContainerId, setEditingContainerId] = useState<string>();
+    const [containerNameDraft, setContainerNameDraft] = useState('');
+    const containerNameInputRef = useRef<HTMLInputElement>(null);
+    const containerNameError = validateDeploymentContainerName(
+        containerNameDraft,
+        state.dataModel.containers
+            .filter((container) => container.id !== editingContainerId)
+            .map((container) => container.entity),
+    );
+
+    useLayoutEffect(() => {
+        // StrictMode replays mount effects after cleanup. Never overwrite pending edits with committed state.
+        currentSnapshot.current ??= snapshot;
+    }, [snapshot]);
+    const updateDeploymentBusy = useCallback(
+        (busy: boolean) => {
+            // A retired page can finish after another recommendation has started its own deployment.
+            if (
+                currentSnapshot.current?.recommendation.status === 'received' &&
+                currentSnapshot.current.recommendation.value === recommendation
+            ) {
+                setDeploymentBusy(busy);
+            }
+        },
+        [recommendation],
+    );
     const initialDeploymentDraft = useMemo(
         () => createDeploymentDraft(recommendation?.containers ?? [], snapshot.deployment),
         [recommendation, snapshot.deployment],
@@ -375,8 +462,14 @@ const HydratedDataModelingWizard = ({
     );
     const persistDeployment = useCallback(
         (deployment: typeof snapshot.deployment) =>
-            setSnapshot((previous) => (previous.deployment === deployment ? previous : { ...previous, deployment })),
-        [setSnapshot],
+            setSnapshot((previous) =>
+                previous.recommendation.status !== 'received' ||
+                previous.recommendation.value !== recommendation ||
+                previous.deployment === deployment
+                    ? previous
+                    : { ...previous, deployment },
+            ),
+        [setSnapshot, recommendation],
     );
     const canEnterDeploy = recommendationStatus === 'received' && !!recommendation?.containers.length;
     const isDeploy = canEnterDeploy && deployOwner === recommendation;
@@ -386,10 +479,15 @@ const HydratedDataModelingWizard = ({
     useEffect(() => {
         const subscription = trpcClient.dataModeling.events.subscribe(undefined, {
             onData: (event: DataModelingEvent) => {
+                const pending = requestPending.current;
+                if (!pending) return;
+                if (!event.requestId && requireCorrelatedResponse.current) {
+                    return;
+                }
                 if (event.requestId && event.requestId !== requestId.current) {
                     return;
                 }
-                requestPending.current = false;
+                requestPending.current = undefined;
                 deliveredRequestId.current = event.requestId;
                 if (
                     event.type === 'recommendationReceived' &&
@@ -402,8 +500,8 @@ const HydratedDataModelingWizard = ({
                     });
                 }
                 setSnapshot((previous) => {
-                    // A queued event from the prior request must not undo Start Over.
-                    if (previous.recommendation.status === 'idle') {
+                    // An input edit or a newer request can precede this queued update, even in the same batch.
+                    if (previous.recommendation !== pending) {
                         return previous;
                     }
                     if (event.type === 'recommendationReceived') {
@@ -436,16 +534,16 @@ const HydratedDataModelingWizard = ({
                 });
             },
             onError: () => {
-                if (requestPending.current) {
-                    report({
-                        type: 'recommendationClientFailure',
-                        requestId: requestId.current,
-                        errorCategory: 'subscription',
-                    });
-                    requestPending.current = false;
-                }
+                const pending = requestPending.current;
+                if (!pending) return;
+                report({
+                    type: 'recommendationClientFailure',
+                    requestId: requestId.current,
+                    errorCategory: 'subscription',
+                });
+                requestPending.current = undefined;
                 setSnapshot((previous) =>
-                    previous.recommendation.status !== 'waiting'
+                    previous.recommendation !== pending
                         ? previous
                         : {
                               ...previous,
@@ -532,7 +630,8 @@ const HydratedDataModelingWizard = ({
     const pickScenario = useCallback(
         (scenario: ScenarioId) => {
             report({ type: 'scenarioSelected', scenario });
-            setState((prev) => applyScenario(prev, scenario));
+            const dataModel = buildDataModel(scenario);
+            setState((prev) => ({ ...prev, scenario, dataModel }));
         },
         [setState, report],
     );
@@ -543,7 +642,11 @@ const HydratedDataModelingWizard = ({
     );
 
     const setDataModel = useCallback(
-        (dataModel: DataModel) => setState((prev) => ({ ...prev, dataModel })),
+        (update: SetStateAction<DataModel>) =>
+            setState((previous) => {
+                const dataModel = typeof update === 'function' ? update(previous.dataModel) : update;
+                return dataModel === previous.dataModel ? previous : { ...previous, dataModel };
+            }),
         [setState],
     );
 
@@ -581,7 +684,21 @@ const HydratedDataModelingWizard = ({
     // The Data tab changes the schema, so refresh the derived PK candidates the Scale tab
     // reads. Queries and Scale edits write their slice back unchanged.
     const onChangeData = useCallback(
-        (dataModel: DataModel) => setDataModel(withDerivedCandidates(dataModel)),
+        (update: SetStateAction<DataModel>) =>
+            setDataModel((previous) => {
+                const next = typeof update === 'function' ? update(previous) : update;
+                if (next === previous) return previous;
+                return {
+                    ...next,
+                    // An import can finish while another container is active.
+                    // Derive candidates only for changed containers without changing the current selection.
+                    containers: next.containers.map((container) =>
+                        container === previous.containers.find((c) => c.id === container.id)
+                            ? container
+                            : withDerivedCandidates({ containers: [container] }).containers[0],
+                    ),
+                };
+            }),
         [setDataModel],
     );
 
@@ -596,7 +713,8 @@ const HydratedDataModelingWizard = ({
                 existingNames: state.dataModel.containers.map((container) => container.entity),
             });
             if (request !== containerNameRequest.current || value === undefined) return;
-            const model = currentDataModel.current;
+            const model = currentSnapshot.current?.wizard.dataModel;
+            if (!model) return;
             const error = validateDeploymentContainerName(
                 value,
                 model.containers.map((container) => container.entity),
@@ -610,11 +728,12 @@ const HydratedDataModelingWizard = ({
                 return;
             }
             markEdited('data');
+            const container = createBlankContainer(value);
             setState((previous) => ({
                 ...previous,
                 dataModel: {
                     ...previous.dataModel,
-                    containers: [...previous.dataModel.containers, createBlankContainer(value)],
+                    containers: [...previous.dataModel.containers, container],
                 },
             }));
         } catch {
@@ -650,26 +769,58 @@ const HydratedDataModelingWizard = ({
         });
     }, [setState]);
 
+    const workloadIssues = useMemo(() => getWorkloadIssues(state), [state]);
+    const workloadErrors = useMemo(() => workloadIssues.map((issue) => issue.message), [workloadIssues]);
+    const fixIssue = (issue: ReviewValidationIssue) => {
+        // Older drafts infer reached steps from the current step; preserve access to Review when jumping back.
+        setState((previous) => ({ ...previous, reachedSteps }));
+        if (!issue.containerId) {
+            goToStep(1);
+            return;
+        }
+        goToContainer(issue.containerId);
+        const section = issue.path[0];
+        setContainerTab(
+            section === 'scale'
+                ? 'scale'
+                : section === 'reads' || section === 'writes' || section === undefined
+                  ? 'queries'
+                  : 'data',
+        );
+        setFixTarget(issue);
+    };
+
     // Send the finished data model to Copilot Chat and wait for the tool callback.
     const requestRecommendation = useCallback(() => {
-        if (snapshot.recommendation.status !== 'idle') {
+        const current = currentSnapshot.current;
+        if (!current) return;
+        const errors = getWorkloadIssues(current.wizard).map((issue) => issue.message);
+        if (errors.length > 0) {
+            setSnapshot((previous) => ({
+                ...previous,
+                recommendation: { status: 'error', error: errors.join('\n') },
+            }));
+            return;
+        }
+        if (current.recommendation.status !== 'idle') {
             report({ type: 'action', action: 'retryRecommendation' });
         }
         const attemptId = crypto.randomUUID();
+        if (requestId.current) requireCorrelatedResponse.current = true;
         requestId.current = attemptId;
         deliveredRequestId.current = undefined;
-        requestPending.current = true;
         const generation = ++requestGeneration.current;
         const next: typeof snapshot = {
-            ...snapshot,
+            ...current,
             wizard: {
-                ...snapshot.wizard,
-                step: buildStepValues(snapshot.wizard.dataModel).length,
-                reachedSteps: buildStepValues(snapshot.wizard.dataModel),
+                ...current.wizard,
+                step: buildStepValues(current.wizard.dataModel).length,
+                reachedSteps: buildStepValues(current.wizard.dataModel),
             },
             recommendation: { status: 'waiting' },
             deployment: undefined,
         };
+        requestPending.current = next.recommendation;
         setSnapshot(next);
         // Preserve inputs and Result navigation before opening Chat.
         const run = async () => {
@@ -685,12 +836,12 @@ const HydratedDataModelingWizard = ({
                 if (generation !== requestGeneration.current) {
                     return;
                 }
-                requestPending.current = false;
+                requestPending.current = undefined;
                 if (!inputsSaved) {
                     report({ type: 'recommendationClientFailure', requestId: attemptId, errorCategory: 'save' });
                 }
                 setSnapshot((previous) =>
-                    previous.recommendation.status === 'waiting'
+                    previous.recommendation === next.recommendation
                         ? {
                               ...previous,
                               recommendation: {
@@ -708,7 +859,22 @@ const HydratedDataModelingWizard = ({
             }
         };
         void run();
-    }, [trpcClient, snapshot, setSnapshot, flush, report]);
+    }, [trpcClient, setSnapshot, flush, report]);
+
+    const stopWaitingForRecommendation = async () => {
+        const attemptId = requestId.current;
+        const generation = requestGeneration.current;
+        const pending = requestPending.current;
+        if (!attemptId || !pending) return;
+        const stopped = await trpcClient.dataModeling.stopWaitingForRecommendation.mutate({ requestId: attemptId });
+        if (!stopped || generation !== requestGeneration.current || !requestPending.current) return;
+        abandonRecommendation();
+        setSnapshot((previous) =>
+            previous.recommendation === pending
+                ? { ...previous, recommendation: { status: 'stopped' }, deployment: undefined }
+                : previous,
+        );
+    };
 
     const stepValues = buildStepValues(state.dataModel);
     const stepIndex = Math.min(Math.max(state.step, 1), stepValues.length);
@@ -756,7 +922,7 @@ const HydratedDataModelingWizard = ({
         }
     }, [visible, isResult, recommendationStatus, recommendation, report]);
 
-    const canAdvance = !isWorkload || !!state.scenario;
+    const canAdvance = (!isWorkload || !!state.scenario) && (!isReview || workloadErrors.length === 0);
     const nextLabel = isWorkload ? l10n.t('Start') : isReview ? l10n.t('Get Recommendation') : l10n.t('Next');
 
     const advance = () => {
@@ -767,9 +933,7 @@ const HydratedDataModelingWizard = ({
         if (isReview) {
             requestRecommendation();
         } else {
-            requestGeneration.current += 1;
-            requestId.current = undefined;
-            requestPending.current = false;
+            abandonRecommendation();
             setSnapshot((previous) => ({
                 ...previous,
                 wizard: { ...previous.wizard, reachedSteps: stepValues.slice(0, stepIndex + 1) },
@@ -819,12 +983,18 @@ const HydratedDataModelingWizard = ({
         }
         advance();
     };
+    const removeContainerDescription = l10n.t(
+        "Removes this container from your model. Doesn't delete any container or data in your Azure account.",
+    );
     const onRemove = async () => {
         const result = await confirm(
-            l10n.t('Remove this container?'),
+            l10n.t('Remove from model?'),
             l10n.t('Remove the “{entity}” container? This cannot be undone.', {
                 entity: state.dataModel.containers.find((c) => containerStep(c.id) === activeValue)?.entity ?? '',
-            }),
+            }) +
+                ' ' +
+                removeContainerDescription,
+            { primary: l10n.t('Yes'), secondary: l10n.t('No'), secondaryIsCloseAffordance: true },
         );
         if (result === true) {
             markEdited('data');
@@ -843,10 +1013,7 @@ const HydratedDataModelingWizard = ({
     };
     const restart = () => {
         report({ type: 'action', action: 'startOver' });
-        requestId.current = undefined;
-        deliveredRequestId.current = undefined;
-        requestPending.current = false;
-        requestGeneration.current += 1;
+        abandonRecommendation();
         containerNameRequest.current += 1;
         containerNamePending.current = false;
         setAddingContainer(false);
@@ -861,7 +1028,9 @@ const HydratedDataModelingWizard = ({
     // Only successful deployment details are persisted; editable drafts remain local to the open wizard.
     const footer =
         isResult || isDeploy ? (
-            <ContainerFooter>
+            <ContainerFooter
+                note={isResult && canEnterDeploy ? l10n.t('Next: choose how to deploy your model') : undefined}
+            >
                 {isResult ? (
                     <Button
                         appearance="primary"
@@ -904,6 +1073,7 @@ const HydratedDataModelingWizard = ({
                         {isContainerStep ? (
                             <>
                                 <Button
+                                    ref={addButtonRef}
                                     appearance="secondary"
                                     icon={<AddRegular />}
                                     disabled={addingContainer || state.dataModel.containers.length >= MAX_CONTAINERS}
@@ -914,19 +1084,22 @@ const HydratedDataModelingWizard = ({
                                 >
                                     {l10n.t('Add container')}
                                 </Button>
-                                <Button
-                                    ref={removeButtonRef}
-                                    appearance="secondary"
-                                    className={styles.dangerButton}
-                                    icon={<DeleteRegular />}
-                                    disabled={state.dataModel.containers.length <= 1}
-                                    onClick={() => {
-                                        report({ type: 'control', control: 'footerRemoveContainer' });
-                                        void onRemove();
-                                    }}
-                                >
-                                    {l10n.t('Remove this container')}
-                                </Button>
+                                <Tooltip content={removeContainerDescription} relationship="inaccessible">
+                                    <Button
+                                        ref={removeButtonRef}
+                                        appearance="secondary"
+                                        className={styles.dangerButton}
+                                        icon={<DeleteRegular aria-hidden />}
+                                        aria-description={removeContainerDescription}
+                                        disabled={state.dataModel.containers.length <= 1}
+                                        onClick={() => {
+                                            report({ type: 'control', control: 'footerRemoveContainer' });
+                                            void onRemove();
+                                        }}
+                                    >
+                                        {l10n.t('Remove from model')}
+                                    </Button>
+                                </Tooltip>
                             </>
                         ) : null}
                         <Link href="https://learn.microsoft.com/azure/cosmos-db/partitioning-overview" target="_blank">
@@ -980,15 +1153,6 @@ const HydratedDataModelingWizard = ({
                     {confirmationError}
                 </Text>
             ) : null}
-            {addContainerError ? (
-                <Text
-                    role="alert"
-                    className={viewportStyles.statusRow}
-                    style={{ paddingRight: previewBadgeWidth + 28 }}
-                >
-                    {addContainerError}
-                </Text>
-            ) : null}
             <div className={styles.wizardHost}>
                 <Wizard
                     activeStep={activeValue}
@@ -1007,7 +1171,32 @@ const HydratedDataModelingWizard = ({
                             }
                         />
                     }
-                    footer={footer}
+                    footer={
+                        <div className={styles.footer}>
+                            {isContainerStep && addContainerError ? (
+                                <div className={styles.containerError}>
+                                    <Text role="alert" className={styles.containerErrorMessage}>
+                                        <ErrorCircleRegular aria-hidden="true" className={styles.containerErrorIcon} />
+                                        {addContainerError}
+                                    </Text>
+                                    <Button
+                                        size="small"
+                                        disabled={
+                                            addingContainer || state.dataModel.containers.length >= MAX_CONTAINERS
+                                        }
+                                        onClick={() => {
+                                            restoreAddFocus.current = true;
+                                            addButtonRef.current?.focus();
+                                            void openAddDialog();
+                                        }}
+                                    >
+                                        {l10n.t('Retry')}
+                                    </Button>
+                                </div>
+                            ) : null}
+                            {footer}
+                        </div>
+                    }
                 >
                     <WizardStep
                         value={WORKLOAD_STEP}
@@ -1107,6 +1296,14 @@ const HydratedDataModelingWizard = ({
                                       )
                             }
                         >
+                            {recommendationStatus === 'received' && recommendation ? (
+                                <Text size={200} className={styles.recommendationNotice}>
+                                    <InfoRegular aria-hidden="true" />
+                                    {l10n.t(
+                                        'Changing the model will discard the current recommendation. You will need a new recommendation before deploying.',
+                                    )}
+                                </Text>
+                            ) : null}
                             <ContainerPage
                                 model={state.dataModel}
                                 tab={containerTab}
@@ -1114,10 +1311,13 @@ const HydratedDataModelingWizard = ({
                                 queriesTabRef={queriesTabRef}
                                 active={activeValue === containerStep(c.id)}
                                 containerId={c.id}
+                                focusPath={fixTarget?.containerId === c.id ? fixTarget.path : undefined}
+                                onFocused={clearFixTarget}
                                 onVisit={visit}
                                 onEdited={markEdited}
                                 onTelemetry={report}
                                 onChangeData={onChangeData}
+                                schemaImports={schemaImports}
                                 onChange={setDataModel}
                             />
                         </WizardStep>
@@ -1131,6 +1331,8 @@ const HydratedDataModelingWizard = ({
                         title={l10n.t('Review your inputs')}
                     >
                         <ReviewPage
+                            validationErrors={workloadIssues}
+                            onFixIssue={fixIssue}
                             workloadLabel={scenarioLabel ?? l10n.t('Not selected')}
                             containers={state.dataModel.containers}
                             onEditWorkload={() => goToStep(1)}
@@ -1150,6 +1352,8 @@ const HydratedDataModelingWizard = ({
                             recommendation={recommendation}
                             recommendationError={recommendationError}
                             onRetryRecommendation={requestRecommendation}
+                            onEditModel={() => onStepChange(REVIEW_STEP)}
+                            onStopWaitingRecommendation={stopWaitingForRecommendation}
                             feedback={selectedFeedback}
                             onFeedback={(vote) => {
                                 if (selectedFeedback !== vote) {
@@ -1178,9 +1382,15 @@ const HydratedDataModelingWizard = ({
                                 loadOptions={loadDeploymentOptions}
                                 generateTemplate={generateDeploymentTemplate}
                                 onDownload={(input) => trpcClient.dataModeling.downloadDeploymentTemplate.mutate(input)}
-                                onDeploy={(input) => trpcClient.dataModeling.deploy.mutate(input)}
+                                onDeploy={(input) =>
+                                    // A native prompt may finish editing inputs while deployment confirmation is open.
+                                    currentSnapshot.current?.recommendation.status === 'received' &&
+                                    currentSnapshot.current.recommendation.value === recommendation
+                                        ? trpcClient.dataModeling.deploy.mutate(input)
+                                        : Promise.resolve({ status: 'cancelled' })
+                                }
                                 onOpenDataExplorer={(input) => trpcClient.dataModeling.openDataExplorer.mutate(input)}
-                                onBusyChange={setDeploymentBusy}
+                                onBusyChange={updateDeploymentBusy}
                                 onDeploymentChange={persistDeployment}
                                 onTelemetry={report}
                             />

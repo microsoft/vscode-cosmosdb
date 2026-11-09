@@ -368,7 +368,7 @@ test('canonicalization is byte stable and preserves meaningful ordering', () => 
     );
 });
 
-test('canonical model bytes and hashes use code-unit ordering across host locales', () => {
+test('canonical model bytes and hashes use code-unit ordering across default string collations', () => {
     const names = ['z', '\u00e4', 'I', '\u0131'];
     const model = validModel();
     const container = model.containers[0];
@@ -405,22 +405,24 @@ test('canonical model bytes and hashes use code-unit ordering across host locale
     assert.deepEqual(composite.map(entry => entry.path), ['/z', '/tenantId']);
     const code = `
         import fs from 'node:fs';
+        import { mockDefaultStringCollation } from ${JSON.stringify(new URL('./locale-fixtures.mjs', import.meta.url).href)};
         import { canonicalStringify, canonicalizeCosmosModel } from ${JSON.stringify(new URL('../scripts/validate-cosmos-model.mjs', import.meta.url).href)};
         import { modelSha256 } from ${JSON.stringify(new URL('../scripts/validate-provisioning-verification.mjs', import.meta.url).href)};
-        const model = JSON.parse(fs.readFileSync(0, 'utf8'));
+        const { model, locale } = JSON.parse(fs.readFileSync(0, 'utf8'));
+        mockDefaultStringCollation(locale);
         console.log(JSON.stringify({
             collation: Math.sign('\\u00e4'.localeCompare('z')),
             canonical: canonicalStringify(canonicalizeCosmosModel(model)), sha256: modelSha256(model),
         }));
     `;
-    const results = ['en_US.UTF-8', 'sv_SE.UTF-8', 'tr_TR.UTF-8'].map(locale => {
+    const results = ['en-US', 'sv-SE', 'tr-TR'].map(locale => {
         const result = spawnSync(process.execPath, ['--input-type=module', '-e', code], {
-            encoding: 'utf8', input: JSON.stringify(model), env: { ...process.env, LANG: locale, LC_ALL: locale },
+            encoding: 'utf8', input: JSON.stringify({ model, locale }),
         });
         assert.equal(result.status, 0, result.stderr);
         return JSON.parse(result.stdout);
     });
-    assert.notEqual(results[0].collation, results[1].collation);
+    assert.deepEqual(results.map(result => result.collation), [-1, 1, -1]);
     for (const result of results) {
         assert.equal(result.canonical, canonicalStringify(canonical));
         assert.equal(result.sha256, modelSha256(model));

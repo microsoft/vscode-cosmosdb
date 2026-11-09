@@ -10,12 +10,21 @@ import { type ContainerModel, type ScenarioId } from '../webviews/cosmosdb/DataM
 
 type ModelingSection = 'data' | 'queries' | 'scale';
 
+function propertyInputs({
+    hasArrayAncestor = false,
+    hasNonScalarValues = false,
+    ...property
+}: Omit<ContainerModel['properties'][number], 'id'>) {
+    // Missing optional flags and flags cleared by the editor describe the same schema.
+    return { ...property, hasArrayAncestor, hasNonScalarValues };
+}
+
 function containerInputs(container: ContainerModel) {
     return {
         data: {
             entity: container.entity,
             partitionKey: container.partitionKey,
-            properties: container.properties.map(({ id: _id, ...property }) => property),
+            properties: container.properties.map(({ id: _id, ...property }) => propertyInputs(property)),
             document: container.document,
             arrays: container.arrays,
         },
@@ -58,7 +67,9 @@ function defaultInputs(container: ContainerDefault): ReturnType<typeof container
         data: {
             entity: container.entity,
             partitionKey: container.partitionKey,
-            properties: container.properties.map(({ distinctValues: _distinctValues, ...property }) => property),
+            properties: container.properties.map(({ distinctValues: _distinctValues, ...property }) =>
+                propertyInputs(property),
+            ),
             document: container.document,
             arrays: container.arrays,
         },

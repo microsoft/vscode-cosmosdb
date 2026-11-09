@@ -8,7 +8,8 @@ import { type ReactNode, useId } from 'react';
 
 /**
  * A native radio styled as a selectable card. Cards in a group share a name
- * so the browser manages Tab entry and arrow-key selection.
+ * so the browser manages Tab entry and arrow-key selection. The card owns the
+ * keyboard-focus outline, and the CSS indicator keeps its themed color across pointer states.
  */
 
 const useStyles = makeStyles({
@@ -25,7 +26,7 @@ const useStyles = makeStyles({
         backgroundColor: tokens.colorNeutralBackground1,
         cursor: 'pointer',
         color: tokens.colorNeutralForeground1,
-        ':focus-within': {
+        ':has(> input:focus-visible)': {
             outline: `2px solid ${tokens.colorStrokeFocus2}`,
             outlineOffset: '2px',
         },
@@ -40,13 +41,46 @@ const useStyles = makeStyles({
         boxShadow: `inset 0 0 0 1px ${tokens.colorBrandStroke1}`,
     },
     radio: {
+        appearance: 'none',
+        display: 'grid',
+        placeItems: 'center',
+        boxSizing: 'border-box',
         flexShrink: 0,
         margin: 0,
         marginTop: '2px',
         width: '16px',
         height: '16px',
-        accentColor: tokens.colorBrandBackground,
+        border: '1px solid currentColor',
+        borderRadius: '50%',
+        color: tokens.colorNeutralStrokeAccessible,
+        backgroundColor: tokens.colorNeutralBackground1,
         cursor: 'pointer',
+        '::before': {
+            content: '""',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            backgroundColor: 'currentColor',
+            opacity: 0,
+        },
+        ':checked': {
+            color: tokens.colorCompoundBrandForeground1,
+            '::before': {
+                opacity: 1,
+            },
+        },
+        ':focus': {
+            outlineStyle: 'none',
+        },
+        '@media (forced-colors: active)': {
+            color: 'CanvasText',
+            ':checked': {
+                color: 'Highlight',
+            },
+            '::before': {
+                forcedColorAdjust: 'none',
+            },
+        },
     },
     body: {
         display: 'flex',

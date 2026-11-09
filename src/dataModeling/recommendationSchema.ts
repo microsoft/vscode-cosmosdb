@@ -50,7 +50,7 @@ const HotPartitionRiskSchema = z.object({
 const QueryRouteSchema = z.object({
     /** Read pattern description, e.g. "Get messages in a conversation". */
     pattern: z.string(),
-    /** Property names matching the Queries tab. Strings are accepted for older saved recommendations. */
+    /** Property names the read filters on. Strings are accepted for older saved recommendations. */
     filters: z.union([z.array(z.string()), z.string()]),
     /** Peak queries per second as displayed, e.g. "200/s". */
     qps: z.string(),

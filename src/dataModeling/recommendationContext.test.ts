@@ -158,12 +158,6 @@ describe('recommendation scenario context', () => {
             },
         },
         {
-            name: 'query filter',
-            edit: (state) => {
-                state.dataModel.containers[0].reads[0].filters = 'id = @id';
-            },
-        },
-        {
             name: 'query QPS',
             edit: (state) => {
                 state.dataModel.containers[0].reads[0].qps++;

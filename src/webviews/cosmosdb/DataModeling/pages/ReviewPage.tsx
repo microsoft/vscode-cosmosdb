@@ -3,7 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Button, Link, makeStyles, tokens, Tooltip } from '@fluentui/react-components';
+import {
+    Button,
+    Link,
+    makeStyles,
+    MessageBar,
+    MessageBarBody,
+    MessageBarTitle,
+    tokens,
+    Tooltip,
+} from '@fluentui/react-components';
 import {
     DataBarVerticalRegular,
     DocumentRegular,
@@ -57,6 +66,24 @@ const useStyles = makeStyles({
     },
     workloadLink: {
         fontSize: 'inherit',
+    },
+    validationList: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: tokens.spacingVerticalS,
+        width: '100%',
+        margin: `${tokens.spacingVerticalS} 0 0`,
+        padding: 0,
+        listStyleType: 'none',
+    },
+    validationItem: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: tokens.spacingHorizontalM,
+    },
+    validationFix: {
+        flexShrink: 0,
     },
     cards: {
         display: 'grid',
@@ -161,9 +188,17 @@ const useStyles = makeStyles({
     },
 });
 
+export interface ReviewValidationIssue {
+    message: string;
+    containerId?: string;
+    path: string[];
+}
+
 export interface ReviewPageProps {
     workloadLabel: string;
     containers: ContainerModel[];
+    validationErrors?: ReviewValidationIssue[];
+    onFixIssue?: (issue: ReviewValidationIssue) => void;
     onEditWorkload: () => void;
     onEditContainer: (containerId: string) => void;
 }
@@ -211,12 +246,7 @@ function ContainerCard({ container, onEdit }: { container: ContainerModel; onEdi
     };
 
     const topRead = container.reads.toSorted((a, b) => b.qps - a.qps)[0];
-    const topReadFilters = Array.isArray(topRead?.filters) ? topRead.filters.join(', ') : topRead?.filters.trim();
-    const topReadText = topRead?.pattern.trim()
-        ? topRead.pattern.trim()
-        : topReadFilters
-          ? l10n.t('Read by {filters}', { filters: topReadFilters })
-          : l10n.t('No read pattern defined');
+    const topReadText = topRead?.pattern.trim() || topRead?.query?.trim() || l10n.t('No read pattern defined');
     const readQps = container.reads.reduce((sum, read) => sum + read.qps, 0);
     const { insertsPerSec, updatesPerSec, deletesPerSec } = container.writes;
     const writeTps = insertsPerSec + updatesPerSec + deletesPerSec;
@@ -267,7 +297,14 @@ function ContainerCard({ container, onEdit }: { container: ContainerModel; onEdi
     );
 }
 
-export function ReviewPage({ workloadLabel, containers, onEditWorkload, onEditContainer }: ReviewPageProps) {
+export function ReviewPage({
+    workloadLabel,
+    containers,
+    validationErrors = [],
+    onFixIssue,
+    onEditWorkload,
+    onEditContainer,
+}: ReviewPageProps) {
     const styles = useStyles();
     const workloadId = useId();
     const rulesHeadingId = useId();
@@ -301,6 +338,33 @@ export function ReviewPage({ workloadLabel, containers, onEditWorkload, onEditCo
                 </p>
                 <p className={styles.hint}>{l10n.t('Click Edit to change any selection before analysis.')}</p>
             </div>
+
+            {validationErrors.length > 0 ? (
+                <MessageBar intent="error" role="alert" layout="multiline">
+                    <MessageBarBody>
+                        <MessageBarTitle>
+                            {l10n.t('Fix these issues before requesting a recommendation.')}
+                        </MessageBarTitle>
+                        <ul className={styles.validationList}>
+                            {validationErrors.map((issue, index) => (
+                                <li key={index} className={styles.validationItem}>
+                                    <span id={`${rulesHeadingId}-issue-${index}`}>{issue.message}</span>
+                                    {onFixIssue ? (
+                                        <Button
+                                            className={styles.validationFix}
+                                            appearance="primary"
+                                            aria-describedby={`${rulesHeadingId}-issue-${index}`}
+                                            onClick={() => onFixIssue(issue)}
+                                        >
+                                            {l10n.t('Fix')}
+                                        </Button>
+                                    ) : null}
+                                </li>
+                            ))}
+                        </ul>
+                    </MessageBarBody>
+                </MessageBar>
+            ) : null}
 
             <ul className={styles.cards} aria-label={l10n.t('Containers')}>
                 {containers.map((container) => (

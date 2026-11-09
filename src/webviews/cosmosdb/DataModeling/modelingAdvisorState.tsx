@@ -5,11 +5,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { type ModelingAdvisorSnapshot } from '../../../dataModeling/modelingAdvisorSchema';
-import { createInitialState } from './dataModel';
+import { createInitialSnapshot } from './dataModel';
 
-export function createInitialSnapshot(): ModelingAdvisorSnapshot {
-    return { wizard: createInitialState(), recommendation: { status: 'idle' } };
-}
+export { createInitialSnapshot } from './dataModel';
 
 interface Persistence {
     load: () => Promise<ModelingAdvisorSnapshot | null>;
@@ -18,10 +16,9 @@ interface Persistence {
 
 export function useModelingAdvisorPersistence({ load, save }: Persistence) {
     const [snapshot, setSnapshot] = useState(createInitialSnapshot);
-    const [loadStatus, setLoadStatus] = useState<'loading' | 'choice' | 'ready' | 'error'>('loading');
+    const [loadStatus, setLoadStatus] = useState<'loading' | 'ready' | 'error'>('loading');
     const [saveFailed, setSaveFailed] = useState(false);
     const [loadAttempt, setLoadAttempt] = useState(0);
-    const savedSnapshot = useRef<ModelingAdvisorSnapshot | null>(null);
     const lastSnapshot = useRef<ModelingAdvisorSnapshot>(snapshot);
     const saveSequence = useRef(0);
 
@@ -33,9 +30,10 @@ export function useModelingAdvisorPersistence({ load, save }: Persistence) {
                 if (disposed) {
                     return;
                 }
-                savedSnapshot.current = saved;
-                // Do not replace saved work with the default Workload page while the user is choosing.
-                setLoadStatus(saved ? 'choice' : 'ready');
+                const loaded = saved ?? createInitialSnapshot();
+                lastSnapshot.current = loaded;
+                setSnapshot(loaded);
+                setLoadStatus('ready');
             },
             () => {
                 if (!disposed) {
@@ -93,17 +91,6 @@ export function useModelingAdvisorPersistence({ load, save }: Persistence) {
         retryLoad: () => setLoadAttempt((attempt) => attempt + 1),
         retrySave: () => {
             void persist(snapshot).catch(() => undefined);
-        },
-        continueExisting: () => {
-            if (savedSnapshot.current) {
-                lastSnapshot.current = savedSnapshot.current;
-                setSnapshot(savedSnapshot.current);
-                setLoadStatus('ready');
-            }
-        },
-        startNew: () => {
-            setSnapshot(createInitialSnapshot());
-            setLoadStatus('ready');
         },
     };
 }

@@ -186,6 +186,8 @@ export interface RecommendationItem {
     solution?: string;
     /** Optional "Potential benefit" footer derived from Advisor `extendedProperties`. */
     potentialBenefit?: string;
+    /** Recommendation details in Azure Advisor, or the account's recommendations page when the type is unavailable. */
+    portalUrl?: string;
     learnMoreLink?: string;
 }
 
@@ -230,6 +232,24 @@ export function buildAlertPortalUrl(
 export function buildAccountAlertsPortalUrl(portalBaseUrl: string, tenantId: string, resourceId: string): string {
     const encodedResourceId = encodeURIComponent(encodeURIComponent(resourceId));
     return `${portalBaseUrl.replace(/\/$/, '')}/#@${encodeURIComponent(tenantId)}/blade/Microsoft_Azure_Monitoring_Alerts/AlertsSummaryBlade/resourceId/${encodedResourceId}`;
+}
+
+function buildRecommendationPortalUrl(
+    recommendation: ResourceRecommendationBase,
+    accountId: string,
+    portalBaseUrl: string,
+    tenantId?: string,
+): string {
+    const portal = portalBaseUrl.replace(/\/$/, '');
+    const tenant = tenantId ? `@${encodeURIComponent(tenantId)}/` : '';
+    if (!recommendation.recommendationTypeId) {
+        return `${portal}/#${tenant}resource${accountId}/advisorRecommendations`;
+    }
+    const typeId = encodeURIComponent(encodeURIComponent(recommendation.recommendationTypeId));
+    const resourceId = encodeURIComponent(
+        encodeURIComponent(recommendation.resourceMetadata?.resourceId ?? recommendation.impactedValue ?? accountId),
+    );
+    return `${portal}/#${tenant}blade/Microsoft_Azure_Expert/RecommendationListBlade/recommendationTypeId/${typeId}/resourceId/${resourceId}`;
 }
 
 const ALERT_SEVERITY_ORDER: Record<AlertSeverity, number> = { Critical: 0, Warning: 1, Informational: 2 };
@@ -393,6 +413,8 @@ export async function getRecommendations(
     subscriptionId: string,
     accountId: string,
     now: number = Date.now(),
+    portalBaseUrl = 'https://portal.azure.com',
+    tenantId?: string,
 ): Promise<RecommendationsResult> {
     const generatedAt = now;
     let all: ResourceRecommendationBase[];
@@ -426,6 +448,7 @@ export async function getRecommendations(
             problem,
             solution: rec.shortDescription?.solution,
             potentialBenefit: extractPotentialBenefit(rec.extendedProperties),
+            portalUrl: buildRecommendationPortalUrl(rec, accountId, portalBaseUrl, tenantId),
             learnMoreLink: rec.learnMoreLink,
         });
     }

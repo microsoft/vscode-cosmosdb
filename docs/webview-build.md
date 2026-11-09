@@ -12,8 +12,8 @@ The webview is loaded by `src/panels/BaseTab.ts` and ships as a single
   `https://<uuid>.vscode-cdn.net/<ext-path>/dist/views.js` URL produced by
   `webview.asWebviewUri()`.
 - **Development** — `views.js` is served by Vite at
-  `http://localhost:18080/views.js` and the webview loads it cross-origin from
-  `vscode-webview://<uuid>`. HMR is fully wired.
+  `http://127.0.0.1:18082/views.js` by default, and the webview loads it cross-origin from
+  `vscode-webview://<uuid>`. The host and port are [configurable](#server-origin), and HMR is fully wired.
 
 ### Host API changes require a host restart
 
@@ -95,7 +95,7 @@ the assets actually live. Without this you see "Could not create web
 worker(s). Falling back to loading web worker code in main thread" plus a
 worker error event for Monaco language workers, and 403s on the codicon TTF.
 
-**Dev (`/`).** Modules are served by the dev server at `localhost:18080` and
+**Dev (`/`).** Modules are served by the dev server at `127.0.0.1:18082` by default, and
 Vite's import-analysis emits absolute URLs against `server.origin` (see
 [server.origin](#server-origin)). Forcing `base: './'` in dev makes Vite emit
 relative module URLs that the webview document resolves against
@@ -191,16 +191,50 @@ manualChunks: ...
 
 ---
 
-## <a id="server-origin"></a> `server.origin: 'http://localhost:18080'`
+## <a id="server-origin"></a> Dev-server port and `server.origin`
 
 Makes Vite emit **absolute** asset URLs (e.g. for `?worker` imports) instead
 of root-relative paths. Critical for VS Code webviews: the webview document
 lives at `vscode-webview://…` so a root-relative
 `/node_modules/.../json.worker.js?worker_file` would resolve to
 `vscode-webview:///node_modules/...` (404, empty MIME) instead of
-`http://localhost:18080/node_modules/...`. Symptom without this: "Failed to
+`http://127.0.0.1:18082/node_modules/...`. Symptom without this: "Failed to
 load module script: non-JavaScript MIME type ''" when Monaco tries to create
 a language worker.
+
+The tracked root `.env` contains the non-secret development defaults:
+
+```dotenv
+COSMOSDB_WEBVIEW_HOST=127.0.0.1
+COSMOSDB_WEBVIEW_PORT=18082
+COSMOSDB_WEBVIEW_ORIGIN=http://${COSMOSDB_WEBVIEW_HOST}:${COSMOSDB_WEBVIEW_PORT}
+```
+
+Port **18082** avoids colliding with `microsoft/vscode-documentdb` on port 18080.
+To choose another host or port, set `COSMOSDB_WEBVIEW_HOST` or `COSMOSDB_WEBVIEW_PORT` in the ignored `.env.local` file or in
+the environment inherited by VS Code and both Watch tasks. Do not put secrets in the tracked `.env`.
+Both Vite configs use Vite's built-in `loadEnv` with the same repository root and mode.
+Standard Vite precedence applies: process environment overrides `.env.[mode].local`, `.env.[mode]`,
+`.env.local`, and `.env`. Vite's existing `dotenv-expand` support resolves `COSMOSDB_WEBVIEW_ORIGIN`
+after applying overrides, so changing HOST or PORT also updates ORIGIN. Do not override ORIGIN independently:
+it must match the server's HTTP host and port. No separate dotenv dependency is needed.
+
+The webview Vite config validates an integer port from 1 through 65535 and checks that ORIGIN matches HOST and PORT.
+The extension build embeds the resolved ORIGIN, and `BaseTab.ts` uses it directly for the bundle URL and development CSP.
+There is no shared runtime configuration helper or import from `src` in the Vite configs.
+VS Code JSON interpolation is not required, and `launch.json`'s debug-only environment does not need to reach `preLaunchTask`.
+Production builds ignore the development server configuration.
+
+By default, the server binds to `127.0.0.1`, and the origin uses the same IPv4 literal rather than `localhost`.
+Keeping an IPv4 literal avoids reaching a different process listening on IPv6 `::1` at the same port.
+
+After changing the host or port, stop and restart both Watch tasks and restart the Extension Development Host.
+The dev server can reload environment files, but HMR cannot replace the origin embedded in a running host.
+
+`server.strictPort: true` makes an occupied port an immediate startup error instead of silently choosing
+another port while the webview keeps loading the original URL (and potentially another project's bundle).
+If startup reports `Port … is already in use`, stop the process that owns that port, reuse the Cosmos DB
+dev server that is already running, or choose another port in `.env.local` and restart both tasks.
 
 ---
 
@@ -238,7 +272,7 @@ build time rather than at runtime.
 
 Dev-server only. Serves `/views.js` as a re-export of the real entry
 (`src/webviews/index.tsx`) so the webview can load it from
-`http://localhost:18080/views.js` with full HMR. Sets CORS headers itself
+`http://127.0.0.1:18082/views.js` by default with full HMR. Sets CORS headers itself
 because middleware ordering with Vite's built-in cors is not guaranteed.
 No-op in production.
 
@@ -265,7 +299,7 @@ Vite equivalent of `monaco-editor-webpack-plugin`. For each language it:
 
 The worker script is on a **different origin** from the webview document
 (`vscode-webview://<uuid>`) in BOTH environments — `https://*.vscode-cdn.net`
-in prod (via `asWebviewUri`), `http://localhost:18080/…` on the dev server —
+in prod (via `asWebviewUri`), `http://127.0.0.1:18082/…` on the default dev server —
 so `new Worker(<cross-origin url>)` is blocked either way. The two
 environments solve this differently.
 

@@ -34,8 +34,8 @@
     },
 
     // ── Vite watch (default F5 workflow) ────────────────────────────────────────
-    // Uses `vite serve` for the webview — this starts a real dev server on
-    // port 18080 (matching DEV_SERVER_HOST in BaseTab.ts), enabling HMR.
+    // Uses `vite serve` for the webview — the host, port, and origin come from
+    // the shared .env configuration (default 127.0.0.1:18082), enabling HMR.
     // The extension host build uses --watch to rebuild main.mjs on changes.
     {
       "label": "Watch",

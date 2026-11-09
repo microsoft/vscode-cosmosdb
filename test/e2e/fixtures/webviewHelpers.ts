@@ -97,6 +97,21 @@ export async function resizeWindowViewport(
     }, size);
     expect(actualSize[0]).toBe(size.width);
     await expect.poll(() => page.evaluate(() => [window.innerWidth, window.innerHeight])).toEqual(actualSize);
+    for (const frame of getWebviewFrames(page)) {
+        if (!(await frameMatchesReady(frame, async () => true))) continue;
+        const element = await frame.frameElement();
+        try {
+            await expect
+                .poll(async () => {
+                    const expected = await element.evaluate((iframe) => [iframe.clientWidth, iframe.clientHeight]);
+                    const actual = await frame.evaluate(() => [window.innerWidth, window.innerHeight]);
+                    return actual.map((dimension, index) => dimension - expected[index]);
+                })
+                .toEqual([0, 0]);
+        } finally {
+            await element.dispose();
+        }
+    }
 }
 
 /**
@@ -167,6 +182,14 @@ function getWebviewFrames(page: Page): Frame[] {
 
 async function frameMatchesReady(frame: Frame, isReady: (f: Frame) => Promise<boolean>): Promise<boolean> {
     try {
+        for (let ancestor: Frame | null = frame; ancestor?.parentFrame(); ancestor = ancestor.parentFrame()) {
+            const element = await ancestor.frameElement();
+            try {
+                if (!(await element.isVisible())) return false;
+            } finally {
+                await element.dispose();
+            }
+        }
         return await isReady(frame);
     } catch {
         return false;
@@ -178,7 +201,7 @@ async function frameMatchesReady(frame: Frame, isReady: (f: Frame) => Promise<bo
  *
  * `commandTitle` should match what the palette displays — e.g.
  * `"Cosmos DB: New Migration…"`. Substring matching is fine: we type the
- * title verbatim and click the matching result.
+ * title verbatim and accept the matching focused result.
  */
 export async function runCommand(page: Page, commandTitle: string): Promise<void> {
     await page.bringToFront();
@@ -191,19 +214,18 @@ export async function runCommand(page: Page, commandTitle: string): Promise<void
     // The leading ">" forces "command" mode regardless of where the palette
     // was last left (quick-open vs. commands).
     await input.fill(`>${commandTitle}`);
-    // Wait for the matching result so a stale top-ranked command cannot run while the palette is filtering.
-    await page
-        .locator('.quick-input-list .monaco-list-row')
-        .filter({ hasText: commandTitle })
-        .first()
-        .click({ timeout: 5_000 });
+    // Validate the focused result before Enter; clicking a reflowing palette row can race with dismissal.
+    await expect(
+        page.locator('.quick-input-list .monaco-list-row.focused').filter({ hasText: commandTitle }),
+    ).toBeVisible({ timeout: 5_000 });
+    await input.press('Enter');
     await input.waitFor({ state: 'hidden', timeout: 5_000 });
 }
 
 /**
  * Returns the Playwright {@link Frame} of a webview's content iframe.
  *
- * The function iterates every nested frame in the page until `isReady`
+ * The function iterates visible nested frames in the page until `isReady`
  * returns true for one of them. `isReady` should assert something
  * specific to the target webview — e.g. that a header / button is
  * rendered — so the function doubles as a "wait until the React app has

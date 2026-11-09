@@ -50,7 +50,8 @@ no freshness requirement. See [Migration memory](../workflow/memory.md).
 
 Mandatory inputs are:
 
-- `preflight`: selected DDL and raw workload paths and bytes, all three source
+- `preflight`: selected DDL, supporting schema artifacts, inferred files' `sourcePaths`,
+  and raw workload paths and bytes, all three source
   selections, effective parser choice, application-analysis fields excluding `completedAt`,
   curated volumetrics/access-pattern templates, and the bundled SDK matrix version. The matrix-version hash
   does not make SDK evaluation a preflight gate.

@@ -5,14 +5,11 @@
 
 /**
  * Dev-server plugin: serves `/views.js` as a re-export of the real entry so the
- * VS Code webview can load it from `http://localhost:18080/views.js` with full
- * HMR support.
+ * VS Code webview can load it from the configured dev-server origin with full HMR support.
  *
- * The webview lives at a different origin (`vscode-webview://...`) than the
- * dev server (`http://localhost:18080`), so we must set CORS headers
- * ourselves — relying on Vite's global `cors: true` is unreliable because
- * `server.middlewares.use()` ordering is not guaranteed to run after Vite's
- * built-in cors middleware.
+ * The webview lives at a different origin (`vscode-webview://...`) than the dev server, so we must set CORS
+ * headers ourselves — relying on Vite's global `cors: true` is unreliable because middleware ordering
+ * is not guaranteed to run after Vite's built-in cors middleware.
  *
  * In production (`vite build`) this plugin is a no-op — the real `views.js`
  * entry file is emitted by Rolldown directly.

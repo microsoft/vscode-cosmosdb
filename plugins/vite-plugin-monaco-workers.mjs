@@ -24,7 +24,7 @@
  * worker script lives on a DIFFERENT origin in BOTH environments:
  *   - prod: assets are served from `https://*.vscode-cdn.net` (via `webview.asWebviewUri`);
  *   - dev:  Vite serves each worker as a separate ES module at the absolute
- *           dev-server URL `http://localhost:18080/...?worker_file&type=module`.
+ *           dev-server origin with `?worker_file&type=module`.
  * Constructing `new Worker(<cross-origin url>)` is blocked by the browser in
  * either case, so neither environment can load the worker by URL directly.
  *
@@ -190,10 +190,9 @@ function buildDevEnvModule(contributionImports) {
         urlImports,
         '',
         'function makeWorker(url) {',
-        '    // The dev server serves the worker at an absolute cross-origin URL',
-        '    // (http://localhost:18080/...). A Blob URL inherits the webview page',
-        '    // origin, so the Worker is constructed same-origin; the module import',
-        '    // inside then fetches the real script from the CORS-enabled dev server.',
+        '    // The dev server serves the worker at its configured origin.',
+        '    // A Blob URL inherits the webview page origin, so the Worker is constructed same-origin.',
+        '    // The module import inside then fetches the real script from the CORS-enabled dev server.',
         '    const absolute = new URL(url, import.meta.url).href;',
         '    const blobUrl = URL.createObjectURL(',
         "        new Blob([`import ${JSON.stringify(absolute)};`], { type: 'text/javascript' }),",

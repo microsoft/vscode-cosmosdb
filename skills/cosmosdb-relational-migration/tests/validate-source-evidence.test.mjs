@@ -43,7 +43,50 @@ test('validates model-reviewed inventory from the preflight manifest without par
     } finally { fs.rmSync(workspace, { recursive: true }); }
 });
 
-test('source hashes and inventory validation are stable across host locales and file order', () => {
+test('validates inference provenance without weakening supplied or generated DDL integrity', () => {
+    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'inferred-inventory-'));
+    try {
+        const project = { phases: { discovery: {} } };
+        sourceFixture(workspace, project);
+        const manifestPath = path.join(workspace, '.cosmosdb-migration/phases/1-discovery/preflight-manifest.json');
+        const evidence = readPhaseEvidence(manifestPath);
+        const file = evidence.sourceInventory.files[0];
+        fs.writeFileSync(path.join(workspace, 'model.ts'), 'source evidence');
+        Object.assign(file, { origin: 'inferred', sourcePaths: ['model.ts'] });
+        const expectedHash = evidence.sourceSha256;
+        evidence.sourceSha256 = sourceFilesHash(evidence.sourceInventory.dialect, evidence.sourceInventory.files);
+        assert.equal(evidence.sourceSha256, expectedHash);
+        fs.writeFileSync(manifestPath, JSON.stringify(evidence));
+        assert.deepEqual(readSourceInventory(workspace, project).errors, []);
+        assert.equal(readSourceInventory(workspace, project).files[0].origin, 'inferred');
+        fs.symlinkSync(path.dirname(path.join(workspace, file.path)), path.join(workspace, 'schema-alias'), 'junction');
+        for (const sourcePaths of [undefined, [], [''], ['../outside'], [workspace], [file.path],
+            [`./${file.path}`], [file.path.replace('/schema-ddl/', '/schema-ddl//')], ['schema-alias/Schema.sql']]) {
+            file.sourcePaths = sourcePaths;
+            fs.writeFileSync(manifestPath, JSON.stringify(evidence));
+            assert.match(readSourceInventory(workspace, project).errors[0].message, /supporting sourcePaths/u);
+        }
+        file.sourcePaths = ['model.ts'];
+        file.origin = 'assumed';
+        fs.writeFileSync(manifestPath, JSON.stringify(evidence));
+        assert.match(readSourceInventory(workspace, project).errors[0].message, /Invalid DDL origin/u);
+        for (const origin of ['supplied', 'inferred', undefined]) {
+            file.origin = origin;
+            fs.writeFileSync(manifestPath, JSON.stringify(evidence));
+            assert.deepEqual(readSourceInventory(workspace, project).errors, []);
+        }
+        file.origin = 'inferred';
+        fs.writeFileSync(manifestPath, JSON.stringify(evidence));
+        fs.rmSync(path.join(workspace, 'model.ts'));
+        assert.deepEqual(readSourceInventory(workspace, project).errors, []);
+        fs.appendFileSync(path.join(workspace, file.path), '\n-- User edit');
+        assert.match(readSourceInventory(workspace, project).errors[0].message, /stale/u);
+    } finally {
+        fs.rmSync(workspace, { recursive: true, force: true });
+    }
+});
+
+test('source hashes and inventory validation are stable across default string collations and file order', () => {
     const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'locale-inventory-'));
     try {
         const project = { phases: { discovery: {} } };
@@ -67,24 +110,29 @@ test('source hashes and inventory validation are stable across host locales and 
         assert.equal(sourceFilesHash('tsql', files), expectedHash);
         assert.equal(sourceFilesHash('tsql', [...files].reverse()), expectedHash);
         assert.deepEqual(files, original);
+        const enrichedFiles = files.map(file => ({ sourcePaths: ['model.ts'], sha256: file.sha256, origin: 'inferred', path: file.path })).reverse();
+        const originalEnriched = structuredClone(enrichedFiles);
+        assert.equal(sourceFilesHash('tsql', enrichedFiles), expectedHash);
+        assert.deepEqual(enrichedFiles, originalEnriched);
         const code = `
             import fs from 'node:fs';
+            import { mockDefaultStringCollation } from ${JSON.stringify(new URL('./locale-fixtures.mjs', import.meta.url).href)};
             import { readSourceInventory, sourceFilesHash } from ${JSON.stringify(new URL('../scripts/validate-source-evidence.mjs', import.meta.url).href)};
-            const { workspace, project, files } = JSON.parse(fs.readFileSync(0, 'utf8'));
+            const { workspace, project, files, locale } = JSON.parse(fs.readFileSync(0, 'utf8'));
+            mockDefaultStringCollation(locale);
             console.log(JSON.stringify({
                 collation: Math.sign('\\u00e4'.localeCompare('z')),
                 hash: sourceFilesHash('tsql', files), inventory: readSourceInventory(workspace, project),
             }));
         `;
-        const results = ['en_US.UTF-8', 'sv_SE.UTF-8', 'tr_TR.UTF-8'].map(locale => {
+        const results = ['en-US', 'sv-SE', 'tr-TR'].map(locale => {
             const result = spawnSync(process.execPath, ['--input-type=module', '-e', code], {
-                encoding: 'utf8', input: JSON.stringify({ workspace, project, files: [...files].reverse() }),
-                env: { ...process.env, LANG: locale, LC_ALL: locale },
+                encoding: 'utf8', input: JSON.stringify({ workspace, project, files: [...files].reverse(), locale }),
             });
             assert.equal(result.status, 0, result.stderr);
             return JSON.parse(result.stdout);
         });
-        assert.notEqual(results[0].collation, results[1].collation);
+        assert.deepEqual(results.map(result => result.collation), [-1, 1, -1]);
         for (const result of results) {
             assert.equal(result.hash, expectedHash);
             assert.deepEqual(result.inventory.errors, []);

@@ -64,6 +64,13 @@ its workspace-relative `path` and SHA-256 of exact bytes. Each table has its qua
 column names, and `foreignKeys`. Retain source locations, constraints, and other
 constructs as evidence in this same result; every selected statement is accounted for.
 
+For each generated DDL file, also record `origin: "inferred"` and non-empty `sourcePaths`
+listing the workspace-relative code/artifact files used to infer it, never the selected DDL
+itself. Preserve these fields on reruns. Omitted origin means supplied, not permission to
+regenerate. The existing file `sha256` detects edits; [freshness](./freshness.md) tracks
+`sourcePaths` automatically. Keep construct-level source locations, assumptions, conflicts,
+and missing facts in the inventory and summary, separate from `parser.method` and assurance.
+
 Preserve column nullability, length, precision/scale, resolved alias types, and
 declared checks with source locations in this inventory. Explicitly distinguish
 `unknown` from `not applicable`; missing evidence never means unrestricted input.

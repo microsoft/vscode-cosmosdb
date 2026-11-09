@@ -40,6 +40,7 @@
 
 import { test as base, _electron as electron, expect, type ElectronApplication, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
+import { once } from 'node:events';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -339,6 +340,8 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
                 throw err;
             });
 
+            // Playwright's process lookup can become unavailable before the close event reaches this fixture.
+            let appProcess = app.process();
             let appClosed = false;
             app.once('close', () => {
                 appClosed = true;
@@ -355,8 +358,8 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
                     closed.catch(() => {
                         /* Handle rejection if process cleanup throws before the normal await below. */
                     });
-                    const rootPid = app.process().pid;
-                    if (rootPid !== undefined) {
+                    const rootPid = appProcess.pid;
+                    if (rootPid !== undefined && appProcess.exitCode === null && appProcess.signalCode === null) {
                         const processes = execFileSync('ps', ['-axo', 'pid=,ppid='], { encoding: 'utf8' })
                             .trim()
                             .split('\n')
@@ -376,9 +379,9 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
                         }
                     }
                     // Detached helpers can inherit these pipes and delay the child process's close event after exit.
-                    app.process().stdin?.destroy();
-                    app.process().stdout?.destroy();
-                    app.process().stderr?.destroy();
+                    appProcess.stdin?.destroy();
+                    appProcess.stdout?.destroy();
+                    appProcess.stderr?.destroy();
                     await closed;
                 }
             };
@@ -409,8 +412,13 @@ export const test = base.extend<VsCodeTestFixtures, VsCodeFixtures>({
                     await app.evaluate(({ app }) => {
                         app.relaunch = () => undefined;
                     });
-                    await Promise.all([app.waitForEvent('close'), restart.click()]);
+                    await Promise.all([
+                        once(appProcess, 'exit', { signal: AbortSignal.timeout(30_000) }),
+                        restart.click(),
+                    ]);
+                    await stopApplication();
                     app = await electron.launch(launchOptions);
+                    appProcess = app.process();
                     appClosed = false;
                     app.once('close', () => {
                         appClosed = true;

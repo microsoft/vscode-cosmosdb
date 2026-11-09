@@ -21,11 +21,19 @@ import {
 } from '@fluentui/react-components';
 import { ArrowUploadRegular, DismissRegular, WarningRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { type ChangeEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
+import {
+    type ChangeEvent,
+    type KeyboardEvent,
+    type SetStateAction,
+    useEffect,
+    useLayoutEffect,
+    useRef,
+    useState,
+} from 'react';
 import { type ModelingTelemetryEvent } from '../../../../dataModeling/modelingTelemetrySchema';
 import { InlineGuidance, MythBox, SubPanel } from '../components/primitives';
 import { type DataModel } from '../dataModel';
-import { DocumentSizeLimitError, inferSchemaFromJson } from '../jsonInference';
+import { AttributeCountLimitError, DocumentSizeLimitError, inferSchemaFromJson } from '../jsonInference';
 import {
     type ArrayUpdatePattern,
     type ContainerModel,
@@ -37,8 +45,17 @@ import {
 } from '../models';
 import { getPartitionKeyRestriction } from '../partitionKeyEligibility';
 import { getArrayUpdateOptions, nextId } from '../scenarios';
+import { SchemaImportTracker } from '../schemaImports';
 import { useNativeConfirmation } from '../useNativeConfirmation';
 import { getRoleOptions } from '../wizardState';
+import {
+    getArrayItemsOrderMessage,
+    getCountErrorMessage,
+    MAX_ARRAY_ITEMS,
+    MAX_ATTRIBUTE_COUNT,
+    parseCountInput,
+    validateCount,
+} from '../workloadLimits';
 
 /**
  * Data tab of a container step. Self-contained editor for one container's schema:
@@ -142,18 +159,24 @@ const useStyles = makeStyles({
 
 export interface DataPageProps {
     model: DataModel;
-    onChange: (next: DataModel) => void;
+    onChange: (next: SetStateAction<DataModel>) => void;
     onTelemetry?: (event: ModelingTelemetryEvent) => void;
+    /** Shared by the wizard so imports survive remounts; a standalone page tracks its own imports. */
+    schemaImports?: SchemaImportTracker;
 }
 
 type DocumentSizeField = 'avgSizeKb' | 'maxSizeKb';
+type CountField = 'attributeCount' | 'avgItems' | 'maxItems';
 
-export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
+export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPageProps) {
     const styles = useStyles();
     const [draftTag, setDraftTag] = useState('');
+    const [uploadContainerId, setUploadContainerId] = useState<string>();
     const [uploadInfo, setUploadInfo] = useState<string>();
     const [uploadError, setUploadError] = useState<string>();
     const [sizeErrors, setSizeErrors] = useState<Partial<Record<DocumentSizeField, string>>>({});
+    const [countErrors, setCountErrors] = useState<Partial<Record<CountField, string>>>({});
+    const [countDrafts, setCountDrafts] = useState<Partial<Record<CountField, string>>>({});
     const negativeSizeMessage = l10n.t('Document size cannot be negative.');
     const sizeLimitMessage = l10n.t('Document size cannot exceed 2 MB (2048 KB).');
     const sizeOrderMessage = l10n.t('Average document size cannot exceed maximum document size.');
@@ -165,14 +188,44 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
 
     const { containers, activeContainerId } = model;
 
-    // Local adapter keeps the rest of the page working on containers while writing back the
-    // whole DataModel. The wizard re-derives PK candidates from the updated schema.
-    const onChangeContainers = (next: ContainerModel[]) => onChange({ ...model, containers: next });
+    const currentModel = useRef(model);
+    const [localImports] = useState(() => new SchemaImportTracker());
+    const imports = schemaImports ?? localImports;
+    const confirmingImport = useRef(false);
+    const mounted = useRef(false);
+    useLayoutEffect(() => {
+        currentModel.current = model;
+    }, [model]);
+    useEffect(() => {
+        mounted.current = true;
+        return () => {
+            mounted.current = false;
+        };
+    }, []);
 
     const active = containers.find((c) => c.id === activeContainerId) ?? containers[0];
     useEffect(() => {
+        setUploadInfo(undefined);
+        setUploadError(undefined);
         setSizeErrors({});
+        setCountErrors({});
+        setCountDrafts({});
     }, [active?.id]);
+    useEffect(() => {
+        // The inferred properties retain their identity through candidate derivation.
+        // Only acknowledge imports present in the committed model, never a preview of an updater.
+        for (const request of imports.acknowledge(model)) {
+            onTelemetry?.({ type: 'schemaImport', outcome: 'success' });
+            if (active?.id !== request.containerId) continue;
+            setUploadContainerId(request.containerId);
+            setUploadInfo(request.fileName);
+            setUploadError(undefined);
+            setSizeErrors({});
+            setCountErrors((previous) => ({ ...previous, attributeCount: undefined }));
+            setCountDrafts((previous) => ({ ...previous, attributeCount: undefined }));
+            uploadButtonRef.current?.focus();
+        }
+    }, [model, imports, active?.id, onTelemetry]);
     useEffect(() => {
         const input = fileRef.current;
         const onCancel = () => onTelemetry?.({ type: 'schemaImport', outcome: 'cancelled' });
@@ -181,7 +234,12 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
     }, [active?.id, onTelemetry]);
 
     const updateActive = (updater: (c: ContainerModel) => ContainerModel) => {
-        onChangeContainers(containers.map((c) => (c.id === active?.id ? updater(c) : c)));
+        const targetId = active?.id;
+        onChange((previous) =>
+            previous.containers.some((c) => c.id === targetId)
+                ? { ...previous, containers: previous.containers.map((c) => (c.id === targetId ? updater(c) : c)) }
+                : previous,
+        );
     };
 
     const addProperty = (name: string) => {
@@ -190,17 +248,17 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
             return;
         }
         const willAdd = active && !active.properties.some((p) => p.name.toLowerCase() === trimmed.toLowerCase());
+        const prop: SchemaProperty = {
+            id: nextId('prop'),
+            name: trimmed,
+            type: 'string',
+            role: 'payload',
+            pkCandidate: false,
+        };
         updateActive((c) => {
             if (c.properties.some((p) => p.name.toLowerCase() === trimmed.toLowerCase())) {
                 return c;
             }
-            const prop: SchemaProperty = {
-                id: nextId('prop'),
-                name: trimmed,
-                type: 'string',
-                role: 'payload',
-                pkCandidate: false,
-            };
             return { ...c, properties: [...c.properties, prop] };
         });
         if (willAdd) onTelemetry?.({ type: 'fieldAdded' });
@@ -230,10 +288,23 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
         const file = e.target.files?.[0];
         // Reset so selecting the same file again re-triggers change.
         e.target.value = '';
-        if (!file || !active) {
+        if (!file || !active || confirmingImport.current) {
             return;
         }
+        // Keep the original target through confirmation and reading, even if this page unmounts.
+        // A newer selection for this container supersedes this request, even if the older read finishes last.
+        const targetId = active.id;
+        const request = imports.start(targetId, file.name);
+        const isCurrent = () =>
+            imports.isCurrent(request) && currentModel.current.containers.some((c) => c.id === targetId);
+        const isVisible = () => {
+            const latest = currentModel.current;
+            const visible = latest.containers.find((c) => c.id === latest.activeContainerId) ?? latest.containers[0];
+            return visible?.id === targetId;
+        };
+        setUploadContainerId(targetId);
         setUploadError(undefined);
+        confirmingImport.current = true;
         const result = await confirm(
             l10n.t('Replace schema?'),
             l10n.t('Replace the properties of “{entity}” with the schema inferred from {file}?', {
@@ -241,36 +312,60 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
                 file: file.name,
             }),
         );
-        if (result === true) await applyUpload(file);
-        else onTelemetry?.({ type: 'schemaImport', outcome: 'cancelled' });
-        uploadButtonRef.current?.focus();
-    };
+        confirmingImport.current = false;
+        if (!isCurrent()) return;
+        if (result !== true) {
+            onTelemetry?.({ type: 'schemaImport', outcome: 'cancelled' });
+            if (isVisible()) uploadButtonRef.current?.focus();
+            return;
+        }
 
-    const applyUpload = async (file: File) => {
         try {
             const text = await file.text();
+            if (!isCurrent()) return;
             const schema = inferSchemaFromJson(text);
-            updateActive((c) => ({
-                ...c,
-                properties: schema.properties.map((p) => ({ id: nextId('prop'), ...p })),
-                partitionKey: schema.partitionKey,
-                document: schema.document,
-                arrays: { ...c.arrays, hasArrays: schema.hasNestedCollections },
-            }));
-            setUploadInfo(file.name);
-            setUploadError(undefined);
-            setSizeErrors({});
-            onTelemetry?.({ type: 'schemaImport', outcome: 'success' });
+            const properties = schema.properties.map((p) => ({ id: nextId('prop'), ...p }));
+            request.properties = properties;
+            onChange((previous) => {
+                if (!isCurrent() || !previous.containers.some((c) => c.id === targetId)) return previous;
+                return {
+                    ...previous,
+                    containers: previous.containers.map((c) =>
+                        c.id === targetId
+                            ? {
+                                  ...c,
+                                  properties,
+                                  partitionKey: schema.partitionKey,
+                                  document: schema.document,
+                                  arrays: { ...c.arrays, hasArrays: schema.hasNestedCollections },
+                              }
+                            : c,
+                    ),
+                };
+            });
         } catch (error) {
+            if (!isCurrent()) return;
             onTelemetry?.({ type: 'schemaImport', outcome: 'error' });
+            if (!mounted.current || !isVisible()) return;
+            setUploadContainerId(targetId);
             setUploadInfo(undefined);
             setUploadError(
                 error instanceof DocumentSizeLimitError
                     ? sizeLimitMessage
-                    : l10n.t('Could not read {file}. Make sure it is a JSON object or an array of objects.', {
-                          file: file.name,
-                      }),
+                    : error instanceof AttributeCountLimitError
+                      ? l10n.t(
+                            '{file} contains {count} distinct attributes, more than the limit of {max}. Upload a smaller sample of documents.',
+                            {
+                                file: file.name,
+                                count: error.attributeCount.toLocaleString(),
+                                max: MAX_ATTRIBUTE_COUNT.toLocaleString(),
+                            },
+                        )
+                      : l10n.t('Could not read {file}. Make sure it is a JSON object or an array of objects.', {
+                            file: file.name,
+                        }),
             );
+            uploadButtonRef.current?.focus();
         }
     };
 
@@ -305,6 +400,43 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
     const patchArrays = (patch: Partial<ContainerModel['arrays']>) =>
         updateActive((c) => ({ ...c, arrays: { ...c.arrays, ...patch } }));
 
+    const patchCount = (field: CountField, raw: string, commit = false) => {
+        setCountDrafts((previous) => ({ ...previous, [field]: commit ? undefined : raw }));
+        const value = parseCountInput(raw);
+        const max = field === 'attributeCount' ? MAX_ATTRIBUTE_COUNT : MAX_ARRAY_ITEMS;
+        const invalid = validateCount(value, max, field === 'avgItems');
+        const arrays = { ...active.arrays, [field]: value };
+        const error = invalid
+            ? getCountErrorMessage(invalid, max)
+            : commit && field !== 'attributeCount' && arrays.avgItems > arrays.maxItems
+              ? getArrayItemsOrderMessage()
+              : undefined;
+        setCountErrors((previous) =>
+            !error && commit && field !== 'attributeCount'
+                ? {
+                      ...previous,
+                      [field]: undefined,
+                      ...(previous.avgItems === getArrayItemsOrderMessage() ? { avgItems: undefined } : {}),
+                      ...(previous.maxItems === getArrayItemsOrderMessage() ? { maxItems: undefined } : {}),
+                  }
+                : { ...previous, [field]: error },
+        );
+        if (error || (field !== 'attributeCount' && !commit)) {
+            return;
+        }
+        setCountDrafts((previous) => ({ ...previous, [field]: undefined }));
+        if (field === 'attributeCount') {
+            patchDocument({ attributeCount: value });
+        } else {
+            patchArrays({ [field]: value });
+        }
+    };
+
+    const countValidation = (error: string | undefined) => ({
+        validationState: error ? ('error' as const) : ('none' as const),
+        validationMessage: error ? { children: error, role: 'alert' } : undefined,
+    });
+
     if (!active) {
         return null;
     }
@@ -312,6 +444,13 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
     const existingSizeError = active.document.avgSizeKb > active.document.maxSizeKb ? sizeOrderMessage : undefined;
     const averageSizeError = sizeErrors.avgSizeKb ?? existingSizeError;
     const maximumSizeError = sizeErrors.maxSizeKb ?? existingSizeError;
+    const existingItemsError =
+        active.arrays.avgItems > active.arrays.maxItems ? getArrayItemsOrderMessage() : undefined;
+    const averageItemsError = countErrors.avgItems ?? existingItemsError;
+    const maximumItemsError = countErrors.maxItems ?? existingItemsError;
+    const attributeCountLabel = l10n.t('Total attributes per document');
+    const averageItemsLabel = l10n.t('Average items per array');
+    const maximumItemsLabel = l10n.t('Maximum items per array');
 
     return (
         <div className={styles.stack}>
@@ -371,19 +510,21 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
                         onChange={(event) => void onFileSelected(event)}
                     />
                 </div>
-                {uploadInfo ? (
+                {uploadContainerId === active.id && uploadInfo ? (
                     <MythBox icon="📄">
                         {l10n.t('Inferred schema from {file}. Review the properties below and edit as needed.', {
                             file: uploadInfo,
                         })}
                     </MythBox>
                 ) : null}
-                {uploadError ? (
+                {uploadContainerId === active.id && uploadError ? (
                     <Text className={styles.uploadError} role="alert">
                         {uploadError}
                     </Text>
                 ) : null}
-                {confirmationError ? <Text role="alert">{confirmationError}</Text> : null}
+                {uploadContainerId === active.id && confirmationError ? (
+                    <Text role="alert">{confirmationError}</Text>
+                ) : null}
 
                 <div className={styles.tableWrap}>
                     <Table size="small" aria-label={l10n.t('Schema properties')}>
@@ -481,14 +622,20 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
                 )}
             >
                 <div className={styles.kvGrid}>
-                    <Text>{l10n.t('Total attributes per document')}</Text>
-                    <Input
-                        className={styles.kvInput}
-                        type="number"
-                        aria-label={l10n.t('Total attributes per document')}
-                        value={String(active.document.attributeCount)}
-                        onChange={(_, data) => patchDocument({ attributeCount: Number(data.value) || 0 })}
-                    />
+                    <Text>{attributeCountLabel}</Text>
+                    <Field {...countValidation(countErrors.attributeCount)}>
+                        <Input
+                            className={styles.kvInput}
+                            type="number"
+                            min={0}
+                            max={MAX_ATTRIBUTE_COUNT}
+                            step={1}
+                            aria-label={attributeCountLabel}
+                            name="document.attributeCount"
+                            value={countDrafts.attributeCount ?? String(active.document.attributeCount)}
+                            onChange={(_, data) => patchCount('attributeCount', data.value)}
+                        />
+                    </Field>
                     <Text>{l10n.t('Average document size')}</Text>
                     <Field
                         validationState={averageSizeError ? 'error' : 'none'}
@@ -502,6 +649,7 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
                                 max={MAX_DOCUMENT_SIZE_KB}
                                 step="any"
                                 aria-label={l10n.t('Average document size')}
+                                name="document.avgSizeKb"
                                 value={String(active.document.avgSizeKb)}
                                 onChange={(_, data) => patchDocumentSize('avgSizeKb', data.value)}
                             />
@@ -521,6 +669,7 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
                                 max={MAX_DOCUMENT_SIZE_KB}
                                 step="any"
                                 aria-label={l10n.t('Maximum document size')}
+                                name="document.maxSizeKb"
                                 value={String(active.document.maxSizeKb)}
                                 onChange={(_, data) => patchDocumentSize('maxSizeKb', data.value)}
                             />
@@ -543,18 +692,34 @@ export function DataPage({ model, onChange, onTelemetry }: DataPageProps) {
                 />
                 {active.arrays.hasArrays ? (
                     <div className={styles.kvGrid}>
-                        <Text>{l10n.t('Average items per array')}</Text>
-                        <Input
-                            type="number"
-                            value={String(active.arrays.avgItems)}
-                            onChange={(_, data) => patchArrays({ avgItems: Number(data.value) || 0 })}
-                        />
-                        <Text>{l10n.t('Maximum items per array')}</Text>
-                        <Input
-                            type="number"
-                            value={String(active.arrays.maxItems)}
-                            onChange={(_, data) => patchArrays({ maxItems: Number(data.value) || 0 })}
-                        />
+                        <Text>{averageItemsLabel}</Text>
+                        <Field {...countValidation(averageItemsError)}>
+                            <Input
+                                type="number"
+                                min={0}
+                                max={MAX_ARRAY_ITEMS}
+                                step="any"
+                                aria-label={averageItemsLabel}
+                                name="arrays.avgItems"
+                                value={countDrafts.avgItems ?? String(active.arrays.avgItems)}
+                                onChange={(_, data) => patchCount('avgItems', data.value)}
+                                onBlur={(event) => patchCount('avgItems', event.target.value, true)}
+                            />
+                        </Field>
+                        <Text>{maximumItemsLabel}</Text>
+                        <Field {...countValidation(maximumItemsError)}>
+                            <Input
+                                type="number"
+                                min={0}
+                                max={MAX_ARRAY_ITEMS}
+                                step={1}
+                                aria-label={maximumItemsLabel}
+                                name="arrays.maxItems"
+                                value={countDrafts.maxItems ?? String(active.arrays.maxItems)}
+                                onChange={(_, data) => patchCount('maxItems', data.value)}
+                                onBlur={(event) => patchCount('maxItems', event.target.value, true)}
+                            />
+                        </Field>
                         <Text>{l10n.t('Array update pattern')}</Text>
                         <Select
                             value={active.arrays.updatePattern}

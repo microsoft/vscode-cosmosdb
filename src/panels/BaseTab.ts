@@ -10,8 +10,6 @@ import { ext } from '../extensionVariables';
 import { TelemetryContext } from '../Telemetry';
 import { escapeHtml } from '../utils/sanitization';
 
-const DEV_SERVER_HOST = 'http://localhost:18080';
-
 export class BaseTab {
     protected readonly id: string;
     protected readonly panel: vscode.WebviewPanel;
@@ -107,6 +105,10 @@ export class BaseTab {
         const cspSource = this.panel.webview.cspSource;
         const devServer = !!process.env.DEVSERVER;
         const isProduction = ext.context.extensionMode === vscode.ExtensionMode.Production;
+        const devServerHost = process.env.COSMOSDB_WEBVIEW_ORIGIN ?? '';
+        if (!isProduction && devServer && !devServerHost) {
+            throw new Error('COSMOSDB_WEBVIEW_ORIGIN must be set when DEVSERVER is enabled.');
+        }
         const nonce = Buffer.from(globalThis.crypto.getRandomValues(new Uint8Array(16))).toString('base64');
 
         const dir = ext.isBundle ? '' : 'out/src/webviews';
@@ -116,7 +118,7 @@ export class BaseTab {
                 .asWebviewUri(vscode.Uri.file(path.join(ctx.extensionPath, dir, ...parts)))
                 .toString(true);
 
-        const srcUri = isProduction || !devServer ? uri(filename) : `${DEV_SERVER_HOST}/${filename}`;
+        const srcUri = isProduction || !devServer ? uri(filename) : `${devServerHost}/${filename}`;
 
         const csp = (
             isProduction
@@ -131,13 +133,13 @@ export class BaseTab {
                   ]
                 : [
                       `form-action 'none';`,
-                      `default-src ${cspSource} ${DEV_SERVER_HOST};`,
-                      `style-src ${cspSource} ${DEV_SERVER_HOST} 'unsafe-inline';`,
-                      `script-src ${cspSource} ${DEV_SERVER_HOST} 'nonce-${nonce}' 'unsafe-eval';`,
-                      `connect-src ${cspSource} ${DEV_SERVER_HOST} ws:;`,
-                      `font-src ${cspSource} ${DEV_SERVER_HOST} data:;`,
-                      `worker-src ${cspSource} ${DEV_SERVER_HOST} blob:;`,
-                      `img-src ${cspSource} ${DEV_SERVER_HOST} data:;`,
+                      `default-src ${cspSource} ${devServerHost};`,
+                      `style-src ${cspSource} ${devServerHost} 'unsafe-inline';`,
+                      `script-src ${cspSource} ${devServerHost} 'nonce-${nonce}' 'unsafe-eval';`,
+                      `connect-src ${cspSource} ${devServerHost} ws:;`,
+                      `font-src ${cspSource} ${devServerHost} data:;`,
+                      `worker-src ${cspSource} ${devServerHost} blob:;`,
+                      `img-src ${cspSource} ${devServerHost} data:;`,
                   ]
         ).join(' ');
 

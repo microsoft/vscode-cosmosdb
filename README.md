@@ -46,6 +46,9 @@ The Azure Cosmos DB Explorer helps you find, view, and manage your Azure Cosmos 
 
 - **Open in Azure Portal**: Open an account directly in the Azure portal for service-level configuration.
 
+- **View in Database Hub**: Right-click a NoSQL account in Azure Resources and open it in Microsoft Fabric's Database Hub,
+  next to **Open in Portal**. Available only for accounts in public Azure, not sovereign clouds or workspace connections.
+
 - **Manage Resources**: View, create, and delete databases, containers, stored procedures, triggers, and documents.
 
 - **Edit Documents and Scripts**: Open documents and stored procedures in the editor, then save changes to the service.
@@ -60,7 +63,7 @@ The Account Overview Dashboard gives you an at-a-glance view of a Cosmos DB acco
 
 The dashboard has three tabs: **Monitoring**, **Databases and Containers**, and **Advisories**. The Account Overview submenu also provides shortcuts to each monitoring metric and to Advisories. Metric shortcuts select the corresponding card and focus its chart in the existing Monitoring tab, preserving the time range and database scope; they do not open separate dashboards.
 
-Expand **Account details** for **View Cost**, **View JSON**, and **Additional account properties**. **View Cost** opens Azure Portal Cost Analysis scoped to the account in its Azure cloud. **View JSON** retrieves the account resource from Azure Resource Manager and opens formatted JSON in VS Code without requesting keys or connection strings. The action bar reuses the existing database/container creation wizards and account deletion confirmation. **Add container** uses the database selected in the header; with **All databases**, it first asks you to choose a database within this account, including empty databases. These creation/deletion actions require the corresponding Azure write permissions. **Try Data Modeler** opens the modeler for this account; it requires AI features enabled and available GitHub Copilot models.
+**Account details** is expanded by default and shows all account properties, including API type, consistency and automatic failover, in one grid without a nested expander. **View Cost** and **View JSON** are in the account actions row alongside **Add database** and **Add container**. **View Cost** opens Azure Portal Cost Analysis scoped to the account in its Azure cloud. **View JSON** retrieves the account resource from Azure Resource Manager and opens formatted JSON in VS Code without requesting keys or connection strings. The action bar reuses the existing database/container creation wizards and account deletion confirmation. **Add container** uses the database selected in the header; with **All databases**, it first asks you to choose a database within this account, including empty databases. These creation/deletion actions require the corresponding Azure write permissions. **Try Data Modeler** opens the modeler for this account; it requires AI features enabled and available GitHub Copilot models.
 
 While **Add database** or **Add container** runs its native VS Code wizard, Overview is dimmed and unavailable to mouse and keyboard interaction. Cancel in the wizard to return without changes. After successful creation, Overview unlocks once inventory refresh finishes. Failures appear in a Fluent error message bar and are announced assertively to screen readers without moving focus.
 
@@ -113,6 +116,12 @@ GitHub Copilot models and AI features enabled.
 2. Compare single-path partition-key recommendations, query routing, and warnings. Review assumptions before deploying.
 3. Deploy selected databases and containers directly, or export editable **Bicep**, **Terraform**, or **C# SDK** code.
    Deployment requires resource-creation permissions and may incur Azure charges; it does not upload documents.
+
+If Copilot stops without returning a recommendation, select **Stop waiting** and confirm that the agent has stopped
+in Chat, then select **Retry**. This reuses migration's local tracking reset; it does not cancel Chat. Late results from
+the abandoned request are ignored, and your model inputs are preserved.
+
+Each recommendation request starts a new Copilot Chat rather than adding to your active conversation.
 
 Work is saved locally per account so you can resume later; saved sessions expire 30 days after their last save.
 To permanently clear local Data Modeler data for every account, run **Cosmos DB: Delete All Data Modeler Data**

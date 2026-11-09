@@ -25,16 +25,13 @@ function savedSnapshot() {
 }
 
 describe('modeling advisor persistence', () => {
-    it('waits for a decision without writing defaults and restores only when continuing', async () => {
+    it('hydrates the host-selected model without writing defaults', async () => {
         const saved = savedSnapshot();
         const load = vi.fn().mockResolvedValue(saved);
         const save = vi.fn().mockResolvedValue(undefined);
         const { result } = renderHook(() => useModelingAdvisorPersistence({ load, save }));
         expect(result.current.loadStatus).toBe('loading');
-        await waitFor(() => expect(result.current.loadStatus).toBe('choice'));
-        expect(result.current.snapshot).toEqual(createInitialSnapshot());
-        expect(save).not.toHaveBeenCalled();
-        act(() => result.current.continueExisting());
+        await waitFor(() => expect(result.current.loadStatus).toBe('ready'));
         expect(result.current.snapshot).toEqual(saved);
         expect(save).not.toHaveBeenCalled();
         act(() =>
@@ -47,16 +44,6 @@ describe('modeling advisor persistence', () => {
         expect(save).toHaveBeenCalledWith({ ...saved, wizard: { ...saved.wizard, step: 3 } });
     });
 
-    it('replaces saved work only after explicitly starting new', async () => {
-        const load = vi.fn().mockResolvedValue(savedSnapshot());
-        const save = vi.fn().mockResolvedValue(undefined);
-        const { result } = renderHook(() => useModelingAdvisorPersistence({ load, save }));
-        await waitFor(() => expect(result.current.loadStatus).toBe('choice'));
-        expect(save).not.toHaveBeenCalled();
-        act(() => result.current.startNew());
-        await waitFor(() => expect(save).toHaveBeenCalledWith(createInitialSnapshot()));
-    });
-
     it('starts fresh without a prompt or save when there is no existing project', async () => {
         const load = vi.fn().mockResolvedValue(null);
         const save = vi.fn().mockResolvedValue(undefined);
@@ -65,15 +52,17 @@ describe('modeling advisor persistence', () => {
         expect(save).not.toHaveBeenCalled();
     });
 
-    it('blocks saving after a failed load and offers the saved model again after retry', async () => {
-        const load = vi.fn().mockRejectedValueOnce(new Error('corrupt')).mockResolvedValue(savedSnapshot());
+    it('blocks saving after a failed load and hydrates the saved model after retry', async () => {
+        const saved = savedSnapshot();
+        const load = vi.fn().mockRejectedValueOnce(new Error('corrupt')).mockResolvedValue(saved);
         const save = vi.fn().mockResolvedValue(undefined);
         const { result } = renderHook(() => useModelingAdvisorPersistence({ load, save }));
         await waitFor(() => expect(result.current.loadStatus).toBe('error'));
         act(() => result.current.setSnapshot(savedSnapshot()));
         expect(save).not.toHaveBeenCalled();
         act(() => result.current.retryLoad());
-        await waitFor(() => expect(result.current.loadStatus).toBe('choice'));
+        await waitFor(() => expect(result.current.loadStatus).toBe('ready'));
+        expect(result.current.snapshot).toEqual(saved);
         expect(save).not.toHaveBeenCalled();
     });
 

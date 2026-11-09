@@ -21,8 +21,10 @@ Each recommendation request can carry an ephemeral UUID `requestId`, which is fo
 input, and recommendation event but is never persisted. Only the latest matching attempt is delivered; duplicate
 identified responses and stale responses are ignored. Request-to-result and result-to-display durations require
 that ID. Legacy no-ID report callers still work, but their delivery and restored result displays remain uncorrelated
-and do not count as a fresh correlated success. Pending attempts end explicitly on supersession, start-over, or close;
-the tracker does not invent AI timeouts.
+and do not count as a fresh correlated success. After a confirmed **Stop waiting**, no-ID responses are also ignored
+for the remainder of the open tab because they cannot be distinguished from abandoned results. Pending attempts end
+explicitly on supersession, start-over, close, or local stop (`stoppedWaiting`, not a detected Chat cancellation);
+the tracker does not invent AI timeouts. The local-stop action is recorded as `stopWaiting`.
 
 ```
 ┌───────────────┐   postMessage   ┌───────────────────┐

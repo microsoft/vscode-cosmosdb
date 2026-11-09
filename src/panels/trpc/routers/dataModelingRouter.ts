@@ -25,6 +25,7 @@ import { ModelingAdvisorSnapshotSchema, WizardStateSchema } from '../../../dataM
 import { ModelingTelemetryEventSchema } from '../../../dataModeling/modelingTelemetrySchema';
 import { buildRecommendationPrompt } from '../../../dataModeling/recommendationPrompt';
 import { ensureAIFeaturesEnabled } from '../../../utils/copilotUtils';
+import { confirmChatStopped } from '../../../utils/dialogs/confirmChatStopped';
 import { openUrl } from '../../../utils/openUrl';
 import { MAX_CONTAINERS } from '../../../webviews/cosmosdb/DataModeling/models';
 import { dataModelingProcedure, dataModelingRouter } from '../trpc';
@@ -57,12 +58,19 @@ export const dataModelingRouterDef = dataModelingRouter({
             z.object({
                 message: z.string().min(1),
                 detail: z.string(),
-                buttons: z.object({ primary: z.string().min(1), secondary: z.string().min(1) }).optional(),
+                buttons: z
+                    .object({
+                        primary: z.string().min(1),
+                        secondary: z.string().min(1),
+                        secondaryIsCloseAffordance: z.boolean().optional(),
+                    })
+                    .optional(),
             }),
         )
         .mutation(async ({ input }) => {
             const yes = { title: input.buttons?.primary ?? l10n.t('Yes') };
-            const no = { title: input.buttons?.secondary ?? l10n.t('No') };
+            const no: vscode.MessageItem = { title: input.buttons?.secondary ?? l10n.t('No') };
+            if (input.buttons?.secondaryIsCloseAffordance) no.isCloseAffordance = true;
             const choice = await vscode.window.showWarningMessage(
                 input.message,
                 { modal: true, detail: input.detail },
@@ -193,8 +201,14 @@ export const dataModelingRouterDef = dataModelingRouter({
                 throw error;
             }
         }),
+    stopWaitingForRecommendation: stateProcedure
+        .input(z.object({ requestId: z.string().uuid() }))
+        .mutation(async ({ input, ctx }) => {
+            if (!(await confirmChatStopped())) return false;
+            return ctx.modelingTelemetry?.stopWaiting(input.requestId) ?? true;
+        }),
     /**
-     * Sends the finished data model to the general Copilot Chat with a prompt
+     * Sends the finished data model to a new Copilot Chat with a prompt
      * asking for the best partition key. Copilot analyzes it and calls the
      * report tool, whose result is streamed back to the Result page.
      */
@@ -204,15 +218,27 @@ export const dataModelingRouterDef = dataModelingRouter({
             ctx.actionContext.valuesToMask.push(JSON.stringify(input.dataModel));
         }
 
-        ctx.modelingTelemetry?.beginRecommendation(
-            input.requestId,
-            input.dataModel.containers.map((container) => container.entity),
-            input,
-        );
+        if (
+            ctx.modelingTelemetry?.beginRecommendation(
+                input.requestId,
+                input.dataModel.containers.map((container) => container.entity),
+                input,
+            ) === false
+        ) {
+            return;
+        }
         try {
+            const query = await buildRecommendationPrompt(input, ctx.wizardTabId, input.requestId);
+            if (input.requestId && ctx.modelingTelemetry && !ctx.modelingTelemetry.acceptsResponse(input.requestId)) {
+                return;
+            }
+            await vscode.commands.executeCommand('workbench.action.chat.newChat');
+            if (input.requestId && ctx.modelingTelemetry && !ctx.modelingTelemetry.acceptsResponse(input.requestId)) {
+                return;
+            }
             await vscode.commands.executeCommand('workbench.action.chat.open', {
                 mode: 'agent',
-                query: await buildRecommendationPrompt(input, ctx.wizardTabId, input.requestId),
+                query,
             });
         } catch (error) {
             ctx.modelingTelemetry?.recommendationFailed(input.requestId, 'chat');

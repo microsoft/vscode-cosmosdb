@@ -10,6 +10,7 @@ import * as vscode from 'vscode';
 import { ModelingTelemetry } from '../dataModeling/ModelingTelemetry';
 import { ext } from '../extensionVariables';
 import { DataModelerProjectService, type DataModelerAccount } from '../services/DataModelerProjectService';
+import { createInitialSnapshot } from '../webviews/cosmosdb/DataModeling/dataModel';
 import { BaseTab } from './BaseTab';
 import { dataModelingAppRouter, dataModelingCallerFactory, type DataModelingRouterContext } from './trpc/appRouter';
 import { type DataModelingEvent, type PartitionKeyRecommendation } from './trpc/routers/dataModelingEventsRouter';
@@ -23,6 +24,7 @@ import { type DataModelingEvent, type PartitionKeyRecommendation } from './trpc/
 export class DataModelingWizardTab extends BaseTab {
     public static readonly viewType = 'cosmosDbDataModeling';
     public static readonly openTabs: Set<DataModelingWizardTab> = new Set<DataModelingWizardTab>();
+    private static readonly pendingTabs = new Map<DataModelerProjectService, Promise<DataModelingWizardTab>>();
 
     public readonly eventSink: TypedEventSink<DataModelingEvent>;
     public readonly modelingTelemetry: ModelingTelemetry;
@@ -50,12 +52,18 @@ export class DataModelingWizardTab extends BaseTab {
         this.disposables.push(disposable);
     }
 
-    public static render(account: DataModelerAccount, viewColumn?: vscode.ViewColumn): DataModelingWizardTab {
+    public static async render(
+        account: DataModelerAccount,
+        viewColumn?: vscode.ViewColumn,
+    ): Promise<DataModelingWizardTab> {
         const column = viewColumn ?? vscode.ViewColumn.Active;
         const project = DataModelerProjectService.getInstance(account.endpoint);
 
         // Reuse an already-open wizard tab rather than stacking duplicates.
-        const existing = [...DataModelingWizardTab.openTabs].find((tab) => tab.project === project);
+        const pending = this.pendingTabs.get(project);
+        const existing = pending
+            ? await pending
+            : [...DataModelingWizardTab.openTabs].find((tab) => tab.project === project);
         if (existing) {
             if (account.getControlPlane) {
                 existing.account.getControlPlane = account.getControlPlane;
@@ -70,6 +78,42 @@ export class DataModelingWizardTab extends BaseTab {
             return existing;
         }
 
+        const opening = this.openNew(account, project, column);
+        this.pendingTabs.set(project, opening);
+        try {
+            return await opening;
+        } finally {
+            this.pendingTabs.delete(project);
+        }
+    }
+
+    private static async openNew(
+        account: DataModelerAccount,
+        project: DataModelerProjectService,
+        column: vscode.ViewColumn,
+    ): Promise<DataModelingWizardTab> {
+        const saved = await project.loadState();
+        let choice: 'new' | 'continued' | 'replaced' = saved ? 'continued' : 'new';
+        if (saved) {
+            const yes = { title: l10n.t('Yes') };
+            const no = { title: l10n.t('No'), isCloseAffordance: true };
+            const answer = await vscode.window.showWarningMessage(
+                l10n.t('Start a new data model?'),
+                {
+                    modal: true,
+                    detail: l10n.t(
+                        'A saved data model was found. Choose Yes to start a new model and replace the saved one, or No to continue where you left off.',
+                    ),
+                },
+                yes,
+                no,
+            );
+            if (answer === yes) {
+                await project.saveState(createInitialSnapshot());
+                choice = 'replaced';
+            }
+        }
+
         const panel = vscode.window.createWebviewPanel(
             DataModelingWizardTab.viewType,
             account.name ? l10n.t('Data Modeler: {name}', { name: account.name }) : l10n.t('Data Modeler'),
@@ -80,7 +124,10 @@ export class DataModelingWizardTab extends BaseTab {
             },
         );
 
-        return new DataModelingWizardTab(panel, project, { ...account });
+        const tab = new DataModelingWizardTab(panel, project, { ...account });
+        tab.modelingTelemetry.record({ type: 'sessionChoice', choice });
+        if (choice === 'replaced') tab.modelingTelemetry.persistenceSave(true);
+        return tab;
     }
 
     /** Finds the tab that originated a recommendation request. */

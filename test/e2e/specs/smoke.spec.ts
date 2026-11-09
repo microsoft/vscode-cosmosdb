@@ -37,8 +37,21 @@ test.describe('webview smoke', () => {
 
     test('Migration Assistant mounts', async ({ vscodeWindow }) => {
         const webview = await openMigrationAssistant(vscodeWindow);
+        expect(await webview.getByTestId('migration-phase-preflight').isVisible()).toBe(true);
         await expect(webview.locator('#root')).toBeVisible();
         await expect(webview.locator('#vscode-ext-webview-fluentui-overrides')).toHaveCount(1);
+    });
+
+    test('reopens the hydrated Migration Assistant rather than a retained Query Editor', async ({ vscodeWindow }) => {
+        const migration = await openMigrationAssistant(vscodeWindow);
+        const queryEditor = await openQueryEditor(vscodeWindow);
+        expect(queryEditor).not.toBe(migration);
+        await expect(queryEditor.getByRole('button', { name: 'Run', exact: true })).toBeVisible();
+
+        const reopened = await openMigrationAssistant(vscodeWindow);
+
+        expect(reopened).toBe(migration);
+        expect(await reopened.getByTestId('migration-phase-preflight').isVisible()).toBe(true);
     });
 
     test('Query Editor mounts', async ({ vscodeWindow }) => {

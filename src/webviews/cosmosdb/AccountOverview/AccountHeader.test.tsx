@@ -312,7 +312,7 @@ describe('AccountHeader', () => {
         expect(toggle).toHaveFocus();
     });
 
-    it('shows eleven essential fields and moves API and Consistency into additional properties', () => {
+    it('shows all fourteen account properties in one grid without a nested expander', () => {
         renderHeader({ defaultEssentialsOpen: true });
         const region = screen.getByRole('region', { name: 'Account details' });
         const details = within(region);
@@ -328,108 +328,64 @@ describe('AccountHeader', () => {
             ['Free tier', 'Opted out'],
             ['Write locations', 'East US'],
             ['Read locations', 'East US, West US'],
+            ['API type', 'NoSQL'],
+            ['Consistency', 'Session'],
+            ['Automatic failover', 'Unknown'],
         ];
-        expect(region.firstElementChild?.children).toHaveLength(11);
+        const grid = region.firstElementChild!;
+        expect(grid.children).toHaveLength(14);
         for (const [label, value] of fields) {
             const field = details.getByText(label).parentElement;
             if (!field) {
                 throw new Error(`Missing detail field: ${label}`);
             }
+            expect(field.parentElement).toBe(grid);
             expect(within(field).getByText(value)).toBeVisible();
         }
-        const additionalPanel = document.getElementById(
-            details.getByRole('button', { name: 'Additional account properties' }).getAttribute('aria-controls')!,
-        )!;
-        expect(additionalPanel).toHaveAttribute('inert');
-        for (const label of ['API type', 'Consistency', 'Automatic failover']) {
-            expect(additionalPanel).toContainElement(details.getByText(label));
-        }
-        expect(details.getByRole('button', { name: 'Additional account properties' })).toHaveAttribute(
-            'aria-expanded',
-            'false',
-        );
+        expect(details.queryByRole('button')).not.toBeInTheDocument();
+        expect(details.queryByRole('region')).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Account details' })).toHaveAttribute('aria-expanded', 'true');
+        expect(screen.queryByRole('button', { name: 'View Cost' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'View JSON' })).not.toBeInTheDocument();
     });
 
-    it('uses a keyboard-accessible Accordion for additional properties and preserves its state when details collapse', async () => {
+    it('shows every property again after collapsing and reopening Account details with the keyboard', async () => {
         const user = userEvent.setup();
         renderHeader({ defaultEssentialsOpen: true });
-        const toggle = screen.getByRole('button', { name: 'Additional account properties' });
-        expect(toggle).toHaveClass(accordionHeaderClassNames.button);
-        expect(toggle).toHaveTextContent('Additional account properties');
-        expect(toggle).toHaveAccessibleName('Additional account properties');
-        expect(toggle).toHaveAttribute('aria-expanded', 'false');
-        screen.getByRole('button', { name: 'Account details' }).focus();
-        await user.tab();
-        expect(toggle).toHaveFocus();
+        const toggle = screen.getByRole('button', { name: 'Account details' });
+        const panel = screen.getByRole('region', { name: 'Account details' });
+        toggle.focus();
         await user.keyboard('{Enter}');
-        expect(toggle).toHaveAttribute('aria-expanded', 'true');
-        const panel = screen.getByRole('region', { name: 'Additional account properties' });
-        expect(panel).toHaveClass(accordionPanelClassNames.root);
-        expect(panel).toHaveAttribute('id', toggle.getAttribute('aria-controls'));
-        expect(panel).toHaveAttribute('aria-labelledby', toggle.id);
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        expect(panel).toHaveAttribute('inert');
         expect(toggle).toHaveFocus();
+        await user.keyboard(' ');
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
+        expect(panel).not.toHaveAttribute('inert');
+        expect(toggle).toHaveFocus();
+        expect(panel.firstElementChild?.children).toHaveLength(14);
         for (const [label, value] of [
             ['API type', 'NoSQL'],
             ['Consistency', 'Session'],
             ['Automatic failover', 'Unknown'],
         ]) {
-            const field = screen.getByText(label).parentElement!;
+            const field = within(panel).getByText(label).parentElement!;
             expect(within(field).getByText(value)).toBeVisible();
         }
-        const detailsToggle = screen.getByRole('button', { name: 'Account details' });
-        await user.click(detailsToggle);
-        expect(document.getElementById(detailsToggle.getAttribute('aria-controls')!)).toHaveAttribute('inert');
-        await user.click(detailsToggle);
-        expect(panel).toBeVisible();
-        expect(toggle).toHaveAttribute('aria-expanded', 'true');
-        toggle.focus();
-        await user.keyboard(' ');
-        expect(toggle).toHaveAttribute('aria-expanded', 'false');
-        expect(panel).toHaveAttribute('inert');
-        expect(toggle).toHaveFocus();
-    });
-
-    it('keeps the additional-properties toggle in the details footer when expanded and closed', async () => {
-        const user = userEvent.setup();
-        renderHeader({ defaultEssentialsOpen: true });
-        const toggle = screen.getByRole('button', { name: 'Additional account properties' });
-        const footer = toggle.closest('h3')!.parentElement!;
-        const panel = document.getElementById(toggle.getAttribute('aria-controls')!)!;
-        const rowClass = footer.className;
-        expect(footer).toContainElement(toggle);
-        expect(footer).not.toContainElement(panel);
-        expect(footer.nextElementSibling).toBe(panel);
-        expect(screen.queryByRole('button', { name: 'View Cost' })).not.toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: 'View JSON' })).not.toBeInTheDocument();
-        await user.click(toggle);
-        expect(toggle).toHaveAttribute('aria-expanded', 'true');
-        expect(footer).toContainElement(toggle);
-        expect(footer.className).toBe(rowClass);
-        expect(panel).not.toHaveAttribute('inert');
-        await user.click(toggle);
-        expect(toggle).toHaveAttribute('aria-expanded', 'false');
-        expect(panel).toHaveAttribute('inert');
-        expect(toggle).toHaveFocus();
     });
 
     it.each([
         [true, 'Enabled'],
         [false, 'Disabled'],
         [undefined, 'Unknown'],
-    ] as const)(
-        'renders automatic failover %s without inventing a setting',
-        async (automaticFailoverEnabled, label) => {
-            const user = userEvent.setup();
-            renderHeader({
-                defaultEssentialsOpen: true,
-                summary: { ...summary, automaticFailoverEnabled, consistencyLevel: undefined },
-            });
-            await user.click(screen.getByText('Additional account properties'));
-            expect(within(screen.getByText('Automatic failover').parentElement!).getByText(label)).toBeVisible();
-            expect(within(screen.getByText('Consistency').parentElement!).getByText('Unknown')).toBeVisible();
-        },
-    );
+    ] as const)('renders automatic failover %s without inventing a setting', (automaticFailoverEnabled, label) => {
+        renderHeader({
+            defaultEssentialsOpen: true,
+            summary: { ...summary, automaticFailoverEnabled, consistencyLevel: undefined },
+        });
+        expect(within(screen.getByText('Automatic failover').parentElement!).getByText(label)).toBeVisible();
+        expect(within(screen.getByText('Consistency').parentElement!).getByText('Unknown')).toBeVisible();
+    });
 
     it.each([
         [{ backupPolicyType: undefined }, 'Unknown'],

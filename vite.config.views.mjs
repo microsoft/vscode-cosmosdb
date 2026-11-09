@@ -10,6 +10,7 @@
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { loadEnv } from 'vite';
 import { analyzer } from 'vite-bundle-analyzer';
 import { bundleReport } from './plugins/vite-plugin-bundle-report.mjs';
 import { monacoWorkers } from './plugins/vite-plugin-monaco-workers.mjs';
@@ -29,6 +30,19 @@ const enableCoverage = process.env.COSMOSDB_E2E_COVERAGE === '1';
 
 export default ({ mode }) => {
     const isDev = mode === 'development';
+    const env = isDev ? loadEnv(mode, __dirname, 'COSMOSDB_WEBVIEW_') : {};
+    const port = isDev ? Number(env.COSMOSDB_WEBVIEW_PORT) : undefined;
+    if (isDev && (!/^\d+$/.test(env.COSMOSDB_WEBVIEW_PORT) || !Number.isInteger(port) || port < 1 || port > 65535)) {
+        throw new Error('COSMOSDB_WEBVIEW_PORT must be an integer between 1 and 65535.');
+    }
+    if (
+        isDev &&
+        (!env.COSMOSDB_WEBVIEW_HOST ||
+            !URL.canParse(env.COSMOSDB_WEBVIEW_ORIGIN) ||
+            env.COSMOSDB_WEBVIEW_ORIGIN !== `http://${env.COSMOSDB_WEBVIEW_HOST}:${env.COSMOSDB_WEBVIEW_PORT}`)
+    ) {
+        throw new Error('COSMOSDB_WEBVIEW_ORIGIN must match the configured HTTP host and port.');
+    }
 
     return {
         /**
@@ -223,13 +237,14 @@ export default ({ mode }) => {
                 }),
         ].filter(Boolean),
         server: {
-            port: 18080,
-            host: '127.0.0.1',
+            port,
+            strictPort: true,
+            host: env.COSMOSDB_WEBVIEW_HOST,
             /**
              * Absolute URLs against the dev server.
              * @see [docs/webview-build.md#server-origin](./docs/webview-build.md#server-origin)
              */
-            origin: 'http://localhost:18080',
+            origin: env.COSMOSDB_WEBVIEW_ORIGIN,
             /**
              * Wildcard CORS so the `vscode-webview://` origin can fetch.
              * @see [docs/webview-build.md#server-cors](./docs/webview-build.md#server-cors)

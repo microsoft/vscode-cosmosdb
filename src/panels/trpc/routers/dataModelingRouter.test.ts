@@ -134,10 +134,36 @@ describe('data modeler deployment procedure', () => {
         );
     });
 
+    it.each([
+        { choice: 'Yes', result: true },
+        { choice: 'No', result: false },
+        { choice: undefined, result: undefined },
+    ])('offers only Yes and No for removal (choice: $choice)', async ({ choice, result }) => {
+        vi.mocked(vscode.window.showWarningMessage).mockImplementation(async (_message, _options, ...items) =>
+            items.find((item) => item.title === choice),
+        );
+        const prompt = {
+            message: 'Remove from model?',
+            detail: 'Remove Orders?',
+            buttons: { primary: 'Yes', secondary: 'No', secondaryIsCloseAffordance: true },
+        };
+        expect(await dataModelingRouterDef.createCaller(context()).confirm(prompt)).toBe(result);
+        expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
+            prompt.message,
+            { modal: true, detail: prompt.detail },
+            { title: 'Yes' },
+            { title: 'No', isCloseAffordance: true },
+        );
+    });
+
     it('propagates native confirmation failures without confirming an action', async () => {
         vi.mocked(vscode.window.showWarningMessage).mockRejectedValueOnce(new Error('Dialog unavailable'));
         await expect(
-            dataModelingRouterDef.createCaller(context()).confirm({ message: 'Continue?', detail: '' }),
+            dataModelingRouterDef.createCaller(context()).confirm({
+                message: 'Continue?',
+                detail: '',
+                buttons: { primary: 'Yes', secondary: 'No' },
+            }),
         ).rejects.toThrow('Dialog unavailable');
     });
 
@@ -532,7 +558,10 @@ describe('recommendation prompt', () => {
     it('preserves the ephemeral request ID through validation and the prompt, and starts tracking before Chat opens', async () => {
         const ctx = context();
         const beginRecommendation = vi.fn();
-        ctx.modelingTelemetry = { beginRecommendation } as unknown as ModelingTelemetry;
+        ctx.modelingTelemetry = {
+            beginRecommendation,
+            acceptsResponse: vi.fn().mockReturnValue(true),
+        } as unknown as ModelingTelemetry;
         const requestId = '12345678-1234-4123-8123-123456789001';
         const wizard = applyScenario(createInitialState(), 'chat');
         const executeCommand = vi.spyOn(vscode.commands, 'executeCommand').mockImplementation(async () => {
@@ -543,14 +572,21 @@ describe('recommendation prompt', () => {
             );
         });
         await dataModelingRouterDef.createCaller(ctx).requestRecommendation({ ...wizard, requestId });
-        expect(executeCommand.mock.calls[0][1].query).toContain(`requestId "${requestId}"`);
+        expect(executeCommand).toHaveBeenLastCalledWith(
+            'workbench.action.chat.open',
+            expect.objectContaining({ query: expect.stringContaining(`requestId "${requestId}"`) }),
+        );
         executeCommand.mockRestore();
     });
 
     it('reports bounded chat failures and rethrows the original operation error outside telemetry', async () => {
         const ctx = context();
         const recommendationFailed = vi.fn();
-        ctx.modelingTelemetry = { beginRecommendation: vi.fn(), recommendationFailed } as unknown as ModelingTelemetry;
+        ctx.modelingTelemetry = {
+            beginRecommendation: vi.fn(),
+            acceptsResponse: vi.fn().mockReturnValue(true),
+            recommendationFailed,
+        } as unknown as ModelingTelemetry;
         const error = new Error('PRIVATE PROMPT OR RESOURCE');
         const executeCommand = vi.spyOn(vscode.commands, 'executeCommand').mockRejectedValue(error);
         const requestId = '12345678-1234-4123-8123-123456789001';
@@ -561,6 +597,46 @@ describe('recommendation prompt', () => {
             }),
         ).rejects.toMatchObject({ cause: error });
         expect(recommendationFailed).toHaveBeenCalledWith(requestId, 'chat');
+        executeCommand.mockRestore();
+    });
+
+    it.each([true, false])('only resets local tracking after native confirmation: %s', async (confirmed) => {
+        const ctx = context();
+        const stopWaiting = vi.fn().mockReturnValue(true);
+        ctx.modelingTelemetry = { stopWaiting } as unknown as ModelingTelemetry;
+        const requestId = '12345678-1234-4123-8123-123456789001';
+        vi.mocked(vscode.window.showWarningMessage).mockResolvedValueOnce(
+            confirmed ? ('Agent Has Stopped' as never) : undefined,
+        );
+        const executeCommand = vi.spyOn(vscode.commands, 'executeCommand');
+        await expect(dataModelingRouterDef.createCaller(ctx).stopWaitingForRecommendation({ requestId })).resolves.toBe(
+            confirmed,
+        );
+        expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
+            expect.stringContaining('it does not cancel Chat'),
+            { modal: true },
+            'Agent Has Stopped',
+        );
+        expect(stopWaiting.mock.calls).toEqual(confirmed ? [[requestId]] : []);
+        expect(executeCommand).not.toHaveBeenCalled();
+        executeCommand.mockRestore();
+        expect(ctx.actionContext?.telemetry.suppressAll).toBe(true);
+    });
+
+    it('does not open Chat for a request abandoned before tracking or during prompt generation', async () => {
+        const executeCommand = vi.spyOn(vscode.commands, 'executeCommand');
+        for (const began of [false, true]) {
+            const ctx = context();
+            ctx.modelingTelemetry = {
+                beginRecommendation: vi.fn().mockReturnValue(began),
+                acceptsResponse: vi.fn().mockReturnValue(false),
+            } as unknown as ModelingTelemetry;
+            await dataModelingRouterDef.createCaller(ctx).requestRecommendation({
+                ...applyScenario(createInitialState(), 'chat'),
+                requestId: '12345678-1234-4123-8123-123456789001',
+            });
+        }
+        expect(executeCommand).not.toHaveBeenCalled();
         executeCommand.mockRestore();
     });
 
@@ -651,6 +727,7 @@ describe('recommendation prompt', () => {
         expect(prompt).toContain('#cosmosdb_reportPartitionKeyRecommendation exactly once');
         expect(prompt).toContain('wizard is closed');
         expect(prompt).toContain(JSON.stringify(wizard.dataModel));
+        expect(prompt).not.toContain('"filters":');
     });
 
     it.each([
@@ -664,7 +741,6 @@ describe('recommendation prompt', () => {
         container.properties[0].name = injection;
         container.reads[0].pattern = injection;
         container.reads[0].query = injection;
-        container.reads[0].filters = injection;
         container.scale.candidates[0].attribute = injection;
         const original = structuredClone(wizard);
         const prompt = await buildRecommendationPrompt(wizard, 'wizard-id', 'request-id');
@@ -726,18 +802,22 @@ describe('recommendation prompt', () => {
         expect(prompt).toContain(JSON.stringify(wizard.dataModel));
     });
 
-    it('requests a recommendation from validated wizard state and retains error masking', async () => {
+    it('starts a new chat for every recommendation and retains error masking', async () => {
         const executeCommand = vi.spyOn(vscode.commands, 'executeCommand').mockResolvedValue(undefined);
         const ctx = context();
         const wizard = applyScenario(createInitialState(), 'ecommerce');
         wizard.dataModel.containers[0].entity = 'PrivateOrders';
 
-        await dataModelingRouterDef.createCaller(ctx).requestRecommendation(wizard);
-
-        expect(executeCommand).toHaveBeenCalledWith('workbench.action.chat.open', {
-            mode: 'agent',
-            query: await buildRecommendationPrompt(wizard, ctx.wizardTabId),
-        });
+        const caller = dataModelingRouterDef.createCaller(ctx);
+        for (let request = 0; request < 2; request++) {
+            await caller.requestRecommendation(wizard);
+            expect(executeCommand).toHaveBeenNthCalledWith(request * 2 + 1, 'workbench.action.chat.newChat');
+            expect(executeCommand).toHaveBeenNthCalledWith(request * 2 + 2, 'workbench.action.chat.open', {
+                mode: 'agent',
+                query: await buildRecommendationPrompt(wizard, ctx.wizardTabId),
+            });
+        }
+        expect(executeCommand).toHaveBeenCalledTimes(4);
         expect(ctx.actionContext?.valuesToMask).toContain(JSON.stringify(wizard.dataModel));
         expect(ctx.actionContext?.errorHandling.suppressDisplay).toBe(true);
         expect(ctx.actionContext?.telemetry.suppressAll).toBe(true);
@@ -755,17 +835,66 @@ describe('recommendation prompt', () => {
         executeCommand.mockRestore();
     });
 
-    it('propagates Chat opening failures for the wizard to display', async () => {
-        const executeCommand = vi
-            .spyOn(vscode.commands, 'executeCommand')
-            .mockRejectedValue(new Error('Chat unavailable'));
-        await expect(
-            dataModelingRouterDef
-                .createCaller(context())
-                .requestRecommendation(applyScenario(createInitialState(), 'chat')),
-        ).rejects.toThrow('Chat unavailable');
+    it('waits for the new chat before submitting the recommendation', async () => {
+        let finishNewChat!: () => void;
+        const newChat = new Promise<void>((resolve) => {
+            finishNewChat = resolve;
+        });
+        const executeCommand = vi.spyOn(vscode.commands, 'executeCommand').mockResolvedValue(undefined);
+        executeCommand.mockReturnValueOnce(newChat);
+        const recommendation = dataModelingRouterDef
+            .createCaller(context())
+            .requestRecommendation(applyScenario(createInitialState(), 'chat'));
+        await vi.waitFor(() => expect(executeCommand).toHaveBeenCalledExactlyOnceWith('workbench.action.chat.newChat'));
+        finishNewChat();
+        await recommendation;
+        expect(executeCommand).toHaveBeenLastCalledWith('workbench.action.chat.open', expect.anything());
         executeCommand.mockRestore();
     });
+
+    it('does not submit a recommendation abandoned while the new chat is opening', async () => {
+        let finishNewChat!: () => void;
+        const newChat = new Promise<void>((resolve) => {
+            finishNewChat = resolve;
+        });
+        const executeCommand = vi.spyOn(vscode.commands, 'executeCommand').mockResolvedValue(undefined);
+        executeCommand.mockReturnValueOnce(newChat);
+        const acceptsResponse = vi.fn().mockReturnValue(true);
+        const ctx = context();
+        ctx.modelingTelemetry = {
+            beginRecommendation: vi.fn().mockReturnValue(true),
+            acceptsResponse,
+        } as unknown as ModelingTelemetry;
+        const requestId = '12345678-1234-4123-8123-123456789001';
+        const recommendation = dataModelingRouterDef.createCaller(ctx).requestRecommendation({
+            ...applyScenario(createInitialState(), 'chat'),
+            requestId,
+        });
+        await vi.waitFor(() => expect(executeCommand).toHaveBeenCalledExactlyOnceWith('workbench.action.chat.newChat'));
+        acceptsResponse.mockReturnValue(false);
+        finishNewChat();
+        await recommendation;
+        expect(acceptsResponse).toHaveBeenLastCalledWith(requestId);
+        expect(executeCommand).toHaveBeenCalledExactlyOnceWith('workbench.action.chat.newChat');
+        executeCommand.mockRestore();
+    });
+
+    it.each(['workbench.action.chat.newChat', 'workbench.action.chat.open'])(
+        'propagates %s failures without submitting further commands',
+        async (failedCommand) => {
+            const executeCommand = vi.spyOn(vscode.commands, 'executeCommand').mockImplementation(async (command) => {
+                if (command === failedCommand) throw new Error('Chat unavailable');
+            });
+            await expect(
+                dataModelingRouterDef
+                    .createCaller(context())
+                    .requestRecommendation(applyScenario(createInitialState(), 'chat')),
+            ).rejects.toThrow('Chat unavailable');
+            expect(executeCommand).toHaveBeenCalledTimes(failedCommand === 'workbench.action.chat.newChat' ? 1 : 2);
+            expect(executeCommand.mock.lastCall?.[0]).toBe(failedCommand);
+            executeCommand.mockRestore();
+        },
+    );
 
     it('loads localized defaults at request time rather than during extension startup', async () => {
         vi.resetModules();

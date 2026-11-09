@@ -67,4 +67,18 @@ describe('native modeler confirmations', () => {
             buttons,
         });
     });
+
+    it('passes the secondary close affordance to the native dialog', async () => {
+        client.dataModeling.confirm.mutate.mockResolvedValue(false);
+        const { result } = renderHook(useNativeConfirmation);
+        const buttons = { primary: 'Yes', secondary: 'No', secondaryIsCloseAffordance: true };
+        await act(async () => {
+            expect(await result.current.confirm('Remove from model?', 'Remove Orders?', buttons)).toBe(false);
+        });
+        expect(client.dataModeling.confirm.mutate).toHaveBeenCalledWith({
+            message: 'Remove from model?',
+            detail: 'Remove Orders?',
+            buttons,
+        });
+    });
 });

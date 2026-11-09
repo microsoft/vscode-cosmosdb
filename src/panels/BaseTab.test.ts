@@ -77,6 +77,76 @@ afterEach(() => {
     vi.clearAllMocks();
 });
 
+it.each([
+    {
+        name: 'production',
+        extensionMode: vscode.ExtensionMode.Production,
+        devServer: undefined,
+        devOrigin: undefined,
+    },
+    {
+        name: 'production with DEVSERVER and an invalid development origin',
+        extensionMode: vscode.ExtensionMode.Production,
+        devServer: '1',
+        devOrigin: 'invalid-development-origin',
+    },
+    {
+        name: 'development without DEVSERVER',
+        extensionMode: vscode.ExtensionMode.Development,
+        devServer: undefined,
+        devOrigin: 'http://127.0.0.1:18082',
+    },
+    {
+        name: 'development without DEVSERVER or development origin',
+        extensionMode: vscode.ExtensionMode.Development,
+        devServer: undefined,
+        devOrigin: undefined,
+    },
+    {
+        name: 'development with DEVSERVER',
+        extensionMode: vscode.ExtensionMode.Development,
+        devServer: '1',
+        devOrigin: 'http://127.0.0.1:18082',
+    },
+    {
+        name: 'development with a custom host and port',
+        extensionMode: vscode.ExtensionMode.Development,
+        devServer: '1',
+        devOrigin: 'http://127.0.0.2:19082',
+    },
+])('uses the matching bundle origin and CSP in $name', ({ extensionMode, devServer, devOrigin }) => {
+    mocks.extensionMode = extensionMode;
+    vi.stubEnv('DEVSERVER', devServer);
+    vi.stubEnv('COSMOSDB_WEBVIEW_ORIGIN', devOrigin);
+    const panel = createPanel('Document');
+    tabs.push(new TestTab(panel));
+    const document = new DOMParser().parseFromString(panel.webview.html, 'text/html');
+    const isProduction = extensionMode === vscode.ExtensionMode.Production;
+    const origin = !isProduction && devServer ? devOrigin : 'https://webview.example.invalid';
+
+    expect(document.querySelector('script[type="module"]')?.textContent).toContain(
+        `import { render } from "${origin}/views.js"`,
+    );
+    const csp = document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.getAttribute('content');
+    const sources = isProduction || !devOrigin ? panel.webview.cspSource : `${panel.webview.cspSource} ${devOrigin}`;
+    for (const directive of ['default-src', 'style-src', 'script-src', 'font-src', 'worker-src', 'img-src']) {
+        expect(csp).toContain(`${directive} ${sources}`);
+    }
+    expect(csp?.includes(`connect-src ${sources}`)).toBe(!isProduction);
+    expect(csp?.includes('http://')).toBe(!isProduction && !!devOrigin);
+    expect(csp).not.toContain('undefined');
+    expect(panel.webview.html).not.toContain('localhost:18080');
+});
+
+it('rejects a missing development origin when DEVSERVER is enabled', () => {
+    mocks.extensionMode = vscode.ExtensionMode.Development;
+    vi.stubEnv('DEVSERVER', '1');
+    vi.stubEnv('COSMOSDB_WEBVIEW_ORIGIN', undefined);
+    expect(() => new TestTab(createPanel('Document'))).toThrow(
+        'COSMOSDB_WEBVIEW_ORIGIN must be set when DEVSERVER is enabled.',
+    );
+});
+
 describe.each([
     { name: 'production', extensionMode: vscode.ExtensionMode.Production, devServer: undefined },
     { name: 'development', extensionMode: vscode.ExtensionMode.Development, devServer: '1' },
@@ -84,6 +154,7 @@ describe.each([
     beforeEach(() => {
         mocks.extensionMode = extensionMode;
         vi.stubEnv('DEVSERVER', devServer);
+        vi.stubEnv('COSMOSDB_WEBVIEW_ORIGIN', 'http://127.0.0.1:18082');
     });
 
     it.each([

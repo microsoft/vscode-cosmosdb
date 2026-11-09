@@ -70,6 +70,7 @@ export class ModelingTelemetry {
     private disposed = false;
     private attempt?: Attempt;
     private readonly requestIds = new Set<string>();
+    private requireCorrelatedResponse = false;
     private attempts = 0;
     private receivedCount = 0;
     private displayedCount = 0;
@@ -200,8 +201,8 @@ export class ModelingTelemetry {
         }
     }
 
-    public beginRecommendation(requestId: string | undefined, requestedNames: string[], wizard?: WizardState): void {
-        if (this.disposed || (requestId && this.requestIds.has(requestId))) return;
+    public beginRecommendation(requestId: string | undefined, requestedNames: string[], wizard?: WizardState): boolean {
+        if (this.disposed || (requestId && this.requestIds.has(requestId))) return false;
         this.finishPending('superseded');
         if (requestId) this.requestIds.add(requestId);
         this.attempt = {
@@ -221,14 +222,35 @@ export class ModelingTelemetry {
             { attemptNumber: this.attempts, requestedContainerCount: requestedNames.length },
             { modelSnapshot: wizard ? summarizeModel(wizard) : undefined },
         );
+        return true;
+    }
+
+    /** Abandon local tracking only; no file contents, paths, or names are emitted. */
+    public stopWaiting(requestId: string): boolean {
+        if (
+            this.disposed ||
+            (this.requestIds.has(requestId) &&
+                (!this.isCurrent(requestId) || this.attempt?.finished || this.attempt?.received !== undefined))
+        ) {
+            return false;
+        }
+        // A stop can arrive before the request finishes saving or checking AI availability.
+        this.requestIds.add(requestId);
+        this.requireCorrelatedResponse = true;
+        if (this.isCurrent(requestId)) this.finishPending('stoppedWaiting');
+        this.emit('cosmosDB.dataModeler.action', { action: 'stopWaiting' });
+        return true;
     }
 
     /** Reject stale/duplicate identified responses; legacy responses remain explicitly uncorrelated. */
     public acceptsResponse(requestId?: string): boolean {
         return (
             !this.disposed &&
-            (!requestId ||
-                (this.isCurrent(requestId) && !this.attempt?.finished && this.attempt?.received === undefined))
+            ((!requestId && !this.requireCorrelatedResponse) ||
+                (!!requestId &&
+                    this.isCurrent(requestId) &&
+                    !this.attempt?.finished &&
+                    this.attempt?.received === undefined))
         );
     }
 
@@ -396,7 +418,7 @@ export class ModelingTelemetry {
         }
     }
 
-    private finishPending(outcome: 'superseded' | 'startOver' | 'closedBeforeResult'): void {
+    private finishPending(outcome: 'superseded' | 'startOver' | 'closedBeforeResult' | 'stoppedWaiting'): void {
         const attempt = this.attempt;
         if (!attempt || attempt.finished) return;
         attempt.finished = true;

@@ -9,6 +9,7 @@ import { MATRIX_VERSION } from './check-sdk-compatibility.mjs';
 import { requireOptionValue } from './cli-arguments.mjs';
 import { showHelp } from './cli-help.mjs';
 import { normalizePhaseName } from './phase-names.mjs';
+import { parseJson } from './phase-summary.mjs';
 import { readProjectState, updateProjectState } from './project-state.mjs';
 import { validateDomainNames } from './validate-migration-project.mjs';
 
@@ -53,6 +54,59 @@ function relativePath(workspace, filePath) {
     return relative.split(path.sep).join('/');
 }
 
+function projectFilePath(workspace) {
+    const checkpoint = path.resolve(workspace, '.cosmosdb-migration/project.json');
+    return fs.existsSync(checkpoint) ? fs.realpathSync(checkpoint) : checkpoint;
+}
+
+function isManagedDomainOutput(workspace, filePath) {
+    relativePath(workspace, filePath);
+    const root = path.resolve(workspace, '.cosmosdb-migration');
+    const realRoot = fs.existsSync(root) ? fs.realpathSync(root) : path.join(fs.realpathSync(workspace), '.cosmosdb-migration');
+    const missing = [];
+    let ancestor = path.resolve(filePath);
+    while (!fs.existsSync(ancestor)) {
+        const parent = path.dirname(ancestor);
+        if (parent === ancestor) return false;
+        missing.unshift(path.basename(ancestor));
+        ancestor = parent;
+    }
+    const resolved = path.join(fs.realpathSync(ancestor), ...missing);
+    const relative = path.relative(realRoot, resolved).split(path.sep).join('/');
+    return /^phases\/2-assessment\/domains\/[^/]+\.(?:md|manifest\.json)$/u.test(relative) ||
+        /^phases\/3-schema-conversion\/domains\/[^/]+\/(?:summary\.md|cosmos-model\.json)$/u.test(relative);
+}
+
+function managedSchemaEvidencePaths(workspace) {
+    const root = path.resolve(workspace, '.cosmosdb-migration');
+    const files = [
+        'project.json', 'memory.md', 'code-migration-plan.md', 'code-migration-manifest.json',
+        'phases/1-discovery/preflight-summary.md', 'phases/1-discovery/preflight-manifest.json',
+        'phases/1-discovery/discovery-report.md', 'phases/1-discovery/discovery-manifest.json',
+        'phases/1-discovery/volumetrics/volumetrics.md', 'phases/1-discovery/access-patterns/access-patterns.md',
+        'phases/2-assessment/assessment-summary.md', 'phases/2-assessment/assessment-manifest.json',
+        'phases/3-schema-conversion/model.json', 'phases/3-schema-conversion/summary.md', 'phases/3-schema-conversion/manifest.json',
+        'phases/4-provisioning/main.bicep', 'phases/4-provisioning/main.bicepparam',
+        'phases/4-provisioning/sample-data.json', 'phases/4-provisioning/seed-data.csh',
+        'phases/4-provisioning/summary.md', 'phases/4-provisioning/manifest.json',
+    ].map(file => path.join(root, file));
+    const assessment = path.join(root, 'phases/2-assessment/domains');
+    if (fs.existsSync(assessment)) {
+        relativePath(fs.realpathSync(workspace), fs.realpathSync(assessment));
+        for (const entry of fs.readdirSync(assessment, { withFileTypes: true })) {
+            if (!entry.isDirectory() && /\.(?:md|manifest\.json)$/u.test(entry.name)) files.push(path.join(assessment, entry.name));
+        }
+    }
+    const conversion = path.join(root, 'phases/3-schema-conversion/domains');
+    if (fs.existsSync(conversion)) {
+        relativePath(fs.realpathSync(workspace), fs.realpathSync(conversion));
+        for (const entry of fs.readdirSync(conversion)) {
+            files.push(path.join(conversion, entry, 'summary.md'), path.join(conversion, entry, 'cosmos-model.json'));
+        }
+    }
+    return new Set(files.flatMap(file => fs.existsSync(file) ? [file, fs.realpathSync(file)] : [file]));
+}
+
 function fileInput(workspace, id, relative) {
     const absolute = path.resolve(workspace, relative);
     if (!fs.statSync(absolute).isFile()) throw new Error(`Freshness input is not a file: ${relative}`);
@@ -62,6 +116,7 @@ function fileInput(workspace, id, relative) {
     if (realRelative === '..' || realRelative.startsWith(`..${path.sep}`) || path.isAbsolute(realRelative)) {
         throw new Error(`Freshness input resolves outside the workspace: ${relative}`);
     }
+    if (realFile === projectFilePath(workspace)) throw new Error('The migration checkpoint cannot be a file freshness input; use semantic project values');
     return { id, kind: 'file', path: relativePath(workspace, absolute), sha256: fileSha256(absolute) };
 }
 
@@ -70,7 +125,8 @@ function projectInput(id, value) {
 }
 
 export function selectedDiscoveryFiles(workspace, project, source) {
-    const property = { 'schema-ddl': 'schemaInventory', volumetrics: 'volumetrics', 'access-patterns': 'accessPatterns' }[source];
+    const directorySource = source === 'schema-evidence' ? 'schema-ddl' : source;
+    const property = { 'schema-ddl': 'schemaInventory', volumetrics: 'volumetrics', 'access-patterns': 'accessPatterns' }[directorySource];
     if (!property) throw new Error(`Unknown discovery source: ${source}`);
     const selection = project.phases?.discovery?.[property];
     const explicitFiles = selection?.files;
@@ -78,7 +134,7 @@ export function selectedDiscoveryFiles(workspace, project, source) {
         ? path.join(workspace, '.cosmosdb-migration')
         : selection?.path !== undefined
         ? path.resolve(workspace, selection.path)
-        : path.join(workspace, '.cosmosdb-migration/phases/1-discovery', source);
+        : path.join(workspace, '.cosmosdb-migration/phases/1-discovery', directorySource);
     relativePath(workspace, base);
     if (fs.existsSync(base)) relativePath(fs.realpathSync(workspace), fs.realpathSync(base));
     const list = (directory) =>
@@ -86,9 +142,12 @@ export function selectedDiscoveryFiles(workspace, project, source) {
             ? []
             : fs
                   .readdirSync(directory, { withFileTypes: true })
-                  .flatMap((entry) =>
-                      entry.isDirectory() ? list(path.join(directory, entry.name)) : [path.join(directory, entry.name)],
-                  );
+                  .flatMap((entry) => {
+                      const filePath = path.join(directory, entry.name);
+                      if (entry.isDirectory()) return list(filePath);
+                      if (source === 'schema-evidence' && entry.isSymbolicLink() && fs.statSync(filePath).isDirectory()) return [];
+                      return [filePath];
+                  });
     const included = (explicitFiles ?? selection?.includedFiles)?.map((value) => path.normalize(value));
     const legacyBase = explicitFiles === undefined && (selection?.path !== undefined || selection?.includedFiles !== undefined);
     const exclusionBase = legacyBase ? base : path.join(workspace, '.cosmosdb-migration');
@@ -99,18 +158,23 @@ export function selectedDiscoveryFiles(workspace, project, source) {
         relativePath(workspace, file);
         return file;
     }));
-    const template = source === 'schema-ddl' ? undefined
+    const template = directorySource === 'schema-ddl' ? undefined
         : path.resolve(workspace, '.cosmosdb-migration/phases/1-discovery', source, `${source}.md`);
+    const managedOutputs = source === 'schema-evidence' ? managedSchemaEvidencePaths(workspace) : undefined;
     return (included ? included.map(file => path.resolve(base, file)) : list(base))
         .filter((filePath) => source !== 'schema-ddl' || /\.(?:ddl|sql)$/iu.test(filePath))
+        .filter((filePath) => source !== 'schema-evidence' || !/\.(?:ddl|sql)$/iu.test(filePath))
         .filter((filePath) => path.resolve(filePath) !== template)
         .filter((filePath) => !excluded.has(path.resolve(filePath)))
+        .filter(filePath => !managedOutputs?.has(path.resolve(filePath)))
+        .filter(filePath => source !== 'schema-evidence' || !isManagedDomainOutput(workspace, filePath))
         .map((filePath) => {
             relativePath(explicitFiles !== undefined ? workspace : base, filePath);
             relativePath(fs.realpathSync(workspace), fs.realpathSync(filePath));
             if (!fs.statSync(filePath).isFile()) throw new Error(`Discovery input is not a file: ${filePath}`);
             return filePath;
         })
+        .filter(filePath => !managedOutputs?.has(fs.realpathSync(filePath)))
         .sort();
 }
 
@@ -121,6 +185,19 @@ export function selectedDdlFiles(workspace, project) {
 function withoutKeys(value, excluded) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return value ?? null;
     return Object.fromEntries(Object.entries(value).filter(([key]) => !excluded.has(key)));
+}
+
+function inferredSchemaInputs(workspace) {
+    const manifestPath = path.join(workspace, '.cosmosdb-migration/phases/1-discovery/preflight-manifest.json');
+    if (!fs.existsSync(manifestPath)) return [];
+    const files = parseJson(fs.readFileSync(manifestPath, 'utf8')).sourceInventory?.files ?? [];
+    const sourcePaths = new Set(files.filter(file => file.origin === 'inferred').flatMap(file => {
+        if (!Array.isArray(file.sourcePaths) || !file.sourcePaths.length || file.sourcePaths.some(source => typeof source !== 'string' || !source.trim())) {
+            throw new Error('Inferred DDL requires supporting sourcePaths');
+        }
+        return file.sourcePaths;
+    }));
+    return [...sourcePaths].map(source => fileInput(workspace, `schema-inference:${source}`, source));
 }
 
 function requiredInputs(workspace, project, phase) {
@@ -138,8 +215,9 @@ function requiredInputs(workspace, project, phase) {
                         relativePath(workspace, filePath),
                     ),
                 ),
+                ...inferredSchemaInputs(workspace),
                 projectInput('schema-selection', discovery.schemaInventory ?? null),
-                ...['volumetrics', 'access-patterns'].flatMap(source =>
+                ...['schema-evidence', 'volumetrics', 'access-patterns'].flatMap(source =>
                     selectedDiscoveryFiles(workspace, project, source).map(file =>
                         fileInput(workspace, `source-${source}:${relativePath(workspace, file)}`, relativePath(workspace, file)),
                     ),

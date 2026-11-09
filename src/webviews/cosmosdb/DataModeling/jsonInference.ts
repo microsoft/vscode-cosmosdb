@@ -21,10 +21,18 @@ import {
     type SchemaProperty,
 } from './models';
 import { getPartitionKeyRestriction } from './partitionKeyEligibility';
+import { MAX_ATTRIBUTE_COUNT } from './workloadLimits';
 
 export class DocumentSizeLimitError extends Error {
     constructor() {
         super('Document size exceeds the 2 MB item limit.');
+    }
+}
+
+/** Thrown when the uploaded documents contain more distinct attributes than the wizard accepts. */
+export class AttributeCountLimitError extends Error {
+    constructor(readonly attributeCount: number) {
+        super(`Uploaded documents contain more than ${MAX_ATTRIBUTE_COUNT} attributes.`);
     }
 }
 
@@ -212,6 +220,11 @@ export function inferSchemaFromJson(text: string): InferredSchema {
     }
 
     const properties = [...flattenProperties(getSchemaFromDocuments(docs)).values()];
+    // Reject rather than truncate: dropping properties could remove key and filter fields, and the count would
+    // still misdescribe the real documents.
+    if (properties.length > MAX_ATTRIBUTE_COUNT) {
+        throw new AttributeCountLimitError(properties.length);
+    }
     const pkName = pickPartitionKey(
         properties
             .filter((property) => !getPartitionKeyRestriction(property, properties))

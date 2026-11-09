@@ -3,8 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { Environment } from '@azure/ms-rest-azure-env';
 import type * as vscode from 'vscode';
-import { type Experience } from '../../AzureDBExperiences';
+import { API, type Experience } from '../../AzureDBExperiences';
 import { getThemeAgnosticIconURI } from '../../constants';
 import { AuthenticationMethod } from '../../cosmosdb/AuthenticationMethod';
 import { getControlPlane } from '../../cosmosdb/controlPlane';
@@ -34,7 +35,18 @@ export abstract class CosmosDBAccountResourceItem extends CosmosDBAccountResourc
         // accounts, which share the same base contextValue but have no ARM subscription/resource
         // group). Menu items that require `AzureResourceMetadata` (e.g. Account Overview) should
         // gate on this marker instead of the generic `treeItem.account` contextValue.
-        this.contextValue = TreeElementWithContextValue.createContextValue([this.contextValue, 'hasArmMetadata']);
+        const contextValues = [this.contextValue, 'hasArmMetadata'];
+        if (this.supportsDatabaseHub) {
+            contextValues.push('supportsDatabaseHub');
+        }
+        this.contextValue = TreeElementWithContextValue.createContextValue(contextValues);
+    }
+
+    public get supportsDatabaseHub(): boolean {
+        return (
+            this.experience.api === API.Core &&
+            this.account.subscription.environment.name === Environment.AzureCloud.name
+        );
     }
 
     public async getChildren(): Promise<TreeElement[]> {

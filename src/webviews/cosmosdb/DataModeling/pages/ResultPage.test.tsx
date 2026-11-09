@@ -30,13 +30,77 @@ const recommendation: PartitionKeyRecommendation = {
 
 function renderResult(value = recommendation) {
     return render(
-        <ResultPage recommendationStatus="received" recommendation={value} onRetryRecommendation={vi.fn()} />,
+        <ResultPage
+            recommendationStatus="received"
+            recommendation={value}
+            onRetryRecommendation={vi.fn()}
+            onEditModel={vi.fn()}
+            onStopWaitingRecommendation={vi.fn().mockResolvedValue(undefined)}
+        />,
     );
 }
 
 describe('ResultPage', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+    });
+
+    it('keeps recovery actions in the same header slot across status changes', async () => {
+        const onStopWaitingRecommendation = vi.fn().mockResolvedValue(undefined);
+        const onRetryRecommendation = vi.fn();
+        const onEditModel = vi.fn();
+        const props: ResultPageProps = {
+            recommendationStatus: 'waiting',
+            onStopWaitingRecommendation,
+            onRetryRecommendation,
+            onEditModel,
+        };
+        const { rerender } = render(<ResultPage {...props} />);
+        const action = screen.getByRole('button', { name: 'Stop waiting' });
+        const header = action.parentElement!;
+        expect(header).toContainElement(screen.getByText("Copilot's recommendation"));
+        expect(header).toHaveStyle({
+            display: 'grid',
+            'grid-template-columns': 'minmax(0, 1fr) repeat(2, minmax(0, 160px))',
+        });
+        expect(screen.queryByRole('button', { name: 'Edit model' })).not.toBeInTheDocument();
+        expect(action).toHaveTextContent('Stop waiting');
+        expect(action).toHaveAccessibleName('Stop waiting');
+        expect(action).toHaveStyle({ gridColumn: '3' });
+        await userEvent.click(action);
+        expect(onStopWaitingRecommendation).toHaveBeenCalledOnce();
+
+        rerender(<ResultPage {...props} recommendationStatus="stopped" />);
+        expect(screen.getByRole('button', { name: 'Retry' })).toBe(action);
+        expect(action.parentElement).toBe(header);
+        expect(action).toHaveTextContent('Retry');
+        expect(action).toHaveAccessibleName('Retry');
+        expect(action).toHaveFocus();
+        expect(action).not.toHaveAttribute('aria-description');
+        const edit = screen.getByRole('button', { name: 'Edit model' });
+        expect(edit.nextElementSibling).toBe(action);
+        expect(edit).toHaveTextContent('Edit model');
+        expect(edit).toHaveAccessibleName('Edit model');
+        await userEvent.tab({ shift: true });
+        expect(edit).toHaveFocus();
+        await userEvent.tab();
+        expect(action).toHaveFocus();
+        await userEvent.keyboard('{Enter}');
+        expect(onRetryRecommendation).toHaveBeenCalledOnce();
+
+        rerender(
+            <ResultPage {...props} recommendationStatus="error" recommendationError={'Long error. '.repeat(30)} />,
+        );
+        expect(screen.getByRole('button', { name: 'Retry' })).toBe(action);
+        expect(action.parentElement).toBe(header);
+        expect(screen.getByRole('button', { name: 'Edit model' })).toBe(edit);
+        expect(edit.nextElementSibling).toBe(action);
+        expect(action).toHaveStyle({ gridColumn: '3' });
+        await userEvent.click(edit);
+        expect(onEditModel).toHaveBeenCalledOnce();
+        rerender(<ResultPage {...props} recommendationStatus="idle" />);
+        expect(screen.getByRole('button', { name: 'Get Recommendation' })).toBe(action);
+        expect(screen.queryByRole('button', { name: 'Edit model' })).not.toBeInTheDocument();
     });
 
     it.each([
@@ -177,6 +241,8 @@ describe('ResultPage', () => {
                 recommendationStatus="received"
                 recommendation={scoredRecommendation}
                 onRetryRecommendation={vi.fn()}
+                onEditModel={vi.fn()}
+                onStopWaitingRecommendation={vi.fn().mockResolvedValue(undefined)}
                 {...props}
             />,
         );
@@ -509,6 +575,8 @@ describe('ResultPage', () => {
                 recommendationStatus: 'received',
                 recommendation,
                 onRetryRecommendation: vi.fn(),
+                onEditModel: vi.fn(),
+                onStopWaitingRecommendation: vi.fn().mockResolvedValue(undefined),
                 onFeedback: vi.fn(),
                 ...overrides,
             };
@@ -654,6 +722,7 @@ describe('ResultPage', () => {
         it.each<Partial<ResultPageProps>>([
             { recommendationStatus: 'idle' },
             { recommendationStatus: 'waiting' },
+            { recommendationStatus: 'stopped' },
             { recommendationStatus: 'error', recommendationError: 'Try again' },
             { recommendation: undefined },
             { recommendation: { summary: '', containers: [] } },

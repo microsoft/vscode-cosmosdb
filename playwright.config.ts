@@ -48,7 +48,11 @@ export default defineConfig<PlaywrightTestOptions, { displayLanguage?: DisplayLa
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 2 : 0,
     reporter: process.env.CI
-        ? [['github'], ['html', { open: 'never', outputFolder: path.join(isolation.reportsRootDir, 'html') }]]
+        ? [
+              ['github'],
+              ['html', { open: 'never', outputFolder: path.join(isolation.reportsRootDir, 'html') }],
+              ['json', { outputFile: path.join(isolation.reportsRootDir, 'results.json') }],
+          ]
         : [['list'], ['html', { open: 'never', outputFolder: path.join(isolation.reportsRootDir, 'html') }]],
     outputDir: isolation.resultsRootDir,
     // Generous: launching VS Code + activating the extension + opening a panel

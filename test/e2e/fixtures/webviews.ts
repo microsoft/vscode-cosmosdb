@@ -15,8 +15,8 @@
  *   1. Triggers the right VS Code command (production for Migration, the
  *      `cosmosDB.e2e.*` test-only commands for Document/QueryEditor — see
  *      `src/commands/e2eTestCommands/registerE2eTestCommands.ts` for why).
- *   2. Waits for the webview iframe to mount and for the React tree to render
- *      its first child into `#root`.
+ *   2. Waits for a visible webview iframe with a mounted React provider.
+ *      Migration also waits for project hydration before returning controls.
  *   3. Returns the inner content `Frame` so the test can drive the UI.
  *
  * Why not always use the production command IDs?
@@ -33,13 +33,15 @@ import { type Frame, type Page } from '@playwright/test';
 import { getWebviewByPredicate, runCommand } from './webviewHelpers';
 
 /**
- * Predicate that matches any webview frame whose `<div id="root">` has at
- * least one child element. Selecting the frame by this condition both
- * disambiguates from VS Code's own internal frames AND waits for the React
- * tree to mount — no separate "wait for render" step needed.
+ * The static HTML already contains an initial loader under `#root`.
+ * The Fluent provider only appears after React mounts.
  */
 const REACT_ROOT_RENDERED = async (frame: Frame): Promise<boolean> => {
-    return (await frame.locator('#root > *').count()) > 0;
+    return frame.locator('#root .fui-FluentProvider').isVisible();
+};
+
+const MIGRATION_READY = async (frame: Frame): Promise<boolean> => {
+    return frame.getByTestId('migration-phase-preflight').isVisible();
 };
 
 /**
@@ -52,7 +54,7 @@ export async function openMigrationAssistant(page: Page): Promise<Frame> {
     // package.nls.json. Category prefix is "Cosmos DB:" (from the command's
     // `category` field).
     await runCommand(page, 'Cosmos DB: New Migration');
-    return getWebviewByPredicate(page, REACT_ROOT_RENDERED);
+    return getWebviewByPredicate(page, MIGRATION_READY);
 }
 
 /**
@@ -65,7 +67,7 @@ export async function openMigrationAssistant(page: Page): Promise<Frame> {
  */
 export async function openMigrationSeeded(page: Page): Promise<Frame> {
     await runCommand(page, 'Cosmos DB: [E2E Test] Open Seeded Migration Assistant');
-    return getWebviewByPredicate(page, REACT_ROOT_RENDERED);
+    return getWebviewByPredicate(page, MIGRATION_READY);
 }
 
 /**
@@ -75,7 +77,7 @@ export async function openMigrationSeeded(page: Page): Promise<Frame> {
  */
 export async function openMigrationFresh(page: Page): Promise<Frame> {
     await runCommand(page, 'Cosmos DB: [E2E Test] Open Empty Migration Assistant');
-    return getWebviewByPredicate(page, REACT_ROOT_RENDERED);
+    return getWebviewByPredicate(page, MIGRATION_READY);
 }
 
 /**

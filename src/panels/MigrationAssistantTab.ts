@@ -36,6 +36,7 @@ import { MigrationWorkspaceItem } from '../tree/workspace-view/migration/Migrati
 import { getAvailableModelsInfo } from '../utils/aiUtils';
 import { createCosmosDBManagementClient } from '../utils/azureClients';
 import { sanitizeCosmosDBAccountName } from '../utils/cosmosDBAccountName';
+import { confirmChatStopped } from '../utils/dialogs/confirmChatStopped';
 import { getMigrationModels, MIGRATION_SELECTED_MODEL_KEY, resolveSelectedModelId } from '../utils/modelUtils';
 import { pickAppResource, pickWorkspaceResource } from '../utils/pickItem/pickAppResource';
 import {
@@ -850,12 +851,29 @@ export class MigrationAssistantTab extends BaseTab {
             mode: 'interactive',
             phase: 'preflight',
             preflightStep,
+            ...(preflightStep === 'schema-acquisition' ? { schemaSource: 'infer' as const } : {}),
         });
     }
 
     private async selectFiles(subfolder: 'schema-ddl' | 'volumetrics' | 'access-patterns'): Promise<void> {
         const filterMap: Record<string, Record<string, string[]>> = {
-            'schema-ddl': { 'Schema Files': ['sql', 'json', 'xml', 'csv', 'log', 'out'] },
+            'schema-ddl': {
+                'DDL and Schema Evidence': [
+                    'sql',
+                    'ddl',
+                    'json',
+                    'xml',
+                    'csv',
+                    'log',
+                    'out',
+                    'md',
+                    'txt',
+                    'yaml',
+                    'yml',
+                    'prisma',
+                ],
+                'All Files': ['*'],
+            },
             volumetrics: { 'Volumetric Files': ['txt', 'csv', 'json', 'html', 'xls', 'xlsx'] },
             'access-patterns': { 'Access Pattern Files': ['md', 'txt'] },
         };
@@ -1475,15 +1493,7 @@ export class MigrationAssistantTab extends BaseTab {
     private async confirmMigrationStopped(): Promise<void> {
         const runId = this.runTracker.snapshot()?.runId;
         if (!runId || !isMigrationRunActive(this.runTracker.snapshot())) return;
-        const confirm = l10n.t('Agent Has Stopped');
-        const answer = await vscode.window.showWarningMessage(
-            l10n.t(
-                'Confirm that the migration agent has already stopped in Chat. This only clears local run tracking; it does not cancel Chat.',
-            ),
-            { modal: true },
-            confirm,
-        );
-        if (answer === confirm && this.runTracker.snapshot()?.runId === runId) {
+        if ((await confirmChatStopped()) && this.runTracker.snapshot()?.runId === runId) {
             this.skillTelemetry.confirmedStopped();
             this.runTracker.confirmStopped();
             this.publishRunActivity();

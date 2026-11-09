@@ -534,13 +534,23 @@ export interface ResultPageProps {
     recommendation?: PartitionKeyRecommendation;
     recommendationError?: string;
     onRetryRecommendation: () => void;
+    onEditModel: () => void;
+    onStopWaitingRecommendation: () => Promise<void>;
     /** When supplied (including undefined), the parent owns the selection and resets it for new recommendations. */
     feedback?: 'up' | 'down';
     onFeedback?: (value: 'up' | 'down') => void;
 }
 
 export function ResultPage(props: ResultPageProps) {
-    const { recommendationStatus, recommendation, recommendationError, onRetryRecommendation, onFeedback } = props;
+    const {
+        recommendationStatus,
+        recommendation,
+        recommendationError,
+        onRetryRecommendation,
+        onEditModel,
+        onStopWaitingRecommendation,
+        onFeedback,
+    } = props;
     const styles = useStyles();
     const containers = recommendation?.containers ?? [];
     const [activeEntity, setActiveEntity] = useState<string>();
@@ -577,6 +587,8 @@ export function ResultPage(props: ResultPageProps) {
                             : recommendationError
                     }
                     onRetry={onRetryRecommendation}
+                    onEditModel={onEditModel}
+                    onStopWaiting={onStopWaitingRecommendation}
                 />
             </div>
         );

@@ -7,10 +7,27 @@
 
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { StrictMode, useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createBlankContainer, type DataModel, withDerivedCandidates } from '../dataModel';
 import { inferSchemaFromJson } from '../jsonInference';
-import { DataPage } from './DataPage';
+import { ContainerPage, type ContainerPageProps } from './ContainerPage';
+import { DataPage as StatefulDataPage, type DataPageProps } from './DataPage';
+
+// These field-level tests inspect each emitted model. Import race tests exercise React state and the parent adapters.
+function DataPage({
+    model,
+    onChange,
+    ...props
+}: Omit<DataPageProps, 'onChange'> & { onChange: (next: DataModel) => void }) {
+    return (
+        <StatefulDataPage
+            {...props}
+            model={model}
+            onChange={(update) => onChange(typeof update === 'function' ? update(model) : update)}
+        />
+    );
+}
 
 const confirm = vi.hoisted(() => vi.fn());
 vi.mock('@microsoft/vscode-ext-webview/react', () => ({
@@ -372,6 +389,13 @@ describe('DataPage native schema confirmation', () => {
         expect(onChange.mock.calls[0]?.[0].containers[0].properties.map((p) => p.name)).toEqual(
             response === true ? ['id', 'amount'] : undefined,
         );
+        expect(onTelemetry.mock.calls.map(([event]) => event)).toEqual(
+            response === true ? [] : [{ type: 'schemaImport', outcome: 'cancelled' }],
+        );
+        // A callback alone is not an accepted import: the parent must commit the emitted model.
+        page.rerender(
+            <DataPage model={onChange.mock.calls[0]?.[0] ?? model} onChange={onChange} onTelemetry={onTelemetry} />,
+        );
         expect(screen.getByRole('button', { name: 'Upload JSON' })).toHaveFocus();
         expect(onTelemetry).toHaveBeenCalledExactlyOnceWith({
             type: 'schemaImport',
@@ -453,4 +477,295 @@ describe('DataPage native schema confirmation', () => {
         await user.keyboard('{Enter}');
         expect(onTelemetry).toHaveBeenCalledExactlyOnceWith({ type: 'fieldAdded' });
     });
+});
+
+describe('DataPage count limits', () => {
+    function arraysModel(): DataModel {
+        const container = createBlankContainer();
+        container.arrays = { hasArrays: true, avgItems: 10, maxItems: 100, updatePattern: 'none' };
+        return { containers: [container], activeContainerId: container.id };
+    }
+
+    it.each([
+        { label: 'Total attributes per document', invalid: '10001', valid: '10000', field: 'attributeCount' },
+        { label: 'Maximum items per array', invalid: '100001', valid: '100000', field: 'maxItems' },
+        { label: 'Maximum items per array', invalid: '20.5', valid: '20', field: 'maxItems' },
+        { label: 'Average items per array', invalid: '-1', valid: '2.5', field: 'avgItems' },
+    ] as const)('rejects $invalid for $label and accepts $valid', ({ label, invalid, valid, field }) => {
+        const onChange = vi.fn<(next: DataModel) => void>();
+        render(<DataPage model={arraysModel()} onChange={onChange} />);
+        const input = screen.getByRole('spinbutton', { name: label });
+        fireEvent.change(input, { target: { value: invalid } });
+        expect(onChange).not.toHaveBeenCalled();
+        expect(input).toHaveAttribute('aria-invalid', 'true');
+        expect(screen.getByRole('alert')).toBeInTheDocument();
+
+        fireEvent.change(input, { target: { value: valid } });
+        if (field !== 'attributeCount') {
+            fireEvent.blur(input);
+        }
+        const next = onChange.mock.lastCall![0].containers[0];
+        expect(field === 'attributeCount' ? next.document.attributeCount : next.arrays[field]).toBe(Number(valid));
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('rejects an average above the maximum and clears the error once the maximum is raised', () => {
+        const onChange = vi.fn<(next: DataModel) => void>();
+        const { rerender } = render(<DataPage model={arraysModel()} onChange={onChange} />);
+        const average = screen.getByRole('spinbutton', { name: 'Average items per array' });
+        fireEvent.change(average, { target: { value: '150' } });
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        fireEvent.blur(average);
+        expect(onChange).not.toHaveBeenCalled();
+        expect(screen.getByRole('alert')).toHaveTextContent(
+            'Average items per array cannot exceed maximum items per array.',
+        );
+
+        const maximum = screen.getByRole('spinbutton', { name: 'Maximum items per array' });
+        fireEvent.change(maximum, { target: { value: '200' } });
+        fireEvent.blur(maximum);
+        rerender(<DataPage model={onChange.mock.lastCall![0]} onChange={onChange} />);
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(average).toHaveValue(10);
+    });
+
+    it.each([
+        { label: 'Maximum items per array', field: 'maxItems' },
+        { label: 'Average items per array', field: 'avgItems' },
+    ] as const)('allows typing a replacement for $label before committing on blur', async ({ label, field }) => {
+        const user = userEvent.setup();
+        const onChange = vi.fn<(next: DataModel) => void>();
+        const page = render(<DataPage model={arraysModel()} onChange={onChange} />);
+        const input = screen.getByRole('spinbutton', { name: label });
+
+        await user.clear(input);
+        expect(input).toHaveDisplayValue('');
+        await user.type(input, '2');
+        expect(input).toHaveValue(2);
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(onChange).not.toHaveBeenCalled();
+        await user.type(input, '0');
+        expect(input).toHaveValue(20);
+        await user.tab();
+
+        expect(onChange).toHaveBeenCalledOnce();
+        expect(onChange.mock.lastCall![0].containers[0].arrays[field]).toBe(20);
+        page.rerender(<DataPage model={onChange.mock.lastCall![0]} onChange={onChange} />);
+        expect(input).toHaveValue(20);
+        expect(input).not.toHaveAttribute('aria-invalid', 'true');
+    });
+
+    it('rejects invalid array ordering on blur and allows a typed correction', async () => {
+        const user = userEvent.setup();
+        const onChange = vi.fn<(next: DataModel) => void>();
+        render(<DataPage model={arraysModel()} onChange={onChange} />);
+        const input = screen.getByRole('spinbutton', { name: 'Maximum items per array' });
+        await user.clear(input);
+        await user.type(input, '2');
+        await user.tab();
+        expect(onChange).not.toHaveBeenCalled();
+        expect(input).toHaveValue(100);
+        expect(input).toHaveAttribute('aria-invalid', 'true');
+        expect(screen.getByRole('alert')).toHaveTextContent(
+            'Average items per array cannot exceed maximum items per array.',
+        );
+        await user.clear(input);
+        await user.type(input, '20');
+        await user.tab();
+        expect(onChange.mock.lastCall![0].containers[0].arrays.maxItems).toBe(20);
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('rejects an upload above the attribute limit with a message and leaves the schema unchanged', async () => {
+        confirm.mockResolvedValue(true);
+        const container = createBlankContainer('Orders');
+        const onChange = vi.fn<(next: DataModel) => void>();
+        const onTelemetry = vi.fn();
+        const page = render(
+            <DataPage
+                model={{ containers: [container], activeContainerId: container.id }}
+                onChange={onChange}
+                onTelemetry={onTelemetry}
+            />,
+        );
+        const text = JSON.stringify(Object.fromEntries(Array.from({ length: 10_001 }, (_, index) => [`a${index}`, 1])));
+        const file = new File([text], 'wide.json', { type: 'application/json' });
+        Object.defineProperty(file, 'text', { value: vi.fn().mockResolvedValue(text) });
+        fireEvent.change(page.container.querySelector('input[type="file"]')!, { target: { files: [file] } });
+
+        await waitFor(() =>
+            expect(screen.getByRole('alert')).toHaveTextContent(
+                `wide.json contains ${(10_001).toLocaleString()} distinct attributes, more than the limit of ${(10_000).toLocaleString()}. Upload a smaller sample of documents.`,
+            ),
+        );
+        expect(onChange).not.toHaveBeenCalled();
+        expect(screen.getByRole('spinbutton', { name: 'Total attributes per document' })).toHaveValue(3);
+        expect(onTelemetry).toHaveBeenCalledWith({ type: 'schemaImport', outcome: 'error' });
+        expect(JSON.stringify(onTelemetry.mock.calls)).not.toContain('wide.json');
+    });
+
+    it('clears replaced attribute errors after a successful JSON upload', async () => {
+        confirm.mockResolvedValue(true);
+        const model = arraysModel();
+        const onChange = vi.fn<(next: DataModel) => void>();
+        const page = render(<DataPage model={model} onChange={onChange} />);
+        const attributes = screen.getByRole('spinbutton', { name: 'Total attributes per document' });
+        fireEvent.change(attributes, { target: { value: '10001' } });
+        expect(attributes).toHaveAttribute('aria-invalid', 'true');
+        const average = screen.getByRole('spinbutton', { name: 'Average items per array' });
+        fireEvent.change(average, { target: { value: '-1' } });
+
+        const text = '{"id":"1","items":[]}';
+        const file = new File([text], 'valid.json', { type: 'application/json' });
+        Object.defineProperty(file, 'text', { value: vi.fn().mockResolvedValue(text) });
+        fireEvent.change(page.container.querySelector('input[type="file"]')!, { target: { files: [file] } });
+        await waitFor(() => expect(onChange).toHaveBeenCalledOnce());
+        page.rerender(<DataPage model={onChange.mock.lastCall![0]} onChange={onChange} />);
+
+        expect(attributes).toHaveValue(2);
+        expect(attributes).not.toHaveAttribute('aria-invalid', 'true');
+        expect(average).toHaveAttribute('aria-invalid', 'true');
+        expect(screen.getByRole('alert')).toHaveTextContent('Value cannot be negative.');
+    });
+
+    it('resets count errors and drafts when switching containers', () => {
+        const model = arraysModel();
+        const other = createBlankContainer('Other');
+        other.arrays.hasArrays = true;
+        model.containers.push(other);
+        const onChange = vi.fn<(next: DataModel) => void>();
+        const page = render(<DataPage model={model} onChange={onChange} />);
+        for (const label of ['Total attributes per document', 'Average items per array', 'Maximum items per array']) {
+            fireEvent.change(screen.getByRole('spinbutton', { name: label }), { target: { value: '-1' } });
+        }
+        expect(screen.getAllByRole('alert')).toHaveLength(3);
+
+        page.rerender(<DataPage model={{ ...model, activeContainerId: other.id }} onChange={onChange} />);
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(screen.getByRole('spinbutton', { name: 'Total attributes per document' })).toHaveValue(
+            other.document.attributeCount,
+        );
+        for (const input of screen.getAllByRole('spinbutton')) {
+            expect(input).not.toHaveAttribute('aria-invalid', 'true');
+        }
+        expect(screen.getByRole('spinbutton', { name: 'Average items per array' })).toHaveValue(other.arrays.avgItems);
+        expect(screen.getByRole('spinbutton', { name: 'Maximum items per array' })).toHaveValue(other.arrays.maxItems);
+    });
+});
+
+describe('DataPage schema import concurrency', () => {
+    function deferred<T>() {
+        let resolve!: (value: T) => void;
+        let reject!: (reason: Error) => void;
+        const promise = new Promise<T>((yes, no) => {
+            resolve = yes;
+            reject = no;
+        });
+        return { promise, resolve, reject };
+    }
+
+    /** Commits updates through real React state, as the wizard does, instead of inspecting emitted models. */
+    function ImportHarness({
+        batchRename = false,
+        onTelemetry,
+        onEdited,
+    }: Pick<ContainerPageProps, 'onTelemetry' | 'onEdited'> & { batchRename?: boolean }) {
+        const [model, setModel] = useState<DataModel>(() => {
+            const container = createBlankContainer('Orders');
+            return { containers: [container], activeContainerId: container.id };
+        });
+        const rename = () =>
+            setModel((previous) => ({
+                ...previous,
+                containers: previous.containers.map((c) => ({ ...c, entity: 'LatestOrders' })),
+            }));
+        return (
+            <>
+                <output data-testid="model">{JSON.stringify(model)}</output>
+                <div onClickCapture={batchRename ? rename : undefined}>
+                    <ContainerPage
+                        model={model}
+                        tab="data"
+                        onTabChange={vi.fn()}
+                        onChange={setModel}
+                        onChangeData={setModel}
+                        onTelemetry={onTelemetry}
+                        onEdited={onEdited}
+                    />
+                </div>
+            </>
+        );
+    }
+
+    function committedModel(): DataModel {
+        return JSON.parse(screen.getByTestId('model').textContent) as DataModel;
+    }
+
+    function selectDelayedFile(container: HTMLElement, name = 'sample.json') {
+        const read = deferred<string>();
+        const file = new File([], name, { type: 'application/json' });
+        const text = vi.fn(() => read.promise);
+        Object.defineProperty(file, 'text', { value: text });
+        fireEvent.change(container.querySelector('input[type="file"]')!, { target: { files: [file] } });
+        return { ...read, text };
+    }
+
+    beforeEach(() => {
+        confirm.mockResolvedValue(true);
+    });
+
+    it('reports a committed import and data edit once under StrictMode', async () => {
+        const onTelemetry = vi.fn();
+        const onEdited = vi.fn();
+        const page = render(
+            <StrictMode>
+                <ImportHarness onTelemetry={onTelemetry} onEdited={onEdited} />
+            </StrictMode>,
+        );
+        const read = selectDelayedFile(page.container);
+        await waitFor(() => expect(read.text).toHaveBeenCalledOnce());
+        await act(async () => read.resolve('{"imported":true}'));
+        expect(committedModel().containers[0].properties.map((p) => p.name)).toEqual(['imported']);
+        expect(onTelemetry).toHaveBeenCalledExactlyOnceWith({ type: 'schemaImport', outcome: 'success' });
+        expect(onEdited).toHaveBeenCalledExactlyOnceWith('data');
+        expect(screen.getByText(/Inferred schema from sample.json/)).toBeVisible();
+        expect(screen.getByRole('button', { name: 'Upload JSON' })).toHaveFocus();
+    });
+
+    it('composes synchronous batched parent and field edits through the parent adapter', () => {
+        render(
+            <StrictMode>
+                <ImportHarness batchRename />
+            </StrictMode>,
+        );
+        // The parent capture handler queues a rename before the DataPage click handler queues its edit.
+        fireEvent.click(screen.getAllByRole('button', { name: 'Remove type' })[0]);
+        expect(committedModel().containers[0].entity).toBe('LatestOrders');
+        expect(committedModel().containers[0].properties.map((p) => p.name)).not.toContain('type');
+        expect(screen.queryByRole('row', { name: /^type / })).not.toBeInTheDocument();
+    });
+
+    it.each(['success', 'invalid', 'read error'])(
+        'ignores an older %s after a newer import completes',
+        async (outcome) => {
+            const onTelemetry = vi.fn();
+            const page = render(<ImportHarness onTelemetry={onTelemetry} />);
+            const old = selectDelayedFile(page.container, 'old.json');
+            await waitFor(() => expect(old.text).toHaveBeenCalledOnce());
+            const current = selectDelayedFile(page.container, 'current.json');
+            await waitFor(() => expect(current.text).toHaveBeenCalledOnce());
+            await act(async () => current.resolve('{"newest":true}'));
+            const afterCurrent = committedModel();
+            await act(async () => {
+                if (outcome === 'read error') old.reject(new Error('read failed'));
+                else old.resolve(outcome === 'invalid' ? 'invalid' : '{"older":true}');
+            });
+            expect(committedModel()).toEqual(afterCurrent);
+            expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+            expect(screen.getByRole('row', { name: /^newest / })).toBeVisible();
+            expect(screen.getByText(/Inferred schema from current.json/)).toBeVisible();
+            expect(screen.queryByText(/old.json/)).not.toBeInTheDocument();
+            expect(onTelemetry).toHaveBeenCalledExactlyOnceWith({ type: 'schemaImport', outcome: 'success' });
+        },
+    );
 });

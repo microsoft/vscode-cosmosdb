@@ -16,7 +16,7 @@ as launch conditions.
 2. Otherwise follow [preflight](./preflight.md) in this order: `application-details`,
    `schema-acquisition`, `volumetrics`, `access-patterns`. Evaluate each step, preserve
    valid supplied inputs, and perform the work needed to satisfy its gate. Infer DDL
-   only when the resolved selected set is empty. Preserve selected DDL even on regeneration.
+   when no supplied DDL is selected; retain its origin on reruns. Preserve supplied DDL even on regeneration.
 3. Record preflight evidence and freshness, finalize its checkpoint, and require a
    successful `check-phase-completion.mjs --phase preflight` before source analysis.
    Missing, stale, or invalid evidence still blocks analysis and downstream completion.

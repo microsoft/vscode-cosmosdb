@@ -4,7 +4,7 @@
   "cosmosdb.command.account.delete": "Hesabı Sil…",
   "cosmosdb.command.account.unsupported": "Desteklenmeyen Hesabı Aç",
   "cosmosdb.command.account.overview.open": "Hesaba Genel Bakışı Aç",
-  "cosmosdb.command.account.databaseHub.open": "View in Database Hub",
+  "cosmosdb.command.account.databaseHub.open": "Veritabanı Merkezi'nde Görüntüle",
   "cosmosdb.command.account.overview.menu": "Hesap Genel Bakışı (Önizleme)",
   "cosmosdb.command.account.overview.overview": "Genel Bakış",
   "cosmosdb.command.account.overview.normalizedRu": "Normalleştirilmiş RU",

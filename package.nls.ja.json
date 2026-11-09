@@ -4,7 +4,7 @@
   "cosmosdb.command.account.delete": "アカウントの削除…",
   "cosmosdb.command.account.unsupported": "サポートされていないアカウントを開く",
   "cosmosdb.command.account.overview.open": "アカウントの概要を開く",
-  "cosmosdb.command.account.databaseHub.open": "View in Database Hub",
+  "cosmosdb.command.account.databaseHub.open": "データベース ハブでの表示",
   "cosmosdb.command.account.overview.menu": "アカウントの概要 (プレビュー)",
   "cosmosdb.command.account.overview.overview": "概要",
   "cosmosdb.command.account.overview.normalizedRu": "正規化された RU",

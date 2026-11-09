@@ -32,7 +32,6 @@ import {
 import { fetchSample, verifySample } from './adventureworks/sample.mjs';
 import { setupAdventureWorks } from './adventureworks/setup.mjs';
 
-const contract = JSON.parse(readFileSync(new URL('./adventureworks/schema-contract.json', import.meta.url), 'utf8'));
 const ddl = fileURLToPath(new URL('./adventureworks/AdventureworksLT.sql', import.meta.url));
 
 function temporary(t) {
@@ -42,16 +41,15 @@ function temporary(t) {
 }
 
 function schemaInventory() {
-    return {
-        dialect: 'tsql',
-        tables: Object.entries(contract).map(([name, value]) => ({
-            name,
-            identity: name.split('.').map((part) => ({ name: part, quoted: true })),
-            columns: value.columns.map((column) => ({ name: column })),
-            primaryKey: [...value.primaryKey],
-            foreignKeys: structuredClone(value.foreignKeys),
-        })),
-    };
+    return JSON.parse(
+        readFileSync(
+            new URL(
+                './adventureworks/checkpoints/preflight/phases/1-discovery/preflight-manifest.json',
+                import.meta.url,
+            ),
+            'utf8',
+        ),
+    ).sourceInventory;
 }
 
 test('pinned checkout is fetched once, reused offline, and never resets modified files', (t) => {
@@ -218,6 +216,266 @@ test('independent inventory checks accept quoted references and reject lost rela
         mutate(changed);
         assert.throws(() => checkAdventureWorksInventory(changed));
     }
+});
+
+test('source semantics accept equivalent type/facet and global/per-table index representations', () => {
+    const inventory = schemaInventory();
+    const product = inventory.tables.find(({ name }) => name === 'SalesLT.Product');
+    Object.assign(
+        product.columns.find(({ name }) => name === 'Name'),
+        {
+            type: ' [dbo].[Name] ',
+            resolvedType: '[sys].[nvarchar] ( 50 )',
+            nullable: 'NOT NULL',
+        },
+    );
+    Object.assign(
+        product.columns.find(({ name }) => name === 'Weight'),
+        {
+            type: ' numeric ',
+            precision: '8',
+            scale: '2',
+            nullable: 'YES',
+        },
+    );
+    Object.assign(
+        product.columns.find(({ name }) => name === 'ThumbNailPhoto'),
+        {
+            type: 'varbinary',
+            maxLength: 'MAX',
+        },
+    );
+    const customer = inventory.tables.find(({ name }) => name === 'SalesLT.Customer');
+    Object.assign(
+        customer.columns.find(({ name }) => name === 'PasswordHash'),
+        {
+            type: 'VARCHAR',
+            length: 128,
+        },
+    );
+    for (const table of inventory.tables) {
+        table.indexes = inventory.indexes
+            .filter((index) => index.table === table.name)
+            .map(({ keys, unique, ...index }) => ({
+                ...index,
+                keyColumns: keys.map((column) => ({ column: `[${column}]` })),
+                isUnique: unique ? 'YES' : 'NO',
+            }));
+        for (const key of table.foreignKeys)
+            key.onDelete = key.onDelete.replace('NO ACTION (implicit)', 'no_action (default)');
+    }
+    delete inventory.indexes;
+    checkAdventureWorksInventory(inventory);
+    for (const table of inventory.tables) {
+        table.uniqueConstraints = table.indexes
+            .filter(({ isUnique }) => isUnique === 'YES')
+            .map(({ isUnique, ...index }) => index);
+        table.indexes = table.indexes.filter(({ isUnique }) => isUnique === 'NO');
+    }
+    checkAdventureWorksInventory(inventory);
+});
+
+test('source semantics reject corrupt or missing column facts', async (t) => {
+    const column = (inventory, table, name) =>
+        inventory.tables.find((entry) => entry.name === table).columns.find((entry) => entry.name === name);
+    for (const [name, mutate] of [
+        [
+            'MONEY changed to BIT',
+            (inventory) => {
+                column(inventory, 'SalesLT.Product', 'ListPrice').type = 'BIT';
+            },
+        ],
+        [
+            'length narrowed',
+            (inventory) => {
+                column(inventory, 'SalesLT.Customer', 'PasswordHash').type = 'VARCHAR(64)';
+            },
+        ],
+        [
+            'binary MAX bounded',
+            (inventory) => {
+                column(inventory, 'SalesLT.Product', 'ThumbNailPhoto').type = 'VARBINARY(8000)';
+            },
+        ],
+        [
+            'decimal precision changed',
+            (inventory) => {
+                column(inventory, 'SalesLT.Product', 'Weight').type = 'DECIMAL(9,2)';
+            },
+        ],
+        [
+            'decimal scale changed',
+            (inventory) => {
+                column(inventory, 'SalesLT.Product', 'Weight').type = 'NUMERIC(8,3)';
+            },
+        ],
+        [
+            'contradictory precision',
+            (inventory) => {
+                column(inventory, 'SalesLT.Product', 'Weight').precision = 6;
+            },
+        ],
+        [
+            'contradictory scale',
+            (inventory) => {
+                column(inventory, 'SalesLT.Product', 'Weight').scale = 4;
+            },
+        ],
+        [
+            'incorrect MONEY scale',
+            (inventory) => {
+                column(inventory, 'SalesLT.Product', 'ListPrice').scale = 2;
+            },
+        ],
+        [
+            'incorrect alias resolution',
+            (inventory) => {
+                column(inventory, 'SalesLT.Product', 'Name').resolvedType = 'NVARCHAR(10)';
+            },
+        ],
+        [
+            'required column made nullable',
+            (inventory) => {
+                column(inventory, 'SalesLT.Product', 'ListPrice').nullable = true;
+            },
+        ],
+        [
+            'optional column made required',
+            (inventory) => {
+                column(inventory, 'SalesLT.Product', 'ProductCategoryID').nullable = false;
+            },
+        ],
+        [
+            'missing nullability',
+            (inventory) => {
+                delete column(inventory, 'SalesLT.Product', 'Color').nullable;
+            },
+        ],
+        [
+            'contradictory nullability flags',
+            (inventory) => {
+                column(inventory, 'SalesLT.Product', 'Color').isNullable = false;
+            },
+        ],
+        [
+            'computed mapped type changed',
+            (inventory) => {
+                column(inventory, 'SalesLT.SalesOrderDetail', 'LineTotal').efType = 'DECIMAL(10,2)';
+            },
+        ],
+    ]) {
+        await t.test(name, () => {
+            const inventory = schemaInventory();
+            mutate(inventory);
+            assert.throws(
+                () => checkAdventureWorksInventory(inventory),
+                /type|length|precision|scale|nullability|nullable/i,
+            );
+        });
+    }
+});
+
+test('source semantics require supplied FK actions but preserve genuine inference uncertainty', () => {
+    const inventory = schemaInventory();
+    const detail = inventory.tables.find(({ name }) => name === 'SalesLT.SalesOrderDetail');
+    const cascade = detail.foreignKeys.find(({ columns }) => columns.includes('SalesOrderID'));
+    cascade.onDelete = 'NO ACTION';
+    assert.throws(() => checkAdventureWorksInventory(inventory), /delete action/);
+    assert.throws(() => checkAdventureWorksInventory(inventory, { source: 'inferred' }), /delete action/);
+    cascade.onDelete = 'UNKNOWN';
+    assert.throws(() => checkAdventureWorksInventory(inventory), /delete action/);
+    checkAdventureWorksInventory(inventory, { source: 'inferred' });
+    delete cascade.onDelete;
+    cascade.deleteBehavior = 'Required EF relationship convention; live database action is unknown.';
+    inventory.files.forEach((file) => {
+        file.origin = 'inferred';
+    });
+    assert.throws(() => checkAdventureWorksInventory(inventory), /delete action/);
+    checkAdventureWorksInventory(inventory, { source: 'inferred' });
+    cascade.onDelete = 'CASCADE';
+    cascade.deleteAction = 'SET NULL';
+    assert.throws(() => checkAdventureWorksInventory(inventory), /contradictory fields/);
+    delete cascade.deleteAction;
+    cascade.onUpdate = 'CASCADE';
+    assert.throws(() => checkAdventureWorksInventory(inventory), /update action/);
+});
+
+test('source semantics reject missing, combined, invented or filtered uniqueness', async (t) => {
+    for (const [name, mutate] of [
+        [
+            'missing ProductNumber constraint',
+            (inventory) => {
+                inventory.indexes = inventory.indexes.filter((index) => index.name !== 'AK_Product_ProductNumber');
+            },
+        ],
+        [
+            'combined Name and ProductNumber constraint',
+            (inventory) => {
+                inventory.indexes.find((index) => index.name === 'AK_Product_Name').keys.push('ProductNumber');
+                inventory.indexes = inventory.indexes.filter((index) => index.name !== 'AK_Product_ProductNumber');
+            },
+        ],
+        [
+            'invented email uniqueness',
+            (inventory) => {
+                inventory.indexes.find((index) => index.name === 'IX_Customer_EmailAddress').unique = true;
+            },
+        ],
+        [
+            'missing uniqueness flag',
+            (inventory) => {
+                delete inventory.indexes.find((index) => index.name === 'AK_Product_Name').unique;
+            },
+        ],
+        [
+            'invalid uniqueness flag',
+            (inventory) => {
+                inventory.indexes.find((index) => index.name === 'AK_Product_Name').unique = 'NULL';
+            },
+        ],
+        [
+            'filtered Product uniqueness',
+            (inventory) => {
+                inventory.indexes.find((index) => index.name === 'AK_Product_Name').filter = '[Name] IS NOT NULL';
+            },
+        ],
+        [
+            'index key order changed',
+            (inventory) => {
+                inventory.indexes.find((index) => index.keys.length > 1).keys.reverse();
+            },
+        ],
+        [
+            'duplicate index evidence',
+            (inventory) => {
+                inventory.indexes.push(structuredClone(inventory.indexes[0]));
+            },
+        ],
+    ]) {
+        await t.test(name, () => {
+            const inventory = schemaInventory();
+            mutate(inventory);
+            assert.throws(() => checkAdventureWorksInventory(inventory), /index|uniqueness|boolean/i);
+        });
+    }
+});
+
+test('inference does not require convention-only nonunique indexes or physical computed metadata', () => {
+    const inventory = schemaInventory();
+    const conventions = new Set([
+        'IX_CustomerAddress_AddressID',
+        'IX_Product_ProductCategoryID',
+        'IX_Product_ProductModelID',
+        'IX_ProductCategory_ParentProductCategoryID',
+        'IX_ProductModelProductDescription_ProductDescriptionID',
+        'IX_SalesOrderHeader_BillToAddressID',
+        'IX_SalesOrderHeader_ShipToAddressID',
+    ]);
+    inventory.indexes = inventory.indexes.filter(({ name }) => !conventions.has(name));
+    checkAdventureWorksInventory(inventory, { source: 'inferred' });
+    assert.throws(() => checkAdventureWorksInventory(inventory), /index evidence is missing/);
+    inventory.indexes = inventory.indexes.filter(({ name }) => name !== 'AK_Product_ProductNumber');
+    assert.throws(() => checkAdventureWorksInventory(inventory, { source: 'inferred' }), /ProductNumber.*missing/);
 });
 
 test('controller coverage requires code-evidenced reads and writes from each CRUD controller', () => {

@@ -15,7 +15,7 @@ import { isRbacException, showRbacPermissionError } from '../../cosmosdb/utils/r
 import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
 import { compareResourceIds } from '../../utils/strings';
-import { rejectOnTimeout } from '../../utils/timeout';
+import { rejectOnTimeout, TimeoutError } from '../../utils/timeout';
 import { CosmosDBAccountResourceItemBase } from '../azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
 import { type TreeElement } from '../TreeElement';
 import { type TreeElementWithStorageId } from '../TreeElementWithStorageId';
@@ -133,6 +133,25 @@ export abstract class CosmosDBAccountAttachedResourceItem
             }
         } catch (e) {
             if (e instanceof Error) {
+                if (e instanceof TimeoutError) {
+                    ext.outputChannel.error(e);
+                    if (!this.account.isEmulator) {
+                        const openTimeoutSetting = l10n.t('Open Timeout Setting');
+                        void vscode.window
+                            .showErrorMessage(e.message, openTimeoutSetting)
+                            .then(async (item) => {
+                                if (item === openTimeoutSetting) {
+                                    await vscode.commands.executeCommand(
+                                        'workbench.action.openSettings',
+                                        `@id:${ext.settingsKeys.connectionTimeout}`,
+                                    );
+                                }
+                            })
+                            .then(undefined, (error: unknown) => {
+                                ext.outputChannel.error(error instanceof Error ? error : new Error(String(error)));
+                            });
+                    }
+                }
                 if (isRbacException(e) && !this.hasShownRbacNotification) {
                     this.hasShownRbacNotification = true;
                     const tenantId = getCosmosDBEntraIdCredential(accountInfo.credentials)?.tenantId;

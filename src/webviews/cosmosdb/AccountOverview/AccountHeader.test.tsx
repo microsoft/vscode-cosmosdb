@@ -12,11 +12,12 @@ import {
     dropdownClassNames,
     FluentProvider,
     optionClassNames,
+    webDarkTheme,
     webLightTheme,
 } from '@fluentui/react-components';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { type ComponentProps, type PropsWithChildren } from 'react';
+import { type ComponentProps } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getAccountMetricApplicability } from '../../../panels/accountOverview/metrics/contracts';
 import { AccountHeader, type AccountSummary } from './AccountHeader';
@@ -44,11 +45,7 @@ const summary: AccountSummary = {
     lastRefreshedAt: 1000,
 };
 
-function Wrapper({ children }: PropsWithChildren) {
-    return <FluentProvider theme={webLightTheme}>{children}</FluentProvider>;
-}
-
-function renderHeader(overrides: Partial<HeaderProps> = {}) {
+function renderHeader(overrides: Partial<HeaderProps> = {}, theme = webLightTheme) {
     const props: HeaderProps = {
         summary,
         lastRefreshedAt: 2000,
@@ -57,11 +54,14 @@ function renderHeader(overrides: Partial<HeaderProps> = {}) {
         onTimeRangeChange: vi.fn(),
         containers: [],
         onSelectContainer: vi.fn(),
-        accountActionBusy: false,
-        onAccountAction: vi.fn(),
         ...overrides,
     };
-    return { props, ...render(<AccountHeader {...props} />, { wrapper: Wrapper }) };
+    return {
+        props,
+        ...render(<AccountHeader {...props} />, {
+            wrapper: ({ children }) => <FluentProvider theme={theme}>{children}</FluentProvider>,
+        }),
+    };
 }
 
 beforeEach(() => {
@@ -86,6 +86,72 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('AccountHeader', () => {
+    it('reserves the rendered badge width plus the inset and gap without moving its top-right corner', () => {
+        vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 280, 32));
+        renderHeader();
+        const badge = screen.getByLabelText('Preview', { selector: `.${badgeClassNames.root}` });
+        expect(badge).toHaveStyle({ position: 'fixed', top: '10px', right: '20px' });
+        expect(
+            screen.getByRole('heading', { name: summary.accountName }).closest('header')?.firstElementChild,
+        ).toHaveStyle({
+            paddingRight: '308px',
+        });
+    });
+
+    it.each([
+        ['light', webLightTheme],
+        ['dark', webDarkTheme],
+    ])('shows the Preview tooltip on keyboard focus in the %s theme', async (_name, theme) => {
+        const user = userEvent.setup();
+        renderHeader({}, theme);
+        const badge = screen.getByLabelText('Preview', { selector: `.${badgeClassNames.root}` });
+        expect(badge).toHaveTextContent('Preview');
+        expect(badge).toHaveAccessibleName('Preview');
+        expect(badge).toHaveClass('focusableBadge');
+        expect(badge).toHaveStyle({ position: 'fixed', top: '10px', right: '20px', height: '32px' });
+        expect(badge).toHaveStyle({ marginTop: '0px', marginRight: '0px', height: '32px', flexShrink: '0' });
+        expect(badge.querySelector('span')).toHaveAttribute('aria-hidden', 'true');
+        screen.getByRole('button', { name: 'Refresh' }).focus();
+        await user.tab();
+        expect(badge).toHaveFocus();
+        const tooltip = await screen.findByRole('tooltip');
+        expect(tooltip).toHaveTextContent('Preview: features and behavior may change. Use with care.');
+        expect(badge).toHaveAccessibleDescription('Preview: features and behavior may change. Use with care.');
+        await user.tab();
+        expect(screen.getByText(/^Total throughput limit:/)).toHaveFocus();
+    });
+
+    it('shows the exact Preview tooltip on hover without changing the visible badge label', async () => {
+        const user = userEvent.setup();
+        renderHeader();
+        const badge = screen.getByLabelText('Preview', { selector: `.${badgeClassNames.root}` });
+        await user.hover(badge);
+        const tooltip = await screen.findByRole('tooltip');
+        expect(tooltip.textContent).toBe('Preview: features and behavior may change. Use with care.');
+        expect(badge).toHaveTextContent('Preview');
+        expect(badge).toHaveAccessibleName('Preview');
+    });
+
+    it('places the shared feedback menu beside Refresh and keeps it usable while metrics load', async () => {
+        const user = userEvent.setup();
+        const onProvideFeedback = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+        renderHeader({ onProvideFeedback, loading: true });
+        const refresh = screen.getByRole('button', { name: 'Refresh' });
+        const feedback = screen.getByRole('button', { name: 'Provide Feedback' });
+        expect(refresh.nextElementSibling).toBe(feedback);
+        expect(screen.queryByRole('toolbar')).not.toBeInTheDocument();
+        expect(feedback).toHaveAccessibleName('Provide Feedback');
+        expect(feedback).not.toBeDisabled();
+        feedback.focus();
+        await user.keyboard('{Enter}');
+        const item = await screen.findByRole('menuitem', { name: 'Provide Feedback' });
+        expect(item).toHaveTextContent('Provide Feedback');
+        expect(item).toHaveAccessibleName('Provide Feedback');
+        await user.click(item);
+        expect(onProvideFeedback).toHaveBeenCalledOnce();
+        expect(feedback).toHaveFocus();
+    });
+
     it('locks Refresh and both filters during initial loading without showing a refresh operation', async () => {
         const user = userEvent.setup();
         const { props, rerender } = renderHeader({ refreshDisabled: true });
@@ -287,13 +353,13 @@ describe('AccountHeader', () => {
 
     it('uses a keyboard-accessible Accordion for additional properties and preserves its state when details collapse', async () => {
         const user = userEvent.setup();
-        const { props } = renderHeader({ defaultEssentialsOpen: true });
+        renderHeader({ defaultEssentialsOpen: true });
         const toggle = screen.getByRole('button', { name: 'Additional account properties' });
         expect(toggle).toHaveClass(accordionHeaderClassNames.button);
         expect(toggle).toHaveTextContent('Additional account properties');
         expect(toggle).toHaveAccessibleName('Additional account properties');
         expect(toggle).toHaveAttribute('aria-expanded', 'false');
-        screen.getByRole('button', { name: 'View JSON' }).focus();
+        screen.getByRole('button', { name: 'Account details' }).focus();
         await user.tab();
         expect(toggle).toHaveFocus();
         await user.keyboard('{Enter}');
@@ -322,24 +388,24 @@ describe('AccountHeader', () => {
         expect(toggle).toHaveAttribute('aria-expanded', 'false');
         expect(panel).toHaveAttribute('inert');
         expect(toggle).toHaveFocus();
-        expect(props.onAccountAction).not.toHaveBeenCalled();
     });
 
-    it('keeps the additional-properties toggle in the same action row when expanded and closed', async () => {
+    it('keeps the additional-properties toggle in the details footer when expanded and closed', async () => {
         const user = userEvent.setup();
         renderHeader({ defaultEssentialsOpen: true });
         const toggle = screen.getByRole('button', { name: 'Additional account properties' });
-        const actions = screen.getByRole('button', { name: 'View Cost' }).parentElement!;
+        const footer = toggle.closest('h3')!.parentElement!;
         const panel = document.getElementById(toggle.getAttribute('aria-controls')!)!;
-        const rowClass = actions.className;
-        expect(actions).toContainElement(toggle);
-        expect(actions).toContainElement(screen.getByRole('button', { name: 'View JSON' }));
-        expect(actions).not.toContainElement(panel);
-        expect(actions.nextElementSibling).toBe(panel);
+        const rowClass = footer.className;
+        expect(footer).toContainElement(toggle);
+        expect(footer).not.toContainElement(panel);
+        expect(footer.nextElementSibling).toBe(panel);
+        expect(screen.queryByRole('button', { name: 'View Cost' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'View JSON' })).not.toBeInTheDocument();
         await user.click(toggle);
         expect(toggle).toHaveAttribute('aria-expanded', 'true');
-        expect(actions).toContainElement(toggle);
-        expect(actions.className).toBe(rowClass);
+        expect(footer).toContainElement(toggle);
+        expect(footer.className).toBe(rowClass);
         expect(panel).not.toHaveAttribute('inert');
         await user.click(toggle);
         expect(toggle).toHaveAttribute('aria-expanded', 'false');
@@ -384,38 +450,6 @@ describe('AccountHeader', () => {
         expect(within(screen.getByText('Backup policy').parentElement!).getByText(label)).toBeVisible();
     });
 
-    it.each([
-        ['View Cost', 'openCosts'],
-        ['View JSON', 'openJson'],
-    ] as const)('dispatches %s from its visible, keyboard-accessible label', async (label, action) => {
-        const user = userEvent.setup();
-        const { props } = renderHeader({ defaultEssentialsOpen: true });
-        const button = screen.getByRole('button', { name: label });
-        expect(button).toHaveTextContent(label);
-        expect(button).toHaveAccessibleName(label);
-        button.focus();
-        await user.keyboard('{Enter}');
-        expect(props.onAccountAction).toHaveBeenCalledExactlyOnceWith({ action });
-        expect(props.onRefresh).not.toHaveBeenCalled();
-        expect(props.onSelectContainer).not.toHaveBeenCalled();
-        expect(props.onTimeRangeChange).not.toHaveBeenCalled();
-    });
-
-    it('disables both detail actions while busy and re-enables them when complete', async () => {
-        const user = userEvent.setup();
-        const { props, rerender } = renderHeader({ defaultEssentialsOpen: true, accountActionBusy: true });
-        for (const label of ['View Cost', 'View JSON']) {
-            const button = screen.getByRole('button', { name: label });
-            expect(button).toBeDisabled();
-            await user.click(button);
-        }
-        expect(props.onAccountAction).not.toHaveBeenCalled();
-        rerender(<AccountHeader {...props} accountActionBusy={false} />);
-        for (const label of ['View Cost', 'View JSON']) {
-            expect(screen.getByRole('button', { name: label })).toBeEnabled();
-        }
-    });
-
     it('calls Refresh without changing filters', async () => {
         const user = userEvent.setup();
         const { props } = renderHeader();
@@ -447,6 +481,8 @@ describe('AccountHeader', () => {
         expect(screen.queryByRole('button', { name: 'Refresh options' })).not.toBeInTheDocument();
         expect(screen.queryByRole('switch', { name: 'Pause auto-refresh' })).not.toBeInTheDocument();
         refresh.focus();
+        await user.tab();
+        expect(screen.getByLabelText('Preview', { selector: `.${badgeClassNames.root}` })).toHaveFocus();
         await user.tab();
         expect(screen.getByText(/^Total throughput limit:/)).toHaveFocus();
         await user.tab();
@@ -702,19 +738,14 @@ describe('AccountHeader', () => {
     });
 
     it.each([undefined, null, -1, 0, 4000])(
-        'explains why Serverless has no total throughput limit even with ARM value %s',
-        async (totalThroughputLimit) => {
-            const user = userEvent.setup();
-            renderHeader({ summary: { ...summary, isServerless: true, totalThroughputLimit } });
-            const limit = screen.getByText('Total throughput limit: No total throughput limit');
-            expect(limit).toHaveAccessibleDescription(
-                'The account-wide provisioned-throughput cap is not applicable to serverless accounts.',
-            );
-            await user.hover(limit);
-            expect(await screen.findByRole('tooltip')).toHaveTextContent(
-                'The account-wide provisioned-throughput cap is not applicable to serverless accounts.',
-            );
-            expect(limit).toHaveAttribute('tabindex', '0');
+        'omits the Serverless throughput limit in status and details even with ARM value %s',
+        (totalThroughputLimit) => {
+            renderHeader({
+                summary: { ...summary, isServerless: true, totalThroughputLimit },
+                defaultEssentialsOpen: true,
+            });
+            expect(screen.queryByText(/^Total throughput limit/)).not.toBeInTheDocument();
+            expect(screen.queryByText('Total throughput limit')).not.toBeInTheDocument();
             expect(screen.getByText('Capacity mode: Serverless')).toBeVisible();
         },
     );

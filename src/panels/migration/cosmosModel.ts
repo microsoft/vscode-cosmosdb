@@ -25,9 +25,10 @@ export interface CosmosModel {
     /**
      * Account capacity mode decided during Phase 3 Step 8.
      * - `'serverless'` — uses the EnableServerless capability, no throughput config
-     * - `'provisioned'` — uses autoscale throughput per container
+     * - `'provisioned'` — uses dedicated container autoscale or shared database autoscale
      */
     capacityMode?: 'serverless' | 'provisioned';
+    databaseMaxThroughput?: number;
     domain: string;
     sourceType?: string;
     containers: CosmosContainer[];
@@ -42,10 +43,11 @@ export interface CosmosContainer {
     indexingPolicy?: IndexingPolicy;
     /**
      * Autoscale maximum RU/s for this container.
-     * Only meaningful when the root model's `capacityMode` is `'provisioned'`.
-     * Omitted for serverless accounts.
+     * Only meaningful for dedicated throughput with `'provisioned'` account capacity.
+     * Omitted for serverless accounts and shared-throughput containers.
      */
     maxThroughput?: number;
+    throughputMode?: 'shared' | 'dedicated';
     /**
      * Estimated total storage in GB at a 12-month projection (current data +
      * monthly growth rate compounded). Derived from volumetrics row counts,

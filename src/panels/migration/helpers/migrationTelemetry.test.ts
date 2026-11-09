@@ -5,15 +5,11 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { describe, expect, it } from 'vitest';
-import * as vscode from 'vscode';
 import { type ProjectJson } from '../../../services/MigrationProjectService';
-import { type ExtractionStats } from '../../../utils/ddlExtractor';
 import {
-    enrichErrorContext,
     extractAccountNameFromEndpoint,
-    incrementRunCount,
-    reportDdlExtractorStats,
-    setAiTelemetryContext,
+    getMigrationTelemetryProperties,
+    maskMigrationApplicationDetails,
     setMigrationTelemetryContext,
 } from './migrationTelemetry';
 
@@ -43,32 +39,21 @@ function createProject(overrides?: Partial<ProjectJson>): ProjectJson {
     };
 }
 
-/**
- * Builds a {@link vscode.LanguageModelError} the type-safe way: the real
- * constructor is `(message?, options?: ErrorOptions)` with a readonly `code`,
- * so set the test `code` afterwards via a cast.
- */
-function lmError(code: string, cause?: unknown): vscode.LanguageModelError {
-    const err = new vscode.LanguageModelError('ai error', cause === undefined ? undefined : { cause });
-    (err as unknown as { code: string }).code = code;
-    return err;
-}
-
-describe('setMigrationTelemetryContext — runIndex baseline', () => {
-    it('stamps runIndex 0 on the first run of a phase', () => {
+describe('setMigrationTelemetryContext — run history', () => {
+    it('does not invent a first-run index for an observation', () => {
         const ctx = createContext();
         setMigrationTelemetryContext(ctx as unknown as IActionContext, createProject(), 'discovery');
-        expect(ctx.telemetry.measurements.runIndex).toBe(0);
+        expect(ctx.telemetry.measurements.runIndex).toBeUndefined();
     });
 
-    it('stamps the prior run count on re-runs', () => {
+    it('does not use historical programmatic run counts for skill runs', () => {
         const ctx = createContext();
         setMigrationTelemetryContext(
             ctx as unknown as IActionContext,
             createProject({ runCounts: { schemaConversion: 2 } }),
             'schemaConversion',
         );
-        expect(ctx.telemetry.measurements.runIndex).toBe(2);
+        expect(ctx.telemetry.measurements.runIndex).toBeUndefined();
     });
 
     it('does not stamp runIndex when no phase is provided', () => {
@@ -98,12 +83,12 @@ describe('setMigrationTelemetryContext — context stamping', () => {
                 },
             },
         });
-        setMigrationTelemetryContext(ctx as unknown as IActionContext, project, 'discovery');
-        expect(ctx.telemetry.properties.sessionId).toBe('session-guid');
+        setMigrationTelemetryContext(ctx as unknown as IActionContext, project, 'discovery', 'host-session');
+        expect(ctx.telemetry.properties.sessionId).toBe('host-session');
         expect(ctx.telemetry.properties.phase).toBe('discovery');
         expect(ctx.telemetry.properties.hasCustomInstructions).toBe('true');
         expect(ctx.telemetry.properties.sourceDbType).toBe('PostgreSQL');
-        expect(ctx.errorHandling.issueProperties.sessionId).toBe('session-guid');
+        expect(ctx.errorHandling.issueProperties.sessionId).toBe('host-session');
         expect(ctx.errorHandling.issueProperties.phase).toBe('discovery');
     });
 
@@ -111,6 +96,62 @@ describe('setMigrationTelemetryContext — context stamping', () => {
         const ctx = createContext();
         setMigrationTelemetryContext(ctx as unknown as IActionContext, createProject(), 'discovery');
         expect(ctx.telemetry.properties.hasCustomInstructions).toBe('false');
+    });
+
+    it('masks all saved free-form application details without emitting their values', () => {
+        const ctx = createContext();
+        const applicationAnalysis = {
+            projectName: 'private-app-name',
+            projectType: 'private-type',
+            language: 'private-language',
+            frameworks: ['private-framework-a', 'private-framework-b'],
+            databaseType: 'private-database',
+            databaseAccess: 'private-access',
+        };
+        const project = createProject({
+            phases: { discovery: { status: 'not-started', applicationAnalysis } },
+        });
+        setMigrationTelemetryContext(ctx as unknown as IActionContext, project, 'discovery');
+        expect(ctx.valuesToMask).toEqual(expect.arrayContaining(Object.values(applicationAnalysis).flat()));
+        expect(ctx.telemetry.properties.sourceDbType).toBe('other');
+        expect(JSON.stringify([ctx.telemetry, ctx.errorHandling.issueProperties])).not.toContain('private-');
+    });
+
+    it('retains the safe normalized database dimension while masking other saved details', () => {
+        const ctx = createContext();
+        const project = createProject({
+            phases: {
+                discovery: {
+                    status: 'not-started',
+                    applicationAnalysis: {
+                        projectName: 'private-app',
+                        databaseType: 'PostgreSQL',
+                    },
+                },
+            },
+        });
+        setMigrationTelemetryContext(ctx as unknown as IActionContext, project);
+        expect(ctx.valuesToMask).toContain('private-app');
+        expect(ctx.valuesToMask).not.toContain('PostgreSQL');
+        expect(ctx.telemetry.properties.sourceDbType).toBe('PostgreSQL');
+    });
+
+    it('masks raw and trimmed update values without registering blank masks', () => {
+        const ctx = createContext();
+        maskMigrationApplicationDetails(ctx, {
+            projectName: '  private-app  ',
+            projectType: '',
+            language: ' \n',
+            frameworks: [' private-framework ', '', ' '],
+            databaseType: 'PostgreSQL',
+        });
+        expect(ctx.valuesToMask).toEqual([
+            '  private-app  ',
+            'private-app',
+            ' private-framework ',
+            'private-framework',
+            'PostgreSQL',
+        ]);
     });
 
     it('stamps migrationMode when set', () => {
@@ -134,26 +175,211 @@ describe('setMigrationTelemetryContext — context stamping', () => {
             },
         });
         setMigrationTelemetryContext(ctx as unknown as IActionContext, project, 'provisioning');
-        expect(ctx.valuesToMask).toEqual(expect.arrayContaining(['tenant-1', 'sub-1', 'my-account', 'my-rg']));
+        expect(ctx.valuesToMask).toEqual(expect.arrayContaining(['sub-1', 'my-account', 'my-rg']));
+        expect(ctx.valuesToMask).not.toContain('tenant-1');
         // None of these OII values should be emitted as telemetry properties here.
         const props = Object.values(ctx.telemetry.properties);
         expect(props).not.toContain('tenant-1');
         expect(props).not.toContain('sub-1');
         expect(props).not.toContain('my-rg');
     });
+
+    it.each(['customer-secret', '__proto__', 'constructor'])(
+        'normalizes untrusted database type %s',
+        (databaseType) => {
+            const ctx = createContext();
+            const project = createProject({
+                sessionId: 'stored-sensitive-id',
+                phases: { discovery: { status: 'not-started', applicationAnalysis: { databaseType } } },
+            });
+            setMigrationTelemetryContext(ctx as unknown as IActionContext, project, 'discovery');
+            expect(ctx.telemetry.properties.sourceDbType).toBe('other');
+            expect(ctx.telemetry.properties.sessionId).toBeUndefined();
+            expect(ctx.errorHandling.issueProperties.sessionId).toBeUndefined();
+            expect(ctx.valuesToMask).toContain(databaseType);
+        },
+    );
 });
 
-describe('incrementRunCount', () => {
-    it('returns 1 on the first run and initializes runCounts', () => {
-        const project = createProject({ runCounts: undefined });
-        expect(incrementRunCount(project, 'discovery')).toBe(1);
-        expect(project.runCounts?.discovery).toBe(1);
+describe('normalized Application Details dimensions', () => {
+    type Details = NonNullable<ProjectJson['phases']['discovery']['applicationAnalysis']>;
+
+    function properties(applicationAnalysis: Details) {
+        return getMigrationTelemetryProperties(
+            createProject({
+                phases: { discovery: { status: 'not-started', applicationAnalysis } },
+            }),
+        );
+    }
+
+    it.each([
+        [{ projectType: 'rest API' }, 'sourceProjectType', 'Web API'],
+        [{ projectType: 'web_app; CLI' }, 'sourceProjectType', 'Console, Web application'],
+        [{ language: ' ts, JS;typescript ' }, 'sourceLanguage', 'JavaScript, TypeScript'],
+        [{ language: 'C SHARP, golang' }, 'sourceLanguage', 'C#, Go'],
+        [{ language: 'Python 3.12; TypeScript v5.6' }, 'sourceLanguage', 'Python, TypeScript'],
+        [
+            { frameworks: ['EF Core', 'SpringBoot', 'Entity Framework Core 8.0'] },
+            'sourceFramework',
+            'Entity Framework Core, Spring Boot',
+        ],
+        [{ frameworks: ['react.js', 'Express.js; React 19'] }, 'sourceFramework', 'Express, React'],
+        [{ databaseAccess: 'Entity Framework Core, Dapper;raw sql' }, 'sourceDbAccess', 'Direct SQL, Micro ORM, ORM'],
+        [{ databaseAccess: 'ADO NET; JDBC driver;knex.js' }, 'sourceDbAccess', 'ADO.NET, JDBC, Query builder'],
+        [{ databaseType: 'mssql, postgres' }, 'sourceDbType', 'PostgreSQL, SQL Server'],
+    ] satisfies [Details, string, string][])('normalizes %j to fixed labels', (input, key, expected) => {
+        expect(properties(input)[key]).toBe(expected);
     });
 
-    it('increments an existing count', () => {
-        const project = createProject({ runCounts: { assessment: 2 } });
-        expect(incrementRunCount(project, 'assessment')).toBe(3);
-        expect(project.runCounts?.assessment).toBe(3);
+    it.each([
+        ['athena', 'Athena'],
+        ['bigquery', 'BigQuery'],
+        ['clickhouse', 'ClickHouse'],
+        ['databricks', 'Databricks'],
+        ['dax', 'DAX'],
+        ['doris', 'Doris'],
+        ['dremio', 'Dremio'],
+        ['drill', 'Drill'],
+        ['druid', 'Druid'],
+        ['duckdb', 'DuckDB'],
+        ['dune', 'Dune'],
+        ['exasol', 'Exasol'],
+        ['fabric', 'Fabric'],
+        ['hive', 'Hive'],
+        ['materialize', 'Materialize'],
+        ['mysql', 'MySQL'],
+        ['oracle', 'Oracle'],
+        ['postgres', 'PostgreSQL'],
+        ['presto', 'Presto'],
+        ['prql', 'PRQL'],
+        ['redshift', 'Redshift'],
+        ['risingwave', 'RisingWave'],
+        ['snowflake', 'Snowflake'],
+        ['solr', 'Solr'],
+        ['spark', 'Spark'],
+        ['spark2', 'Spark'],
+        ['sqlite', 'SQLite'],
+        ['starrocks', 'StarRocks'],
+        ['tableau', 'Tableau'],
+        ['teradata', 'Teradata'],
+        ['trino', 'Trino'],
+        ['tsql', 'SQL Server'],
+    ])('covers SQLGlot dialect %s as %s', (dialect, expected) => {
+        expect(properties({ databaseType: dialect }).sourceDbType).toBe(expected);
+    });
+
+    it.each([
+        ['Microsoft SQL Server', 'SQL Server'],
+        ['T-SQL', 'SQL Server'],
+        ['Azure SQL Database', 'SQL Server'],
+        ['Azure SQL Managed Instance', 'SQL Server'],
+        ['Azure Database for PostgreSQL', 'PostgreSQL'],
+        ['Amazon Aurora MySQL', 'MySQL'],
+        ['MariaDB', 'MariaDB'],
+        ['IBM DB2', 'DB2'],
+        ['Amazon Athena', 'Athena'],
+        ['Google BigQuery', 'BigQuery'],
+        ['Apache Spark 3.5', 'Spark'],
+        ['Microsoft Fabric Warehouse', 'Fabric'],
+        ['Databricks SQL', 'Databricks'],
+    ])('normalizes database product name %s to %s', (input, expected) => {
+        expect(properties({ databaseType: input }).sourceDbType).toBe(expected);
+    });
+
+    it.each(['custom-customer-dialect', 'Snowflake for customer-a', 'private-cluster.example.com'])(
+        'keeps unrecognized database labels %s private',
+        (input) => {
+            expect(properties({ databaseType: input }).sourceDbType).toBe('other');
+            const context = createContext();
+            maskMigrationApplicationDetails(context, { databaseType: input }, { preserveNormalizedDimensions: true });
+            expect(context.valuesToMask).toContain(input);
+        },
+    );
+
+    it('never copies unknown categories, versions, or project names into emitted dimensions', () => {
+        const result = properties({
+            projectName: 'private-project',
+            projectType: 'private-type',
+            language: 'Python 5551234567; private-language',
+            frameworks: ['Django for private-service', 'private-framework', 'React'],
+            databaseAccess: 'private-driver',
+        });
+        expect(result).toEqual({
+            sourceProjectType: 'other',
+            sourceLanguage: 'Python, other',
+            sourceFramework: 'React, other',
+            sourceDbAccess: 'other',
+        });
+        expect(JSON.stringify(result)).not.toMatch(/private-|5551234567/);
+    });
+
+    it.each(['constructor', '__proto__', 'TypeScript for private-app', 'C# (private-account)', ';'])(
+        'does not mistake arbitrary input %s for an allowlisted category',
+        (input) => {
+            expect(
+                properties({ projectType: input, language: input, frameworks: [input], databaseAccess: input }),
+            ).toEqual({
+                sourceProjectType: 'other',
+                sourceLanguage: 'other',
+                sourceFramework: 'other',
+                sourceDbAccess: 'other',
+            });
+        },
+    );
+
+    it('omits missing and blank categories instead of inventing values', () => {
+        expect(properties({ projectType: ' ', language: '', frameworks: [' ', ''], databaseAccess: '' })).toEqual({});
+        expect(properties({ frameworks: [] })).toEqual({});
+    });
+
+    it('deduplicates and sorts categories independently of input order', () => {
+        expect(properties({ frameworks: ['React', 'django', 'REACT', 'private-a', 'private-b'] })).toEqual(
+            properties({ frameworks: ['unknown-app', 'Django', 'react.js'] }),
+        );
+    });
+
+    it('preserves normalized dimensions while masking names, versioned text and unknown list entries', () => {
+        const context = createContext();
+        const applicationAnalysis = {
+            projectName: 'private-name',
+            projectType: 'Web API',
+            language: 'Python 5551234567, private-language',
+            frameworks: ['EF Core', ' private-framework '],
+            databaseAccess: 'Entity Framework Core',
+        };
+        const p = createProject({ phases: { discovery: { status: 'not-started', applicationAnalysis } } });
+        setMigrationTelemetryContext(context as unknown as IActionContext, p);
+        expect(context.telemetry.properties).toMatchObject({
+            sourceProjectType: 'Web API',
+            sourceLanguage: 'Python, other',
+            sourceFramework: 'Entity Framework Core, other',
+            sourceDbAccess: 'ORM',
+        });
+        expect(context.valuesToMask).toEqual(
+            expect.arrayContaining([
+                'private-name',
+                'Python 5551234567',
+                'private-language',
+                'Python 5551234567, private-language',
+                ' private-framework ',
+                'private-framework',
+            ]),
+        );
+        for (const label of ['Web API', 'Python', 'Entity Framework Core', 'ORM', 'other']) {
+            expect(context.valuesToMask).not.toContain(label);
+        }
+        expect(context.errorHandling.issueProperties).toMatchObject(context.telemetry.properties);
+    });
+
+    it('still masks recognized category inputs on manual-update contexts', () => {
+        const context = createContext();
+        maskMigrationApplicationDetails(context, {
+            projectType: 'Web API',
+            language: 'Python',
+            frameworks: ['Django'],
+            databaseAccess: 'ORM',
+        });
+        expect(context.valuesToMask).toEqual(['Web API', 'Python', 'Django', 'ORM']);
     });
 });
 
@@ -168,148 +394,5 @@ describe('extractAccountNameFromEndpoint', () => {
 
     it('returns undefined for an unparseable endpoint', () => {
         expect(extractAccountNameFromEndpoint('not a url')).toBeUndefined();
-    });
-});
-
-describe('setAiTelemetryContext', () => {
-    it('stamps model id, family and vendor', () => {
-        const ctx = createContext();
-        setAiTelemetryContext(
-            ctx as unknown as IActionContext,
-            {
-                id: 'gpt-x',
-                family: 'gpt',
-                vendor: 'copilot',
-            } as unknown as vscode.LanguageModelChat,
-        );
-        expect(ctx.telemetry.properties.modelId).toBe('gpt-x');
-        expect(ctx.telemetry.properties.modelFamily).toBe('gpt');
-        expect(ctx.telemetry.properties.modelVendor).toBe('copilot');
-    });
-});
-
-describe('enrichErrorContext', () => {
-    it('is a no-op for cancellation errors', () => {
-        const ctx = createContext();
-        enrichErrorContext(ctx as unknown as IActionContext, new vscode.CancellationError());
-        expect(ctx.telemetry.properties.errorCategory).toBeUndefined();
-        expect(ctx.errorHandling.forceIncludeInReportIssueCommand).toBeUndefined();
-    });
-
-    it('classifies generic errors as infrastructure', () => {
-        const ctx = createContext();
-        enrichErrorContext(ctx as unknown as IActionContext, new Error('disk full'));
-        expect(ctx.telemetry.properties.errorCategory).toBe('infrastructure');
-        expect(ctx.errorHandling.issueProperties.errorCategory).toBe('infrastructure');
-        expect(ctx.errorHandling.forceIncludeInReportIssueCommand).toBe(true);
-    });
-
-    it('classifies LanguageModelError as ai and records the code', () => {
-        const ctx = createContext();
-        enrichErrorContext(ctx as unknown as IActionContext, lmError('Blocked'));
-        expect(ctx.telemetry.properties.errorCategory).toBe('ai');
-        expect(ctx.telemetry.properties.aiErrorCode).toBe('Blocked');
-        expect(ctx.errorHandling.issueProperties.aiErrorCode).toBe('Blocked');
-    });
-
-    it('records a bounded cause type and code for Unknown AI errors', () => {
-        const ctx = createContext();
-        const cause = Object.assign(new TypeError('boom'), { code: 'ECONNRESET' });
-        enrichErrorContext(ctx as unknown as IActionContext, lmError('Unknown', cause));
-        expect(ctx.telemetry.properties.aiErrorCauseType).toBe('TypeError');
-        expect(ctx.telemetry.properties.aiErrorCauseCode).toBe('ECONNRESET');
-    });
-
-    it('drops a cause code that contains PII-like characters (allowlist enforced)', () => {
-        const ctx = createContext();
-        const cause = Object.assign(new Error('x'), { code: '/Users/alice/secret path' });
-        enrichErrorContext(ctx as unknown as IActionContext, lmError('Unknown', cause));
-        // The cause type is bounded and safe...
-        expect(ctx.telemetry.properties.aiErrorCauseType).toBe('Error');
-        // ...but the unbounded code must be rejected by the regex allowlist.
-        expect(ctx.telemetry.properties.aiErrorCauseCode).toBeUndefined();
-    });
-
-    it('never stores the raw cause message', () => {
-        const ctx = createContext();
-        const cause = new Error('user@example.com /secret/path');
-        enrichErrorContext(ctx as unknown as IActionContext, lmError('Unknown', cause));
-        const allValues = [
-            ...Object.values(ctx.telemetry.properties),
-            ...Object.values(ctx.errorHandling.issueProperties),
-        ];
-        expect(allValues).not.toContain('user@example.com /secret/path');
-    });
-
-    it('copies model info into issueProperties', () => {
-        const ctx = createContext();
-        ctx.telemetry.properties.modelId = 'gpt-x';
-        ctx.telemetry.properties.modelFamily = 'gpt';
-        enrichErrorContext(ctx as unknown as IActionContext, new Error('infra'));
-        expect(ctx.errorHandling.issueProperties.modelId).toBe('gpt-x');
-        expect(ctx.errorHandling.issueProperties.modelFamily).toBe('gpt');
-    });
-});
-
-describe('reportDdlExtractorStats', () => {
-    function makeStats(): ExtractionStats {
-        return {
-            inputChars: 100,
-            outputChars: 60,
-            reductionRatio: 0.4,
-            durationMs: 5,
-            warnings: ['w1'],
-            statementCounts: {
-                createTable: 2,
-                alterTable: 1,
-                createIndex: 3,
-                createFulltextIndex: 0,
-                createView: 0,
-                createSequence: 0,
-                createType: 0,
-                createDomain: 0,
-                createSchema: 0,
-                other: 0,
-            },
-            drops: { alterTableCheckReenable: 0, alterTableCheckConstraint: 0 },
-            strips: {
-                withOptionBlocks: 0,
-                inlineCheckConstraints: 0,
-                onPrimary: 0,
-                textImageOn: 0,
-                fileStreamOn: 0,
-                collate: 0,
-                rowGuidCol: 0,
-                notForReplication: 0,
-            },
-            views: { summarized: 0, referencedTablesTotal: 0 },
-        } as unknown as ExtractionStats;
-    }
-
-    it('records structural measurements on the call context', () => {
-        const ctx = createContext();
-        reportDdlExtractorStats(ctx as unknown as IActionContext, makeStats(), 'utf-8');
-        expect(ctx.telemetry.properties.encoding).toBe('utf-8');
-        expect(ctx.telemetry.measurements.inputChars).toBe(100);
-        expect(ctx.telemetry.measurements.createTable).toBe(2);
-        expect(ctx.telemetry.measurements.reductionRatio).toBe(0.4);
-    });
-
-    it('accumulates phase-level rollups across calls', () => {
-        const phaseCtx = createContext();
-        reportDdlExtractorStats(
-            createContext() as unknown as IActionContext,
-            makeStats(),
-            'utf-8',
-            phaseCtx as unknown as IActionContext,
-        );
-        reportDdlExtractorStats(
-            createContext() as unknown as IActionContext,
-            makeStats(),
-            'utf-8',
-            phaseCtx as unknown as IActionContext,
-        );
-        expect(phaseCtx.telemetry.measurements.ddlFilesProcessed).toBe(2);
-        expect(phaseCtx.telemetry.measurements.ddlInputCharsTotal).toBe(200);
     });
 });

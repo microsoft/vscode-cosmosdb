@@ -6,36 +6,9 @@
 import * as vscode from 'vscode';
 
 /**
- * Symbol-keyed setter installed on every mock model instance. Carrying the
- * route out-of-band (instead of through `LanguageModelChatRequestOptions`)
- * keeps the production VS Code API surface untouched while still letting tests
- * deterministically select a canned response per request.
- */
-const MOCK_ROUTE_SETTER = Symbol('cosmosDbMockRouteSetter');
-
-type MockRouteSetter = (route: string | undefined) => void;
-
-/**
- * Sets the active route id on a mock model produced by
- * {@link createMockLanguageModel}. The route is **sticky**: it persists across
- * subsequent `sendRequest` calls until changed (like `vi.fn().mockReturnValue`),
- * so multi-round flows such as an agentic loop can set it once. Pass `undefined`
- * to clear it. No-op on real `LanguageModelChat` instances, so callers can
- * invoke it unconditionally before `sendRequest`.
- */
-export function setMockRoute(model: vscode.LanguageModelChat, route: string | undefined): void {
-    const setter = (model as unknown as Record<symbol, unknown>)[MOCK_ROUTE_SETTER];
-    if (typeof setter === 'function') {
-        (setter as MockRouteSetter)(route);
-    }
-}
-
-/**
  * A single part of a scripted mock response.
  *  - `text` becomes a `vscode.LanguageModelTextPart` in the stream.
- *  - `toolCall` becomes a `vscode.LanguageModelToolCallPart`, which drives the
- *    agentic tool-calling loop (`runAgenticLoop`) so its tool branch can be
- *    exercised in unit tests.
+ *  - `toolCall` becomes a `vscode.LanguageModelToolCallPart` in the stream.
  */
 export type MockResponsePart =
     | { type: 'text'; value: string }
@@ -66,8 +39,6 @@ export interface CreateMockLanguageModelOptions {
         requestOptions?: vscode.LanguageModelChatRequestOptions;
         token?: vscode.CancellationToken;
         promptText: string;
-        /** Most recent route id set via {@link setMockRoute} (sticky until changed). */
-        route?: string;
     }) => MockResponse | Promise<MockResponse>;
 }
 
@@ -130,10 +101,6 @@ function normalizeMockResponse(response: MockResponse): MockResponsePart[] {
  * and/or tool calls (see {@link MockResponsePart}).
  */
 export function createMockLanguageModel(options: CreateMockLanguageModelOptions): vscode.LanguageModelChat {
-    // Updated via the symbol-keyed setter (see {@link setMockRoute}) right
-    // before each `sendRequest`, then read back inside the resolver below.
-    let currentRoute: string | undefined;
-
     const sendRequest = async (
         messages: vscode.LanguageModelChatMessage[],
         requestOptions?: vscode.LanguageModelChatRequestOptions,
@@ -146,7 +113,6 @@ export function createMockLanguageModel(options: CreateMockLanguageModelOptions)
                 requestOptions,
                 token,
                 promptText,
-                route: currentRoute,
             }),
         );
 
@@ -198,10 +164,6 @@ export function createMockLanguageModel(options: CreateMockLanguageModelOptions)
             requestOptions?: vscode.LanguageModelChatRequestOptions,
             token?: vscode.CancellationToken,
         ): Thenable<vscode.LanguageModelChatResponse> => sendRequest(messages, requestOptions, token),
-    };
-
-    (model as unknown as Record<symbol, MockRouteSetter>)[MOCK_ROUTE_SETTER] = (route) => {
-        currentRoute = route;
     };
 
     return model;

@@ -11,6 +11,7 @@ import {
     type CosmosClient,
     type IndexingPolicy as CosmosIndexingPolicy,
 } from '@azure/cosmos';
+import * as l10n from '@vscode/l10n';
 import { type CancellationToken } from 'vscode';
 import { type CosmosModel, type IndexingPolicy } from '../cosmosModel';
 
@@ -35,6 +36,12 @@ export async function provisionCosmosModel(
     options: ProvisioningOptions = {},
 ): Promise<string[] | undefined> {
     if (options.token?.isCancellationRequested) return undefined;
+    if (
+        model.databaseMaxThroughput !== undefined ||
+        model.containers.some((container) => container.throughputMode === 'shared')
+    ) {
+        throw new Error(l10n.t('Shared database throughput requires the migration Skill provisioning workflow.'));
+    }
     if (options.createDatabase !== false) {
         await options.onProgress?.('database', databaseName);
         if (options.token?.isCancellationRequested) return undefined;

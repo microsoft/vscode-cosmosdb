@@ -28,7 +28,7 @@ class TestMetadata extends AzureResourceMetadata {
     }
 }
 
-describe('inventory storage fallback', () => {
+describe('inventory metric fallbacks', () => {
     it.each([false, true])(
         'distinguishes a missing Monitor client from empty observations (Serverless: %s)',
         async (isServerless) => {
@@ -45,6 +45,7 @@ describe('inventory storage fallback', () => {
                 available: false,
                 metrics: {},
                 storageFallback: unavailableStorage('error'),
+                throttlingFallbackReason: 'error',
             });
 
             getMonitorClient.mockResolvedValue(mockClient({}));
@@ -53,6 +54,7 @@ describe('inventory storage fallback', () => {
                 reason: 'noData',
                 metrics: {},
                 storageFallback: unavailableStorage('noData'),
+                throttlingFallbackReason: 'noData',
             });
         },
     );

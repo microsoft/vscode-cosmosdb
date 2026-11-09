@@ -59,10 +59,9 @@ export async function openMigrationAssistant(page: Page): Promise<Frame> {
  * Opens the Migration Assistant against a deterministic, pre-seeded project
  * via the `cosmosDB.e2e.openMigration` test-only command. The seed (consent
  * granted, application analysis populated, schema files present) lets phase-flow
- * specs drive Discovery → Assessment → Conversion without the native file
- * pickers. The migration AI layer is mocked (see
- * `src/panels/migration/helpers/e2eMigrationAiMock.ts`), so the phases run
- * offline and deterministically.
+ * specs drive Discovery → Assessment → Conversion without the native file pickers.
+ * Skill dispatches are captured by `e2eMigrationAiMock.ts`; tests explicitly simulate
+ * agent execution with `runMockSkillAgent`.
  */
 export async function openMigrationSeeded(page: Page): Promise<Frame> {
     await runCommand(page, 'Cosmos DB: [E2E Test] Open Seeded Migration Assistant');

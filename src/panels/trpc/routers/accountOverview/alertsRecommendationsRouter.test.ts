@@ -69,7 +69,19 @@ describe('alert portal routing', () => {
                 count: 1,
                 totalRecords: 1,
                 resultTruncated: 'false',
-                data: [{ totalCount: 1, criticalCount: 1, warningCount: 0 }],
+                data: [
+                    {
+                        totalCount: 1,
+                        criticalCount: 1,
+                        warningCount: 0,
+                        periodCounts: {
+                            '1h': { Fired: 0, Resolved: 2 },
+                            '1d': { Fired: 1, Resolved: 3 },
+                            '7d': { Fired: 1, Resolved: 4 },
+                            '30d': { Fired: 1, Resolved: 5 },
+                        },
+                    },
+                ],
             }),
         }));
         const caller = router.createCaller({
@@ -83,6 +95,7 @@ describe('alert portal routing', () => {
             totalCount: 1,
             criticalCount: 1,
             warningCount: 0,
+            periodCounts: { '1d': { Fired: 1, Resolved: 3 } },
         });
         expect(send).toHaveBeenCalledOnce();
         expect(send.mock.calls[0][1].url).toContain(metadata.subscription.environment.resourceManagerEndpointUrl);

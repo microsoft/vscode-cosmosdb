@@ -7,6 +7,6 @@
     "composite": false,
     "noEmit": true
   },
-  "include": ["test/e2e/**/*.ts", "playwright.config.ts"],
+  "include": ["test/e2e/**/*.ts", "playwright.config.ts", "src/vscode.proposed.d.ts"],
   "exclude": ["node_modules", "dist", "out", ".vscode-test"]
 }

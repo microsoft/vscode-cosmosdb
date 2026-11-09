@@ -26,6 +26,7 @@ import {
     type PartitionIntensityLevel,
     type PartitionTile,
 } from '../../api/types';
+import { ThemedTooltip } from '../../common/ThemedTooltip';
 import { EmptyState } from './DashboardChrome';
 import { type ContainerRef } from './metrics/descriptors';
 
@@ -86,6 +87,10 @@ const useStyles = makeStyles({
         border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke1}`,
         color: tokens.colorStatusDangerForeground1,
         minWidth: 0,
+        ':focus-visible': {
+            outline: `${tokens.strokeWidthThick} solid ${tokens.colorStrokeFocus2}`,
+            outlineOffset: tokens.strokeWidthThin,
+        },
     },
     tileHot: {
         border: `${tokens.strokeWidthThin} solid ${tokens.colorStatusDangerBorder1}`,
@@ -202,11 +207,9 @@ function tileAriaLabel(tile: PartitionTile, mode: PartitionDistributionMode): st
 const HeatmapTile = ({ tile, mode }: { tile: PartitionTile; mode: PartitionDistributionMode }) => {
     const styles = useStyles();
     return (
-        <figure
-            className={mergeClasses(styles.tile, tile.hot && styles.tileHot)}
-            style={{ backgroundColor: LEVEL_FILL[tile.level], margin: 0 }}
-            aria-label={tileAriaLabel(tile, mode)}
-            title={
+        <ThemedTooltip
+            relationship="inaccessible"
+            content={
                 mode === 'ru'
                     ? l10n.t('{label}: {value} p99 utilization', {
                           label: partitionLabel(tile.partitionId),
@@ -218,13 +221,22 @@ const HeatmapTile = ({ tile, mode }: { tile: PartitionTile; mode: PartitionDistr
                       })
             }
         >
-            <Text className={styles.tileId} aria-hidden="true">
-                {partitionLabel(tile.partitionId)}
-            </Text>
-            <Text className={styles.tileShare} aria-hidden="true">
-                {formatShare(tile.sharePercent)}
-            </Text>
-        </figure>
+            {/* oxlint-disable jsx-a11y/no-noninteractive-tabindex -- Tooltip focus. */}
+            <figure
+                className={mergeClasses(styles.tile, tile.hot && styles.tileHot)}
+                style={{ backgroundColor: LEVEL_FILL[tile.level], margin: 0 }}
+                aria-label={tileAriaLabel(tile, mode)}
+                tabIndex={0}
+            >
+                <Text className={styles.tileId} aria-hidden="true">
+                    {partitionLabel(tile.partitionId)}
+                </Text>
+                <Text className={styles.tileShare} aria-hidden="true">
+                    {formatShare(tile.sharePercent)}
+                </Text>
+            </figure>
+            {/* oxlint-enable jsx-a11y/no-noninteractive-tabindex */}
+        </ThemedTooltip>
     );
 };
 

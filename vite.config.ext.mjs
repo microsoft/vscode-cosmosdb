@@ -207,6 +207,7 @@ export default ({ mode }) => {
                     {
                         src: `l10n/bundle.l10n.{${supportedLanguages.join(',')}}.json`,
                         dest: 'l10n',
+                        rename: { stripBase: true },
                     },
                     { src: 'resources', dest: '.' },
                     {

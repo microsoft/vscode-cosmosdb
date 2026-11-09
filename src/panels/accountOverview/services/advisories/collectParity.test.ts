@@ -14,14 +14,19 @@ vi.mock('../inventory', () => ({
     getSqlInventoryDetails: vi.fn(),
 }));
 
-vi.mock('../inventoryMetrics', () => ({
-    getInventoryMetrics: vi.fn(),
-}));
+vi.mock('../inventoryMetrics', async () => {
+    const { OVERVIEW_DEFAULTS } = await import('../healthPolicy');
+    return { DEFAULT_HEALTH_THRESHOLDS: OVERVIEW_DEFAULTS.health, getInventoryMetrics: vi.fn() };
+});
 
-vi.mock('../partitionHealth', () => ({
-    getPartitionHealth: vi.fn(),
-    getPartitionStorageSeries: vi.fn(),
-}));
+vi.mock('../partitionHealth', async () => {
+    const { OVERVIEW_DEFAULTS } = await import('../healthPolicy');
+    return {
+        DEFAULT_PARTITION_THRESHOLDS: OVERVIEW_DEFAULTS.partition,
+        getPartitionHealth: vi.fn(),
+        getPartitionStorageSeries: vi.fn(),
+    };
+});
 
 vi.mock('../ruTrends', async (importOriginal) => ({
     ...(await importOriginal<typeof RuTrendsModule>()),
@@ -57,7 +62,7 @@ import { getPartitionHealth, getPartitionStorageSeries } from '../partitionHealt
 import { getRuTrends, getThrottleRate } from '../ruTrends';
 import { GB, pagedItems } from '../testFixtures';
 import { collectDerivedAdvisories } from './collect';
-import { DEFAULT_ADVISORY_THRESHOLDS } from './core/thresholds';
+import { DEFAULT_ADVISORY_THRESHOLDS, DIAGNOSTIC_POLICY } from './core/thresholds';
 import { type DerivedAdvisory, type DerivedAdvisoryRule } from './core/types';
 import { computeDerivedAdvisories } from './engine';
 import {
@@ -105,8 +110,6 @@ function params(overrides: Partial<Parameters<typeof collectDerivedAdvisories>[0
         resourceGroup: 'rg',
         accountName: 'acct',
         isServerless: false,
-        healthThresholds: { criticalRuPercent: 90, warningRuPercent: 80 },
-        partitionThresholds: { saturationPercent: 90, headroomPercent: 70, skewBalanceRatio: 0.7, topN: 5 },
         advisoryThresholds: DEFAULT_ADVISORY_THRESHOLDS,
         accountConfig: {
             accountName: 'acct-prod',
@@ -617,6 +620,22 @@ describe('collectDerivedAdvisories parity wiring', () => {
 
         const result = await collectDerivedAdvisories(params());
         const inputs = vi.mocked(computeDerivedAdvisories).mock.calls[0][0];
+        expect(getPartitionHealth).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.any(String),
+            'ru',
+            DIAGNOSTIC_POLICY.partitionSaturation.observation.timeRange,
+            expect.any(String),
+            expect.any(String),
+            {
+                saturationPercent: DEFAULT_ADVISORY_THRESHOLDS.partitionSaturationPercent,
+                headroomPercent: DEFAULT_ADVISORY_THRESHOLDS.partitionHeadroomPercent,
+                skewBalanceRatio: DEFAULT_ADVISORY_THRESHOLDS.storageSkewBalanceRatio,
+                topN: 5,
+            },
+            DIAGNOSTIC_POLICY.partitionSaturation.observation,
+            DIAGNOSTIC_POLICY.partitionSaturation.percentile,
+        );
 
         expect(inputs.manualThroughput).toEqual([
             expect.objectContaining({ databaseId: 'db-manual', containerId: 'manual-c', provisionedRu: 1000 }),

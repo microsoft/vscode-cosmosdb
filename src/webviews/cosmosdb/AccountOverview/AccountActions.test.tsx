@@ -60,7 +60,7 @@ describe('AccountActions', () => {
             expect(
                 screen.queryByText('Design containers, partition keys, and relationships visually.'),
             ).not.toBeInTheDocument();
-            for (const label of ['Add database', 'Add container', 'Delete account']) {
+            for (const label of ['Add database', 'Add container', 'View Cost', 'View JSON', 'Delete account']) {
                 expect(screen.getByRole('button', { name: label })).toBeEnabled();
             }
         },
@@ -69,7 +69,14 @@ describe('AccountActions', () => {
     it('names every action with its rendered visible label', () => {
         renderActions();
         const actions = within(screen.getByRole('region', { name: 'Account actions' }));
-        for (const label of ['Add database', 'Add container', 'Delete account', 'Try Data Modeler']) {
+        for (const label of [
+            'Add database',
+            'Add container',
+            'View Cost',
+            'View JSON',
+            'Delete account',
+            'Try Data Modeler',
+        ]) {
             const button = actions.getByRole('button', { name: label });
             expect(button).toHaveTextContent(label);
             expect(button).toHaveAccessibleName(label);
@@ -80,6 +87,8 @@ describe('AccountActions', () => {
     it.each([
         ['Add database', { action: 'createDatabase' }],
         ['Add container', { action: 'createContainer', databaseId: 'selected-db' }],
+        ['View Cost', { action: 'openCosts' }],
+        ['View JSON', { action: 'openJson' }],
         ['Delete account', { action: 'deleteAccount' }],
         ['Try Data Modeler', { action: 'openDataModeler' }],
     ] as const)('dispatches %s by keyboard with the correct scope', async (label, input) => {
@@ -167,12 +176,12 @@ describe('AccountActions', () => {
         await waitFor(() => expect(button).toHaveAccessibleDescription('Create a container in database new-db.'));
     });
 
-    it('blocks all mutating actions without an inline progress message until busy clears', async () => {
+    it('blocks all account actions without an inline progress message until busy clears', async () => {
         const user = userEvent.setup();
         const { props, rerender } = renderActions({ busy: true, databaseId: 'database' });
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
         expect(screen.queryByText('Account action in progress…')).not.toBeInTheDocument();
-        for (const label of ['Add database', 'Delete account']) {
+        for (const label of ['Add database', 'View Cost', 'View JSON', 'Delete account']) {
             const button = screen.getByRole('button', { name: label });
             expect(button).toBeDisabled();
             await user.click(button);
@@ -181,19 +190,24 @@ describe('AccountActions', () => {
         expect(props.onAction).not.toHaveBeenCalled();
         rerender(<AccountActions {...props} busy={false} />);
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Add database' })).toBeEnabled();
-        expect(screen.getByRole('button', { name: 'Delete account' })).toBeEnabled();
+        for (const label of ['Add database', 'View Cost', 'View JSON', 'Delete account']) {
+            expect(screen.getByRole('button', { name: label })).toBeEnabled();
+        }
         expect(screen.getByRole('button', { name: 'Add container' })).not.toHaveAttribute('aria-disabled', 'true');
     });
 
-    it('disables creation for unsupported accounts but still allows deletion', async () => {
+    it.each([
+        ['Delete account', 'deleteAccount'],
+        ['View Cost', 'openCosts'],
+        ['View JSON', 'openJson'],
+    ] as const)('disables creation for unsupported accounts but still allows %s', async (label, action) => {
         const user = userEvent.setup();
         const { props } = renderActions({ supported: false });
         expect(screen.getByRole('button', { name: 'Add database' })).toBeDisabled();
         await user.click(screen.getByRole('button', { name: 'Add database' }));
         expect(props.onAction).not.toHaveBeenCalled();
-        await user.click(screen.getByRole('button', { name: 'Delete account' }));
-        expect(props.onAction).toHaveBeenCalledExactlyOnceWith({ action: 'deleteAccount' });
+        await user.click(screen.getByRole('button', { name: label }));
+        expect(props.onAction).toHaveBeenCalledExactlyOnceWith({ action });
     });
 
     it.each([

@@ -7,6 +7,10 @@ import * as l10n from '@vscode/l10n';
 
 const timedOutMessage = l10n.t('Execution timed out');
 
+export class TimeoutError extends Error {
+    public override readonly name = 'TimeoutError';
+}
+
 /**
  * Returns the result of awaiting a specified action. Rejects if the action throws. Returns timeoutValue if a time-out occurs.
  */
@@ -34,7 +38,7 @@ export async function rejectOnTimeout<T>(
     return new Promise<T>((resolve, reject) => {
         let timer: NodeJS.Timeout | undefined = setTimeout(() => {
             timer = undefined;
-            reject(new Error(callerTimeOutMessage || timedOutMessage));
+            reject(new TimeoutError(callerTimeOutMessage || timedOutMessage));
         }, timeoutMs);
 
         // Execute the action and handle the result

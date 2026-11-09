@@ -5,9 +5,11 @@
 
 import { CosmosDBManagementClient, type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import * as vscode from 'vscode';
 import { API } from '../../../../AzureDBExperiences';
 import { collectDerivedAdvisories } from '../../../accountOverview/services/advisories';
 import type * as advisories from '../../../accountOverview/services/advisories';
+import { DEFAULT_ADVISORY_THRESHOLDS } from '../../../accountOverview/services/advisories/core/thresholds';
 import { mockClient } from '../../../accountOverview/services/testFixtures';
 import { getDerivedAdvisoriesForAccount } from './derivedAdvisoriesRouter';
 
@@ -17,17 +19,6 @@ vi.mock('../../../accountOverview/services/advisories', async (importOriginal) =
     ...(await importOriginal<typeof advisories>()),
     collectDerivedAdvisories: vi.fn(),
 }));
-vi.mock('./thresholds', async () => {
-    const { DEFAULT_ADVISORY_THRESHOLDS } =
-        await import('../../../accountOverview/services/advisories/core/thresholds');
-    const { DEFAULT_HEALTH_THRESHOLDS } = await import('../../../accountOverview/services/inventoryMetrics');
-    const { DEFAULT_PARTITION_THRESHOLDS } = await import('../../../accountOverview/services/partitionHealth');
-    return {
-        readAdvisoryThresholds: () => DEFAULT_ADVISORY_THRESHOLDS,
-        readHealthThresholds: () => DEFAULT_HEALTH_THRESHOLDS,
-        readPartitionThresholds: () => DEFAULT_PARTITION_THRESHOLDS,
-    };
-});
 
 type Metadata = Parameters<typeof getDerivedAdvisoriesForAccount>[0];
 
@@ -124,8 +115,15 @@ describe('account advisory acquisition', () => {
         });
         await getDerivedAdvisoriesForAccount(metadata(account));
         expect(collectDerivedAdvisories).toHaveBeenCalledWith(
-            expect.objectContaining({ accountConfig: expect.objectContaining({ api: API.Core }) }),
+            expect.objectContaining({
+                accountConfig: expect.objectContaining({ api: API.Core }),
+                advisoryThresholds: DEFAULT_ADVISORY_THRESHOLDS,
+            }),
         );
+        const params = vi.mocked(collectDerivedAdvisories).mock.calls[0][0];
+        expect(params).not.toHaveProperty('healthThresholds');
+        expect(params).not.toHaveProperty('partitionThresholds');
+        expect(vscode.workspace.getConfiguration).not.toHaveBeenCalled();
     });
 
     it('keeps configuration findings and reports denied client acquisition', async () => {
@@ -135,6 +133,7 @@ describe('account advisory acquisition', () => {
         expect(result.available).toBe(true);
         expect(result.advisories).toEqual([expect.objectContaining({ rule: 'ExpensiveConsistency' })]);
         expect(result.metricSource?.failures.every((failure) => failure.reason === 'rbac')).toBe(true);
+        expect(vscode.workspace.getConfiguration).not.toHaveBeenCalled();
     });
 
     it('keeps configuration findings when inventory collection fails', async () => {

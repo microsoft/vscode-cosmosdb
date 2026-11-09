@@ -23,7 +23,7 @@
  *
  * What this helper does
  * ---------------------
- * 1. Waits for the Azure activity-bar entry to be contributed, then clicks it to open the sidebar.
+ * 1. Waits for the Azure activity-bar entry to be contributed, then reveals it unless it is already active and visible.
  *    This wakes Azure Resources, which pulls our extension up via the activation events above.
  * 2. Polls the workbench DOM until the `Cosmos DB Accounts` row appears
  *    in the Workspaces tree. That label is produced by
@@ -47,35 +47,39 @@ const ACTIVATION_POLL_INTERVAL_MS = 500;
 /**
  * Label rendered by `CosmosDBWorkspaceItem.getTreeItem()`. The exact string
  * must stay in sync with `src/tree/workspace-view/cosmosdb/CosmosDBWorkspaceItem.ts`.
- * If that label ever gets l10n'd to a non-English locale at test time, this
- * helper will need to read it from the same translation source.
+ * Localized workers supply the expected translated label instead.
  */
 const WORKSPACE_TREE_NODE_LABEL = 'Cosmos DB Accounts';
 
-export async function waitForExtensionsActivated(window: Page): Promise<void> {
+export async function waitForExtensionsActivated(
+    window: Page,
+    workspaceTreeNodeLabel = WORKSPACE_TREE_NODE_LABEL,
+): Promise<void> {
     // The command palette can show unrelated matches before extensions finish registering.
     // Wait for the contributed Azure view itself rather than executing the first fuzzy command result.
-    await window
-        .locator('.part.activitybar')
-        .getByRole('tab', { name: /^Azure(?: \(|$)/ })
-        .click({ timeout: ACTIVATION_TIMEOUT_MS });
-
+    const azureTab = window.locator('.part.activitybar').getByRole('tab', { name: /^Azure(?: \(|$)/ });
+    await azureTab.waitFor({ state: 'visible', timeout: ACTIVATION_TIMEOUT_MS });
     // 2. Wait for our workspace contribution to render. Polling DOM is the
     //    most resilient signal we have without a direct bridge into the
     //    VS Code extension host.
     const deadline = Date.now() + ACTIVATION_TIMEOUT_MS;
-    const nodeLocator = window.getByRole('treeitem', { name: WORKSPACE_TREE_NODE_LABEL });
+    const nodeLocator = window.getByRole('treeitem', { name: workspaceTreeNodeLabel });
 
     let lastError: string = '(no probes yet)';
 
     while (Date.now() < deadline) {
         try {
-            // oxlint-disable-next-line no-await-in-loop
-            const count = await nodeLocator.count();
-            if (count > 0) {
+            // A restored Azure view must not be toggled closed. Retry revealing it if VS Code ignores a rapid click.
+            if (
+                (await azureTab.getAttribute('aria-selected')) !== 'true' ||
+                !(await window.locator('.part.sidebar').isVisible())
+            ) {
+                await azureTab.click({ timeout: ACTIVATION_TIMEOUT_MS });
+            }
+            if (await nodeLocator.isVisible()) {
                 return;
             }
-            lastError = `tree item "${WORKSPACE_TREE_NODE_LABEL}" not present (count=${count})`;
+            lastError = `tree item "${workspaceTreeNodeLabel}" not visible`;
         } catch (err) {
             lastError = (err as Error).message;
         }
@@ -85,7 +89,7 @@ export async function waitForExtensionsActivated(window: Page): Promise<void> {
     await captureNamedScreenshot(window, 'activation-failure');
     throw new Error(
         `Extensions did not finish activating within ${ACTIVATION_TIMEOUT_MS} ms. ` +
-            `Expected the "${WORKSPACE_TREE_NODE_LABEL}" tree item to appear after revealing the Azure sidebar. ` +
+            `Expected the "${workspaceTreeNodeLabel}" tree item to appear after revealing the Azure sidebar. ` +
             `Last probe: ${lastError}. ` +
             `Common causes: ` +
             `(a) the dependent extension "ms-azuretools.vscode-azureresourcegroups" failed to install ` +

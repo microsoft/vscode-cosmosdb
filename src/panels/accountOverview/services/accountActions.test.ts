@@ -393,8 +393,13 @@ describe('runAccountAction without Explorer nodes', () => {
         await expect(runAccountAction(actionContext(), metadata(), { action: 'openCosts' })).resolves.toEqual({
             status: 'completed',
         });
-        const uri = vi.mocked(vscode.env.openExternal).mock.calls[0][0];
-        expect(uri).toEqual(vscode.Uri.parse(buildAccountCostsUrl('https://portal.azure.us/', tenantId, accountId)));
+        const target = vi.mocked(vscode.env.openExternal).mock.calls[0][0];
+        expect(target).toBe(
+            `https://portal.azure.us/#@${tenantId}/view/Microsoft_Azure_CostManagement/CostAnalysis/scope/${encodeURIComponent(accountId)}`,
+        );
+        // VS Code preserves strings but serializes URI inputs with toString(true) followed by encodeURI.
+        const browserUrl = typeof target === 'string' ? target : encodeURI(target.toString(true));
+        expect(browserUrl).toBe(buildAccountCostsUrl('https://portal.azure.us/', tenantId, accountId));
         expect(getCosmosDBCredentials).not.toHaveBeenCalled();
         vi.mocked(vscode.env.openExternal).mockResolvedValueOnce(false);
         await expect(runAccountAction(actionContext(), metadata(), { action: 'openCosts' })).rejects.toThrow(
@@ -409,7 +414,7 @@ describe('account action boundaries', () => {
         'https://portal.azure.cn',
         'https://portal.azure.com/',
         'https://ms.portal.azure.com',
-    ])('encodes the tenant and complete ARM scope for %s', (portal) => {
+    ])('encodes the tenant and complete ARM scope exactly once for %s', (portal) => {
         expect(buildAccountCostsUrl(portal, 'tenant/# ?@', '/subscriptions/sub/rg/a b?#%')).toBe(
             `${portal.replace(/\/$/, '')}/#@tenant%2F%23%20%3F%40/view/Microsoft_Azure_CostManagement/CostAnalysis/scope/%2Fsubscriptions%2Fsub%2Frg%2Fa%20b%3F%23%25`,
         );

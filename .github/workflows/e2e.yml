@@ -3,7 +3,7 @@
 #
 # Triggered on PRs and pushes that touch code which could change behaviour observable through the webview (src/,
 # test/e2e/, scripts/import-seed.mjs, scripts/test-proxy*.mjs, docker-compose.e2e.yml, package.json,
-# playwright config, the workflow itself).
+# Vite/Playwright config, German/Japanese translations, the workflow itself).
 # Other commits skip the run to keep CI cost reasonable.
 #
 # Flow:
@@ -41,6 +41,11 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'playwright.config.ts'
+      - 'vite.config.*.mjs'
+      - 'l10n/bundle.l10n.de.json'
+      - 'l10n/bundle.l10n.ja.json'
+      - 'package.nls.de.json'
+      - 'package.nls.ja.json'
       - 'tsconfig.e2e.json'
       - '.github/workflows/e2e.yml'
 
@@ -55,6 +60,11 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'playwright.config.ts'
+      - 'vite.config.*.mjs'
+      - 'l10n/bundle.l10n.de.json'
+      - 'l10n/bundle.l10n.ja.json'
+      - 'package.nls.de.json'
+      - 'package.nls.ja.json'
       - 'tsconfig.e2e.json'
       - '.github/workflows/e2e.yml'
 

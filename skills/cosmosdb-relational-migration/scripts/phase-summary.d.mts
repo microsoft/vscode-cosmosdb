@@ -1,0 +1,1 @@
+export function parseJson(content: string): unknown;

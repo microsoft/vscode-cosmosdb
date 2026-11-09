@@ -10,6 +10,7 @@ import { actionsProcedures } from './accountOverview/actionsRouter';
 import { aiFeaturesProcedures } from './accountOverview/aiFeaturesRouter';
 import { alertsRecommendationsProcedures } from './accountOverview/alertsRecommendationsRouter';
 import { derivedAdvisoriesProcedures } from './accountOverview/derivedAdvisoriesRouter';
+import { feedbackProcedures } from './accountOverview/feedbackRouter';
 import { inventoryMetricsProcedures } from './accountOverview/inventoryMetricsRouter';
 import { metricSeriesProcedures } from './accountOverview/metricSeriesRouter';
 import { navigationProcedures } from './accountOverview/navigationRouter';
@@ -38,4 +39,5 @@ export const accountOverviewRouterDef = accountOverviewRouter({
     ...actionsProcedures,
     ...navigationProcedures,
     ...aiFeaturesProcedures,
+    ...feedbackProcedures,
 });

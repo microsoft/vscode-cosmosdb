@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import { createMockLanguageModel, languageModelMessagesToText, setMockRoute } from './languageModelMockUtils';
+import { createMockLanguageModel, languageModelMessagesToText } from './languageModelMockUtils';
 
 async function collect<T>(iterable: AsyncIterable<T>): Promise<T[]> {
     const out: T[] = [];
@@ -74,35 +74,6 @@ describe('createMockLanguageModel', () => {
     it('estimates token counts from string length', async () => {
         const model = createMockLanguageModel({ id: 'm', name: 'M', resolveResponse: () => '' });
         expect(await model.countTokens('12345678')).toBe(2); // ceil(8 / 4)
-    });
-});
-
-describe('setMockRoute', () => {
-    it('is sticky: the route persists across requests until changed or cleared', async () => {
-        const seen: (string | undefined)[] = [];
-        const model = createMockLanguageModel({
-            id: 'm',
-            name: 'M',
-            resolveResponse: ({ route }) => {
-                seen.push(route);
-                return 'x';
-            },
-        });
-
-        await model.sendRequest(userMessages(), {}); // no route set yet
-        setMockRoute(model, 'r1');
-        await model.sendRequest(userMessages(), {});
-        await model.sendRequest(userMessages(), {}); // sticky
-        setMockRoute(model, 'r2');
-        await model.sendRequest(userMessages(), {});
-        setMockRoute(model, undefined); // cleared
-        await model.sendRequest(userMessages(), {});
-
-        expect(seen).toEqual([undefined, 'r1', 'r1', 'r2', undefined]);
-    });
-
-    it('is a no-op on objects without the mock setter (real models)', () => {
-        expect(() => setMockRoute({} as unknown as vscode.LanguageModelChat, 'x')).not.toThrow();
     });
 });
 

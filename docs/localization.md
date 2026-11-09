@@ -74,6 +74,30 @@ const component = () => {
 
 ```
 
+### Runtime initialization and packaging
+
+All five panel hosts still extend `BaseTab`. The `@microsoft/vscode-ext-webview` package supplies the tRPC transport;
+it does not replace the panel HTML or initialize this extension's translations.
+
+VS Code loads the current display language's bundle from the directory declared by `package.json`'s `l10n` property.
+`BaseTab` injects `vscode.l10n.bundle` into `globalThis.l10n_bundle` before loading the webview entry.
+`src/webviews/index.tsx` calls `l10n.config()` before dynamically importing the requested view.
+Keep that ordering so labels evaluated at module initialization are translated too.
+
+The extension build must put each translated bundle directly under `dist/l10n`, for example
+`dist/l10n/bundle.l10n.fr.json`. `vite-plugin-static-copy` preserves source directories, so the localization target
+in `vite.config.ext.mjs` uses `rename: { stripBase: true }` to avoid an extra `l10n` directory.
+Bundles under `dist/l10n/l10n` are not found by VS Code, leaving both host and webview translations unavailable.
+
+`src/localizationPackaging.test.ts` exercises the real copy plugin in development and production modes.
+It checks the manifest path and verifies that every locale shipped with a localized manifest has its unchanged bundle
+in that directory.
+
+`test/e2e/specs/queryEditor-localization.spec.ts` additionally launches real VS Code instances with the official
+German and Japanese language packs. It changes the display language through the UI, confirms a restart, and opens
+Query Editor to check translated Run, Save, and Open controls without mocking the bundle.
+See [the E2E display-language regression](../test/e2e/README.md#display-language-regression) for the standalone command.
+
 ## Collect strings for localization
 
 To collect strings for localization, you need to use the `@vscode/l10n-dev` tool. This tool will scan your source code

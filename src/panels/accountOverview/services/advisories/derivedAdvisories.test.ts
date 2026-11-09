@@ -334,7 +334,7 @@ describe('evaluateAutoscaleCandidate', () => {
 
     it('includes the CODA-style recommended autoscale max when provisioned RU is known', () => {
         const advisory = evaluateAutoscaleCandidate(64, 8, dutyCycle, true, 4_000, 'db/orders', 'orders');
-        expect(advisory?.suggestedAction).toContain('4,000');
+        expect(advisory?.suggestedAction).toContain((4_000).toLocaleString());
     });
 });
 

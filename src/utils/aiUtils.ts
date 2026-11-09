@@ -12,10 +12,11 @@
 
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
+import { isEqual } from 'es-toolkit';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { createMockLanguageModel, type CreateMockLanguageModelOptions } from './languageModelMockUtils';
-import { SELECTED_MODEL_KEY } from './modelUtils';
+import { isAutoModel, MIGRATION_SELECTED_MODEL_KEY, SELECTED_MODEL_KEY, type ModelInfo } from './modelUtils';
 
 /**
  * Master switch to control whether third-party (non-Copilot) language models are allowed.
@@ -127,6 +128,7 @@ export interface GetSelectedModelOptions {
      * Defaults to {@link SELECTED_MODEL_KEY}.
      */
     stateKey?: string;
+    excludeAuto?: boolean;
 }
 
 /**
@@ -141,22 +143,23 @@ export interface GetSelectedModelOptions {
  */
 export async function getSelectedModel(options?: GetSelectedModelOptions): Promise<vscode.LanguageModelChat> {
     if (e2eModelOverride) {
-        if (e2eModelOverride.length === 0) {
+        const models = e2eModelOverride.filter((model) => !options?.excludeAuto || !isAutoModel(model));
+        if (models.length === 0) {
             throw new Error(l10n.t('No language models available. Please ensure you have access to Copilot.'));
         }
-        const explicitMock = options?.modelId ? e2eModelOverride.find((m) => m.id === options.modelId) : undefined;
+        const explicitMock = options?.modelId ? models.find((m) => m.id === options.modelId) : undefined;
         const savedMockId = ext.context.globalState.get<string>(options?.stateKey ?? SELECTED_MODEL_KEY);
         const chosen =
-            explicitMock ??
-            (savedMockId ? e2eModelOverride.find((m) => m.id === savedMockId) : undefined) ??
-            e2eModelOverride[0];
+            explicitMock ?? (savedMockId ? models.find((m) => m.id === savedMockId) : undefined) ?? models[0];
         // Return the shared mock for the chosen descriptor so the returned model
         // honors `countTokens` / `sendRequest` and streams back whatever the
         // installed resolver produces (see `setE2eMockResponseResolver`).
         return getOrCreateE2eMockModel(chosen);
     }
 
-    const models = await vscode.lm.selectChatModels(modelSelector);
+    const models = (await vscode.lm.selectChatModels(modelSelector)).filter(
+        (model) => !options?.excludeAuto || !isAutoModel(model),
+    );
     if (models.length === 0) {
         throw new Error(l10n.t('No language models available. Please ensure you have access to Copilot.'));
     }
@@ -171,29 +174,57 @@ export async function getSelectedModel(options?: GetSelectedModelOptions): Promi
 }
 
 /** Minimal descriptor for an available Copilot model, suitable for passing to webviews. */
-export interface AvailableModelDescriptor {
-    id: string;
-    name: string;
-    family: string;
-    vendor: string;
-    maxInputTokens: number;
+export type AvailableModelDescriptor = ModelInfo;
+
+function getComparableModelMetadata(model: vscode.LanguageModelChat): Record<string, unknown> | undefined {
+    try {
+        if (!model.version) return undefined;
+        return Object.fromEntries(
+            Object.entries(model).filter(
+                ([key, value]) => key !== 'id' && key !== 'family' && typeof value !== 'function',
+            ),
+        );
+    } catch {
+        return undefined;
+    }
+}
+
+function tryReadModelMetadata<Value>(read: () => Value): Value | undefined {
+    try {
+        return read();
+    } catch {
+        return undefined;
+    }
+}
+
+function getOptionalModelMetadata(
+    model: vscode.LanguageModelChat,
+): Pick<ModelInfo, 'category' | 'supportsToolCalling'> {
+    const category = tryReadModelMetadata(() => model.category);
+    const supportsToolCalling = tryReadModelMetadata(() => model.capabilities?.supportsToolCalling);
+    return {
+        ...(typeof category === 'string' ? { category } : {}),
+        ...(typeof supportsToolCalling === 'boolean' ? { supportsToolCalling } : {}),
+    };
 }
 
 /**
- * Returns the list of available Copilot models filtered to those usable for
- * `sendRequest`/`countTokens` calls. The "Auto" virtual model is excluded because
- * it does not support those APIs, and is therefore unsuitable for the chat
- * participant and migration assistant flows.
+ * Returns available Copilot models, excluding Auto by default for direct model requests.
+ * Chat handoff callers can explicitly include Auto without changing the default for other consumers.
  *
  * @returns `{ models, savedModelId }` where `savedModelId` is the currently saved
  *   preference (or `null` if none). Returns empty list on error.
  */
 export async function getAvailableModelsInfo(
     stateKey: string = SELECTED_MODEL_KEY,
+    options?: { includeAuto?: boolean },
 ): Promise<{ models: AvailableModelDescriptor[]; savedModelId: string | null }> {
     if (e2eModelOverride) {
         const savedModelId = ext.context.globalState.get<string>(stateKey) ?? null;
-        return { models: [...e2eModelOverride], savedModelId };
+        return {
+            models: e2eModelOverride.filter((model) => options?.includeAuto || !isAutoModel(model)),
+            savedModelId,
+        };
     }
 
     // In e2e migration AI mock mode, advertise a single deterministic fake
@@ -202,23 +233,43 @@ export async function getAvailableModelsInfo(
     if (process.env.COSMOSDB_E2E_TEST === '1' && process.env.COSMOSDB_E2E_MIGRATION_AI_MOCK === '1') {
         const id = 'e2e-mock-migration-model';
         return {
-            models: [{ id, name: 'E2E Mock Model', family: 'e2e-mock', vendor: 'copilot', maxInputTokens: 128_000 }],
-            savedModelId: id,
+            models: [
+                { id, name: 'E2E Mock Model', family: 'e2e-mock', vendor: 'copilot', maxInputTokens: 128_000 },
+                ...(options?.includeAuto
+                    ? [{ id: 'auto', name: 'Auto', family: 'auto', vendor: 'copilot', maxInputTokens: 0 }]
+                    : []),
+            ],
+            savedModelId: ext.context.globalState.get<string>(stateKey) ?? id,
         };
     }
     try {
         const allModels = await vscode.lm.selectChatModels(modelSelector);
-        const savedModelId = ext.context.globalState.get<string>(stateKey) ?? null;
+        let savedModelId = ext.context.globalState.get<string>(stateKey) ?? null;
+        const uniqueModels: { id: string; metadata: Record<string, unknown> }[] = [];
 
-        // Filter out the "Auto" virtual model — it doesn't support countTokens or sendRequest.
         const models = allModels
-            .filter((m) => m.id !== 'auto' && m.name.toLowerCase() !== 'auto')
+            .filter((model) => options?.includeAuto || !isAutoModel(model))
+            .filter((model) => {
+                if (stateKey !== MIGRATION_SELECTED_MODEL_KEY) return true;
+                const metadata = getComparableModelMetadata(model);
+                if (!metadata) return true;
+                const duplicate = uniqueModels.find(
+                    (entry) => tryReadModelMetadata(() => isEqual(entry.metadata, metadata)) === true,
+                );
+                if (duplicate) {
+                    if (savedModelId === model.id) savedModelId = duplicate.id;
+                    return false;
+                }
+                uniqueModels.push({ id: model.id, metadata });
+                return true;
+            })
             .map((m) => ({
                 id: m.id,
                 name: m.name,
                 family: m.family,
                 vendor: m.vendor,
                 maxInputTokens: m.maxInputTokens,
+                ...getOptionalModelMetadata(m),
             }));
 
         return { models, savedModelId };

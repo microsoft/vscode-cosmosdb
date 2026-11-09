@@ -10,8 +10,8 @@
  * effects:
  *
  *   1. Ensures the extension build (`dist/`) is **fresh** relative to the
- *      sources it was produced from, and is a **production** build. Mtimes of
- *      `package.json` + `src/` are compared against `dist/main.mjs` and
+ *      sources it was produced from, and is a **production** build.
+ *      Manifest, Vite config, `src/`, and `l10n/` mtimes are compared against `dist/main.mjs` and
  *      `dist/package.json`; a sidecar marker also detects when `dist/` was
  *      overwritten by the `vite-watch:ext` dev task (a development build that
  *      doesn't render the webviews). If either check fails, `npm run vite-prod`
@@ -19,12 +19,10 @@
  *      (useful when you're iterating on tests only).
  *   2. Downloads/locates a stable VS Code via `@vscode/test-electron`
  *      (cached under `.vscode-test/`).
- *   3. Installs the extension's runtime dependencies (currently just
- *      `ms-azuretools.vscode-azureresourcegroups`) into a dedicated
- *      extensions directory. Required because our extension declares
- *      `extensionDependencies` and VS Code refuses to activate it otherwise.
- *      Cached: a marker file under `.vscode-test/e2e-extensions/.installed`
- *      lists the extension IDs already provisioned.
+ *   3. Installs the runtime dependency `ms-azuretools.vscode-azureresourcegroups` and the German/Japanese language packs
+ *      into a dedicated extensions directory. The runtime dependency is required for activation;
+ *      language packs exercise VS Code's real display-language selection.
+ *      A marker file under `.vscode-test/e2e-extensions/.installed` caches the provisioned extension IDs.
  *   4. Brings the Cosmos DB emulator up via docker compose (separate compose
  *      file `docker-compose.e2e.yml` on ports 8082/1235, so the developer's
  *      local emulator on 8081 is unaffected), waits for readiness, and
@@ -62,7 +60,11 @@ import {
     waitForEmulator,
 } from './emulator';
 
-const REQUIRED_EXTENSIONS = ['ms-azuretools.vscode-azureresourcegroups'];
+const REQUIRED_EXTENSIONS = [
+    'ms-azuretools.vscode-azureresourcegroups',
+    'MS-CEINTL.vscode-language-pack-de',
+    'MS-CEINTL.vscode-language-pack-ja',
+];
 const VSCODE_VERSION = 'stable';
 
 /**
@@ -121,7 +123,7 @@ function maxMtimeMs(dir: string): number {
 }
 
 /**
- * Heuristic: dist is stale if any of (root package.json, anything under src/)
+ * Heuristic: dist is stale if any build input (manifests, Vite configs, src/, or l10n/)
  * has an mtime newer than the dist's main.mjs OR dist's package.json. Either
  * staleness condition triggers a rebuild — the bundler copies package.json
  * into dist, so a mismatched manifest is the very symptom that prompted us
@@ -155,13 +157,21 @@ function isDistStale(extensionDevelopmentPath: string): { stale: boolean; reason
         };
     }
     const distMin = Math.min(statSync(mainMjs).mtimeMs, statSync(distPkg).mtimeMs);
-    const rootPkgMs = statSync(path.resolve(repoRoot, 'package.json')).mtimeMs;
-    if (rootPkgMs > distMin) {
-        return { stale: true, reason: 'root package.json newer than dist/' };
+    const rootInputs = [
+        'package.json',
+        'vite.config.ext.mjs',
+        'vite.config.views.mjs',
+        ...readdirSync(repoRoot).filter((filename) => /^package\.nls(?:\..+)?\.json$/.test(filename)),
+    ];
+    for (const filename of rootInputs) {
+        if (statSync(path.join(repoRoot, filename)).mtimeMs > distMin) {
+            return { stale: true, reason: `${filename} newer than dist/` };
+        }
     }
-    const srcMax = maxMtimeMs(path.resolve(repoRoot, 'src'));
-    if (srcMax > distMin) {
-        return { stale: true, reason: 'src/ has files newer than dist/' };
+    for (const directory of ['src', 'l10n']) {
+        if (maxMtimeMs(path.join(repoRoot, directory)) > distMin) {
+            return { stale: true, reason: `${directory}/ has files newer than dist/` };
+        }
     }
     return { stale: false, reason: '' };
 }

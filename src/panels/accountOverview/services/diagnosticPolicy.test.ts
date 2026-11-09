@@ -14,16 +14,18 @@ import {
     getContainerMergeStoragePeak,
     getContainerPartitionCount,
 } from './advisories/fetchers/metrics';
+import { HEALTH_POLICY, OVERVIEW_DEFAULTS } from './healthPolicy';
 import { DEFAULT_HEALTH_THRESHOLDS, getInventoryMetrics } from './inventoryMetrics';
 import { DEFAULT_PARTITION_THRESHOLDS, getPartitionHealth, getPartitionStorageSeries } from './partitionHealth';
 import { getRuTrends, getThrottleRate } from './ruTrends';
 import { DAY, HOUR, MINUTE, RANGE_CONFIG, type RangeConfig } from './shared';
 import { mockClient } from './testFixtures';
+import { GIB } from './units';
 
 afterEach(() => vi.restoreAllMocks());
 
 describe('diagnostic policy compatibility', () => {
-    it('preserves the settings defaults', () => {
+    it('preserves internal Derived thresholds and independent Overview defaults', () => {
         expect(DEFAULT_ADVISORY_THRESHOLDS).toEqual({
             partitionSaturationPercent: 90,
             partitionHeadroomPercent: 70,
@@ -64,6 +66,29 @@ describe('diagnostic policy compatibility', () => {
             skewBalanceRatio: 0.7,
             topN: 5,
         });
+        expect(DEFAULT_HEALTH_THRESHOLDS).toBe(OVERVIEW_DEFAULTS.health);
+        expect(DEFAULT_PARTITION_THRESHOLDS).toBe(OVERVIEW_DEFAULTS.partition);
+    });
+
+    it('keeps Health observation and evidence rules separate from Derived policy', () => {
+        expect(HEALTH_POLICY.sustainedThrottling).toMatchObject({
+            shareThreshold: 0.01,
+            minDurationMs: 5 * MINUTE,
+            maxGapBuckets: 1.5,
+        });
+        expect(HEALTH_POLICY.partition).toMatchObject({
+            percentile: 99,
+            minPartitions: 2,
+            minBusiestBytes: GIB,
+        });
+        expect(HEALTH_POLICY.inventoryStorage.observation).toEqual({
+            windowMs: 7 * DAY,
+            interval: 'PT1H',
+            bucketMs: HOUR,
+        });
+        expect(DIAGNOSTIC_POLICY).not.toHaveProperty('health');
+        expect(DIAGNOSTIC_POLICY).not.toHaveProperty('sustainedThrottling');
+        expect(DIAGNOSTIC_POLICY).not.toHaveProperty('inventoryStorage');
     });
 
     it('keeps diagnostic observations independent of chart presets', () => {
@@ -80,8 +105,8 @@ describe('diagnostic policy compatibility', () => {
             interval: 'PT1H',
             bucketMs: HOUR,
         });
-        expect(DIAGNOSTIC_POLICY.sustainedThrottling.observation).toEqual(RANGE_CONFIG['1H']);
-        expect(DIAGNOSTIC_POLICY.sustainedThrottling.observation).not.toBe(RANGE_CONFIG['1H']);
+        expect(HEALTH_POLICY.sustainedThrottling.observation).toEqual(RANGE_CONFIG['1H']);
+        expect(HEALTH_POLICY.sustainedThrottling.observation).not.toBe(RANGE_CONFIG['1H']);
     });
 
     it('retains the one-day log window', () => {

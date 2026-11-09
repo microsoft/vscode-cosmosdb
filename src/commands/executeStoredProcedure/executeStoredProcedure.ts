@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type IActionContext, openReadOnlyJson } from '@microsoft/vscode-azext-utils';
+import { type IActionContext, openReadOnlyJson, parseError } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
@@ -28,18 +28,19 @@ export async function cosmosDBExecuteStoredProcedure(
 
     const paramString = await context.ui.showInputBox({
         title: l10n.t('Parameters'),
-        placeHolder: l10n.t('empty or array of values e.g. [1, {key: value}]'),
+        placeHolder: l10n.t('Empty or a JSON array, e.g. [1, {"key": "value"}]'),
+        validateInput: (value) => {
+            try {
+                parseParameters(value);
+                return undefined;
+            } catch (error) {
+                return parseError(error).message;
+            }
+        },
         // @todo: add a learnMoreLink
     });
 
-    let parameters: (string | number | object)[] | undefined = undefined;
-    if (paramString !== '') {
-        try {
-            parameters = JSON.parse(paramString) as (string | number | object)[];
-        } catch {
-            // Ignore parameters if they are invalid
-        }
-    }
+    const parameters = parseParameters(paramString);
 
     const databaseId = node.model.database.id;
     const containerId = node.model.container.id;
@@ -58,4 +59,24 @@ export async function cosmosDBExecuteStoredProcedure(
     } catch {
         await context.ui.showWarningMessage(l10n.t('Unable to parse execution result'));
     }
+}
+
+function parseParameters(value: string): unknown[] | undefined {
+    if (value === '') {
+        return undefined;
+    }
+
+    const message = l10n.t('Enter a valid JSON array, e.g. [1, {"key": "value"}], or leave empty for no parameters.');
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(value);
+    } catch {
+        throw new Error(message);
+    }
+
+    if (!Array.isArray(parsed)) {
+        throw new Error(message);
+    }
+
+    return parsed as unknown[];
 }

@@ -1,8 +1,9 @@
 # Webview e2e tests (Playwright + real VS Code)
 
 End-to-end tests that drive the React webviews under `src/webviews/` **inside
-a real, downloaded VS Code instance**. We do _not_ assert against the VS Code
-shell (tree view, status bar, settings UI) — that's the job of the
+a real, downloaded VS Code instance**. The localization regression also switches the workbench display language
+and verifies the locale after restarting its isolated profile. Other VS Code
+shell assertions (tree view, status bar, settings UI) belong to the
 Extension-Host integration tests next door under
 [`test/`](../) (run via `npm run test`).
 
@@ -55,6 +56,21 @@ The fixture-lifecycle spec intentionally exits VS Code before worker teardown to
 verify that an already-closed application does not cause a shutdown timeout.
 It disables window-dependent automatic fixtures because no live window remains.
 Use `closeAllEditorTabs(vscodeWindow)` from `fixtures/webviewHelpers.ts`.
+This helper focuses the workbench before opening the command palette and waits
+for each editor to close. Cleanup failures fail the test rather than silently
+leaving a panel for the next test. Tests that resize the window must also restore
+the original viewport in `finally`.
+Use `resizeWindowViewport(vscodeApp, vscodeWindow, size)` for migration responsive
+checks: it resizes the native Electron window and waits for the renderer.
+Do not use `page.setViewportSize()` here; CDP device-metric overrides can leave
+the embedded webview and native window with mismatched input coordinates.
+
+Migration tests attach captured mock prompts and the webview accessibility tree
+before cleanup on failure. When simulating a fast agent, wait for the UI to
+observe the running state before writing completion: prompt capture happens
+before the launch-state update reaches the webview.
+`MigrationPage.completeSkillRun()` waits for both the running state and the
+completion update before the test can launch the next phase.
 
 During a test, use `closeEditorTab(vscodeWindow, name)` to close a specific tab rather than whichever editor has focus.
 This helper requires a unique matching tab and waits for that tab to disappear; failures are not swallowed.
@@ -66,6 +82,9 @@ The activation handshake waits for the contributed Azure activity-bar entry befo
 the Cosmos DB Accounts tree item. It does not use the command palette during startup: before extension registration
 finishes, a search for `View: Show Azure` can offer unrelated commands instead.
 If the tree item never appears, the report includes an `activation-failure` screenshot.
+The handshake leaves an already selected, visible Azure sidebar open rather than toggling it closed.
+This matters after a display-language restart, when VS Code restores the previous sidebar.
+The activation regressions cover both an already open sidebar and reopening a hidden one.
 
 ## Running
 
@@ -81,6 +100,11 @@ npm run e2e:coverage:query-editor
 # Author / debug
 npm run e2e:ui         # Playwright's UI mode — step through tests, time-travel
 npm run e2e:debug      # Playwright Inspector — pause + step + REPL at each action
+
+# Stress the complete offline migration suite without masking flakes with retries.
+# Keep the full file selected so cross-test state leaks remain observable.
+COSMOSDB_E2E_SKIP_EMULATOR=1 COSMOSDB_E2E_SCREENSHOT=trace-on-failure \
+  npm run e2e -- test/e2e/specs/migration.spec.ts --repeat-each=20 --retries=0 --workers=1
 ```
 
 To verify the Data Modeler's native **Add container** input, including invalid Enter submissions, valid correction,
@@ -95,7 +119,7 @@ This regression drives the actual webview-to-host request and VS Code input box,
 For manual verification, restart the Extension Development Host after rebuilding: `npm run build` only type-checks,
 and even a refreshed Vite bundle does not replace code already loaded by a running extension host.
 
-> **Auto-build:** `globalSetup` compares mtimes of `package.json` + `src/`
+> **Auto-build:** `globalSetup` compares mtimes of the manifests, Vite configs, `src/`, and `l10n/`
 > against `dist/main.mjs` and `dist/package.json` and runs `npm run vite-prod`
 > automatically when they're out of sync. Set `COSMOSDB_E2E_SKIP_BUILD=1` to
 > bypass the check (useful when iterating on test code only).
@@ -111,8 +135,36 @@ and even a refreshed Vite bundle does not replace code already loaded by a runni
 
 The first run also downloads the `stable` VS Code build into `.vscode-test/`
 (via [`@vscode/test-electron`](https://github.com/microsoft/vscode-test)) and
-installs `ms-azuretools.vscode-azureresourcegroups` into a dedicated
+installs `ms-azuretools.vscode-azureresourcegroups` and the official German/Japanese language packs into a dedicated
 extensions directory at `.vscode-test/e2e-extensions/`. Both are cached.
+
+## Display-language regression
+
+`queryEditor-localization.spec.ts` runs in the `localization-de` and `localization-ja` projects.
+Every worker starts with `--locale=en`, regardless of the host system's language.
+The `default` project keeps that English UI for the other specs.
+Each localized worker then selects **Configure Display Language**, chooses **Deutsch** or **日本語**,
+and confirms **Restart**. VS Code writes its own locale preference and exits; Playwright launches the replacement
+process with the same isolated profile and no `--locale` override.
+The fixture reopens the command palette while waiting for **Configure Display Language** to be registered,
+so a palette opened during startup cannot remain stuck on stale search results.
+Only Electron's detached auto-relaunch is suppressed so Playwright can retain control of the new process.
+Neither VS Code's language preference nor the extension's translation bundles are injected or mocked.
+Before opening Query Editor, the localized specs resize the native Electron window to a 1920 × 1200 content area
+so Save/Open stay visible in the toolbar rather than moving into its overflow menu on narrow displays.
+
+The test verifies the restarted workbench's language, opens the real Query Editor webview, and checks
+the translated Run, Save, and Open controls, including Save's visible text and accessible name.
+It also rejects English fallback labels for those controls. No emulator or Azure sign-in is required.
+Profiles and workspaces are disposable; the developer's VS Code language and installed extensions are untouched.
+
+```powershell
+$env:COSMOSDB_E2E_SKIP_EMULATOR = '1'
+npm run e2e -- queryEditor-localization.spec.ts
+
+# Run just one language.
+npm run e2e -- queryEditor-localization.spec.ts --project=localization-ja
+```
 
 ## Layout
 

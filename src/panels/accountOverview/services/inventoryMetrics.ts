@@ -4,9 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type MonitorClient } from '@azure/arm-monitor';
-import { getMetricApplicability } from '../metrics/contracts';
+import { RestError } from '@azure/core-rest-pipeline';
+import { getMetricApplicability, type MetricUnavailableReason } from '../metrics/contracts';
 import { storageObservation, type StorageMeasurement } from '../metrics/storage';
-import { DIAGNOSTIC_POLICY } from './advisories/core/thresholds';
+import { HEALTH_POLICY, OVERVIEW_DEFAULTS } from './healthPolicy';
 import {
     classifyUnavailable,
     firstValue,
@@ -44,10 +45,7 @@ export interface HealthThresholds {
     warningRuPercent: number;
 }
 
-export const DEFAULT_HEALTH_THRESHOLDS: HealthThresholds = {
-    criticalRuPercent: DIAGNOSTIC_POLICY.health.criticalRuPercent,
-    warningRuPercent: DIAGNOSTIC_POLICY.health.warningRuPercent,
-};
+export const DEFAULT_HEALTH_THRESHOLDS: HealthThresholds = OVERVIEW_DEFAULTS.health;
 
 export interface ContainerMetrics {
     databaseId: string;
@@ -64,8 +62,9 @@ export interface ContainerMetrics {
     storageSparkline?: number[];
     /** Downsampled `NormalizedRUConsumption` series (oldest → newest, percent) for the RU sparkline. */
     ruSparkline?: number[];
-    /** True when the container saw sustained throttling in the last hour. */
-    throttled: boolean;
+    /** Sustained throttling in the last hour; undefined when no usable request observations were read. */
+    throttled?: boolean;
+    throttlingReason?: MetricUnavailableReason;
     health?: HealthState;
 }
 
@@ -78,6 +77,8 @@ export interface InventoryMetricsResult {
     metrics: Record<string, ContainerMetrics>;
     /** Reasons for containers absent from the metric response (including when all reads failed). */
     storageFallback?: StorageMeasurement;
+    /** Request-check failure or lack of observations for containers absent from the metric response. */
+    throttlingFallbackReason?: MetricUnavailableReason;
     /** Epoch milliseconds when the server produced this snapshot. */
     generatedAt: number;
 }
@@ -92,15 +93,16 @@ export interface InventoryMetricsResult {
 export function deriveRowHealth(
     metrics: Pick<ContainerMetrics, 'peakRuPercent' | 'throttled'>,
     thresholds: HealthThresholds,
+    isServerless = false,
 ): HealthState | undefined {
-    const peak = metrics.peakRuPercent;
+    const peak = isServerless ? undefined : metrics.peakRuPercent;
     if (metrics.throttled || (peak !== undefined && peak >= thresholds.criticalRuPercent)) {
         return 'Critical';
     }
     if (peak !== undefined && peak >= thresholds.warningRuPercent) {
         return 'Needs Attention';
     }
-    return peak === undefined ? undefined : 'Healthy';
+    return peak !== undefined || (isServerless && metrics.throttled === false) ? 'Healthy' : undefined;
 }
 
 /**
@@ -121,9 +123,9 @@ export async function getInventoryMetrics(
     const normalizedRuApplicable = getMetricApplicability('normalizedRu', isServerless).status === 'applicable';
 
     const peakTimespan = `${new Date(generatedAt - peakConfig.windowMs).toISOString()}/${new Date(generatedAt).toISOString()}`;
-    const weekConfig = DIAGNOSTIC_POLICY.inventoryStorage.observation;
+    const weekConfig = HEALTH_POLICY.inventoryStorage.observation;
     const weekTimespan = `${new Date(generatedAt - weekConfig.windowMs).toISOString()}/${new Date(generatedAt).toISOString()}`;
-    const hourConfig = DIAGNOSTIC_POLICY.sustainedThrottling.observation;
+    const hourConfig = HEALTH_POLICY.sustainedThrottling.observation;
     const hourTimespan = `${new Date(generatedAt - hourConfig.windowMs).toISOString()}/${new Date(generatedAt).toISOString()}`;
 
     const [storageOutcome, ruOutcome, indexOutcome] = await Promise.allSettled([
@@ -164,17 +166,18 @@ export async function getInventoryMetrics(
         // ignore
     }
 
-    let throttledContainers = new Set<string>();
+    let throttling = new Map<string, boolean>();
+    let throttlingReason: MetricUnavailableReason = 'noData';
     try {
-        throttledContainers = await queryThrottlingByContainer(
+        throttling = await queryThrottlingByContainer(
             client,
             resourceUri,
             hourTimespan,
             hourConfig.interval,
             hourConfig.bucketMs,
         );
-    } catch {
-        // ignore
+    } catch (error) {
+        throttlingReason = metricFailureReason(error);
     }
 
     const keys = new Set<string>([
@@ -182,7 +185,7 @@ export async function getInventoryMetrics(
         ...peakRu.keys(),
         ...indexUsage.keys(),
         ...documentCount.keys(),
-        ...throttledContainers,
+        ...throttling.keys(),
     ]);
     const metrics: Record<string, ContainerMetrics> = {};
 
@@ -211,17 +214,18 @@ export async function getInventoryMetrics(
         }
 
         const peakRuPercent = ruSeries && ruSeries.size > 0 ? Math.max(...ruSeries.values()) : undefined;
-        const throttled = throttledContainers.has(key);
+        const throttled = throttling.get(key);
 
         const partial = { storage, storageGrowthBytes, peakRuPercent, throttled };
         metrics[key] = {
             databaseId,
             containerId,
             ...partial,
+            throttlingReason: throttled === undefined ? throttlingReason : undefined,
             documentCount: docSeries ? lastValue(docSeries) : undefined,
             storageSparkline: toSparkline(dataSeries),
             ruSparkline: toSparkline(ruSeries),
-            health: deriveRowHealth(partial, thresholds),
+            health: deriveRowHealth(partial, thresholds, isServerless),
         };
     }
 
@@ -230,6 +234,7 @@ export async function getInventoryMetrics(
         reason: reason ?? (keys.size === 0 ? 'noData' : undefined),
         metrics,
         storageFallback,
+        throttlingFallbackReason: throttlingReason,
         generatedAt,
     };
 }
@@ -259,7 +264,7 @@ async function querySplitSeries(
     const byContainer = new Map<string, Map<number, number>>();
     for (const metric of response.value ?? []) {
         if (metric.errorCode && metric.errorCode !== 'Success') {
-            throw new Error(metric.errorMessage ?? metric.errorCode);
+            throw new RestError(metric.errorMessage ?? metric.errorCode, { code: metric.errorCode });
         }
         for (const series of metric.timeseries ?? []) {
             const key = seriesContainerKey(series.metadatavalues);
@@ -305,7 +310,7 @@ function toSparkline(series: Map<number, number> | undefined, maxPoints = 24): n
 }
 
 /**
- * Determines which containers saw sustained throttling over the window by
+ * Determines whether each observed container saw sustained throttling over the window by
  * splitting `TotalRequests` on `DatabaseName`/`CollectionName`/`StatusCode` and
  * running the same Count-based contiguous-run detection used at the account level.
  */
@@ -315,7 +320,7 @@ async function queryThrottlingByContainer(
     timespan: string,
     interval: string,
     bucketMs: number,
-): Promise<Set<string>> {
+): Promise<Map<string, boolean>> {
     const response = await client.metrics.list(resourceUri, {
         metricnames: 'TotalRequests',
         aggregation: 'Count',
@@ -327,17 +332,23 @@ async function queryThrottlingByContainer(
     // containerKey → (timestamp → { total, throttled })
     const perContainer = new Map<string, Map<number, { total: number; throttled: number }>>();
     for (const metric of response.value ?? []) {
+        if (metric.errorCode && metric.errorCode !== 'Success') {
+            throw new RestError(metric.errorMessage ?? metric.errorCode, { code: metric.errorCode });
+        }
         for (const series of metric.timeseries ?? []) {
             const key = seriesContainerKey(series.metadatavalues);
             if (!key) {
                 continue;
             }
             const statusCode = series.metadatavalues?.find((m) => m.name?.value?.toLowerCase() === 'statuscode')?.value;
+            if (!statusCode) {
+                continue;
+            }
             const isThrottle = isThrottledStatusCode(statusCode);
             const buckets = perContainer.get(key) ?? new Map<number, { total: number; throttled: number }>();
             for (const point of series.data ?? []) {
                 const count = pickPointValue(point, 'Count');
-                if (count === undefined) {
+                if (count === undefined || count < 0) {
                     continue;
                 }
                 const ts = parseMonitorTimestamp(point.timeStamp);
@@ -355,15 +366,16 @@ async function queryThrottlingByContainer(
         }
     }
 
-    const throttled = new Set<string>();
+    const throttled = new Map<string, boolean>();
     for (const [key, buckets] of perContainer) {
+        if (buckets.size === 0) {
+            continue;
+        }
         const overThreshold = [...buckets.entries()]
             .filter(([, v]) => v.total > 0 && v.throttled / v.total > THROTTLING_SHARE_THRESHOLD)
             .map(([ts]) => ts)
             .sort((a, b) => a - b);
-        if (sustainedTimestamps(overThreshold, bucketMs).size > 0) {
-            throttled.add(key);
-        }
+        throttled.set(key, sustainedTimestamps(overThreshold, bucketMs).size > 0);
     }
     return throttled;
 }

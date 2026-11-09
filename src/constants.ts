@@ -6,7 +6,7 @@
 import * as fs from 'fs';
 import assert from 'node:assert';
 import * as path from 'path';
-import { ThemeIcon, Uri, type IconPath } from 'vscode';
+import { ThemeIcon, Uri, workspace, type IconPath } from 'vscode';
 import { ext } from './extensionVariables';
 
 export const isWindows: boolean = process.platform.startsWith('win');
@@ -103,7 +103,10 @@ export class CosmosDBTimeouts {
     public static readonly EMULATOR_CONNECTION_TIMEOUT_MS = 1000;
 
     /**
-     * Connection timeout for remote accounts (longer to account for network latency)
+     * Configured remote connection timeout in milliseconds, defaulting to thirty seconds.
      */
-    public static readonly CONNECTION_TIMEOUT_MS = 5000;
+    public static get CONNECTION_TIMEOUT_MS(): number {
+        const seconds = workspace.getConfiguration().get<number>(ext.settingsKeys.connectionTimeout, 30);
+        return Number.isInteger(seconds) && seconds >= 1 && seconds <= 2_147_483 ? seconds * 1000 : 30_000;
+    }
 }

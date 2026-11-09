@@ -16,21 +16,22 @@ import {
     Spinner,
     Text,
     tokens,
-    Tooltip,
     typographyStyles,
 } from '@fluentui/react-components';
-import { ArrowClockwise16Regular, Braces16Regular, Money16Regular } from '@fluentui/react-icons';
+import { ArrowClockwise16Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useId, useMemo, useState } from 'react';
 import { type OverviewHealthCheck } from '../../../panels/accountOverview/overviewHealthModel';
 import {
-    type AccountActionInput,
     type HealthState,
     type MetricApplicability,
     type MetricKey,
     type ProvisioningState,
     type TimeRange,
 } from '../../api/types';
+import { ProvideFeedbackButton } from '../../common/ProvideFeedbackButton';
+import { ThemedTooltip as Tooltip } from '../../common/ThemedTooltip';
+import { PreviewBadge } from '../../components/PreviewBadge';
 import { AccountHealthStatus, PROVISIONING_LABELS } from './AccountHealthStatus';
 import { type ContainerRef, type MetricScope } from './metrics/descriptors';
 
@@ -115,6 +116,15 @@ const useStyles = makeStyles({
         flexWrap: 'wrap',
         minWidth: 0,
         maxWidth: '100%',
+    },
+    previewBadge: {
+        position: 'fixed',
+        top: '10px',
+        right: '20px',
+        zIndex: 10,
+        flexShrink: 0,
+        marginTop: 0,
+        marginRight: 0,
     },
     select: {
         minWidth: 0,
@@ -223,6 +233,7 @@ export const AccountHeader = ({
     activeAlertsUnavailable = false,
     lastRefreshedAt,
     onRefresh,
+    onProvideFeedback,
     loading = false,
     refreshDisabled = false,
     defaultEssentialsOpen = false,
@@ -232,8 +243,6 @@ export const AccountHeader = ({
     selectedContainer,
     onSelectContainer,
     databaseIds,
-    accountActionBusy,
-    onAccountAction,
 }: {
     navigationRevision?: number;
     summary: AccountSummary;
@@ -242,6 +251,7 @@ export const AccountHeader = ({
     activeAlertsUnavailable?: boolean;
     lastRefreshedAt?: number;
     onRefresh: () => void;
+    onProvideFeedback?: () => Promise<void>;
     loading?: boolean;
     refreshDisabled?: boolean;
     defaultEssentialsOpen?: boolean;
@@ -251,11 +261,10 @@ export const AccountHeader = ({
     selectedContainer?: MetricScope;
     onSelectContainer: (scope?: MetricScope) => void;
     databaseIds?: string[];
-    accountActionBusy: boolean;
-    onAccountAction: (input: AccountActionInput) => void;
 }) => {
     const styles = useStyles();
     const id = useId();
+    const [previewBadgeWidth, setPreviewBadgeWidth] = useState(0);
     const controlsDisabled = loading || refreshDisabled;
     // Dropdown has no disabledFocusable prop. Keep the trigger focusable while its disabled state blocks interaction.
     const filterButtonProps = { disabled: false, 'aria-disabled': controlsDisabled, tabIndex: 0 };
@@ -274,7 +283,7 @@ export const AccountHeader = ({
     const selectedScopeLabel = selectedContainer?.databaseId ?? l10n.t('All databases');
     const timeRangeLabel = timeRanges.find((range) => range.value === timeRange)?.label;
     const throughputLimit =
-        summary.isServerless || summary.totalThroughputLimit === -1
+        summary.totalThroughputLimit === -1
             ? l10n.t('No total throughput limit')
             : summary.totalThroughputLimit !== undefined &&
                 summary.totalThroughputLimit !== null &&
@@ -282,11 +291,9 @@ export const AccountHeader = ({
                 summary.totalThroughputLimit >= 0
               ? l10n.t('{ru} RU/s', { ru: summary.totalThroughputLimit.toLocaleString() })
               : l10n.t('Unknown');
-    const throughputLimitExplanation = summary.isServerless
-        ? l10n.t('The account-wide provisioned-throughput cap is not applicable to serverless accounts.')
-        : l10n.t(
-              'This account-wide cap limits throughput allocation, not consumed RU or available performance. Autoscale resources count at their configured maximum.',
-          );
+    const throughputLimitExplanation = l10n.t(
+        'This account-wide cap limits throughput allocation, not consumed RU or available performance. Autoscale resources count at their configured maximum.',
+    );
     const capacityMode = summary.isServerless ? l10n.t('Serverless') : l10n.t('Provisioned throughput');
     const retention =
         summary.backupRetentionHours === undefined
@@ -311,10 +318,7 @@ export const AccountHeader = ({
             label: l10n.t('Capacity mode'),
             value: capacityMode,
         },
-        {
-            label: l10n.t('Total throughput limit'),
-            value: throughputLimit,
-        },
+        ...(!summary.isServerless ? [{ label: l10n.t('Total throughput limit'), value: throughputLimit }] : []),
         {
             label: l10n.t('Backup policy'),
             value:
@@ -351,7 +355,7 @@ export const AccountHeader = ({
 
     return (
         <header className={styles.root}>
-            <div className={styles.topRow}>
+            <div className={styles.topRow} style={{ paddingRight: previewBadgeWidth + 28 }}>
                 <div className={styles.identity}>
                     <img className={styles.icon} src={cosmosIcon} alt="" />
                     <div className={styles.titleBlock}>
@@ -435,6 +439,11 @@ export const AccountHeader = ({
                     >
                         {l10n.t('Refresh')}
                     </Button>
+                    {onProvideFeedback && <ProvideFeedbackButton type="button" onProvideFeedback={onProvideFeedback} />}
+                    <PreviewBadge
+                        className={mergeClasses('focusableBadge', styles.previewBadge)}
+                        onWidthChange={setPreviewBadgeWidth}
+                    />
                 </div>
             </div>
             <p className={styles.subtitle}>
@@ -460,12 +469,14 @@ export const AccountHeader = ({
                             />
                             <span>{l10n.t('Regions: {regions}', { regions: regionsLabel })}</span>
                             <span>{l10n.t('Capacity mode: {mode}', { mode: capacityMode })}</span>
-                            <Tooltip content={throughputLimitExplanation} relationship="description">
-                                {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Tooltip focus. */}
-                                <span tabIndex={0} className={styles.throughputLimit}>
-                                    {l10n.t('Total throughput limit: {limit}', { limit: throughputLimit })}
-                                </span>
-                            </Tooltip>
+                            {!summary.isServerless && (
+                                <Tooltip content={throughputLimitExplanation} relationship="description">
+                                    {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Tooltip focus. */}
+                                    <span tabIndex={0} className={styles.throughputLimit}>
+                                        {l10n.t('Total throughput limit: {limit}', { limit: throughputLimit })}
+                                    </span>
+                                </Tooltip>
+                            )}
                         </div>
                         <AccordionHeader
                             as="h2"
@@ -501,24 +512,6 @@ export const AccountHeader = ({
                         >
                             <AccordionItem value="properties">
                                 <div className={styles.detailFooter}>
-                                    <Button
-                                        appearance="secondary"
-                                        size="small"
-                                        icon={<Money16Regular aria-hidden />}
-                                        disabled={accountActionBusy}
-                                        onClick={() => onAccountAction({ action: 'openCosts' })}
-                                    >
-                                        {l10n.t('View Cost')}
-                                    </Button>
-                                    <Button
-                                        appearance="secondary"
-                                        size="small"
-                                        icon={<Braces16Regular aria-hidden />}
-                                        disabled={accountActionBusy}
-                                        onClick={() => onAccountAction({ action: 'openJson' })}
-                                    >
-                                        {l10n.t('View JSON')}
-                                    </Button>
                                     <AccordionHeader
                                         as="h3"
                                         inline

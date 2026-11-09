@@ -39,6 +39,7 @@ export const inventoryMetricsProcedures = {
                         reason: 'unsupported',
                         metrics: {},
                         storageFallback: unavailableStorage('unsupported'),
+                        throttlingFallbackReason: 'unsupported',
                         generatedAt: Date.now(),
                     };
                 }
@@ -50,6 +51,7 @@ export const inventoryMetricsProcedures = {
                         reason: 'noData',
                         metrics: {},
                         storageFallback: unavailableStorage('error'),
+                        throttlingFallbackReason: 'error',
                         generatedAt: Date.now(),
                     };
                 }

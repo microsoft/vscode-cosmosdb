@@ -9,7 +9,7 @@ import { FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { render, screen } from '@testing-library/react';
 import { type PropsWithChildren } from 'react';
 import { describe, expect, it } from 'vitest';
-import { DIAGNOSTIC_POLICY } from '../../../panels/accountOverview/services/advisories/core/thresholds';
+import { HEALTH_POLICY } from '../../../panels/accountOverview/services/healthPolicy';
 import { HOUR, MINUTE } from '../../../panels/accountOverview/services/units';
 import { AccountHealthStatus, healthIndicatorDescriptions } from './AccountHealthStatus';
 
@@ -31,7 +31,7 @@ describe('AccountHealthStatus', () => {
         expect(badge).toHaveTextContent('Healthy');
         expect(badge).toHaveAccessibleName('Healthy');
         expect(badge).toHaveAttribute('tabindex', '0');
-        const policy = DIAGNOSTIC_POLICY.sustainedThrottling;
+        const policy = HEALTH_POLICY.sustainedThrottling;
         const minutes = new Intl.NumberFormat(undefined, { style: 'unit', unit: 'minute', unitDisplay: 'long' }).format(
             policy.minDurationMs / MINUTE,
         );

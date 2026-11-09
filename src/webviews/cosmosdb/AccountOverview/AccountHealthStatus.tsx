@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Badge, type BadgeProps, makeStyles, mergeClasses, tokens, Tooltip } from '@fluentui/react-components';
+import { Badge, type BadgeProps, makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import {
     type HealthCheckOutcome,
@@ -13,9 +13,10 @@ import {
     provisioningHealthCheck,
     resolveAccountHealth,
 } from '../../../panels/accountOverview/overviewHealthModel';
-import { DIAGNOSTIC_POLICY } from '../../../panels/accountOverview/services/advisories/core/thresholds';
+import { HEALTH_POLICY } from '../../../panels/accountOverview/services/healthPolicy';
 import { HOUR, MINUTE } from '../../../panels/accountOverview/services/units';
 import { type HealthState, type ProvisioningState } from '../../api/types';
+import { ThemedTooltip as Tooltip } from '../../common/ThemedTooltip';
 import { unavailableCaption } from './metrics/descriptors';
 import { type TabHealthIndicators } from './TabbedOverviewLayout';
 
@@ -89,7 +90,7 @@ function describeCheck(check: OverviewHealthCheck): { label: string; detail: str
                 }),
             };
         case 'requests': {
-            const policy = DIAGNOSTIC_POLICY.sustainedThrottling;
+            const policy = HEALTH_POLICY.sustainedThrottling;
             const duration = new Intl.NumberFormat(undefined, {
                 style: 'unit',
                 unit: 'minute',
@@ -121,7 +122,7 @@ function describeCheck(check: OverviewHealthCheck): { label: string; detail: str
         }
         case 'containers':
             return {
-                label: l10n.t('Container health'),
+                label: l10n.t('Container throttling'),
                 outcome: check.outcome,
                 detail:
                     l10n.t('Critical containers: {critical}. Warning containers: {warning}. Not assessed: {unknown}.', {
@@ -131,7 +132,7 @@ function describeCheck(check: OverviewHealthCheck): { label: string; detail: str
                     }) +
                     ' ' +
                     l10n.t(
-                        'A Critical container raises account health to Needs Attention; warning-only containers do not. Container RU peaks use the selected chart period.',
+                        'A Critical container raises account health to Needs Attention; warning-only containers do not. Provisioned containers use normalized RU peaks over the selected chart period and sustained 429 responses. Serverless containers use request observations and sustained 429 responses only.',
                     ),
             };
         case 'alerts':

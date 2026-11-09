@@ -13,15 +13,15 @@ import {
     type AccountConfigInput,
     type DerivedAdvisoriesResult,
 } from '../../../accountOverview/services/advisories';
+import { DEFAULT_ADVISORY_THRESHOLDS } from '../../../accountOverview/services/advisories/core/thresholds';
 import { DETECTORS } from '../../../accountOverview/services/advisories/registry';
 import { classifyUnavailable, type UnavailableReason } from '../../../accountOverview/services/shared';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';
-import { readAdvisoryThresholds, readHealthThresholds, readPartitionThresholds } from './thresholds';
 
 // ─── Zone: Client-side derived advisories ───────────────────────────────────────
 //
-// The router prepares the clients and the configured thresholds, then hands off
+// The router prepares the clients and the internal policy, then hands off
 // the full fetch-and-evaluate pipeline to `collectDerivedAdvisories`. All that
 // remains here is client acquisition and preserving config-only checks when workload collection is unavailable.
 
@@ -52,7 +52,7 @@ export async function getDerivedAdvisoriesForAccount(
         writeRegionCount: account.writeLocations?.length ?? 0,
         api,
     };
-    const advisoryThresholds = readAdvisoryThresholds();
+    const advisoryThresholds = DEFAULT_ADVISORY_THRESHOLDS;
     const configOnly = (reason: UnavailableReason): DerivedAdvisoriesResult => ({
         available: true,
         advisories: computeDerivedAdvisories(
@@ -109,8 +109,6 @@ export async function getDerivedAdvisoriesForAccount(
             resourceGroup: metadata.resourceGroup,
             accountName: metadata.accountName,
             isServerless: metadata.isServerless,
-            healthThresholds: readHealthThresholds(),
-            partitionThresholds: readPartitionThresholds(),
             advisoryThresholds,
             accountConfig,
         });

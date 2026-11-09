@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type HealthThresholds } from '../../inventoryMetrics';
 import { type RangeConfig, type TimeRange } from '../../shared';
 import { DAY, GIB, HOUR, MINUTE } from '../../units';
 import { type DerivedAdvisoryThresholds } from './types';
@@ -14,21 +13,11 @@ interface DiagnosticRange extends RangeConfig {
 }
 
 /**
- * Existing Account Overview diagnostic policy, grouped by signal/rule family. Pure data: settings are overlaid by
- * readAdvisoryThresholds on the router side. Zero/undefined validity checks and platform/technical limits stay local.
+ * Internal Derived Advisory policy, grouped by signal/rule family and maintained against CODA.
+ * VS Code settings must never override these values. User Health/view defaults live in healthPolicy.ts instead.
  * Known resource ages and finite observation counts gate recommendations; unknown ages do not imply young resources.
  */
 export const DIAGNOSTIC_POLICY = {
-    health: {
-        criticalRuPercent: 90,
-        warningRuPercent: 80,
-    } satisfies HealthThresholds,
-    sustainedThrottling: {
-        shareThreshold: 0.01,
-        minDurationMs: 5 * MINUTE,
-        maxGapBuckets: 1.5,
-        observation: { windowMs: HOUR, interval: 'PT1M', bucketMs: MINUTE } satisfies RangeConfig,
-    },
     partitionSaturation: {
         minResourceAgeDays: 1,
         percentile: 99,
@@ -137,9 +126,6 @@ export const DIAGNOSTIC_POLICY = {
             bucketMs: HOUR,
         } satisfies DiagnosticRange,
     },
-    inventoryStorage: {
-        observation: { windowMs: 7 * DAY, interval: 'PT1H', bucketMs: HOUR } satisfies RangeConfig,
-    },
     indexing: {
         usageRatio: 0.3,
     },
@@ -185,7 +171,7 @@ export const DIAGNOSTIC_POLICY = {
     },
 } as const;
 
-/** Compatibility shape for the existing VS Code settings overlay and detector context. */
+/** Flat detector inputs derived only from the internal policy, never from VS Code settings. */
 export const DEFAULT_ADVISORY_THRESHOLDS: DerivedAdvisoryThresholds = {
     partitionSaturationPercent: DIAGNOSTIC_POLICY.partitionSaturation.saturationPercent,
     partitionHeadroomPercent: DIAGNOSTIC_POLICY.partitionSaturation.headroomPercent,
@@ -204,7 +190,7 @@ export const DEFAULT_ADVISORY_THRESHOLDS: DerivedAdvisoryThresholds = {
     serverlessPeakFloorRuPerSec: DIAGNOSTIC_POLICY.serverless.peakFloorRuPerSec,
     serverlessPeakCeilingRuPerSec: DIAGNOSTIC_POLICY.serverless.peakCeilingRuPerSec,
     // Tier-2 (Log Analytics) — CODA-calibrated (cross_partition_query.py, shard_key_misalignment.py,
-    // uncontrolled_ingestion.py, shared_throughput.py). Internal-guidance defaults, tunable via advisories.*.
+    // uncontrolled_ingestion.py, shared_throughput.py).
     crossPartitionMinQueries: DIAGNOSTIC_POLICY.crossPartition.minQueries,
     crossPartitionFanoutThreshold: DIAGNOSTIC_POLICY.crossPartition.fanoutThreshold,
     crossPartitionHighPct: DIAGNOSTIC_POLICY.crossPartition.highPercent,

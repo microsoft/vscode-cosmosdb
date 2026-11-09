@@ -417,6 +417,9 @@ The container checklist independently counts rows with no metric health as unass
 
 The badge has one polite health status output and a keyboard-focusable description when explanatory text exists.
 Visible health text and its accessible name derive from the same localized label.
+The checklist tooltip is sized to the available viewport space and scrolls internally when necessary.
+It remains visible while the badge has focus or the pointer is over the tooltip; Escape dismisses it.
+While the tooltip is open and overflows, Arrow Up/Down, Page Up/Down, Home and End scroll its content without moving focus.
 Check descriptions interpolate diagnostic-policy thresholds/durations; they do not maintain separate constants.
 Provisioning is prepended by presentation to the model's four checks.
 

@@ -5,10 +5,12 @@
 
 // @vitest-environment jsdom
 
-import { FluentProvider, webLightTheme } from '@fluentui/react-components';
-import { render, screen } from '@testing-library/react';
+import { badgeClassNames, Button, FluentProvider, webLightTheme } from '@fluentui/react-components';
+import { createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { type PropsWithChildren } from 'react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { type OverviewHealthCheck } from '../../../panels/accountOverview/overviewHealthModel';
 import { HEALTH_POLICY } from '../../../panels/accountOverview/services/healthPolicy';
 import { HOUR, MINUTE } from '../../../panels/accountOverview/services/units';
 import { AccountHealthStatus, healthIndicatorDescriptions } from './AccountHealthStatus';
@@ -16,6 +18,8 @@ import { AccountHealthStatus, healthIndicatorDescriptions } from './AccountHealt
 function Wrapper({ children }: PropsWithChildren) {
     return <FluentProvider theme={webLightTheme}>{children}</FluentProvider>;
 }
+
+afterEach(() => vi.restoreAllMocks());
 
 describe('AccountHealthStatus', () => {
     it('keeps the visible health label, one live status and policy-backed check descriptions', () => {
@@ -92,6 +96,139 @@ describe('AccountHealthStatus', () => {
                 description:
                     'Warning active alerts make account health at least Needs Attention. High-impact Performance or Cost recommendations make account health at least Needs Attention.',
             },
+        });
+    });
+
+    const checks: OverviewHealthCheck[] = [
+        { kind: 'requests', outcome: 'unavailable', detail: 'unavailable', reason: 'rbac' },
+        { kind: 'containers', outcome: 'unavailable', critical: 0, warning: 0, unassessed: 1 },
+        { kind: 'alerts', outcome: 'unavailable', stale: true },
+        { kind: 'advisor', outcome: 'unavailable', detail: 'unavailable' },
+    ];
+
+    function renderHealth() {
+        render(
+            <>
+                <AccountHealthStatus provisioningState="Succeeded" healthChecks={checks} />
+                <Button>Next</Button>
+            </>,
+            { wrapper: Wrapper },
+        );
+        return screen.getByLabelText('Unknown', { selector: `.${badgeClassNames.root}` });
+    }
+
+    describe('tooltip', () => {
+        it('sizes the tooltip surface rather than only its contents and keeps the full accessible explanation', async () => {
+            vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(800);
+            vi.spyOn(document.documentElement, 'clientHeight', 'get').mockReturnValue(400);
+            const user = userEvent.setup();
+            const badge = renderHealth();
+            vi.spyOn(badge, 'getBoundingClientRect').mockReturnValue(new DOMRect(24, 100, 64, 20));
+            await user.tab();
+            const tooltip = await screen.findByRole('tooltip');
+
+            expect(badge).toHaveFocus();
+            expect(badge).toHaveTextContent('Unknown');
+            expect(badge).toHaveAccessibleName('Unknown');
+            expect(badge).toHaveAccessibleDescription(
+                /Resource provisioning.*Account-wide throttling.*Container throttling.*Active Azure Monitor alerts.*Azure Advisor.*Extension diagnostics/,
+            );
+            expect(getComputedStyle(tooltip).maxWidth).toBe('480px');
+            expect(getComputedStyle(tooltip).overflowY).toBe('auto');
+            await waitFor(() => expect(tooltip.style.maxHeight).not.toBe(''));
+            expect(Number.parseFloat(tooltip.style.maxHeight)).toBeGreaterThan(0);
+            expect(Number.parseFloat(tooltip.style.maxHeight)).toBeLessThan(400);
+        });
+
+        it('stays open on pointer leave and page scroll while focused, but closes on Escape or blur', async () => {
+            const user = userEvent.setup();
+            const badge = renderHealth();
+            await user.tab();
+            const tooltip = await screen.findByRole('tooltip');
+            await user.hover(badge);
+            await user.unhover(badge);
+            fireEvent.scroll(document);
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            expect(tooltip).toBeVisible();
+            expect(badge).toHaveFocus();
+
+            await user.keyboard('{Escape}');
+            await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument());
+            expect(badge).toHaveFocus();
+
+            await user.tab();
+            expect(screen.getByRole('button', { name: 'Next' })).toHaveFocus();
+            await user.tab({ shift: true });
+            await screen.findByRole('tooltip');
+            await user.tab();
+            await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument());
+        });
+
+        it('allows hovering and scrolling the tooltip without focusing the badge', async () => {
+            const user = userEvent.setup();
+            const badge = renderHealth();
+            await user.hover(badge);
+            const tooltip = await screen.findByRole('tooltip');
+            await user.hover(tooltip);
+            fireEvent.wheel(tooltip, { deltaY: 200 });
+            fireEvent.scroll(tooltip);
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            expect(tooltip).toBeVisible();
+            expect(badge).not.toHaveFocus();
+
+            await user.unhover(tooltip);
+            await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument());
+        });
+
+        it('scrolls overflowing content with navigation keys without moving focus or scrolling the page', async () => {
+            const user = userEvent.setup();
+            const badge = renderHealth();
+            await user.tab();
+            const tooltip = await screen.findByRole('tooltip');
+            Object.defineProperties(tooltip, {
+                clientHeight: { configurable: true, value: 200 },
+                scrollHeight: { configurable: true, value: 600 },
+                scrollTop: { configurable: true, value: 100 },
+            });
+            const scrollTo = vi.fn();
+            tooltip.scrollTo = scrollTo;
+
+            for (const [key, top] of [
+                ['ArrowDown', 140],
+                ['ArrowUp', 60],
+                ['PageDown', 300],
+                ['PageUp', -100],
+                ['Home', 0],
+                ['End', 600],
+            ] as const) {
+                const event = createEvent.keyDown(badge, { key, cancelable: true });
+                fireEvent(badge, event);
+                expect(event.defaultPrevented).toBe(true);
+                expect(scrollTo).toHaveBeenLastCalledWith({ top });
+                expect(badge).toHaveFocus();
+            }
+
+            scrollTo.mockClear();
+            const tab = createEvent.keyDown(badge, { key: 'Tab', cancelable: true });
+            fireEvent(badge, tab);
+            expect(tab.defaultPrevented).toBe(false);
+            expect(scrollTo).not.toHaveBeenCalled();
+
+            Object.defineProperty(tooltip, 'scrollHeight', { configurable: true, value: 200 });
+            const pageDown = createEvent.keyDown(badge, { key: 'PageDown', cancelable: true });
+            fireEvent(badge, pageDown);
+            expect(pageDown.defaultPrevented).toBe(false);
+            expect(scrollTo).not.toHaveBeenCalled();
+        });
+
+        it('does not open a tooltip or add a tab stop when there is no explanation', async () => {
+            const user = userEvent.setup();
+            render(<AccountHealthStatus provisioningState="Succeeded" />, { wrapper: Wrapper });
+            const badge = screen.getByLabelText('Unknown', { selector: `.${badgeClassNames.root}` });
+            expect(badge).not.toHaveAttribute('tabindex');
+            await user.hover(badge);
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
         });
     });
 });

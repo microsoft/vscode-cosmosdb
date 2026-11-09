@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { materializePrerequisites, phaseOrder } from './checkpoints.mjs';
 
 export const plannedTarget = Object.freeze({
     type: 'provision',
@@ -51,7 +52,7 @@ export const workloadContent =
         2,
     ) + '\n';
 
-export function setupAdventureWorks(workspace, sample, schema) {
+export async function setupAdventureWorks(workspace, sample, schema, phase, roots) {
     assert.ok(sample, 'The evaluation runner must prepare MIGRATION_EVAL_ADVENTUREWORKS_SOURCE first');
     assert.ok(!existsSync(workspace), 'Refusing to overwrite an existing application workspace');
     cpSync(sample, workspace, { recursive: true, filter: (path) => basename(path) !== '.git' });
@@ -84,13 +85,17 @@ export function setupAdventureWorks(workspace, sample, schema) {
             2,
         ) + '\n',
     );
+    if (phase) await materializePrerequisites(workspace, phase, roots);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-    assert.ok(['supplied', 'inferred'].includes(process.argv[2]), 'Expected supplied or inferred schema scenario');
-    setupAdventureWorks(
+    const phase = phaseOrder.includes(process.argv[2]) ? process.argv[2] : undefined;
+    assert.ok(phase || ['supplied', 'inferred'].includes(process.argv[2]), 'Expected a phase, supplied or inferred');
+    await setupAdventureWorks(
         resolve('app'),
         process.env.MIGRATION_EVAL_ADVENTUREWORKS_SOURCE,
-        process.argv[2] === 'supplied' ? resolve('AdventureworksLT.sql') : undefined,
+        process.argv[2] === 'inferred' ? undefined : resolve('AdventureworksLT.sql'),
+        phase,
+        { checkpointRoot: resolve('.checkpoints'), skillRoot: resolve('cosmosdb-relational-migration') },
     );
 }

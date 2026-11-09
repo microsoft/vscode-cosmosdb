@@ -1,0 +1,377 @@
+{
+  "version": 1,
+  "phase": "assessment",
+  "sourceRevision": "d548c0ddb3e3a464fa34c1fdc39c2333506b42cc",
+  "schemaSha256": "837602bee5baca4cf026663627007c6e70df5896093f9cf31c0f804cb05d1065",
+  "workloadSha256": "dda8bfa6104878e3fd9cecfc091020a13671c5e731cadef73c335fa886a05c0c",
+  "project": {
+    "version": 1,
+    "name": "AdventureWorksEvaluation",
+    "sourceCode": "parent",
+    "customMetadata": {
+      "preserve": "adventureworks-evaluation"
+    },
+    "phases": {
+      "targetEnvironment": {
+        "type": "provision",
+        "accountName": "vally-adventureworks",
+        "databaseName": "adventureworks-eval",
+        "location": "eastus",
+        "verified": false
+      },
+      "discovery": {
+        "status": "complete",
+        "preflightStatus": "complete",
+        "ddlParsing": {
+          "method": "model",
+          "decisionSource": "explicit"
+        },
+        "applicationAnalysis": {
+          "projectName": "AdventureWorks.Web",
+          "projectType": "ASP.NET Core MVC web application",
+          "language": "C#",
+          "databaseType": "Microsoft SQL Server",
+          "databaseAccess": "Entity Framework Core SQL Server provider",
+          "frameworks": [
+            "ASP.NET Core MVC 2.1",
+            "Entity Framework Core"
+          ],
+          "completedAt": "2026-11-07T11:13:51.000Z"
+        },
+        "preflightCompletedAt": "2026-11-07T11:18:20.000Z",
+        "completedAt": "2026-11-07T11:18:20.000Z"
+      },
+      "assessment": {
+        "status": "complete",
+        "domains": [
+          {
+            "name": "Catalog",
+            "tables": [
+              "SalesLT.Product",
+              "SalesLT.ProductCategory",
+              "SalesLT.ProductDescription",
+              "SalesLT.ProductModel",
+              "SalesLT.ProductModelProductDescription"
+            ],
+            "crossDomainDependencies": [
+              "Orders"
+            ],
+            "aggregateRoot": "SalesLT.Product",
+            "estimatedTokens": 114162,
+            "isMapped": true
+          },
+          {
+            "name": "Customers",
+            "tables": [
+              "SalesLT.Address",
+              "SalesLT.Customer",
+              "SalesLT.CustomerAddress"
+            ],
+            "crossDomainDependencies": [
+              "Orders"
+            ],
+            "aggregateRoot": "SalesLT.Customer",
+            "estimatedTokens": 111280,
+            "isMapped": true
+          },
+          {
+            "name": "Operations",
+            "tables": [
+              "dbo.BuildVersion",
+              "dbo.ErrorLog"
+            ],
+            "crossDomainDependencies": [],
+            "aggregateRoot": "dbo.BuildVersion",
+            "estimatedTokens": 108744,
+            "isMapped": true
+          },
+          {
+            "name": "Orders",
+            "tables": [
+              "SalesLT.SalesOrderDetail",
+              "SalesLT.SalesOrderHeader"
+            ],
+            "crossDomainDependencies": [
+              "Catalog",
+              "Customers"
+            ],
+            "aggregateRoot": "SalesLT.SalesOrderHeader",
+            "estimatedTokens": 109507,
+            "isMapped": true
+          }
+        ],
+        "parsedAccessPatterns": [
+          {
+            "name": "R001 List customers",
+            "type": "read",
+            "frequency": "unknown",
+            "tables": [
+              "SalesLT.Customer"
+            ],
+            "codeReferences": [
+              "Controllers/CustomersController.cs#L22-L25"
+            ],
+            "filterFields": "none",
+            "singleOrBatch": "unbounded list",
+            "codeExample": "Customer.ToListAsync()"
+          },
+          {
+            "name": "R002 Customer by key and existence",
+            "type": "read",
+            "frequency": "unknown",
+            "tables": [
+              "SalesLT.Customer"
+            ],
+            "codeReferences": [
+              "Controllers/CustomersController.cs#L28-L38",
+              "Controllers/CustomersController.cs#L68-L75",
+              "Controllers/CustomersController.cs#L120-L149"
+            ],
+            "filterFields": "CustomerID",
+            "singleOrBatch": "single key"
+          },
+          {
+            "name": "R003 List categories with parent",
+            "type": "read",
+            "frequency": "unknown",
+            "tables": [
+              "SalesLT.ProductCategory"
+            ],
+            "codeReferences": [
+              "Controllers/ProductCategoriesController.cs#L22-L25"
+            ],
+            "filterFields": "none; parent via ParentProductCategoryID",
+            "singleOrBatch": "unbounded list",
+            "codeExample": "ProductCategory.Include(p => p.ParentProductCategory).ToListAsync()"
+          },
+          {
+            "name": "R004 Category by key with parent",
+            "type": "read",
+            "frequency": "unknown",
+            "tables": [
+              "SalesLT.ProductCategory"
+            ],
+            "codeReferences": [
+              "Controllers/ProductCategoriesController.cs#L28-L40",
+              "Controllers/ProductCategoriesController.cs#L72-L84",
+              "Controllers/ProductCategoriesController.cs#L125-L156"
+            ],
+            "filterFields": "ProductCategoryID; parent via ParentProductCategoryID",
+            "singleOrBatch": "single key"
+          },
+          {
+            "name": "R005 Category parent selection",
+            "type": "read",
+            "frequency": "unknown",
+            "tables": [
+              "SalesLT.ProductCategory"
+            ],
+            "codeReferences": [
+              "Controllers/ProductCategoriesController.cs#L48-L50",
+              "Controllers/ProductCategoriesController.cs#L67",
+              "Controllers/ProductCategoriesController.cs#L84",
+              "Controllers/ProductCategoriesController.cs#L120"
+            ],
+            "filterFields": "none; selected ParentProductCategoryID",
+            "singleOrBatch": "unbounded selection"
+          },
+          {
+            "name": "R006 List products with category and model",
+            "type": "read",
+            "frequency": "unknown",
+            "tables": [
+              "SalesLT.Product",
+              "SalesLT.ProductCategory",
+              "SalesLT.ProductModel"
+            ],
+            "codeReferences": [
+              "Controllers/ProductsController.cs#L22-L25"
+            ],
+            "filterFields": "none; ProductCategoryID and ProductModelID relationships",
+            "singleOrBatch": "unbounded list",
+            "codeExample": "Product.Include(p => p.ProductCategory).Include(p => p.ProductModel)"
+          },
+          {
+            "name": "R007 Product by key with relationships",
+            "type": "read",
+            "frequency": "unknown",
+            "tables": [
+              "SalesLT.Product",
+              "SalesLT.ProductCategory",
+              "SalesLT.ProductModel"
+            ],
+            "codeReferences": [
+              "Controllers/ProductsController.cs#L28-L42",
+              "Controllers/ProductsController.cs#L75-L88",
+              "Controllers/ProductsController.cs#L130-L162"
+            ],
+            "filterFields": "ProductID; includes on detail and delete preview only",
+            "singleOrBatch": "single key"
+          },
+          {
+            "name": "R008 Product category and model selection",
+            "type": "read",
+            "frequency": "unknown",
+            "tables": [
+              "SalesLT.ProductCategory",
+              "SalesLT.ProductModel"
+            ],
+            "codeReferences": [
+              "Controllers/ProductsController.cs#L49-L52",
+              "Controllers/ProductsController.cs#L69-L70",
+              "Controllers/ProductsController.cs#L87-L88",
+              "Controllers/ProductsController.cs#L124-L125"
+            ],
+            "filterFields": "none; selected ProductCategoryID and ProductModelID",
+            "singleOrBatch": "unbounded selections"
+          },
+          {
+            "name": "W001 Create customer",
+            "type": "write",
+            "frequency": "unknown",
+            "tables": [
+              "SalesLT.Customer"
+            ],
+            "codeReferences": [
+              "Controllers/CustomersController.cs#L55-L63"
+            ],
+            "singleOrBatch": "single entity"
+          },
+          {
+            "name": "W002 Update customer",
+            "type": "write",
+            "frequency": "unknown",
+            "tables": [
+              "SalesLT.Customer"
+            ],
+            "codeReferences": [
+              "Controllers/CustomersController.cs#L86-L112"
+            ],
+            "singleOrBatch": "single entity"
+          },
+          {
+            "name": "W003 Delete customer",
+            "type": "write",
+            "frequency": "unknown",
+            "tables": [
+              "SalesLT.Customer"
+            ],
+            "codeReferences": [
+              "Controllers/CustomersController.cs#L138-L144"
+            ],
+            "singleOrBatch": "single entity after lookup"
+          },
+          {
+            "name": "W004 Create category",
+            "type": "write",
+            "frequency": "unknown",
+            "tables": [
+              "SalesLT.ProductCategory"
+            ],
+            "codeReferences": [
+              "Controllers/ProductCategoriesController.cs#L58-L65"
+            ],
+            "singleOrBatch": "single entity"
+          },
+          {
+            "name": "W005 Update category",
+            "type": "write",
+            "frequency": "unknown",
+            "tables": [
+              "SalesLT.ProductCategory"
+            ],
+            "codeReferences": [
+              "Controllers/ProductCategoriesController.cs#L91-L118"
+            ],
+            "singleOrBatch": "single entity"
+          },
+          {
+            "name": "W006 Delete category",
+            "type": "write",
+            "frequency": "unknown",
+            "tables": [
+              "SalesLT.ProductCategory"
+            ],
+            "codeReferences": [
+              "Controllers/ProductCategoriesController.cs#L145-L151"
+            ],
+            "singleOrBatch": "single entity after lookup"
+          },
+          {
+            "name": "W007 Create product",
+            "type": "write",
+            "frequency": "unknown",
+            "tables": [
+              "SalesLT.Product"
+            ],
+            "codeReferences": [
+              "Controllers/ProductsController.cs#L60-L67"
+            ],
+            "singleOrBatch": "single entity"
+          },
+          {
+            "name": "W008 Update product",
+            "type": "write",
+            "frequency": "unknown",
+            "tables": [
+              "SalesLT.Product"
+            ],
+            "codeReferences": [
+              "Controllers/ProductsController.cs#L95-L122"
+            ],
+            "singleOrBatch": "single entity"
+          },
+          {
+            "name": "W009 Delete product",
+            "type": "write",
+            "frequency": "unknown",
+            "tables": [
+              "SalesLT.Product"
+            ],
+            "codeReferences": [
+              "Controllers/ProductsController.cs#L151-L157"
+            ],
+            "singleOrBatch": "single entity after lookup"
+          }
+        ],
+        "completedAt": "2026-11-07T11:21:35.000Z"
+      }
+    }
+  },
+  "consulted": [
+    ".cosmosdb-migration/phases/1-discovery/preflight-manifest.json",
+    ".cosmosdb-migration/phases/1-discovery/preflight-summary.md",
+    ".cosmosdb-migration/phases/1-discovery/discovery-report.md",
+    ".cosmosdb-migration/phases/1-discovery/schema-ddl/AdventureworksLT.sql",
+    ".cosmosdb-migration/phases/1-discovery/access-patterns/access-patterns.md",
+    ".cosmosdb-migration/phases/1-discovery/volumetrics/volumetrics.md",
+    "Models/sampledbContext.cs",
+    "Models/Product.cs",
+    "Models/ProductCategory.cs",
+    "Models/ProductDescription.cs",
+    "Models/ProductModel.cs",
+    "Models/ProductModelProductDescription.cs",
+    "Models/Address.cs",
+    "Models/Customer.cs",
+    "Models/CustomerAddress.cs",
+    "Models/SalesOrderDetail.cs",
+    "Models/SalesOrderHeader.cs",
+    "Models/BuildVersion.cs",
+    "Models/ErrorLog.cs",
+    "Controllers/ProductsController.cs",
+    "Controllers/ProductCategoriesController.cs",
+    "Controllers/CustomersController.cs"
+  ],
+  "files": {
+    "phases/2-assessment/assessment-manifest.json": "328d55677f5e80021bc7edaf2caf7abd54fa9273cbdd4ea264bea7c7e4d95944",
+    "phases/2-assessment/assessment-summary.md": "dc1b9ac0483ad6b4dbd65e3137d03831b2b6e29fe6a112da1498b4dfa04f6652",
+    "phases/2-assessment/domains/Catalog.manifest.json": "db6355e0186836e8b4b0124b0a857f58f0dec2095fbb14e89f7ebaa34206fefd",
+    "phases/2-assessment/domains/Catalog.md": "fe2e0e0524c6ce5461e7c3f454df96896a4fbc1e0ff2c18a0ce9a71be8d16ff3",
+    "phases/2-assessment/domains/Customers.manifest.json": "caa9098d6c442c4fd1954c2a8924135ae4cdf4c13ffd4373c06b4efe41f531bc",
+    "phases/2-assessment/domains/Customers.md": "ac4681549d83a85293d49edccebc0014fb5284d3f4184a9614a6f5c954d37526",
+    "phases/2-assessment/domains/Operations.manifest.json": "94cdf7fe423384b3191331cb03b380f91b94f338eef1fb0675b46517bbea7da2",
+    "phases/2-assessment/domains/Operations.md": "6ce7cce01cc98f5fbc5060d86d111f7f59919be9ec62f619a3278a60c585be5e",
+    "phases/2-assessment/domains/Orders.manifest.json": "b4e0fb2597fbd97da5a45facf678252afc1bad9c8bd5cd6ce2081fb58a0ad7ef",
+    "phases/2-assessment/domains/Orders.md": "f241c5c23874bea5a6e858530a2ad5bad8b74f76132967e113f05dd27ac5b4e8"
+  }
+}

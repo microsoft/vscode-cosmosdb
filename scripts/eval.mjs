@@ -3,11 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { discoverEvals, filterStimuli, loadEvalSpec, parseSuiteFilter } from '@microsoft/vally';
+import { discoverEvals, filterStimuli, loadEvalSpec } from '@microsoft/vally';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { fetchSample } from '../evals/cosmosdb-relational-migration/adventureworks/sample.mjs';
+import { resolveEvalSelection } from './eval-options.mjs';
 
 const { evals, errors } = await discoverEvals([fileURLToPath(new URL('../evals/', import.meta.url))]);
 if (errors.length) {
@@ -17,20 +18,7 @@ if (!evals.length) {
     throw new Error('No Vally evaluation specs found under evals/.');
 }
 
-const args = process.argv.slice(2);
-if (args.some((arg) => arg === '--in-place' || arg.startsWith('--in-place='))) {
-    throw new Error('Migration evaluations must use isolated trial workspaces, not --in-place.');
-}
-const tagArguments = [];
-for (let index = 0; index < args.length; index++) {
-    if (args[index] === '--tag') {
-        if (!args[index + 1] || args[index + 1].startsWith('--')) throw new Error('--tag requires a value');
-        tagArguments.push(args[++index]);
-    } else if (args[index].startsWith('--tag=')) {
-        tagArguments.push(args[index].slice('--tag='.length));
-    }
-}
-const filter = parseSuiteFilter(tagArguments);
+const { args, filter } = resolveEvalSelection(process.argv.slice(2));
 const specs = await Promise.all(evals.map(({ filePath }) => loadEvalSpec(filePath)));
 const requiresSample = specs.some((spec) =>
     filterStimuli(spec.stimuli, spec.tags, filter).matched.some(

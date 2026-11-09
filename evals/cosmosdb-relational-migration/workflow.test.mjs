@@ -41,6 +41,7 @@ test('CI runs models only for skill changes or manual dispatch', { skip: process
     for (const [path, expected] of [
         ['src/unrelated.ts', 'offline=false\nlive=false'],
         ['evals/example/eval.yaml', 'offline=true\nlive=false'],
+        ['scripts/eval-options.mjs', 'offline=true\nlive=false'],
         ['package.json', 'offline=true\nlive=false'],
         ['skills/cosmosdb-relational-migration/references/example.md', 'offline=true\nlive=true'],
         ['skills/cosmosdb-best-practices/rules/example.md', 'offline=true\nlive=true'],

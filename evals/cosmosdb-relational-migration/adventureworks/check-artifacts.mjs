@@ -12,6 +12,7 @@ import { buildProvisioningArtifacts } from '../../../skills/cosmosdb-relational-
 import { readIdentityManifest } from '../../../skills/cosmosdb-relational-migration/scripts/identity-mapping.mjs';
 import { validateCodeMigrationPlan } from '../../../skills/cosmosdb-relational-migration/scripts/validate-code-migration-plan.mjs';
 import { createSourceResolver } from '../../../skills/cosmosdb-relational-migration/scripts/validate-source-evidence.mjs';
+import { phaseOrder, prerequisiteStages, readCheckpoint, sha256 } from './checkpoints.mjs';
 import { verifySample } from './sample.mjs';
 import { plannedTarget, workloadContent } from './setup.mjs';
 
@@ -21,6 +22,65 @@ const schemaPath = '.cosmosdb-migration/phases/1-discovery/schema-ddl/Adventurew
 const tableNames = Object.keys(schema).sort();
 const identity = (table) => table.identity.map(({ name }) => name).join('.');
 const evidencePath = (source) => posix.normalize(source.split('#')[0].replaceAll('\\', '/'));
+const phaseKeys = {
+    preflight: 'discovery',
+    discovery: 'discovery',
+    assessment: 'assessment',
+    'schema-conversion': 'schemaConversion',
+    provisioning: 'provisioning',
+    'code-migration': 'codeMigration',
+};
+const phaseOutputs = {
+    preflight:
+        /^phases\/1-discovery\/(?:preflight-(?:summary\.md|manifest\.json)|volumetrics\/volumetrics\.md|access-patterns\/access-patterns\.md)$/,
+    discovery: /^phases\/1-discovery\/discovery-(?:report\.md|manifest\.json)$/,
+    assessment: /^phases\/2-assessment\//,
+    'schema-conversion': /^phases\/3-schema-conversion\//,
+    provisioning: /^phases\/4-provisioning\//,
+    'code-migration': /^code-migration-(?:plan\.md|manifest\.json)$/,
+};
+
+export function checkPhaseBoundary(workspace, phase, project) {
+    const root = join(workspace, '.cosmosdb-migration');
+    const checkpoints = prerequisiteStages(phase).map((stage) => readCheckpoint(stage));
+    const predecessorFiles = new Set();
+    for (const checkpoint of checkpoints) {
+        for (const [path, hash] of Object.entries(checkpoint.files)) {
+            assert.equal(sha256(readFileSync(join(root, path))), hash, `Changed predecessor artifact: ${path}`);
+            predecessorFiles.add(path);
+        }
+    }
+    for (const [key, value] of Object.entries(checkpoints.at(-1)?.project.phases ?? {})) {
+        if (key !== phaseKeys[phase]) {
+            assert.deepEqual(project.phases[key], value, `Changed predecessor phase state: ${key}`);
+        } else if (phase === 'discovery') {
+            for (const field of ['preflightStatus', 'preflightCompletedAt', 'applicationAnalysis', 'ddlParsing']) {
+                assert.deepEqual(project.phases.discovery[field], value[field], `Changed preflight state: ${field}`);
+            }
+        }
+    }
+    if (phase === 'preflight') assert.equal(project.phases.discovery.status, 'not-started', 'Advanced discovery');
+    for (const later of phaseOrder.slice(phaseOrder.indexOf(phase) + 1)) {
+        if (later === 'discovery' && phase === 'preflight') continue;
+        assert.ok([undefined, 'not-started'].includes(project.phases[phaseKeys[later]]?.status), `Advanced ${later}`);
+    }
+    for (const entry of readdirSync(root, { recursive: true, withFileTypes: true })) {
+        assert.ok(!entry.isSymbolicLink(), 'Unexpected migration artifact symlink');
+        if (!entry.isFile()) continue;
+        const path = relative(root, join(entry.parentPath, entry.name)).split(sep).join('/');
+        assert.ok(
+            [
+                'project.json',
+                'memory.md',
+                'phases/1-discovery/schema-ddl/AdventureworksLT.sql',
+                'phases/1-discovery/volumetrics/workload.json',
+            ].includes(path) ||
+                predecessorFiles.has(path) ||
+                phaseOutputs[phase].test(path),
+            `Out-of-phase artifact: ${path}`,
+        );
+    }
+}
 
 export function applicationSnapshot(root) {
     const files = new Map();
@@ -84,9 +144,7 @@ export function checkControllerCoverage(discovery) {
     }
 }
 
-export function checkPlanningBoundary(project, plan, provisioningManifest) {
-    assert.equal(plan.mode, 'plan', 'This scenario does not authorize application migration');
-    assert.deepEqual(plan.outputFiles, [], 'Planning must not claim application outputs');
+function checkProvisioningBoundary(project, provisioningManifest) {
     assert.notEqual(
         project.phases.provisioning?.status,
         'complete',
@@ -94,6 +152,12 @@ export function checkPlanningBoundary(project, plan, provisioningManifest) {
     );
     assert.notEqual(project.phases.targetEnvironment?.verified, true, 'Planned target is not a verified target');
     assert.equal(provisioningManifest?.verification, undefined, 'Do not fabricate cloud verification');
+}
+
+export function checkPlanningBoundary(project, plan, provisioningManifest) {
+    checkProvisioningBoundary(project, provisioningManifest);
+    assert.equal(plan.mode, 'plan', 'This scenario does not authorize application migration');
+    assert.deepEqual(plan.outputFiles, [], 'Planning must not claim application outputs');
     assert.ok(
         plan.validation.every(
             (entry) =>
@@ -104,7 +168,8 @@ export function checkPlanningBoundary(project, plan, provisioningManifest) {
 }
 
 export function checkAdventureWorks(workspace, scenario, sample) {
-    assert.ok(['supplied-ddl', 'inferred-ddl'].includes(scenario), 'Unknown AdventureWorks scenario');
+    const isolated = phaseOrder.includes(scenario);
+    assert.ok(isolated || ['supplied-ddl', 'inferred-ddl'].includes(scenario), 'Unknown AdventureWorks scenario');
     assert.deepEqual(applicationSnapshot(workspace), applicationSnapshot(sample), 'Application source changed');
     const root = join(workspace, '.cosmosdb-migration');
     const read = (path) => readFileSync(join(root, path), 'utf8');
@@ -119,19 +184,31 @@ export function checkAdventureWorks(workspace, scenario, sample) {
     for (const [field, value] of Object.entries(plannedTarget)) {
         assert.equal(project.phases.targetEnvironment?.[field], value, `Changed planned target ${field}`);
     }
+    if (isolated) checkPhaseBoundary(workspace, scenario, project);
     const inventory = json('phases/1-discovery/preflight-manifest.json').sourceInventory;
     checkAdventureWorksInventory(inventory);
-    const discovery = json('phases/1-discovery/discovery-manifest.json');
-    checkControllerCoverage(discovery);
-    const phases =
-        scenario === 'supplied-ddl'
-            ? ['preflight', 'discovery', 'assessment', 'schema-conversion', 'code-migration']
-            : ['preflight', 'discovery'];
+    const phases = isolated
+        ? [...prerequisiteStages(scenario), ...(scenario === 'provisioning' ? [] : [scenario])]
+        : scenario === 'supplied-ddl'
+          ? ['preflight', 'discovery', 'assessment', 'schema-conversion', 'code-migration']
+          : ['preflight', 'discovery'];
     const completion = checkPhaseCompletions(workspace, phases);
     for (const phase of phases) {
         assert.equal(completion[phase].complete, true, JSON.stringify(completion[phase], null, 2));
     }
 
+    if (scenario !== 'inferred-ddl') {
+        assert.deepEqual(
+            inventory.files.map(({ path }) => path),
+            [schemaPath],
+            'Supplied schema selection changed',
+        );
+        assert.deepEqual(readFileSync(join(workspace, schemaPath)), suppliedDdl, 'Authoritative DDL changed');
+    }
+    if (scenario === 'preflight') return;
+    const discovery = json('phases/1-discovery/discovery-manifest.json');
+    checkControllerCoverage(discovery);
+    if (scenario === 'discovery') return;
     if (scenario === 'inferred-ddl') {
         const sourceFiles = applicationSnapshot(sample);
         for (const file of inventory.files) {
@@ -149,12 +226,6 @@ export function checkAdventureWorks(workspace, scenario, sample) {
         return;
     }
 
-    assert.deepEqual(
-        inventory.files.map(({ path }) => path),
-        [schemaPath],
-        'Supplied schema selection changed',
-    );
-    assert.deepEqual(readFileSync(join(workspace, schemaPath)), suppliedDdl, 'Authoritative DDL changed');
     const resolve = createSourceResolver(inventory);
     const canonicalName = (name) => identity(resolve(name));
     assert.deepEqual(
@@ -162,6 +233,7 @@ export function checkAdventureWorks(workspace, scenario, sample) {
         tableNames,
         'Assessment must retain exactly one owner for every table',
     );
+    if (scenario === 'assessment') return;
     const modelPath = join(root, 'phases/3-schema-conversion/model.json');
     const modelContent = readFileSync(modelPath, 'utf8');
     const model = JSON.parse(modelContent);
@@ -172,14 +244,25 @@ export function checkAdventureWorks(workspace, scenario, sample) {
         tableNames,
         'Conversion must map every selected table exactly once',
     );
-    const samples = json('phases/4-provisioning/sample-data.json');
-    const expected = buildProvisioningArtifacts(model, samples, project, readIdentityManifest(modelPath), inventory);
-    for (const [name, content] of Object.entries(expected)) {
-        assert.equal(read(`phases/4-provisioning/${name}`), content, `Invalid generated ${name}`);
+    if (scenario === 'schema-conversion') return;
+    if (scenario !== 'code-migration') {
+        const samples = json('phases/4-provisioning/sample-data.json');
+        const expected = buildProvisioningArtifacts(
+            model,
+            samples,
+            project,
+            readIdentityManifest(modelPath),
+            inventory,
+        );
+        for (const [name, content] of Object.entries(expected)) {
+            assert.equal(read(`phases/4-provisioning/${name}`), content, `Invalid generated ${name}`);
+        }
+        assert.ok(read('phases/4-provisioning/summary.md').trim(), 'Missing artifact-only provisioning summary');
     }
-    assert.ok(read('phases/4-provisioning/summary.md').trim(), 'Missing artifact-only provisioning summary');
     const manifestPath = join(root, 'phases/4-provisioning/manifest.json');
     const provisioningManifest = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, 'utf8')) : undefined;
+    checkProvisioningBoundary(project, provisioningManifest);
+    if (scenario === 'provisioning') return;
     const plan = json('code-migration-manifest.json');
     checkPlanningBoundary(project, plan, provisioningManifest);
     const result = validateCodeMigrationPlan(read('code-migration-plan.md'), plan, {

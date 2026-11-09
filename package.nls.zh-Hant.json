@@ -4,7 +4,7 @@
   "cosmosdb.command.account.delete": "刪除帳戶...",
   "cosmosdb.command.account.unsupported": "開啟不支援的帳戶",
   "cosmosdb.command.account.overview.open": "開啟帳戶概觀",
-  "cosmosdb.command.account.databaseHub.open": "View in Database Hub",
+  "cosmosdb.command.account.databaseHub.open": "在資料庫中樞中檢視",
   "cosmosdb.command.account.overview.menu": "帳戶概觀 (預覽)",
   "cosmosdb.command.account.overview.overview": "概觀",
   "cosmosdb.command.account.overview.normalizedRu": "標準化 RU",

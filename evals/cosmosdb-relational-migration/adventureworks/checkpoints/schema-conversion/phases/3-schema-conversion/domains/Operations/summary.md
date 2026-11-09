@@ -176,13 +176,13 @@ container's deployed policy.
 
 | Evidence and calculation | Result and limitations |
 |---|---|
-| [volumetrics] BuildVersion | Synthetic 1,000 rows is impossible for the `TINYINT` primary key. Actual count is **unknown**; 256 is a domain maximum, not a replacement estimate. The supplied 5% monthly growth cannot be applied indefinitely to that keyspace. |
-| [volumetrics] ErrorLog | 1,000 rows, 2 KB average, 5% monthly growth, 1 read TPS and 0.1 write TPS are synthetic scenario assumptions, not measurements or verified operation mix. Actual retention, item-size tail and peak are unknown. |
+| [volumetrics] BuildVersion | One row at 0.128 decimal KB, zero net growth, 0.001 read TPS and zero write TPS are synthetic scenario assumptions. The row count fits the TINYINT keyspace; it is not an observed population or evidence that other administrative writers do not exist. |
+| [volumetrics] ErrorLog | 2,000 rows at 0.75 KB, 10% net monthly growth, and hypothetical busy-window rates of 0.05 read / 0.2 write TPS are scenario assumptions, not measurements or a continuous duty cycle. Writes do not establish net inserts. Actual retention, item-size tail and peak are unknown. |
 | [access patterns] and [volumetrics] throughput | No observed Operations accesses; synthetic TPS cannot be attributed to point reads, lists or writes. No credible workload RU/s, peak or measured request charge is available. Serverless carries no provisioned container throughput in the model. |
-| [default assumed] partial payload scenario | For ErrorLog only, treating 2 KB as 2 KiB and assuming a 1.5x SQL-row-to-JSON expansion gives 1,000 × 2 KiB × 1.5 ≈ 2.9 MiB (0.0029 GiB) current document payload, before metadata and indexes. This conversion factor is illustrative, not a measured bound. |
-| [default assumed] twelve-month payload scenario | If ErrorLog grows 5% monthly with no deletion, `1.05^12` gives approximately 5.3 MiB (0.0051 GiB) of document payload; actual growth and retention are unknown. BuildVersion, metadata and index costs remain unknown, so neither value is a container storage total. |
+| [default assumed] partial payload scenario | Using decimal KB (1,000 bytes), the source proxy is 2,000 × 0.75 + 1 × 0.128 = 1,500.128 KB. An illustrative 1.5x SQL-row-to-JSON factor gives about 2.15 MiB of current document payload, before metadata and indexes; it is not a measured bound. |
+| [default assumed] twelve-month payload scenario | Compounding ErrorLog at 10% net monthly growth while BuildVersion stays unchanged gives about 4,707.8 KB of source payload, or about 6.73 MiB after the same illustrative 1.5x factor. Actual growth and retention remain unknown; neither value is a container storage total. |
 
-No container `estimatedRowCount` or `estimatedStorageGB` is asserted: BuildVersion's actual population and combined
+No container `estimatedRowCount` or `estimatedStorageGB` is asserted: actual populations and combined
 metadata/index overhead are unknown. Average size does not establish P95/P99 or maximum item size. Gather actual
 row counts, serialized size distribution, index footprint, growth, retention, operation mix, peak and import rate
 before sizing. Serverless is appropriate to evaluate for the requested development scenario, but current limits and

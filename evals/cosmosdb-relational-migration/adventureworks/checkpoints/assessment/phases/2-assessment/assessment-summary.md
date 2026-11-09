@@ -63,8 +63,9 @@ unknown and no split is justified by this estimate alone.
 
 ## Warnings
 
-- All workload values are synthetic assumptions, not production metrics. BuildVersion's assumed 1,000 rows cannot
-  fit a unique TINYINT key. Peak, size percentiles, per-operation rates, retention and relationship cardinalities are unknown.
+- All table-specific workload values are synthetic assumptions, not production metrics. BuildVersion assumes one row
+  with zero growth. Busy-window rates do not establish continuous averages or per-operation frequencies; peak, size
+  percentiles, retention and per-parent relationship cardinalities remain unknown.
 - Source interpretation is model-reviewed and structurally evidence-validated, not source-engine validated; actual
   deployed schema, external clients, collation, runtime transactions, SDK/runtime compatibility and data are unverified.
 - `OnlineOrderFlag` CLR nullability differs from the EF required configuration and DDL NOT NULL declaration. EF's

@@ -3,7 +3,7 @@
   "phase": "schema-conversion",
   "sourceRevision": "d548c0ddb3e3a464fa34c1fdc39c2333506b42cc",
   "schemaSha256": "837602bee5baca4cf026663627007c6e70df5896093f9cf31c0f804cb05d1065",
-  "workloadSha256": "dda8bfa6104878e3fd9cecfc091020a13671c5e731cadef73c335fa886a05c0c",
+  "workloadSha256": "fdab033da5cabe5813778bc8e147409532f878ef6599dcbb60e86782a3319a1a",
   "project": {
     "version": 1,
     "name": "AdventureWorksEvaluation",
@@ -369,15 +369,15 @@
   ],
   "files": {
     "phases/3-schema-conversion/domains/Catalog/cosmos-model.json": "fb0e3c4716dc28c257ebb4a90b4e0f3b70b8722bdc582de297e82e1ac960c5d3",
-    "phases/3-schema-conversion/domains/Catalog/summary.md": "4bddbe9f2d4ba4acc4d8652a4d078c9d7b8dac264a7c18d2ff56117e6a54a2e2",
+    "phases/3-schema-conversion/domains/Catalog/summary.md": "cea0d5e8b4ee7d29da321a93fcb285054cd0041300fef5d1f14f02dd6a7958f8",
     "phases/3-schema-conversion/domains/Customers/cosmos-model.json": "e29b0666664251cc556a1d8fd735118dddea90c4c847c39e44d6486ca432b1e2",
-    "phases/3-schema-conversion/domains/Customers/summary.md": "4cbb7a608562f8e1f6bbf73f29d638785aceab77fe856519bf432d0956b4af07",
+    "phases/3-schema-conversion/domains/Customers/summary.md": "c711772d150b1124e5ca43cc5760c58ff18741c1a26ce8c747ce58106874e611",
     "phases/3-schema-conversion/domains/Operations/cosmos-model.json": "2f3eff0ab7cc0134fc9c141226e6aa2e2f86c6c804a1254058404de13fd4c243",
-    "phases/3-schema-conversion/domains/Operations/summary.md": "ea0c90e412d89d7a178687d7910d6289f4764f6caaeca91a8a0237bc461df8a7",
+    "phases/3-schema-conversion/domains/Operations/summary.md": "9f178f08a37ada5061cd7d18cc23621ebb07b0d0bbe89b4cdad03368440ce59a",
     "phases/3-schema-conversion/domains/Orders/cosmos-model.json": "51bed1f0dab65747fcd85728c23d48f35135d0f3a168082a932fc830b0828760",
-    "phases/3-schema-conversion/domains/Orders/summary.md": "cb2697f1297e1d7139e580d7fdb21efeec26e85311a2d080c21969bad1241203",
+    "phases/3-schema-conversion/domains/Orders/summary.md": "7d9fa72c88e12f7533de5f34e27d7989d12f1c0ef822b212bcf32620b677da12",
     "phases/3-schema-conversion/manifest.json": "287eda36b914851661c8a83710d7b04702c459d8cb6bd869b265fbe2cd8e09d4",
     "phases/3-schema-conversion/model.json": "0eb9978e5d2c314d1c43f86a11809fa14a7e023b9b89b74a538284d986f5e6b5",
-    "phases/3-schema-conversion/summary.md": "38df0657bd247490ae01694fc922618d58fca38221e5a440acc4f47e3064d144"
+    "phases/3-schema-conversion/summary.md": "dfcfffc3ee0c7fc12537eb05da917e64f72cfdd64c3bed0cae41fad644ea9ec5"
   }
 }

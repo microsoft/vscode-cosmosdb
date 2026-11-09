@@ -177,17 +177,18 @@ load when available. The old `netcoreapp2.1` runtime's compatibility with the ch
 
 | Evidence and offline scenario | Current source payload | At 12 months |
 |---|---:|---:|
-| Catalog: 5 tables × synthetic 1,000 rows × assumed 2,000 bytes | about 9.5 MiB | about 17 MiB |
-| Customers: 3 tables on the same assumptions | about 5.7 MiB | about 10 MiB |
-| Orders: 2 tables on the same assumptions | about 3.8 MiB | about 6.9 MiB |
-| Operations: ErrorLog only; BuildVersion count unknown | about 1.9 MiB plus unknown | about 3.4 MiB plus unknown |
+| Catalog: 4,800 synthetic rows across five tables, table-specific sizes/growth | about 2.99 MiB | about 3.37 MiB |
+| Customers: 4,500 synthetic rows across three tables, table-specific sizes/growth | about 1.91 MiB | about 2.43 MiB |
+| Orders: 10,000 synthetic headers and 40,000 details | about 14.42 MiB | about 25.90 MiB |
+| Operations: one synthetic BuildVersion row and 2,000 ErrorLog rows | about 1.43 MiB | about 4.49 MiB |
 
 These are **synthetic source-payload scenarios**, not measured Cosmos storage, RU consumption, or billing estimates
-[volumetrics] [workload notes]. They interpret 2 KB as 2,000 bytes [default assumed] and compound the supplied 5%
-monthly growth for 12 months with unchanged average size and no retention. The 1,000-row BuildVersion assumption is
-impossible for its unique TINYINT key; no replacement population is invented. Target JSON transformation, metadata,
+[volumetrics] [workload notes]. They use the fixture's decimal KB (1,000 bytes) and compound each table's supplied
+net growth rate for 12 months with unchanged average size. BuildVersion and ProductCategory have zero assumed growth.
+The order counts imply a scenario-wide mean of four details per header, not a maximum per order. Target JSON transformation, metadata,
 indexes, coordinator state, content blobs, replication and backup are unknown, so a total target-storage estimate is
-not asserted. Peak and per-pattern rates cannot be derived from per-table synthetic TPS. For illustration only, a
+not asserted. Busy-window TPS is neither a continuous duty cycle nor a basis for deriving net inserts; overlapping
+table accesses must not be summed without evidence. Peak and per-pattern rates remain unknown. For illustration only, a
 2-KiB point read is roughly 2 RU and a same-size write roughly 10–20 RU before index/coordinator/blob costs
 [default assumed]; list scans and FK checks may cost more. No measured RUs or feasible peak are claimed.
 

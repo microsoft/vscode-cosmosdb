@@ -55,6 +55,18 @@ stimuli:
       - Use model-only interpretation without Python, SQLGlot, or a custom parser script, and do not claim structural validation proves source-engine fidelity.
     graders: *guidance
 
+  - name: preflight-workload-contradiction
+    tags: { category: guidance, phase: preflight, contract: workload-contradiction }
+    prompt: |
+      In a relational-to-Cosmos migration, an engineer supplied an estimate of 1,000
+      rows for dbo.BuildVersion, whose authoritative DDL has a unique TINYINT primary key.
+      How should preflight handle this mismatch? Explain only; do not write files,
+      run a phase, or silently change the supplied estimate.
+    rubric:
+      - Identify that a SQL Server TINYINT key has at most 256 distinct values and cannot uniquely identify 1,000 simultaneous rows.
+      - Preserve the supplied evidence, flag the inconsistency, and request a corrected or verified count or record the feasible count as unknown; do not invent a replacement count, change the DDL, or present the estimate as observed or feasible.
+    graders: *guidance
+
   - name: parser-choice-and-failure
     tags: { category: guidance, phase: preflight, contract: parser-consent }
     prompt: |

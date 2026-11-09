@@ -316,11 +316,11 @@ These are installed peer guidance, not proof of deployment or runtime behavior.
 
 | Input or estimate | Evidence and limitation |
 |---|---|
-| Row counts and sizes | [volumetrics] assumes 1,000 rows and 2 KB average per table: 5,000 rows, 10,000 KB source-size proxy before target JSON, indexing and blob content. Synthetic only, not a measured population or tail distribution. |
-| Growth | [volumetrics] assumes 5% monthly for each table. At 12 months, `1.05^12` is approximately 1.8 times baseline if compounded and retention is unchanged; not a forecast. |
-| JSON payload scenarios | [default assumed] illustrative 1.2x / 1.5x / 2x source proxy yields approximately 12,000 / 15,000 / 20,000 KB current and 22,000 / 27,000 / 36,000 KB at 12 months. Transformation, metadata and actual source-size definition are unknown; external content may be counted in source sizes and requires reconciliation to avoid double counting. |
+| Row counts and sizes | [volumetrics] assumes 1,000 Products at 2 KB, 50 Categories at 0.128 KB, 1,500 Descriptions at 0.5 KB, 250 Models at 1 KB, and 2,000 description links at 0.064 KB: 4,800 rows and 3,134.4 decimal KB before target transformation, indexes and content reconciliation. Synthetic only, not measured populations or size tails. |
+| Growth | [volumetrics] assumes 1% net monthly growth except zero for Categories. Compounding each table for 12 months with unchanged average size gives about 3,531.1 KB; this is a scenario, not a forecast. |
+| JSON payload scenarios | [default assumed] illustrative 1.2x / 1.5x / 2x source proxy yields approximately 3,761 / 4,702 / 6,269 KB current and 4,237 / 5,297 / 7,062 KB at 12 months. KB is 1,000 bytes. Transformation and metadata costs are unknown; external content may be counted in source sizes and requires reconciliation to avoid double counting. |
 | Index, metadata and blob retention | Unknown; no honest all-in container GiB total or `estimatedStorageGB` is asserted. External immutable versions, retained versions and restore copies need separate sizing. |
-| Operation rate and RUs | [volumetrics] assumes 1 read TPS and 0.1 write TPS per table; [access patterns] actual rates, peaks, list pages and latency unknown. No measured RUs or serverless throughput guarantee is claimed; benchmark before use. |
+| Operation rate and RUs | [volumetrics] supplies table-specific hypothetical busy-window rates, with Products at 20 read / 0.2 write TPS. They are not continuous averages or additive operations. [access patterns] actual rates, peaks, list pages and latency remain unknown. No measured RUs or serverless throughput guarantee is claimed; benchmark before use. |
 | Capacity | Requested serverless has no configured throughput. Confirm current account regional, storage, burst/throughput and feature limits and import/cutover capacity against actual data and load before provisioning. The peer rule's limits may age; network checks were prohibited. |
 
 ### Migration feasibility and clearance

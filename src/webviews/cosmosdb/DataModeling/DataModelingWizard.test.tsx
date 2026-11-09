@@ -211,6 +211,7 @@ async function confirmDeployment() {
  * in the tab order and reports `aria-disabled` instead, so both mechanisms have to be accepted here.
  */
 function expectNoActionableDeployButton() {
+    expect(screen.queryByText('Next: choose how to deploy your model')).not.toBeInTheDocument();
     const deployButtons = screen.getAllByRole('button', { name: 'Deploy' });
     expect(deployButtons.length).toBeGreaterThan(0);
     const actionable = deployButtons.filter((button) => !button.matches(':disabled, [aria-disabled="true"]'));
@@ -377,7 +378,9 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             'Deploy',
         ]);
         expect(client.dataModeling.getDeploymentOptions.query).not.toHaveBeenCalled();
+        expect(screen.getByText('Next: choose how to deploy your model')).toBeVisible();
         await enterDeployStep();
+        expect(screen.queryByText('Next: choose how to deploy your model')).not.toBeInTheDocument();
         const section = within(screen.getByRole('region', { name: 'Deploy data model' }));
         await waitFor(() => expect(screen.getByRole('heading', { name: 'Deploy data model' })).toHaveFocus());
         await screen.findByText('source', { selector: 'dd' });

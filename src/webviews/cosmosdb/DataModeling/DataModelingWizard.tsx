@@ -1028,7 +1028,9 @@ const HydratedDataModelingWizard = ({
     // Only successful deployment details are persisted; editable drafts remain local to the open wizard.
     const footer =
         isResult || isDeploy ? (
-            <ContainerFooter>
+            <ContainerFooter
+                note={isResult && canEnterDeploy ? l10n.t('Next: choose how to deploy your model') : undefined}
+            >
                 {isResult ? (
                     <Button
                         appearance="primary"

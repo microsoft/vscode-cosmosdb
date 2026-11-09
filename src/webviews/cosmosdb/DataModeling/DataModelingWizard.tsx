@@ -218,7 +218,9 @@ function footerHint(value: string): string {
         return l10n.t('Pick the closest workload to pre-fill typical containers, keys, and defaults.');
     }
     if (value === REVIEW_STEP) {
-        return l10n.t('Next: we send your inputs to Copilot and open the Result page with a ranked recommendation.');
+        return l10n.t(
+            'Next: get a recommendation for your inputs using Copilot Chat and open the Result page with a ranked recommendation.',
+        );
     }
     if (value.startsWith(CONTAINER_PREFIX)) {
         return l10n.t('Model this container across the Data, Queries and Scale tabs — it gets its own recommendation.');

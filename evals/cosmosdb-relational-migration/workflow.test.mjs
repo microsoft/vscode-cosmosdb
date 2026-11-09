@@ -73,13 +73,30 @@ test('live suites run independently and retain separate reports without masking 
     assert.match(live, /strategy:\n\s+fail-fast: false\n\s+matrix:/);
     assert.doesNotMatch(live, /continue-on-error:/);
 
-    const selection = live.match(/suite: >-\s+\$\{\{ fromJSON\(([\s\S]*?)&&\s*'([^']+)' \|\| '([^']+)'\) }}/);
-    assert.ok(selection, 'Suite selection must explicitly gate the integration job');
-    assert.equal(selection[1].trim(), "github.event_name == 'workflow_dispatch' && inputs.integration");
-    const requestedSuites = JSON.parse(selection[2]);
-    const defaultSuites = JSON.parse(selection[3]);
-    assert.deepEqual(defaultSuites, ['small', 'adventureworks']);
-    assert.deepEqual(requestedSuites, [...defaultSuites, 'integration']);
+    const selection = live.match(/suite: >-\s+\$\{\{ fromJSON\(format\('([^']+)',([\s\S]*?)\)\) }}/);
+    assert.ok(selection, 'Optional suites must be independently selected');
+    for (const [index, suite] of ['integration', 'handoff'].entries()) {
+        assert.ok(
+            selection[2].includes(`github.event_name == 'workflow_dispatch' && inputs.${suite} && ',"${suite}"' || ''`),
+        );
+        assert.ok(selection[1].includes(`{${index}}`));
+    }
+    for (const integration of [false, true]) {
+        for (const handoff of [false, true]) {
+            const suites = JSON.parse(
+                selection[1]
+                    .replace('{0}', integration ? ',"integration"' : '')
+                    .replace('{1}', handoff ? ',"handoff"' : ''),
+            );
+            assert.deepEqual(suites, [
+                'small',
+                'adventureworks',
+                ...(integration ? ['integration'] : []),
+                ...(handoff ? ['handoff'] : []),
+            ]);
+        }
+    }
+    const requestedSuites = ['small', 'adventureworks', 'integration', 'handoff'];
 
     const evaluationSteps = [
         ...live.matchAll(
@@ -98,6 +115,7 @@ test('live suites run independently and retain separate reports without masking 
     assert.match(commands.small, /--tag category!=extended$/);
     assert.match(commands.adventureworks, /--tag category=extended --max-retries 0$/);
     assert.match(commands.integration, /--tag category=integration --max-retries 0$/);
+    assert.equal(commands.handoff, 'npm run eval:handoff');
     assert.match(live, /- name: Publish reports\n\s+if: always\(\)/);
     assert.match(live, /SUITE: \$\{\{ matrix\.suite }}/);
     assert.match(live, /uses: actions\/upload-artifact@[^\n]+\n\s+if: always\(\)/);

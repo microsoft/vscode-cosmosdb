@@ -57,7 +57,7 @@ stimuli:
         config:
           scoring: binary
           threshold: 1
-          prompt: >-
+          prompt: &judge-prompt >-
             Inspect the source evidence, generated artifacts and trajectory for the
             requested phase only. Grade substantive correctness, not keyword presence
             or final completion claims. Accept justified alternative designs and
@@ -152,6 +152,11 @@ stimuli:
       sequence-generated order IDs and XML/binary content. Where Cosmos configuration
       alone is insufficient, specify a concrete preservation design and its implementation
       and verification obligations. Record assumptions; do not fabricate measurements.
+      For mandatory supporting components, identify the storage/API primitives, ownership,
+      publication and failure/recovery mechanism, and the evidence needed to establish
+      feasibility. Distinguish a selected implementation mechanism from an unresolved
+      technology or supplier choice; do not turn "implement an exact comparator" or
+      "prove fencing later" into a claim of solved feasibility.
       No particular container count or partition-key layout is prescribed.
       Validate conversion and stop; preserve accepted predecessor artifacts.
       No application execution, installs, custom DDL parsers, external-service or database
@@ -162,6 +167,7 @@ stimuli:
       - Explain concrete preservation designs for both case-insensitive Product Name and ProductNumber uniqueness, including source-wide scope rather than assuming partition-local policies are global.
       - Preserve composite relationships, order-number allocation, exact financial/computed values, XML and binary content; disclose assumptions and implementation/verification obligations instead of claiming native guarantees.
       - Preserve accepted predecessor evidence and stop before provisioning or application edits.
+      - For non-native guarantees, identify concrete implementation primitives and failure/recovery mechanisms with verification obligations; distinguish evidence still to collect from unresolved mechanism or supplier choices, and keep the latter explicit conditions rather than claiming feasibility is solved by naming a future service.
     graders:
       - *completed
       - &peers
@@ -169,7 +175,14 @@ stimuli:
         config: { required: [cosmosdb-relational-migration, cosmosdb-best-practices] }
       - type: adventureworks-artifacts
         config: { scenario: schema-conversion }
-      - *judge
+      - type: adventureworks-judge
+        config:
+          scoring: binary
+          threshold: 1
+          prompt: *judge-prompt
+          evidence_groups:
+            design: [0, 1, 2, 4]
+            boundary: [3]
       - *output
     artifacts: *artifacts
 
@@ -228,6 +241,16 @@ stimuli:
       and choose a supported modernization path as ordered work. Map actual controller
       reads/writes, relationship hydration, uniqueness, computed values, identity,
       authentication and verification to the accepted design and its supporting services.
+      Use CM- task IDs in Ordered Changes and OP- IDs in Operational Handoff, with
+      unchecked pending tasks, one Depends on field (task IDs or none), and a Done when
+      condition for each. Keep dependencies acyclic and complete. Put test-environment
+      setup and implementation verification before production handoff. Separate their
+      clearance evidence from production writer inventory, deployment and cutover gates;
+      no code task may require evidence produced only by a later task that depends on it.
+      Review whether required supporting-service mechanisms are actually selected and
+      implementable. Name storage/API primitives, fencing/publication/recovery steps
+      and verification tasks, or keep unresolved mechanisms explicit blockers rather
+      than marking them resolved merely because a future service was named.
       Keep implementation tasks pending. Do not change application files, run build/restore,
       install tools, contact databases or external services, provision or seed anything.
       Do not execute provisioning or rewrite the accepted model. Read only ./app and
@@ -236,12 +259,22 @@ stimuli:
       - Produce a validated, actionable direct-switch plan covering actual controller operations and a supported framework/SDK path, preserving accepted model contracts and supporting-service obligations.
       - Include ordered implementation and verification tasks, authentication, uniqueness, computed values, identity and relationship hydration, with honest writer ownership and rollback/data-reconciliation limits.
       - Keep execution tasks pending and distinguish plan completion from builds, code migration, deployment or production readiness; preserve application and predecessor artifacts.
+      - The implementation, verification, blocker-clearance and operational dependencies are executable in order, including prerequisites implied by completion conditions; separate isolated verification from production-only readiness and reject circular gates even when the explicit task graph is acyclic.
+      - Carry every mandatory supporting-service obligation into actionable implementation and verification tasks; identify concrete primitives and failure/recovery mechanisms, and retain unresolved technology, supplier or protocol choices as blockers rather than resolved implementation work. Missing execution evidence alone is not a missing design, and no prohibited execution is required during planning.
     graders:
       - *completed
       - *peers
       - type: adventureworks-artifacts
         config: { scenario: code-migration }
-      - *judge
+      - type: adventureworks-judge
+        config:
+          scoring: binary
+          threshold: 1
+          prompt: *judge-prompt
+          evidence_groups:
+            implementation: [0, 1, 4]
+            dependencies: [3]
+            boundary: [2]
       - *output
     artifacts: *artifacts
 

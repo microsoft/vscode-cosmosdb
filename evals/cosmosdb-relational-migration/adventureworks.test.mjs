@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { acceptedTrial, handoffSpec, runHandoff } from '../../scripts/eval-handoff.mjs';
 import { resolveEvalSelection } from '../../scripts/eval-options.mjs';
 import { checkPhaseCompletions } from '../../skills/cosmosdb-relational-migration/scripts/check-phase-completion.mjs';
 import {
@@ -28,7 +29,11 @@ import {
     phaseOrder,
     prerequisiteStages,
     readCheckpoint,
+    sha256,
 } from './adventureworks/checkpoints.mjs';
+import { captureHandoffBaseline, checkHandoffBoundary } from './adventureworks/handoff.mjs';
+import { judgeEvidenceGroups } from './adventureworks/judge-evidence.mjs';
+import { checkPlanTasks } from './adventureworks/plan-contract.mjs';
 import { fetchSample, verifySample } from './adventureworks/sample.mjs';
 import { setupAdventureWorks, workloadContent } from './adventureworks/setup.mjs';
 
@@ -51,6 +56,197 @@ function schemaInventory() {
         ),
     ).sourceInventory;
 }
+
+const taskPlan = `# Plan
+## Ordered Changes
+- [ ] CM-01 (pending): Implement the selected protocol.
+  - Depends on: none.
+  - Done when: The selected primitive and recovery behavior are implemented.
+- [ ] CM-02 (pending): Verify behavior in the isolated test environment.
+  - Depends on: CM-01.
+  - Done when: Required fault and parity tests pass.
+## Operational Handoff
+- [ ] OP-01 (pending): Verify production readiness.
+  - Depends on: CM-02.
+  - Done when: Production configuration and writer inventory are verified.
+`;
+
+test('plan task grading rejects omitted prerequisites, cycles and premature execution claims', () => {
+    assert.equal(checkPlanTasks(taskPlan).size, 3);
+    for (const [name, changed] of [
+        [
+            'missing tasks',
+            taskPlan.replace(
+                /## Ordered Changes[\s\S]*?## Operational Handoff/,
+                '## Ordered Changes\nImplementation later.\n## Operational Handoff',
+            ),
+        ],
+        ['unknown dependency', taskPlan.replace('Depends on: CM-01.', 'Depends on: CM-99.')],
+        ['self dependency', taskPlan.replace('Depends on: CM-01.', 'Depends on: CM-02.')],
+        ['cycle', taskPlan.replace('Depends on: none.', 'Depends on: CM-02.')],
+        ['production gating code', taskPlan.replace('Depends on: CM-01.', 'Depends on: OP-01.')],
+        ['missing dependencies', taskPlan.replace('  - Depends on: none.\n', '')],
+        ['missing condition', taskPlan.replace('  - Done when: Required fault and parity tests pass.\n', '')],
+        ['duplicate task ID', taskPlan.replace('CM-02 (pending)', 'CM-01 (pending)')],
+        ['claimed execution', taskPlan.replace('[ ] CM-01 (pending)', '[x] CM-01 (complete)')],
+    ]) {
+        assert.throws(() => checkPlanTasks(changed), undefined, name);
+    }
+    assert.equal(
+        checkPlanTasks(taskPlan + '\n```md\n- [x] OP-999 (complete): Illustrative example only\n```\n').size,
+        3,
+    );
+});
+
+test('handoff baseline freezes fresh artifacts, project identity and predecessor freshness', (t) => {
+    const root = temporary(t);
+    const migration = join(root, '.cosmosdb-migration');
+    mkdirSync(join(migration, 'phases/3-schema-conversion'), { recursive: true });
+    writeFileSync(join(migration, 'phases/3-schema-conversion/model.json'), '{"fresh":"not a checked-in model"}');
+    const project = {
+        name: 'fresh',
+        freshness: { conversion: 'original' },
+        phases: { schemaConversion: { status: 'complete' }, codeMigration: { status: 'not-started' } },
+    };
+    const path = join(migration, 'project.json');
+    writeFileSync(path, JSON.stringify(project));
+    const baseline = captureHandoffBaseline(root);
+    project.phases.codeMigration.status = 'complete';
+    writeFileSync(path, JSON.stringify(project));
+    writeFileSync(join(migration, 'code-migration-plan.md'), taskPlan);
+    checkHandoffBoundary(root, baseline);
+    assert.throws(() => checkHandoffBoundary(root), /host-captured/);
+    project.freshness.conversion = 'rebased';
+    writeFileSync(path, JSON.stringify(project));
+    assert.throws(() => checkHandoffBoundary(root, baseline), /freshness/);
+    project.freshness.conversion = 'original';
+    writeFileSync(path, JSON.stringify(project));
+    writeFileSync(join(migration, 'phases/3-schema-conversion/model.json'), '{"fixture":"substitution"}');
+    assert.throws(() => checkHandoffBoundary(root, baseline), /Changed handoff input/);
+});
+
+test('handoff refuses skipped or failed grading even when the process succeeds', (t) => {
+    const root = temporary(t);
+    const path = join(root, 'results.jsonl');
+    writeFileSync(path, JSON.stringify({ type: 'run-summary', passed: true }) + '\n');
+    assert.throws(() => acceptedTrial(root), /exactly one trial/);
+    writeFileSync(
+        path,
+        JSON.stringify({ type: 'trial-result', status: 'success', gradeResult: { passed: false } }) + '\n',
+    );
+    assert.throws(() => acceptedTrial(root), /required grader/);
+});
+
+test('handoff reuses phase specifications in separate bounded sessions without reference substitution', async (t) => {
+    const root = temporary(t);
+    const sample = fixtureSource(root);
+    const original = await loadEvalSpec(join(import.meta.dirname, 'adventureworks/eval.yaml'));
+    const converted = handoffSpec(original, 'schema-conversion');
+    assert.equal(converted.stimuli[0].constraints.max_duration, '45m');
+    assert.equal(converted.defaults.model, original.defaults.model);
+    let calls = 0;
+    const output = await runHandoff({
+        sample,
+        outputRoot: join(root, 'results'),
+        async execute(_exe, args, options) {
+            calls++;
+            assert.equal(args[args.indexOf('--max-retries') + 1], '0');
+            const spec = await loadEvalSpec(args[args.indexOf('--eval-spec') + 1]);
+            assert.equal(spec.stimuli.length, 1);
+            const stimulus = spec.stimuli[0];
+            const app = join(args[args.indexOf('--workspace') + 1], 'main', stimulus.name, 'app');
+            if (calls === 1) {
+                assert.equal(stimulus.tags.phase, 'schema-conversion');
+                await setupAdventureWorks(app, sample, ddl, 'provisioning');
+                const summary = join(app, '.cosmosdb-migration/phases/3-schema-conversion/summary.md');
+                writeFileSync(summary, readFileSync(summary, 'utf8') + '\nFresh handoff output.\n');
+            } else {
+                assert.equal(stimulus.tags.scenario, 'handoff-planning');
+                assert.equal(spec.defaults.timeout, '20m');
+                assert.deepEqual(stimulus.environment.commands, []);
+                assert.deepEqual(stimulus.environment.files, [
+                    { src: options.env.MIGRATION_EVAL_HANDOFF_BASELINE, dest: 'app' },
+                ]);
+                cpSync(options.env.MIGRATION_EVAL_HANDOFF_BASELINE, app, { recursive: true });
+                const migration = join(app, '.cosmosdb-migration');
+                assert.match(
+                    readFileSync(join(migration, 'phases/3-schema-conversion/summary.md'), 'utf8'),
+                    /Fresh handoff output/,
+                );
+                const projectPath = join(migration, 'project.json');
+                const project = JSON.parse(readFileSync(projectPath, 'utf8'));
+                project.phases.codeMigration = {
+                    status: 'complete',
+                    planPath: '.cosmosdb-migration/code-migration-plan.md',
+                    completedAt: '2026-11-09T00:00:00.000Z',
+                };
+                const discovery = JSON.parse(
+                    readFileSync(join(migration, 'phases/1-discovery/discovery-manifest.json'), 'utf8'),
+                );
+                const plan =
+                    taskPlan +
+                    [
+                        'Overview',
+                        'Affected Files',
+                        'Access Pattern Migration',
+                        'Configuration and Authentication',
+                        'Validation',
+                        'Rollback',
+                    ]
+                        .map((heading) => `\n## ${heading}\nSynthetic offline wiring evidence.\n`)
+                        .join('') +
+                    '\n## Applied Rules\nrules/model-unique-keys.md\n## Blocker Review\nNo candidate blockers.\n## Unresolved Blockers\nNone.\n';
+                writeFileSync(join(migration, 'code-migration-plan.md'), plan);
+                writeFileSync(
+                    join(migration, 'code-migration-manifest.json'),
+                    JSON.stringify({
+                        version: 1,
+                        mode: 'plan',
+                        modelSha256: sha256(readFileSync(join(migration, 'phases/3-schema-conversion/model.json'))),
+                        sdkReportSha256: sha256(JSON.stringify(discovery.sdkCompatibility, null, 2) + '\n'),
+                        bestPractices: { rules: ['rules/model-unique-keys.md'], unresolvedConcerns: [] },
+                        outputFiles: [],
+                        blockingSteps: [],
+                        validation: [],
+                    }),
+                );
+                writeFileSync(projectPath, JSON.stringify(project));
+            }
+            const results = args[args.indexOf('--output-dir') + 1];
+            mkdirSync(results, { recursive: true });
+            writeFileSync(
+                join(results, 'results.jsonl'),
+                JSON.stringify({
+                    type: 'trial-result',
+                    status: 'success',
+                    stimulus: stimulus.name,
+                    itemId: String(calls),
+                    model: 'offline',
+                    gradeResult: { passed: true },
+                }) + '\n',
+            );
+            return { status: 0 };
+        },
+    });
+    assert.equal(calls, 2);
+    const lineage = JSON.parse(readFileSync(join(output, 'handoff.json'), 'utf8'));
+    assert.equal(lineage.status, 'passed');
+    assert.equal(lineage.phases.length, 2);
+    assert.match(lineage.sourceModelSha256, /^[a-f0-9]{64}$/);
+    calls = 0;
+    await assert.rejects(
+        runHandoff({
+            sample,
+            outputRoot: join(root, 'failed'),
+            execute() {
+                calls++;
+                return { status: 1 };
+            },
+        }),
+        /later phases will not run/,
+    );
+    assert.equal(calls, 1);
+});
 
 test('synthetic workload fits source key domains and relationship populations', () => {
     const workload = JSON.parse(workloadContent);
@@ -298,6 +494,17 @@ test('integration is opt-in and each extended phase has a separate session and b
     assert.equal(count(integration, ['--tag=category=integration']), 1);
     assert.equal(count(phases, ['--tag', 'category=integration']), 0);
     assert.equal(count(phases, ['--tag', 'phase=provisioning']), 1);
+    for (const stimulus of phases.stimuli) {
+        const judge = stimulus.graders.find(({ type }) => type === 'adventureworks-judge').config;
+        assert.equal(judge.scoring, 'binary');
+        assert.equal(judge.threshold, 1);
+        assert.ok(judge.prompt?.length);
+        const groups = judgeEvidenceGroups(stimulus, judge);
+        assert.deepEqual(
+            groups.flatMap(({ indices }) => indices).sort((a, b) => a - b),
+            stimulus.rubric.map((_, index) => index),
+        );
+    }
     for (const phase of phaseOrder) {
         const stimulus = phases.stimuli.find((entry) => entry.tags.phase === phase);
         assert.equal(stimulus.turns, undefined, 'Independent phases must not share conversation history');

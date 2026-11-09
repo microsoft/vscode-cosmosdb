@@ -9,7 +9,7 @@ import { mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
-import { buildJudgeEvidence, MAX_EVIDENCE_BYTES } from './adventureworks/judge-evidence.mjs';
+import { buildJudgeEvidence, judgeEvidenceGroups, MAX_EVIDENCE_BYTES } from './adventureworks/judge-evidence.mjs';
 import { createAdventureWorksJudge } from './adventureworks/judge.mjs';
 
 const migration = '.cosmosdb-migration/';
@@ -276,5 +276,121 @@ test('incomplete evidence and missing rubric scores cannot become successful jud
         assert.equal(result.status, 'error');
         assert.equal(result.metadata.error_category, category);
         assert.equal(result.score, 0);
+    }
+});
+
+test('scoped evidence retains complete files and the audit in independently bounded packets', (t) => {
+    const { write, trajectory } = fixture(t);
+    const design = { protocol: 'Complete design paragraph.\n'.repeat(7000) };
+    write(`${migration}phases/3-schema-conversion/manifest.json`, design);
+    trajectory.events = [
+        { type: 'tool_call', data: { toolName: 'bash', arguments: { command: 'command evidence\n'.repeat(12000) } } },
+    ];
+    const input = { ...stimulus('schema-conversion'), rubric: ['Design correctness', 'Execution boundary'] };
+    const scopes = judgeEvidenceGroups(input, { evidence_groups: { design: [0], boundary: [1] } });
+    assert.throws(() => buildJudgeEvidence(trajectory, input, validation), /No content was truncated/);
+    for (const { scope } of scopes) {
+        const evidence = buildJudgeEvidence(trajectory, input, validation, scope);
+        assert.ok(evidence.bytes <= MAX_EVIDENCE_BYTES);
+        if (scope === 'design')
+            assert.equal(
+                evidence.packet.files.find(({ path }) => path.endsWith('3-schema-conversion/manifest.json')).content,
+                JSON.stringify(design),
+            );
+        if (scope === 'boundary')
+            assert.equal(evidence.packet.audit[0].arguments.command, trajectory.events[0].data.arguments.command);
+        else assert.deepEqual(evidence.packet.audit, []);
+    }
+});
+
+test('evidence grouping rejects missing, repeated and out-of-range criteria or omitted scopes', () => {
+    const input = { ...stimulus('code-migration'), rubric: ['Implementation', 'Dependencies', 'Boundary'] };
+    for (const groups of [
+        { implementation: [0], dependencies: [1], boundary: [] },
+        { implementation: [0, 1], dependencies: [1], boundary: [2] },
+        { implementation: [0], dependencies: [1], boundary: [3] },
+        { implementation: [0, 1, 2] },
+    ]) {
+        assert.throws(
+            () => judgeEvidenceGroups(input, { evidence_groups: groups }),
+            (error) => error.category === 'evidence-configuration',
+        );
+    }
+});
+
+test('every scoped verdict is required and each judge sees only its assigned criteria', async (t) => {
+    const { trajectory } = fixture(t);
+    const input = { ...stimulus('code-migration'), rubric: ['Implementation', 'Dependencies', 'Boundary'] };
+    const grouped = { ...config, evidence_groups: { implementation: [0], dependencies: [1], boundary: [2] } };
+    for (const rejected of [undefined, 'dependencies']) {
+        const seen = [];
+        let shutdowns = 0;
+        const grader = createAdventureWorksJudge({
+            sample: 'offline',
+            checkSample() {},
+            checkArtifacts() {},
+            async createClient() {
+                return {
+                    async judge(request) {
+                        assert.equal(request.timeoutMs, 120_000);
+                        const { rubric, evidence } = JSON.parse(request.userMessage);
+                        const scope = evidence.scope;
+                        seen.push(scope);
+                        assert.deepEqual(
+                            rubric,
+                            grouped.evidence_groups[scope].map((index) => input.rubric[index]),
+                        );
+                        assert.ok(evidence.files.some(({ content }) => content.includes('FINAL ROLLBACK OBLIGATION')));
+                        const score = scope === rejected ? 0 : 1;
+                        return {
+                            args: {
+                                evidence_sufficient: true,
+                                overall_score: score,
+                                overall_reasoning: `Synthetic ${scope} verdict`,
+                                rubric_scores: rubric.map((criterion) => ({
+                                    criterion,
+                                    score,
+                                    reasoning: 'Synthetic verdict',
+                                })),
+                            },
+                            latencyMs: 1,
+                        };
+                    },
+                    async shutdown() {
+                        shutdowns++;
+                    },
+                };
+            },
+        });
+        const result = await grader.grade({ trajectory, stimulus: input, config: grouped });
+        assert.equal(result.passed, rejected === undefined);
+        assert.equal(result.status, undefined);
+        assert.deepEqual(seen, ['implementation', 'dependencies', 'boundary']);
+        assert.equal(result.metadata.evidence_packets.length, 3);
+        assert.equal(result.details.length, 3);
+        assert.equal(shutdowns, 1);
+    }
+});
+
+test('the judge selects artifact validation by phase except explicit inference or handoff', async (t) => {
+    const { trajectory } = fixture(t);
+    for (const [phase, scenario, expected] of [
+        ['discovery', 'supplied-ddl', 'discovery'],
+        ['discovery', 'inferred-ddl', 'inferred-ddl'],
+        ['code-migration', 'handoff-planning', 'handoff-planning'],
+    ]) {
+        let received;
+        const grader = createAdventureWorksJudge({
+            sample: 'offline',
+            checkSample() {},
+            checkArtifacts(_path, value) {
+                received = value;
+            },
+            async createClient() {
+                throw new Error('No model needed for routing assertion');
+            },
+        });
+        await grader.grade({ trajectory, stimulus: { ...stimulus(phase), tags: { phase, scenario } }, config });
+        assert.equal(received, expected);
     }
 });

@@ -5,6 +5,7 @@
 
 import { Badge, type BadgeProps, makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
+import { type KeyboardEvent, useRef, useState } from 'react';
 import {
     type HealthCheckOutcome,
     type HealthIndicatorReason,
@@ -194,6 +195,7 @@ const useStyles = makeStyles({
     },
     tooltip: {
         maxWidth: 'min(480px, calc(100vw - 32px))',
+        overflowY: 'auto',
         overflowWrap: 'anywhere',
     },
     checks: {
@@ -226,6 +228,9 @@ export const AccountHealthStatus = ({
     activeAlertsUnavailable?: boolean;
 }) => {
     const styles = useStyles();
+    const badgeRef = useRef<HTMLDivElement>(null);
+    const tooltipRef = useRef<HTMLDivElement>(null);
+    const [tooltipVisible, setTooltipVisible] = useState(false);
     const health =
         HEALTH_LABELS[resolveAccountHealth(provisioningState, accountHealth, activeAlertsUnavailable) ?? 'Unknown'];
     const provisioning = provisioningHealthCheck(provisioningState);
@@ -247,6 +252,28 @@ export const AccountHealthStatus = ({
           ]
               .filter(Boolean)
               .join(' ');
+
+    const scrollTooltip = (event: KeyboardEvent<HTMLElement>) => {
+        const tooltip = tooltipRef.current;
+        if (!tooltipVisible || !tooltip || tooltip.scrollHeight <= tooltip.clientHeight) {
+            return;
+        }
+        // Keep focus on the badge while allowing keyboard users to read the entire tooltip.
+        const scrollTargets: Partial<Record<string, number>> = {
+            ArrowDown: tooltip.scrollTop + 40,
+            ArrowUp: tooltip.scrollTop - 40,
+            PageDown: tooltip.scrollTop + tooltip.clientHeight,
+            PageUp: tooltip.scrollTop - tooltip.clientHeight,
+            Home: 0,
+            End: tooltip.scrollHeight,
+        };
+        const top = scrollTargets[event.key];
+        if (top !== undefined) {
+            event.preventDefault();
+            tooltip.scrollTo({ top });
+        }
+    };
+
     return (
         <div className={styles.root}>
             <output className={styles.srOnly} aria-live="polite">
@@ -254,9 +281,11 @@ export const AccountHealthStatus = ({
             </output>
             <span>{l10n.t('Health:')}</span>
             <Tooltip
-                content={
-                    checks ? (
-                        <div className={styles.tooltip}>
+                content={{
+                    className: styles.tooltip,
+                    ref: tooltipRef,
+                    children: checks ? (
+                        <div>
                             <strong>{l10n.t('Health: {health}', { health: health.label })}</strong>
                             <ul className={styles.checks}>
                                 {checks.map((check) => (
@@ -272,12 +301,24 @@ export const AccountHealthStatus = ({
                         </div>
                     ) : (
                         explanation
-                    )
-                }
+                    ),
+                }}
+                positioning={{ autoSize: 'height', overflowBoundaryPadding: 16 }}
                 relationship="description"
-                visible={explanation ? undefined : false}
+                visible={!!explanation && tooltipVisible}
+                onVisibleChange={(event, data) => {
+                    if (
+                        !data.visible &&
+                        event?.type === 'pointerleave' &&
+                        badgeRef.current === badgeRef.current?.ownerDocument.activeElement
+                    ) {
+                        return;
+                    }
+                    setTooltipVisible(data.visible);
+                }}
             >
                 <Badge
+                    ref={badgeRef}
                     appearance="tint"
                     shape="circular"
                     color={health.tone}
@@ -286,6 +327,7 @@ export const AccountHealthStatus = ({
                     aria-label={health.label}
                     aria-description={explanation || undefined}
                     icon={<span className={styles.dot} aria-hidden />}
+                    onKeyDown={scrollTooltip}
                 >
                     <span aria-hidden>{health.label}</span>
                 </Badge>

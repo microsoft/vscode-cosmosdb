@@ -288,6 +288,8 @@ const HydratedDataModelingWizard = ({
     const advanceButtonRef = useRef<HTMLButtonElement>(null);
     const queriesTabRef = useRef<HTMLButtonElement>(null);
     const [containerTab, setContainerTab] = useState<ContainerTab>('data');
+    // A workload card is only a selection until Start applies it, so revisiting Workload is side-effect free.
+    const [pendingScenario, setPendingScenario] = useState<ScenarioId>();
     const [fixTarget, setFixTarget] = useState<ReviewValidationIssue>();
     const clearFixTarget = useCallback(() => setFixTarget(undefined), []);
     const removeButtonRef = useRef<HTMLButtonElement>(null);
@@ -322,6 +324,8 @@ const HydratedDataModelingWizard = ({
         value: DeploymentDraft;
     }>();
     const currentSnapshot = useRef<typeof snapshot | undefined>(snapshot);
+    // Model inputs when the user last moved ahead; Next only offers a restart when they changed since then.
+    const progressBaseline = useRef(snapshot.wizard.dataModel);
     const containerNameRequest = useRef(0);
     const containerNamePending = useRef(false);
     useEffect(
@@ -570,6 +574,7 @@ const HydratedDataModelingWizard = ({
     const goToStep = useCallback(
         (step: number) => {
             setContainerTab('data');
+            setPendingScenario(undefined);
             setState((prev) => {
                 const values = buildStepValues(prev.dataModel);
                 const clamped = Math.min(Math.max(step, 1), values.length);
@@ -630,10 +635,9 @@ const HydratedDataModelingWizard = ({
     const pickScenario = useCallback(
         (scenario: ScenarioId) => {
             report({ type: 'scenarioSelected', scenario });
-            const dataModel = buildDataModel(scenario);
-            setState((prev) => ({ ...prev, scenario, dataModel }));
+            setPendingScenario(scenario);
         },
-        [setState, report],
+        [report],
     );
 
     const scenarioLabel = useMemo(
@@ -810,6 +814,7 @@ const HydratedDataModelingWizard = ({
         requestId.current = attemptId;
         deliveredRequestId.current = undefined;
         const generation = ++requestGeneration.current;
+        progressBaseline.current = current.wizard.dataModel;
         const next: typeof snapshot = {
             ...current,
             wizard: {
@@ -922,8 +927,24 @@ const HydratedDataModelingWizard = ({
         }
     }, [visible, isResult, recommendationStatus, recommendation, report]);
 
-    const canAdvance = (!isWorkload || !!state.scenario) && (!isReview || workloadErrors.length === 0);
+    const selectedScenario = pendingScenario ?? state.scenario;
+    const canAdvance = (!isWorkload || !!selectedScenario) && (!isReview || workloadErrors.length === 0);
     const nextLabel = isWorkload ? l10n.t('Start') : isReview ? l10n.t('Get Recommendation') : l10n.t('Next');
+
+    const resetModel = (nextSnapshot: typeof snapshot) => {
+        abandonRecommendation();
+        containerNameRequest.current += 1;
+        containerNamePending.current = false;
+        setAddingContainer(false);
+        setAddContainerError('');
+        cancelEditingContainerName();
+        setDeployOwner(undefined);
+        setDeploymentDraft(undefined);
+        setContainerTab('data');
+        setPendingScenario(undefined);
+        progressBaseline.current = nextSnapshot.wizard.dataModel;
+        setSnapshot(nextSnapshot);
+    };
 
     const advance = () => {
         if (stepIndex >= stepValues.length) {
@@ -934,6 +955,7 @@ const HydratedDataModelingWizard = ({
             requestRecommendation();
         } else {
             abandonRecommendation();
+            progressBaseline.current = currentSnapshot.current?.wizard.dataModel ?? state.dataModel;
             setSnapshot((previous) => ({
                 ...previous,
                 wizard: { ...previous.wizard, reachedSteps: stepValues.slice(0, stepIndex + 1) },
@@ -943,11 +965,61 @@ const HydratedDataModelingWizard = ({
             goToStep(stepIndex + 1);
         }
     };
+    const startWorkload = async (scenario: ScenarioId) => {
+        const resetToDefaults = () => {
+            const dataModel = buildDataModel(scenario);
+            resetModel({
+                ...createInitialSnapshot(),
+                wizard: { scenario, step: 2, dataModel, reachedSteps: buildStepValues(dataModel).slice(0, 2) },
+            });
+        };
+        const hasProgress = !!recommendation || reachedSteps.some((value) => stepValues.indexOf(value) > 0);
+        const continueWithModel = () => (hasProgress ? goToStep(2) : advance());
+        const edited = !!state.scenario && !modelingInputsEqual(state.dataModel, buildDataModel(state.scenario));
+        const title = l10n.t('Reset model to workload defaults?');
+        const resetLabel = l10n.t('Reset to defaults');
+        if (scenario !== state.scenario) {
+            if (!edited && !recommendation) {
+                resetToDefaults();
+                return;
+            }
+            const result = await confirm(
+                title,
+                l10n.t(
+                    'Switching workloads replaces all model values and containers with the defaults for the selected workload and discards later progress and the existing recommendation. Choose Cancel to stay on Workload without changes.',
+                ),
+                { primary: resetLabel },
+            );
+            if (result === true) resetToDefaults();
+            else advanceButtonRef.current?.focus();
+            return;
+        }
+        if (!edited) {
+            continueWithModel();
+            return;
+        }
+        const keepLabel = l10n.t('Keep my model');
+        const result = await confirm(
+            title,
+            l10n.t(
+                'Choose {reset} to replace all model values and containers with the defaults for this workload and discard later progress and the existing recommendation. Choose {keep} to continue with your current model. Choose Cancel to stay on Workload without changes.',
+                { reset: resetLabel, keep: keepLabel },
+            ),
+            { primary: resetLabel, secondary: keepLabel },
+        );
+        if (result === true) resetToDefaults();
+        else if (result === false) continueWithModel();
+        else advanceButtonRef.current?.focus();
+    };
     const onNext = async () => {
         if (isResult) {
             if (canEnterDeploy) {
                 setDeployOwner(recommendation);
             }
+            return;
+        }
+        if (isWorkload) {
+            if (selectedScenario) await startWorkload(selectedScenario);
             return;
         }
         const visitedTabs = isContainerStep ? visits.get(activeValue.slice(CONTAINER_PREFIX.length)) : undefined;
@@ -969,7 +1041,21 @@ const HydratedDataModelingWizard = ({
                 return;
             }
         }
-        if (recommendation || reachedSteps.some((value) => stepValues.indexOf(value) >= stepIndex)) {
+        const hasLaterProgress =
+            !!recommendation || reachedSteps.some((value) => stepValues.indexOf(value) >= stepIndex);
+        // Get Recommendation always replaces an existing or pending result, so that remains confirmed.
+        const replacesRecommendation = isReview && (!!recommendation || recommendationStatus === 'waiting');
+        if (
+            hasLaterProgress &&
+            !replacesRecommendation &&
+            modelingInputsEqual(state.dataModel, progressBaseline.current)
+        ) {
+            // Nothing changed since moving ahead, so continue without discarding later progress.
+            if (isReview) advance();
+            else goToStep(stepIndex + 1);
+            return;
+        }
+        if (hasLaterProgress) {
             const result = await confirm(
                 l10n.t('Restart from this step?'),
                 l10n.t(
@@ -1013,16 +1099,7 @@ const HydratedDataModelingWizard = ({
     };
     const restart = () => {
         report({ type: 'action', action: 'startOver' });
-        abandonRecommendation();
-        containerNameRequest.current += 1;
-        containerNamePending.current = false;
-        setAddingContainer(false);
-        setAddContainerError('');
-        cancelEditingContainerName();
-        setDeployOwner(undefined);
-        setDeploymentDraft(undefined);
-        setContainerTab('data');
-        setSnapshot(createInitialSnapshot());
+        resetModel(createInitialSnapshot());
     };
 
     // Only successful deployment details are persisted; editable drafts remain local to the open wizard.
@@ -1208,7 +1285,7 @@ const HydratedDataModelingWizard = ({
                             "Pick the closest pattern. We'll pre-fill typical partition key (PK) candidates and defaults.",
                         )}
                     >
-                        <WorkloadPage scenario={state.scenario} onPickScenario={pickScenario} />
+                        <WorkloadPage scenario={selectedScenario} onPickScenario={pickScenario} />
                     </WizardStep>
 
                     {state.dataModel.containers.map((c, index) => (

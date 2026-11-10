@@ -156,6 +156,22 @@ describe('data modeler deployment procedure', () => {
         );
     });
 
+    it.each([
+        { choice: 'Reset to defaults', result: true },
+        { choice: undefined, result: undefined },
+    ])('offers only the primary action plus native Cancel (choice: $choice)', async ({ choice, result }) => {
+        vi.mocked(vscode.window.showWarningMessage).mockImplementation(async (_message, _options, ...items) =>
+            items.find((item) => item.title === choice),
+        );
+        const prompt = { message: 'Reset?', detail: 'Switch?', buttons: { primary: 'Reset to defaults' } };
+        expect(await dataModelingRouterDef.createCaller(context()).confirm(prompt)).toBe(result);
+        expect(vscode.window.showWarningMessage).toHaveBeenCalledExactlyOnceWith(
+            prompt.message,
+            { modal: true, detail: prompt.detail },
+            { title: 'Reset to defaults' },
+        );
+    });
+
     it('propagates native confirmation failures without confirming an action', async () => {
         vi.mocked(vscode.window.showWarningMessage).mockRejectedValueOnce(new Error('Dialog unavailable'));
         await expect(

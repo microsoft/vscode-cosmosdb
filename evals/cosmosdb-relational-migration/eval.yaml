@@ -172,6 +172,58 @@ stimuli:
       - Inspect the current application, SDK compatibility and accepted model for the new iteration without automatically restarting upstream analysis or rewriting old hashes to match.
     graders: *guidance
 
+  - name: planning-readiness-order
+    tags: { category: guidance, phase: code-migration, contract: planning-readiness, regression: planning-quality }
+    prompt: |
+      Review this relational-to-Cosmos migration plan without writing files or executing it:
+      CM-03 finishes implementation verification only after ENV-001 is cleared.
+      ENV-001 requires production writer inventory and the frozen production generator state.
+      OP-01 collects that evidence, but depends on completed CM-03.
+      The plan also requires real SDK, fault-recovery and source-parity tests, and an
+      isolated test environment can be provisioned under a later approved invocation.
+      Is this an executable order? Explain the smallest repair while retaining the
+      necessary verification and production safeguards.
+    rubric:
+      - Identify the indirect CM-03 to ENV-001 to OP-01 to CM-03 cycle even though the explicit task IDs alone do not show it.
+      - Give implementation verification its own earlier isolated-environment prerequisites and required SDK/fault/source-parity evidence; keep actual production inventory and frozen generator state as separate later activation gates, not prerequisites for CM-03.
+      - Do not remove required tests, move unavailable implementation checks to operational handoff to claim completion, fabricate clearance, or authorize provisioning during this review.
+    graders: *guidance
+
+  - name: planning-activation-order
+    tags: { category: guidance, phase: code-migration, contract: planning-activation, regression: planning-quality }
+    prompt: |
+      Review this relational-to-Cosmos direct-switch plan. OP-05 activates production
+      traffic once all deferred production blockers are clear. OPS-001 clears only
+      after writer fencing, rollback rehearsal, and OP-06's completed live rollback
+      observation window. OP-06 depends on OP-05. All tasks are still pending.
+      Assess the ordering and propose a correction without deleting safety work,
+      weakening the zero-acknowledged-write-loss requirement, writing files or executing anything.
+      Give concrete replacement clearance identifiers, the task owning each clearance,
+      and the revised OP-05/OP-06 dependencies so the correction can be applied to the plan.
+    rubric:
+      - Identify that OP-05 indirectly waits for OP-06 through OPS-001 while OP-06 explicitly waits for OP-05; pending checkboxes do not resolve this cycle.
+      - Split pre-activation readiness and rehearsal from post-activation observation and window closure, with separate clearance identifiers and owning tasks; activation requires only explicitly identified pre-activation gates.
+      - Retain writer fencing, rollback rehearsal, post-activation observation and closure at their proper stages, without claiming future evidence exists or weakening the loss guarantee.
+    graders: *guidance
+
+  - name: planning-unselected-mechanism
+    tags: { category: guidance, phase: code-migration, contract: planning-mechanism, regression: planning-quality }
+    prompt: |
+      An accepted relational-to-Cosmos conversion says a future integrity service will
+      provide source-wide uniqueness with exact SQL collation and fenced publication.
+      No comparison implementation or weight-data supplier, backing store or atomic
+      fencing primitive has been selected. The code plan marks this design blocker
+      resolved: "implement the service; prove parity and failover later."
+      It also selects a supported framework upgrade with a known package/API path,
+      whose build has not yet run. Explain the correct dispositions and next steps.
+      Preserve the accepted model; do not write files, execute checks, silently select
+      a new service architecture, or treat conversion completion as proof of feasibility.
+    rubric:
+      - Keep the unspecified comparator and fencing/store mechanisms as unresolved design choices with concrete alternatives, required approval or evidence and affected-task clearance; naming a service plus future tests does not resolve them.
+      - Distinguish the known framework upgrade and other specified implementation work from an unselected mechanism; a missing build or runtime proof alone does not make an otherwise specified implementation choice unresolved, but the checks remain required.
+      - Preserve the accepted conditional model and its obligations; do not silently introduce an unapproved service, weaken source semantics, or claim implementation or verification occurred.
+    graders: *guidance
+
   - name: validation-only-rerun
     tags: { category: guidance, contract: validation-only }
     prompt: |

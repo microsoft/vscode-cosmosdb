@@ -113,7 +113,9 @@ application edits or determines the requested action.
 10. Review every candidate execution blocker during planning. Inspect repository
    evidence and migration artifacts, consult applicable best practices, and propose a
    concrete solution. A required framework or SDK update with a known compatible path
-   is an ordered plan change, not an unresolved blocker.
+   is an ordered plan change, not an unresolved blocker. Apply
+   [Implementation Mechanisms](#implementation-mechanisms) before treating a supporting
+   service or preservation protocol as resolved.
 11. Resolve deterministic choices in the plan. In interactive mode, ask the user now
    about consequential choices with multiple valid solutions; do not postpone those
    questions until migration. Update the plan from the answer before completing the
@@ -129,7 +131,37 @@ application edits or determines the requested action.
 13. Write `.cosmosdb-migration/code-migration-plan.md` with affected files, ordered
    execution checklists, tests, rollback considerations, applied rules, and unresolved
    choices; add a separate operational handoff checklist when applicable. Write machine
-   evidence to `code-migration-manifest.json`.
+   evidence to `code-migration-manifest.json`. Review explicit and implied prerequisites
+   using [Readiness Gates](#readiness-gates) before completing the plan.
+
+## Implementation Mechanisms
+
+Accepted conversion artifacts define requirements and conditional recommendations, not proof
+that every supporting mechanism has been selected or implemented. For each required coordinator,
+comparator, allocator, version store or content service, identify the selected technology or
+algorithm, concrete storage/API primitives, ownership, publication/visibility boundary, and
+failure/recovery behavior. Link implementation and verification tasks to those choices.
+
+Distinguish these dispositions in the existing `Blocker Review`:
+
+- **Selected mechanism, implementation pending:** the evidence supports an implementable path.
+  Record the concrete choice and ordered work. A custom algorithm can qualify when its required
+  inputs, state transitions and recovery behavior are specified; naming a service does not.
+- **Selected mechanism, verification pending:** the design is specified, but parity, concurrency,
+  permissions or runtime behavior requires authorized execution. Keep those tests required;
+  unexecuted tests do not themselves mean the technology choice is unresolved.
+- **Unresolved mechanism or approval:** a required store, algorithm, comparison data/supplier,
+  fencing primitive or architecture decision remains unselected or unsupported by evidence.
+  Propose concrete alternatives and obtain the applicable decision, or retain an explicitly
+  deferred design blocker with the affected tasks and clearance condition. Do not mark it
+  resolved merely because the plan says to implement a service or prove its guarantees later.
+
+For example, "build a SQL-compatible comparator" does not select the comparison algorithm or
+source-compatible weights. "Use a fenced coordinator" does not identify what atomically prevents
+a stale owner from publishing. State the actual mechanism or the unresolved choice; do not
+reclassify that choice as only missing test evidence. Preserve the accepted model and its
+conditional obligations. Do not silently add an unapproved backing service or change the
+architecture to close a blocker; follow the normal decision and scope-approval rules.
 
 ## Cut-over Scope
 
@@ -207,7 +239,7 @@ example illustrates the format, not a mandatory task list or application stack:
 
 - [ ] OP-01 (pending): Confirm production data and synchronization readiness.
   - Owner: The engineer responsible for production cut-over.
-  - Depends on: Code verification and the separately managed data-migration work.
+  - Depends on: CM-02.
   - Done when: The owner records evidence that the agreed production readiness gates are met.
   - Evidence: Not yet collected; outside code-migration execution.
 ```
@@ -217,6 +249,43 @@ blocker, and validation evidence; do not add a separate task file or new manifes
 Reference validation commands/results from checklist evidence instead of maintaining
 independent copies of those results. Keep deferred blockers aligned with `Blocker Review`,
 `Unresolved Blockers`, and manifest `blockingSteps`.
+
+### Readiness Gates
+
+Keep the evidence required at each milestone separate, even when the same component is involved:
+
+| Milestone | Required evidence and task placement |
+| --- | --- |
+| Implementation prerequisites | Selected mechanisms, approved test-environment access/configuration and test identities; explicit prerequisite `CM-` tasks before the work that consumes them. |
+| Implementation completion | Applicable build, behavior, source-parity, integration and fault/recovery checks in authorized nonproduction environments; required `CM-` verification remains mandatory. |
+| Production activation | Actual writer inventory/fencing, production target and source observations, frozen generator state, transfer reconciliation, approvals and pre-activation rollback rehearsal; `OP-` tasks before traffic/write enablement. |
+| Post-activation observation and closure | Evidence collected during the live observation/rollback window, incident resolution, retention/window closure and later retirement approval; `OP-` tasks after activation. |
+
+Split a blocker spanning these milestones into separately identified clearance conditions and
+owning tasks in the existing plan/manifest. Do not require implementation completion to clear
+production-only blockers, or move an unavailable implementation test to operational handoff.
+Test-environment setup is a prerequisite for implementation verification, not a production
+deployment task that waits for that same verification.
+
+Before finalizing, expand each task's `Depends on`, `Done when`, and referenced blocker-clearance
+conditions into their evidence-producing tasks. Check the combined dependency graph, not just
+the explicit ID lists. Reject missing producers, self-dependencies and cycles; a condition
+produced by the task itself is its output, not an entry prerequisite. External inputs need an
+identified owner and availability milestone, not an invented producer or a circular promise.
+
+Activation must enumerate only its pre-activation blocker IDs. Never use "all blockers clear"
+when the list also contains post-activation obligations. In particular, an activation task
+cannot require a blocker's clearance that includes observing or closing the rollback window
+after that activation. Split pre-activation readiness/rehearsal from post-activation observation
+and closure; the latter remains required at its own milestone. Do not fix a cycle by deleting
+required evidence, weakening rollback guarantees, or marking future work complete.
+
+For example, activation task `OP-03` may depend on approved recovery rehearsal and fenced-writer evidence.
+Observation task `OP-04` depends on `OP-03` and produces live-window evidence. That evidence must not
+also be a clearance prerequisite for `OP-03`, even through a shared blocker identifier.
+Likewise, verification task `CM-03` must not require production inventory from `OP-01` when
+`OP-01` depends on `CM-03`. Give isolated verification its own prerequisites and retain
+the real production inventory as a later activation gate.
 
 ### Updating and Resuming
 
@@ -264,9 +333,11 @@ The plan must contain non-empty `Overview`, `Affected Files`, `Ordered Changes`,
 
 `Blocker Review` must inventory all candidate blockers and mark each one `resolved`
 or `deferred`. For resolved items, state the evidence and selected solution and place
-the resulting work in `Ordered Changes`. For deferred items, include a stable
+the resulting work in `Ordered Changes`; a named future service without a selected
+mechanism is not a resolved solution. For deferred items, include a stable
 identifier, evidence, solutions considered, recommendation, recommendation rationale,
-why it cannot be resolved during planning, and the exact clearance condition. Every
+why it cannot be resolved during planning, and the exact clearance condition with its
+milestone and evidence-producing task or external owner. Every
 recommendation rationale must cite evidence or constraints, compare the material
 alternatives, and explain why the recommended tradeoffs are preferable. If no
 candidates are found, write exactly `No candidate blockers.`

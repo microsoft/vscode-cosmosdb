@@ -412,7 +412,9 @@ Source mode is selected by the evaluation scenario, not by an agent-controlled `
   mapped relationship. ORM `ClientSetNull` descriptions are not treated as database `SET NULL`.
 - **Computed columns:** retain their computed nature; allow explicit unknown physical type/nullability
   metadata instead of pretending SQL Server ran. Concrete mapped types are checked against the EF mapping,
-  including `LineTotal` precision/scale. This does not independently validate computed expressions.
+  including `LineTotal` precision/scale. Nonblank `computedExpression` and `computedSql` strings are equivalent
+  evidence of a computed column, alongside the existing `computed` marker/expression or computed type label.
+  Recognizing an expression does not bypass type/nullability checks or independently validate its SQL semantics.
 
 These are deterministic checks of recorded source facts, not a SQL parser or source-engine validation.
 Mutation tests cover wrong types, narrowed lengths, precision/scale changes, missing or contradictory

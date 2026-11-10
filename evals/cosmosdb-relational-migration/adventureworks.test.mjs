@@ -807,6 +807,44 @@ test('inference does not require convention-only nonunique indexes or physical c
     assert.throws(() => checkAdventureWorksInventory(inventory, { source: 'inferred' }), /ProductNumber.*missing/);
 });
 
+test('computed SQL expression aliases retain typed source evidence checks', () => {
+    for (const alias of ['computedExpression', 'computedSql']) {
+        const inventory = schemaInventory();
+        for (const table of inventory.tables) {
+            for (const column of table.columns.filter((column) => typeof column.computed === 'string')) {
+                column[alias] = column.computed;
+                column.type = column.efType;
+                column.nullable = false;
+                delete column.computed;
+                delete column.efType;
+            }
+        }
+        for (const source of ['supplied', 'inferred']) {
+            checkAdventureWorksInventory(inventory, { source });
+            for (const invalid of [undefined, null, false, 1, ' \n ']) {
+                const changed = structuredClone(inventory);
+                changed.tables
+                    .find(({ name }) => name === 'SalesLT.SalesOrderDetail')
+                    .columns.find(({ name }) => name === 'LineTotal')[alias] = invalid;
+                assert.throws(
+                    () => checkAdventureWorksInventory(changed, { source }),
+                    /computed-column evidence is missing/,
+                );
+            }
+            const wrongType = structuredClone(inventory);
+            wrongType.tables
+                .find(({ name }) => name === 'SalesLT.SalesOrderDetail')
+                .columns.find(({ name }) => name === 'LineTotal').type = 'numeric(10,2)';
+            assert.throws(() => checkAdventureWorksInventory(wrongType, { source }), /computed mapped type/);
+            const missingNullability = structuredClone(inventory);
+            delete missingNullability.tables
+                .find(({ name }) => name === 'SalesLT.SalesOrderDetail')
+                .columns.find(({ name }) => name === 'LineTotal').nullable;
+            assert.throws(() => checkAdventureWorksInventory(missingNullability, { source }), /nullability is missing/);
+        }
+    }
+});
+
 test('controller coverage requires code-evidenced reads and writes from each CRUD controller', () => {
     const patterns = ['Customers', 'Products', 'ProductCategories'].flatMap((controller) =>
         ['read', 'write'].map((kind) => ({

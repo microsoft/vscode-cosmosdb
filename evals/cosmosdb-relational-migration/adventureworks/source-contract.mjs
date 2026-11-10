@@ -109,7 +109,8 @@ function checkColumn(actual, expected, table) {
             computedType ||
                 actual.computed === true ||
                 (typeof actual.computed === 'string' && actual.computed.trim()) ||
-                (typeof actual.computedExpression === 'string' && actual.computedExpression.trim()),
+                (typeof actual.computedExpression === 'string' && actual.computedExpression.trim()) ||
+                (typeof actual.computedSql === 'string' && actual.computedSql.trim()),
             `${label}: computed-column evidence is missing`,
         );
         if (!computedType) {

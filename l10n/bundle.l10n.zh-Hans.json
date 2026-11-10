@@ -813,7 +813,7 @@
   "Fired {hours}h ago": "{hours} 小时前触发",
   "Fired {minutes}m ago": "{minutes} 分钟前触发",
   "first partition key e.g., /TenantId": "第一个分区键，例如 /TenantId",
-  "Fix": "Fix",
+  "Fix": "修复",
   "Fix these issues before requesting a recommendation.": "请在请求建议之前解决这些问题。",
   "Focused the Query Editor connected to database \"{0}\" / container \"{1}\". Subsequent Query Editor tools will now operate on it.": "已将连接到数据库“{0}”/ 容器“{1}”的查询编辑器设为焦点。现在，后续查询编辑器工具将对其进行操作。",
   "Focusing the Query Editor…": "正在聚焦查询编辑器...",

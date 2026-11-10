@@ -813,7 +813,7 @@
   "Fired {hours}h ago": "Aktivováno před {hours} h",
   "Fired {minutes}m ago": "Aktivováno před {minutes} min",
   "first partition key e.g., /TenantId": "první klíč oddílu, např. /TenantId",
-  "Fix": "Fix",
+  "Fix": "Opravit",
   "Fix these issues before requesting a recommendation.": "Než požádáte o doporučení, opravte tyto problémy.",
   "Focused the Query Editor connected to database \"{0}\" / container \"{1}\". Subsequent Query Editor tools will now operate on it.": "Fokus byl přesunut na Editor dotazů připojený k databázi {0} nebo kontejneru {1}. Následující nástroje Editoru dotazů nyní budou pracovat s tímto editorem.",
   "Focusing the Query Editor…": "Probíhá přesun fokusu na Editor dotazů...",

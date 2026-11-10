@@ -813,7 +813,7 @@
   "Fired {hours}h ago": "{hours} saat önce tetiklendi",
   "Fired {minutes}m ago": "{minutes} dk önce tetiklendi",
   "first partition key e.g., /TenantId": "ilk bölüm anahtarı, örneğin, /TenantId",
-  "Fix": "Fix",
+  "Fix": "Düzelt",
   "Fix these issues before requesting a recommendation.": "Öneri istemeden önce bu sorunları düzeltin.",
   "Focused the Query Editor connected to database \"{0}\" / container \"{1}\". Subsequent Query Editor tools will now operate on it.": "Veritabanı \"{0}\" / konteyner \"{1}\" ile bağlı Sorgu Düzenleyicisi odaklandı. Sonraki Sorgu Düzenleyicisi araçları artık bunun üzerinde çalışacak.",
   "Focusing the Query Editor…": "Sorgu Düzenleyicisine odaklanılıyor…",

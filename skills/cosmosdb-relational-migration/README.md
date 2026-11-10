@@ -153,6 +153,11 @@ before resuming. Applicable production rollout, synchronization readiness, and r
 window tasks remain in a separate operational handoff checklist; code completion does
 not mean production cut-over has occurred. See the
 [checklist contract](./references/phases/code-migration.md#execution-checklist).
+Readiness gates distinguish isolated implementation verification, production activation,
+and post-activation observation. Dependencies include evidence required indirectly through
+blocker clearance; activation cannot wait for its own later rollback-window closure.
+Supporting services need concrete selected mechanisms or explicit unresolved design
+conditions, not only promises to implement their guarantees.
 
 ### Review and Fix
 

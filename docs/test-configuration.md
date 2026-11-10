@@ -175,6 +175,8 @@ npm run eval -- --tag category=guidance
 npm run eval -- --tag category=artifacts --tag phase=preflight
 # Check persisted project identity and artifact regeneration for an approved database switch.
 npm run eval -- --tag contract=target-switch --max-retries 0
+# Focused regressions for implied readiness cycles and unselected implementation mechanisms.
+npm run eval -- --tag regression=planning-quality --max-retries 0
 # Independent real-sample phases and inference; fetches the pinned application once.
 npm run eval -- --tag category=extended --max-retries 0
 # Run one phase from reviewed prerequisites, without rerunning earlier phases.
@@ -194,6 +196,8 @@ The suite includes:
 - Guidance scenarios for all six phases, parser consent and fallback, source authority, SDK eligibility,
   domain ownership, peer-skill design guidance, approval gates, reruns, project scope,
   historical code-migration completion, and project-local memory.
+  Planning regressions cover implementation-versus-production readiness, activation-versus-observation cycles,
+  and unresolved service mechanisms being mislabeled as resolved work.
 - An unrelated PostgreSQL prompt that must activate neither migration nor best-practices skills.
 - Three artifact-producing scenarios: preflight from supplied synthetic inputs, assessment from a valid
   discovery checkpoint, and a database target switch from a synthetic completed provisioning checkpoint.

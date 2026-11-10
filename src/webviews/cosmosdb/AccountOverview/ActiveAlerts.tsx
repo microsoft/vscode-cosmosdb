@@ -338,10 +338,7 @@ export const ActiveAlerts = ({
                     aria-description={l10n.t(
                         'Opens Azure Monitor alerts for this account. The portal has its own time and condition filters.',
                     )}
-                    onClick={(event) => {
-                        event.preventDefault();
-                        openAlert(portalUrl);
-                    }}
+                    onClick={() => reportEvent('deepLinkFollowed', { target: 'portal' })}
                 >
                     <Open16Regular aria-hidden />
                     {l10n.t('Open alerts in Azure portal')}

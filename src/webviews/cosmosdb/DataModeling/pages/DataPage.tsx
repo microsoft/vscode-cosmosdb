@@ -6,9 +6,11 @@
 import {
     Button,
     Checkbox,
+    Dropdown,
     Field,
     Input,
     makeStyles,
+    Option,
     Select,
     Table,
     TableBody,
@@ -38,7 +40,6 @@ import {
     type ArrayUpdatePattern,
     type ContainerModel,
     MAX_DOCUMENT_SIZE_KB,
-    type PropertyRole,
     type PropertyType,
     PROPERTY_TYPES,
     type SchemaProperty,
@@ -110,6 +111,12 @@ const useStyles = makeStyles({
     },
     cellSelect: {
         minWidth: '120px',
+    },
+    roleOption: {
+        display: 'flex',
+        flexDirection: 'column',
+        maxWidth: '320px',
+        whiteSpace: 'normal',
     },
     propertyWarning: {
         display: 'inline-flex',
@@ -539,6 +546,7 @@ export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPa
                         <TableBody>
                             {active.properties.map((p) => {
                                 const restriction = getPartitionKeyRestriction(p, active.properties);
+                                const selectedRole = roleOptions.find((option) => option.value === p.role);
                                 return (
                                     <TableRow key={p.id}>
                                         <TableCell>{p.name}</TableCell>
@@ -582,20 +590,38 @@ export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPa
                                                     </Text>
                                                 </span>
                                             ) : (
-                                                <Select
+                                                <Dropdown
                                                     className={styles.cellSelect}
-                                                    aria-label={l10n.t('Role for {name}', { name: p.name })}
-                                                    value={p.role}
-                                                    onChange={(_, data) =>
-                                                        patchProperty(p.id, { role: data.value as PropertyRole })
-                                                    }
+                                                    aria-label={l10n.t('Role for {name}: {role}', {
+                                                        name: p.name,
+                                                        role: selectedRole?.label ?? p.role,
+                                                    })}
+                                                    value={selectedRole?.label}
+                                                    selectedOptions={[p.role]}
+                                                    onOptionSelect={(_, data) => {
+                                                        const option = roleOptions.find(
+                                                            (option) => option.value === data.optionValue,
+                                                        );
+                                                        if (option) {
+                                                            patchProperty(p.id, { role: option.value });
+                                                        }
+                                                    }}
                                                 >
                                                     {roleOptions.map((o) => (
-                                                        <option key={o.value} value={o.value}>
-                                                            {o.label}
-                                                        </option>
+                                                        <Option
+                                                            key={o.value}
+                                                            value={o.value}
+                                                            text={o.label}
+                                                            aria-label={o.label}
+                                                            aria-description={o.description}
+                                                        >
+                                                            <span className={styles.roleOption} aria-hidden="true">
+                                                                <span>{o.label}</span>
+                                                                <Text size={200}>{o.description}</Text>
+                                                            </span>
+                                                        </Option>
                                                     ))}
-                                                </Select>
+                                                </Dropdown>
                                             )}
                                         </TableCell>
                                         <TableCell>

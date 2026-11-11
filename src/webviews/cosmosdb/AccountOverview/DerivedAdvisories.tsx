@@ -651,7 +651,7 @@ const AdvisoryDetailDialog = ({
                                 const panelId = `${id}-${index}-evidence`;
                                 return (
                                     <li key={advisory.id} className={styles.detailItem}>
-                                        {resourceFields.length > 0 ? (
+                                        {resourceFields.length > 0 || advisory.costEstimate ? (
                                             <Accordion className={styles.detailContent} collapsible>
                                                 <AccordionItem value={advisory.id}>
                                                     <AccordionHeader
@@ -679,6 +679,9 @@ const AdvisoryDetailDialog = ({
                                                                 <AdvisoryText text={advisory[key]} />
                                                             </Text>
                                                         ))}
+                                                        {advisory.costEstimate && (
+                                                            <CostEstimateDetails estimate={advisory.costEstimate} />
+                                                        )}
                                                     </AccordionPanel>
                                                 </AccordionItem>
                                             </Accordion>
@@ -878,6 +881,9 @@ export const DerivedAdvisories = ({
             <div className={styles.scrollBody}>
                 {partialCoverage && <PartialCoverageNotice source={logSource} />}
                 {metricPartialCoverage && <MetricCoverageNotice source={result?.metricSource} />}
+                {result?.available && result.costSource?.available === false && (
+                    <CostCoverageNotice source={result.costSource} />
+                )}
                 {body}
             </div>
             <AdvisoryDetailDialog
@@ -892,6 +898,134 @@ export const DerivedAdvisories = ({
                 onDismiss={handleDismiss}
             />
         </div>
+    );
+};
+
+const CostEstimateDetails = ({ estimate }: { estimate: NonNullable<DerivedAdvisory['costEstimate']> }) => {
+    const format = (value: number, maximumFractionDigits = 2) =>
+        value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits });
+    const amount =
+        estimate.monthlyAmount > 0 && estimate.monthlyAmount < 0.01
+            ? l10n.t('Less than {amount} {currency} per month', {
+                  amount: format(0.01),
+                  currency: estimate.currency,
+              })
+            : l10n.t('{amount} {currency} per month', {
+                  amount: format(estimate.monthlyAmount),
+                  currency: estimate.currency,
+              });
+    return estimate.basis === 'customerAmortizedBill' ? (
+        <>
+            <Text weight="semibold">{l10n.t('Estimated capacity savings: {amount}', { amount })}</Text>
+            <Text>
+                {l10n.t(
+                    'Modeled at this account’s blended amortized throughput rate, using 730 hours per month. This is not a guaranteed bill reduction; reservations, commitments and future demand affect realization. Estimates can overlap and must not be added together.',
+                )}
+            </Text>
+            <Text>
+                {l10n.t(
+                    'Billing evidence: {cost} {currency} / {usage} billed 100-RU/s-hours, from {start} to {end} (UTC).',
+                    {
+                        cost: format(estimate.rate.cost),
+                        currency: estimate.currency,
+                        usage: format(estimate.rate.usage100RuHours),
+                        start: estimate.rate.observationStart,
+                        end: estimate.rate.observationEnd,
+                    },
+                )}
+            </Text>
+            <Text>
+                {l10n.t('Model: {ru} recoverable RU/s at {rate} {currency} per RU/s-month.', {
+                    ru: format(estimate.recoverableRu),
+                    rate: estimate.rate.perRuMonth.toLocaleString(undefined, { maximumSignificantDigits: 6 }),
+                    currency: estimate.currency,
+                })}
+            </Text>
+            <Text>{l10n.t('Contributing meters: {meters}', { meters: estimate.rate.meters.join(', ') })}</Text>
+        </>
+    ) : (
+        <>
+            <Text weight="semibold">{l10n.t('Estimated backup storage at retail prices: {amount}', { amount })}</Text>
+            <Text>
+                {l10n.t(
+                    'Retail-price scenario for removing paid continuous-backup retention, not customer-bill savings. Discounts, restore charges and future storage changes are excluded. Confirm recovery requirements before changing retention.',
+                )}
+            </Text>
+            <Text>
+                {l10n.t(
+                    'DataUsageV2: {gb} decimal GB across {containers} logical containers at {timestamp}, observed once in {region}.',
+                    {
+                        gb: format(estimate.storageBytes / 1_000_000_000, 6),
+                        containers: estimate.logicalContainers,
+                        timestamp: estimate.snapshotAt,
+                        region: estimate.referenceRegion,
+                    },
+                )}
+            </Text>
+            <Text>
+                {l10n.t('Azure Retail Prices (USD), continuous-backup storage in: {regions}', {
+                    regions: estimate.prices.map((price) => price.region).join(', '),
+                })}
+            </Text>
+            {estimate.prices.map((price) => (
+                <Text key={price.region}>
+                    {l10n.t('{region}: {rate} USD per decimal GB-month; meter {meter}; effective from {start}.', {
+                        region: price.region,
+                        rate: price.perGbMonth.toLocaleString(undefined, { maximumSignificantDigits: 6 }),
+                        meter: price.meterId,
+                        start: price.effectiveStart,
+                    })}
+                    {price.effectiveEnd && ' ' + l10n.t('Effective until {end}.', { end: price.effectiveEnd })}
+                </Text>
+            ))}
+        </>
+    );
+};
+
+const CostCoverageNotice = ({ source }: { source: NonNullable<DerivedAdvisoriesResult['costSource']> }) => {
+    const styles = useStyles();
+    const title = l10n.t('Some cost estimates are unavailable');
+    const reasons: Record<NonNullable<DerivedAdvisoriesResult['costSource']>['failures'][number]['kind'], string> = {
+        notConfigured: l10n.t('Billing context was not available for this analysis.'),
+        authentication: l10n.t('Verify Azure sign-in before retrying the billing query.'),
+        accessDenied: l10n.t(
+            'Cost evidence access was denied. Review billing and resource permissions with your administrator; Cost Management Reader may be required for throughput estimates.',
+        ),
+        rateLimited: l10n.t('The service rate-limited the cost query. Wait before refreshing again.'),
+        timeout: l10n.t('The cost query timed out. Check network and service availability before retrying.'),
+        serviceError: l10n.t('The cost service could not complete the request. Retry later.'),
+        queryError: l10n.t('The cost query failed. This does not establish a missing permission.'),
+        invalidData: l10n.t('Cost evidence was invalid, ambiguous or incomplete; no estimate was substituted.'),
+        noData: l10n.t(
+            'No usable billing rate or complete fresh storage and regional pricing evidence was available. Missing data is not zero cost.',
+        ),
+        unsupported: l10n.t('This cost source is not supported in the account’s Azure cloud.'),
+    };
+    return (
+        <MessageBar
+            className={styles.notice}
+            intent="warning"
+            layout="multiline"
+            politeness="polite"
+            icon={{ 'aria-hidden': true }}
+            aria-label={title}
+        >
+            <MessageBarBody>
+                <MessageBarTitle>{title}</MessageBarTitle>
+                <div>
+                    {l10n.t('Capacity and configuration recommendations remain valid without monetary estimates.')}
+                </div>
+                <ul>
+                    {source.failures.map((failure) => (
+                        <li key={failure.operation}>
+                            {failure.operation === 'throughput'
+                                ? l10n.t('Throughput: {reason}', { reason: reasons[failure.kind] })
+                                : l10n.t('Continuous backup: {reason}', { reason: reasons[failure.kind] })}
+                        </li>
+                    ))}
+                </ul>
+            </MessageBarBody>
+        </MessageBar>
     );
 };
 

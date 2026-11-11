@@ -98,6 +98,10 @@ describe('account advisory acquisition', () => {
             'PaidContinuousBackup',
             'PerRegionAutoscaleCandidate',
         ]);
+        expect(result.costSource).toEqual({
+            available: false,
+            failures: [{ operation: 'backup', kind: 'accessDenied' }],
+        });
         expect(result.metricSource?.failures.map((failure) => failure.rule)).not.toContain('PaidContinuousBackup');
         expect(result.metricSource?.failures.map((failure) => failure.rule)).not.toContain(
             'PerRegionAutoscaleCandidate',
@@ -125,6 +129,31 @@ describe('account advisory acquisition', () => {
                     perRegionPerPartitionAutoscaleEnabled: false,
                     backupPolicy: expect.objectContaining({ type: 'Continuous', continuousTier: 'Continuous35Days' }),
                 }),
+                costContext: {
+                    subscriptionId: 'sub',
+                    resourceManagerEndpoint: 'https://management.azure.com',
+                    locationNames: ['westus', 'eastus'],
+                },
+            }),
+        );
+    });
+
+    it('does not silently omit an unknown configured region from backup pricing context', async () => {
+        vi.mocked(collectDerivedAdvisories).mockResolvedValueOnce({
+            advisories: [],
+            logSource: { available: true },
+            metricSource: { available: true, failures: [] },
+        });
+        const input = metadata({ locations: [{ locationName: 'East US' }, {}] });
+        input.subscription.environment.resourceManagerEndpointUrl = 'https://management.usgovcloudapi.net';
+        await getDerivedAdvisoriesForAccount(input);
+        expect(collectDerivedAdvisories).toHaveBeenCalledWith(
+            expect.objectContaining({
+                costContext: {
+                    subscriptionId: 'sub',
+                    resourceManagerEndpoint: 'https://management.usgovcloudapi.net',
+                    locationNames: ['East US', ''],
+                },
             }),
         );
     });

@@ -41,6 +41,7 @@
   "ignorePatterns": [
     ".azure-pipelines",
     ".config",
+    ".coda",
     ".cosmosdb-data",
     ".vscode-test",
     "bundle-analysis",

@@ -1,5 +1,6 @@
 # These files are excluded during vsce package
 .cosmosdb-data/**
+.coda/**
 .azure-pipelines/**
 .github/**
 .husky/**

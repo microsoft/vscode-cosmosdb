@@ -658,10 +658,7 @@ export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPa
                                                         {roleOptions.map((o) => (
                                                             <Option
                                                                 key={o.value}
-                                                                className={mergeClasses(
-                                                                    styles.roleOption,
-                                                                    p.role === o.value && styles.roleOptionSelected,
-                                                                )}
+                                                                className={styles.roleOption}
                                                                 checkIcon={null}
                                                                 value={o.value}
                                                                 text={o.label}

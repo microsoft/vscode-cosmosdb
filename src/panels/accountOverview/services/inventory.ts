@@ -24,6 +24,10 @@ export type ThroughputMode = 'dedicated' | 'shared' | 'autoscale' | 'serverless'
 export type OfferLevel = 'container' | 'database' | 'none';
 export type OfferThroughputMode = 'manual' | 'autoscale' | 'serverless' | 'unknown';
 
+export function countUserExcludedPaths(paths: readonly { path?: string }[] | undefined): number {
+    return paths?.filter(({ path }) => path !== '/_etag/?' && path !== '/"_etag"/?').length ?? 0;
+}
+
 export interface InventoryContainerRow {
     databaseId: string;
     containerId: string;
@@ -59,6 +63,8 @@ export interface SqlInventoryDetails {
     databases: string[];
     rows: InventoryContainerRow[];
     offers: InventoryThroughputOffer[];
+    /** False when an offer read omitted throughput or a provisioned container could not resolve its offer. */
+    throughputInventoryComplete: boolean;
 }
 
 function isNotFound(err: unknown): boolean {
@@ -98,6 +104,7 @@ export async function getSqlInventoryDetails(
 ): Promise<SqlInventoryDetails> {
     const rows: InventoryContainerRow[] = [];
     const offers: InventoryThroughputOffer[] = [];
+    let throughputInventoryComplete = true;
 
     const databases: SqlDatabaseGetResults[] = [];
     for await (const db of client.sqlResources.listSqlDatabases(resourceGroup, accountName)) {
@@ -108,21 +115,21 @@ export async function getSqlInventoryDetails(
         const databaseId = db.resource?.id ?? db.name ?? '';
         const databaseCreatedAt = getSystemCreatedAt(db);
 
-        let dbThroughput: ThroughputSettingsGetResults | undefined;
+        let resolvedDatabaseOffer = resolveDatabaseThroughputMode(undefined);
         if (!isServerless) {
             try {
-                dbThroughput = await client.sqlResources.getSqlDatabaseThroughput(
-                    resourceGroup,
-                    accountName,
-                    databaseId,
+                resolvedDatabaseOffer = resolveDatabaseThroughputMode(
+                    await client.sqlResources.getSqlDatabaseThroughput(resourceGroup, accountName, databaseId),
                 );
+                if (resolvedDatabaseOffer.ru === undefined) {
+                    throughputInventoryComplete = false;
+                }
             } catch (err) {
                 if (!isNotFound(err)) {
                     throw err;
                 }
             }
         }
-        const resolvedDatabaseOffer = resolveDatabaseThroughputMode(dbThroughput);
         if (resolvedDatabaseOffer.ru !== undefined && resolvedDatabaseOffer.offerThroughputMode !== 'unknown') {
             offers.push({
                 databaseId,
@@ -168,11 +175,11 @@ export async function getSqlInventoryDetails(
                     }
                 }
 
-                if (containerThroughput?.resource) {
+                if (containerThroughput !== undefined) {
                     // Dedicated (container-level) throughput.
-                    const autoscaleMax = containerThroughput.resource.autoscaleSettings?.maxThroughput;
+                    const autoscaleMax = containerThroughput.resource?.autoscaleSettings?.maxThroughput;
                     throughputMode = autoscaleMax !== undefined ? 'autoscale' : 'dedicated';
-                    throughputRU = autoscaleMax ?? containerThroughput.resource.throughput;
+                    throughputRU = autoscaleMax ?? containerThroughput.resource?.throughput;
                     offerLevel = 'container';
                     offerThroughputMode = autoscaleMax !== undefined ? 'autoscale' : 'manual';
                     offerCreatedAt = containerCreatedAt;
@@ -195,6 +202,9 @@ export async function getSqlInventoryDetails(
                     offerThroughputMode = resolvedDatabaseOffer.offerThroughputMode;
                     offerCreatedAt = databaseCreatedAt;
                 }
+                if (throughputRU === undefined) {
+                    throughputInventoryComplete = false;
+                }
             }
 
             rows.push({
@@ -209,9 +219,7 @@ export async function getSqlInventoryDetails(
                 partitionKeyPaths: container.resource?.partitionKey?.paths ?? [],
                 indexingMode: indexingPolicy?.indexingMode ?? 'consistent',
                 excludedPathCount: indexingPolicy?.excludedPaths?.length ?? 0,
-                userExcludedPathCount:
-                    indexingPolicy?.excludedPaths?.filter(({ path }) => path !== '/_etag/?' && path !== '/"_etag"/?')
-                        .length ?? 0,
+                userExcludedPathCount: countUserExcludedPaths(indexingPolicy?.excludedPaths),
                 compositeIndexCount: indexingPolicy?.compositeIndexes?.length ?? 0,
                 health: 'Healthy',
             });
@@ -222,6 +230,7 @@ export async function getSqlInventoryDetails(
         databases: databases.map((database) => database.resource?.id ?? database.name ?? '').filter(Boolean),
         rows,
         offers,
+        throughputInventoryComplete,
     };
 }
 

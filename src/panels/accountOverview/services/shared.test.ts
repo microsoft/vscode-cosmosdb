@@ -10,16 +10,43 @@ import { DEFAULT_PARTITION_THRESHOLDS, getPartitionHealth } from './partitionHea
 import { getRuTrends, getThrottleRate } from './ruTrends';
 import {
     classifyUnavailable,
+    containerFilter,
     effectiveInterval,
     isHotPartition,
     parseMonitorTimestamp,
     partitionSaturationStats,
     percentile,
     pickPointValue,
+    requestMetricFilter,
+    throughputOfferFilter,
 } from './shared';
 import { iso, mockClient, throwingClient } from './testFixtures';
 
 const thresholds: HealthThresholds = DEFAULT_HEALTH_THRESHOLDS;
+
+describe('throughput offer metric scopes', () => {
+    it('keeps database chart aggregation distinct from the shared offer', () => {
+        expect(containerFilter('db', undefined)).toBe("DatabaseName eq 'db'");
+        expect(throughputOfferFilter('db', undefined)).toBe("CollectionName eq '' and DatabaseName eq 'db'");
+        expect(throughputOfferFilter("db'one", "container'two")).toBe(
+            "CollectionName eq 'container''two' and DatabaseName eq 'db''one'",
+        );
+    });
+
+    it('escapes and deduplicates authoritative shared request members', () => {
+        expect(requestMetricFilter("db'one", undefined, ["a'b", 'c', "a'b"])).toEqual([
+            "CollectionName eq 'a''b' and DatabaseName eq 'db''one'",
+            "CollectionName eq 'c' and DatabaseName eq 'db''one'",
+        ]);
+        expect(requestMetricFilter('db', undefined, [])).toEqual([]);
+    });
+
+    it('rejects ambiguous shared membership instead of issuing account-wide requests', () => {
+        expect(() => requestMetricFilter(undefined, undefined, ['a'])).toThrow('database scope');
+        expect(() => requestMetricFilter('db', 'dedicated', ['a'])).toThrow('database scope');
+        expect(() => requestMetricFilter('db', undefined, [''])).toThrow('nonempty member identifiers');
+    });
+});
 
 describe('parseMonitorTimestamp', () => {
     it.each([new Date(1234), new Date(1234).toISOString()])(

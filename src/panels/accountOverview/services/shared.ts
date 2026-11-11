@@ -180,6 +180,31 @@ export function containerFilter(databaseId: string | undefined, containerId: str
     return clauses.length > 0 ? clauses.join(' and ') : undefined;
 }
 
+/** Throughput metrics identify a shared database offer by its empty collection dimension, not all its containers. */
+export function throughputOfferFilter(databaseId: string, containerId: string | undefined): string {
+    return `CollectionName eq '${escapeODataLiteral(containerId ?? '')}' and DatabaseName eq '${escapeODataLiteral(databaseId)}'`;
+}
+
+/** Request metrics belong to containers; shared offers must include only their authoritative members. */
+export function requestMetricFilter(
+    databaseId: string | undefined,
+    containerId: string | undefined,
+    sharedContainerIds?: readonly string[],
+): string | readonly string[] | undefined {
+    if (sharedContainerIds === undefined) {
+        return containerFilter(databaseId, containerId);
+    }
+    if (!databaseId || containerId !== undefined) {
+        throw new Error('Shared-offer request metrics require a database scope.');
+    }
+    return [...new Set(sharedContainerIds)].map((memberId) => {
+        if (!memberId) {
+            throw new Error('Shared-offer request metrics require nonempty member identifiers.');
+        }
+        return throughputOfferFilter(databaseId, memberId);
+    });
+}
+
 /** Escapes a value for use inside an OData single-quoted string literal (a `'` is doubled to `''`). */
 export function escapeODataLiteral(value: string): string {
     return value.replace(/'/g, "''");

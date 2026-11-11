@@ -291,6 +291,10 @@ Sources: [inventory](../src/panels/accountOverview/services/inventory.ts),
 ARM enumeration records databases, containers, indexing exclusions and actual throughput offers.
 Shared database offers are distinct from dedicated container offers; an autoscale maximum is not a manual reservation.
 Empty databases remain available to account actions even though the table consists of container rows.
+Enumeration retains an explicit throughput-completeness flag: a successful offer read without throughput, or a
+provisioned container without a resolved dedicated/shared offer, makes account capacity unknown. An unresolved
+database offer also invalidates the total when that database has no containers. A container-offer 404 may inherit
+a known shared offer; a successful but incomplete response does not establish that the container offer is absent.
 Throughput enumeration has no resumable cursor exposed to the webview.
 
 Inventory metrics make account-level queries split by `DatabaseName`/`CollectionName`, not one request per row.

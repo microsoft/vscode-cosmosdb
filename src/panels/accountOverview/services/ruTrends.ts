@@ -11,13 +11,21 @@ import {
     parseMonitorTimestamp,
     pickPointValue,
     RANGE_CONFIG,
+    requestMetricFilter,
     sustainedTimestamps,
     THROTTLING_SHARE_THRESHOLD,
+    throughputOfferFilter,
     type MetricAggregation,
     type RangeConfig,
     type TimeRange,
     type UnavailableReason,
 } from './shared';
+
+type MetricFilter = string | readonly string[] | undefined;
+
+function metricFilters(filter: MetricFilter): readonly (string | undefined)[] {
+    return typeof filter === 'string' || filter === undefined ? [filter] : filter;
+}
 
 // ─── RU usage trends ────────────────────────────────────────────────────────────
 //
@@ -59,6 +67,7 @@ export interface RuTrendsResult {
  * (unsupported API/SKU, missing dimension) resolves to `available: false` so the
  * webview can render an explicit empty-state rather than surfacing an error.
  * Diagnostic callers supply `config` to decouple their observation window/grain from chart presets.
+ * Shared-offer callers also supply membership: utilization belongs to the offer, request counts to its members.
  */
 export async function getRuTrends(
     client: MonitorClient,
@@ -67,11 +76,16 @@ export async function getRuTrends(
     databaseId: string | undefined,
     containerId: string | undefined,
     config: RangeConfig = RANGE_CONFIG[timeRange],
+    sharedContainerIds?: readonly string[],
 ): Promise<RuTrendsResult> {
     const end = Date.now();
     const start = end - config.windowMs;
     const timespan = `${new Date(start).toISOString()}/${new Date(end).toISOString()}`;
-    const filter = containerFilter(databaseId, containerId);
+    const requestFilter = requestMetricFilter(databaseId, containerId, sharedContainerIds);
+    const filter =
+        sharedContainerIds !== undefined && databaseId
+            ? throughputOfferFilter(databaseId, containerId)
+            : containerFilter(databaseId, containerId);
 
     const base: RuTrendsResult = {
         available: false,
@@ -110,7 +124,7 @@ export async function getRuTrends(
             timespan,
             config.interval,
             config.bucketMs,
-            filter,
+            requestFilter,
         );
     } catch {
         // Throttling overlay is best-effort; keep the RU series even if it fails.
@@ -139,6 +153,7 @@ export async function getRuTrends(
  * to read. Buckets that collide across series are merged by the aggregation's
  * natural combiner (`Total`/`Count` sum, everything else takes the max — account/
  * container-scoped queries return a single series, so collisions are rare).
+ * Multiple filters read known shared members and combine their aligned buckets without wildcard discovery.
  */
 export async function querySeries(
     client: MonitorClient,
@@ -147,39 +162,40 @@ export async function querySeries(
     aggregation: MetricAggregation,
     timespan: string,
     interval: string,
-    filter: string | undefined,
+    filter: MetricFilter,
 ): Promise<Map<number, number>> {
-    const response = await client.metrics.list(resourceUri, {
-        metricnames: metricName,
-        aggregation,
-        timespan,
-        interval,
-        filter,
-    });
-
     const buckets = new Map<number, number>();
-    for (const metric of response.value ?? []) {
-        if (metric.errorCode && metric.errorCode !== 'Success') {
-            throw new Error(metric.errorMessage ?? metric.errorCode);
-        }
-        for (const series of metric.timeseries ?? []) {
-            for (const point of series.data ?? []) {
-                const value = pickPointValue(point, aggregation);
-                if (value === undefined) {
-                    continue;
-                }
-                const ts = parseMonitorTimestamp(point.timeStamp);
-                if (ts === undefined) {
-                    continue;
-                }
-                const prev = buckets.get(ts);
-                if (prev === undefined) {
-                    buckets.set(ts, value);
-                } else {
-                    buckets.set(
-                        ts,
-                        aggregation === 'Total' || aggregation === 'Count' ? prev + value : Math.max(prev, value),
-                    );
+    for (const scopedFilter of metricFilters(filter)) {
+        const response = await client.metrics.list(resourceUri, {
+            metricnames: metricName,
+            aggregation,
+            timespan,
+            interval,
+            filter: scopedFilter,
+        });
+        for (const metric of response.value ?? []) {
+            if (metric.errorCode && metric.errorCode !== 'Success') {
+                throw new Error(metric.errorMessage ?? metric.errorCode);
+            }
+            for (const series of metric.timeseries ?? []) {
+                for (const point of series.data ?? []) {
+                    const value = pickPointValue(point, aggregation);
+                    if (value === undefined) {
+                        continue;
+                    }
+                    const ts = parseMonitorTimestamp(point.timeStamp);
+                    if (ts === undefined) {
+                        continue;
+                    }
+                    const prev = buckets.get(ts);
+                    if (prev === undefined) {
+                        buckets.set(ts, value);
+                    } else {
+                        buckets.set(
+                            ts,
+                            aggregation === 'Total' || aggregation === 'Count' ? prev + value : Math.max(prev, value),
+                        );
+                    }
                 }
             }
         }
@@ -188,7 +204,7 @@ export async function querySeries(
 }
 
 /**
- * Aggregate 429 throttle rate for a container (or account) over a window:
+ * Aggregate 429 throttle rate for a container, shared membership, or account over a window:
  * `sum(429 TotalRequests Count) / sum(TotalRequests Count)`, as a percentage, plus the total request count. Unlike
  * {@link queryThrottlingWindows} (which flags sustained *buckets* for the RU-chart overlay), this is the single
  * fleet-comparable rate CODA DX-005 / DX-006 key on. Returns `{ ratePercent: 0, totalRequests: 0 }` when the
@@ -202,44 +218,24 @@ export async function getThrottleRate(
     databaseId: string | undefined,
     containerId: string | undefined,
     config: RangeConfig = RANGE_CONFIG[timeRange],
+    sharedContainerIds?: readonly string[],
 ): Promise<{ ratePercent: number; totalRequests: number }> {
     const end = Date.now();
     const start = end - config.windowMs;
     const timespan = `${new Date(start).toISOString()}/${new Date(end).toISOString()}`;
-    const filter = containerFilter(databaseId, containerId);
-    const statusFilter = filter ? `${filter} and StatusCode eq '*'` : `StatusCode eq '*'`;
-
-    const response = await client.metrics.list(resourceUri, {
-        metricnames: 'TotalRequests',
-        aggregation: 'Count',
+    const buckets = await queryRequestBuckets(
+        client,
+        resourceUri,
         timespan,
-        interval: config.interval,
-        filter: statusFilter,
-    });
+        config.interval,
+        requestMetricFilter(databaseId, containerId, sharedContainerIds),
+    );
 
     let total = 0;
     let throttled = 0;
-    for (const metric of response.value ?? []) {
-        if (metric.errorCode && metric.errorCode !== 'Success') {
-            throw new Error(metric.errorMessage ?? metric.errorCode);
-        }
-        for (const series of metric.timeseries ?? []) {
-            const statusCode = series.metadatavalues?.find((m) => m.name?.value?.toLowerCase() === 'statuscode')?.value;
-            const isThrottle = isThrottledStatusCode(statusCode);
-            for (const point of series.data ?? []) {
-                const count = pickPointValue(point, 'Count');
-                if (count === undefined) {
-                    continue;
-                }
-                if (parseMonitorTimestamp(point.timeStamp) === undefined) {
-                    continue;
-                }
-                total += count;
-                if (isThrottle) {
-                    throttled += count;
-                }
-            }
-        }
+    for (const bucket of buckets.values()) {
+        total += bucket.total;
+        throttled += bucket.throttled;
     }
 
     return { ratePercent: total > 0 ? (100 * throttled) / total : 0, totalRequests: total };
@@ -257,7 +253,7 @@ export async function queryThrottlingWindows(
     timespan: string,
     interval: string,
     bucketMs: number,
-    filter: string | undefined,
+    filter: MetricFilter,
 ): Promise<Set<number>> {
     return (await queryThrottlingSummary(client, resourceUri, timespan, interval, bucketMs, filter)).timestamps;
 }
@@ -269,44 +265,9 @@ export async function queryThrottlingSummary(
     timespan: string,
     interval: string,
     bucketMs: number,
-    filter: string | undefined,
+    filter: MetricFilter,
 ): Promise<{ timestamps: Set<number>; hasObservations: boolean }> {
-    const statusFilter = filter ? `${filter} and StatusCode eq '*'` : `StatusCode eq '*'`;
-    const response = await client.metrics.list(resourceUri, {
-        metricnames: 'TotalRequests',
-        aggregation: 'Count',
-        timespan,
-        interval,
-        filter: statusFilter,
-    });
-
-    const totals = new Map<number, { total: number; throttled: number }>();
-    for (const metric of response.value ?? []) {
-        if (metric.errorCode && metric.errorCode !== 'Success') {
-            throw new Error(metric.errorMessage ?? metric.errorCode);
-        }
-        for (const series of metric.timeseries ?? []) {
-            const statusCode = series.metadatavalues?.find((m) => m.name?.value?.toLowerCase() === 'statuscode')?.value;
-            const isThrottle = isThrottledStatusCode(statusCode);
-            for (const point of series.data ?? []) {
-                const count = pickPointValue(point, 'Count');
-                if (count === undefined) {
-                    continue;
-                }
-                const ts = parseMonitorTimestamp(point.timeStamp);
-                if (ts === undefined) {
-                    continue;
-                }
-                const entry = totals.get(ts) ?? { total: 0, throttled: 0 };
-                entry.total += count;
-                if (isThrottle) {
-                    entry.throttled += count;
-                }
-                totals.set(ts, entry);
-            }
-        }
-    }
-
+    const totals = await queryRequestBuckets(client, resourceUri, timespan, interval, filter);
     const overThreshold = [...totals.entries()]
         .filter(([, v]) => v.total > 0 && v.throttled / v.total > THROTTLING_SHARE_THRESHOLD)
         .map(([ts]) => ts)
@@ -316,4 +277,51 @@ export async function queryThrottlingSummary(
         timestamps: sustainedTimestamps(overThreshold, bucketMs),
         hasObservations: totals.size > 0,
     };
+}
+
+async function queryRequestBuckets(
+    client: MonitorClient,
+    resourceUri: string,
+    timespan: string,
+    interval: string,
+    filter: MetricFilter,
+): Promise<Map<number, { total: number; throttled: number }>> {
+    const totals = new Map<number, { total: number; throttled: number }>();
+    for (const scopedFilter of metricFilters(filter)) {
+        const response = await client.metrics.list(resourceUri, {
+            metricnames: 'TotalRequests',
+            aggregation: 'Count',
+            timespan,
+            interval,
+            filter: scopedFilter ? `${scopedFilter} and StatusCode eq '*'` : `StatusCode eq '*'`,
+        });
+        for (const metric of response.value ?? []) {
+            if (metric.errorCode && metric.errorCode !== 'Success') {
+                throw new Error(metric.errorMessage ?? metric.errorCode);
+            }
+            for (const series of metric.timeseries ?? []) {
+                const statusCode = series.metadatavalues?.find(
+                    (m) => m.name?.value?.toLowerCase() === 'statuscode',
+                )?.value;
+                const isThrottle = isThrottledStatusCode(statusCode);
+                for (const point of series.data ?? []) {
+                    const count = pickPointValue(point, 'Count');
+                    if (count === undefined) {
+                        continue;
+                    }
+                    const ts = parseMonitorTimestamp(point.timeStamp);
+                    if (ts === undefined) {
+                        continue;
+                    }
+                    const entry = totals.get(ts) ?? { total: 0, throttled: 0 };
+                    entry.total += count;
+                    if (isThrottle) {
+                        entry.throttled += count;
+                    }
+                    totals.set(ts, entry);
+                }
+            }
+        }
+    }
+    return totals;
 }

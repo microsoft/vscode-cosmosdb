@@ -9,6 +9,7 @@ import { Detector, type DetectorContext } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import {
+    type AdvisoryEvaluation,
     type CollectionTrafficInput,
     type DerivedAdvisory,
     type SharedThroughputInput,
@@ -26,17 +27,40 @@ import {
 function evaluateSharedThroughputStarvation(
     input: SharedThroughputInput,
     thresholds: SharedThroughputThresholds,
-): DerivedAdvisory | undefined {
-    const active = input.collections.filter((c) => c.requests >= thresholds.minRequests);
+): AdvisoryEvaluation<'SharedThroughputStarvation'> {
+    if (!input.sharedContainerIds) {
+        return { rootCause: 'insufficient_data' };
+    }
+    const members = new Set(input.sharedContainerIds);
+    const traffic = input.collections.filter((c) => members.has(c.containerId));
+    if (
+        new Set(traffic.map((c) => c.containerId)).size !== traffic.length ||
+        traffic.some(
+            (c) =>
+                !Number.isFinite(c.requests) ||
+                c.requests < 0 ||
+                !Number.isFinite(c.throttledRequests) ||
+                c.throttledRequests < 0 ||
+                c.throttledRequests > c.requests ||
+                !Number.isFinite(c.ruConsumed) ||
+                c.ruConsumed < 0,
+        )
+    ) {
+        return { rootCause: 'insufficient_data' };
+    }
+    const active = traffic.filter((c) => c.requests >= thresholds.minRequests);
     if (active.length < DIAGNOSTIC_POLICY.sharedThroughput.minActiveCollections) {
-        return undefined;
+        return { rootCause: active.length === 0 ? 'insufficient_data' : 'single_collection' };
     }
     const ruTotal = active.reduce((sum, c) => sum + c.ruConsumed, 0);
     const reqTotal = active.reduce((sum, c) => sum + c.requests, 0);
     const thrTotal = active.reduce((sum, c) => sum + c.throttledRequests, 0);
     const poolRate = reqTotal > 0 ? (100 * thrTotal) / reqTotal : 0;
-    if (poolRate < thresholds.poolThrottlePct || ruTotal <= 0) {
-        return undefined;
+    if (ruTotal <= 0) {
+        return { rootCause: 'insufficient_data' };
+    }
+    if (poolRate < thresholds.poolThrottlePct) {
+        return { rootCause: 'not_throttling' };
     }
     const share = (c: CollectionTrafficInput): number => (100 * c.ruConsumed) / ruTotal;
     const throttleRate = (c: CollectionTrafficInput): number =>
@@ -50,10 +74,10 @@ function evaluateSharedThroughputStarvation(
             share(c) <= thresholds.victimSharePct,
     );
     if (monoShare < thresholds.dominancePct || victims.length === 0) {
-        return undefined;
+        return { rootCause: 'no_disparity' };
     }
     const victim = victims.reduce((worst, c) => (throttleRate(c) > throttleRate(worst) ? c : worst), victims[0]);
-    return {
+    const advisory: DerivedAdvisory = {
         id: `SharedThroughputStarvation/${input.databaseId}`,
         rule: 'SharedThroughputStarvation',
         severity: 'High',
@@ -97,12 +121,20 @@ function evaluateSharedThroughputStarvation(
                 share: thresholds.victimSharePct,
             },
         ),
+        evidence: { ...input.requestLogEvidence },
+    };
+    return {
+        rootCause: 'starvation',
+        advisory,
+        observations: { monopolizer: monopolizer.containerId, victim: victim.containerId },
     };
 }
 
 export class SharedThroughputStarvationDetector extends Detector {
     readonly rule = 'SharedThroughputStarvation' as const;
-    evaluate = evaluateSharedThroughputStarvation;
+    evaluateResult = evaluateSharedThroughputStarvation;
+    evaluate = (...args: Parameters<typeof evaluateSharedThroughputStarvation>) =>
+        evaluateSharedThroughputStarvation(...args).advisory;
     run(ctx: DetectorContext): DerivedAdvisory[] {
         const t = ctx.thresholds;
         const out: DerivedAdvisory[] = [];

@@ -144,6 +144,7 @@ describe('log coverage guidance', () => {
 });
 
 describe('metric coverage and actionable findings', () => {
+
     it('announces incomplete metric checks without claiming a clean result or blaming Log Analytics', () => {
         showCoverage(
             { available: true },
@@ -168,7 +169,7 @@ describe('metric coverage and actionable findings', () => {
                     'Configuration checks and successful analyses still contribute recommendations.',
             ),
         ).toBeInTheDocument();
-        expect(screen.getAllByText(/Idle containers: Access denied/)).toHaveLength(1);
+        expect(screen.getAllByText(/Idle provisioned offers: Access denied/)).toHaveLength(1);
         expect(screen.getByText('No advisories from the checks that completed.')).toBeInTheDocument();
         expect(screen.queryByText('No advisories from your telemetry right now.')).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: /Learn/ })).not.toBeInTheDocument();
@@ -186,6 +187,23 @@ describe('metric coverage and actionable findings', () => {
             suggestedAction: 'Remove unused provisioned capacity.',
             thresholdReference: 'Peak consumption at most 50 RU.',
         } as const;
+
+        it.each([
+            { scopes: ['shared-db'], label: '1 resource affected' },
+            { scopes: ['db/items'], label: '1 resource affected' },
+            { scopes: ['shared-db', 'db/items'], label: 'Some resources affected' },
+            { scopes: ['shared-db', 'shared-db'], label: '1 resource affected' },
+            { scopes: [undefined], label: 'Account-wide' },
+        ])('uses resource-aware visible and accessible summaries for $scopes', ({ scopes, label }) => {
+            showCoverage(undefined, {
+                advisories: scopes.map((scope, index) => ({ ...common, id: `idle-${index}`, scope })),
+            });
+            const trigger = screen.getByRole('button', { name: /^Idle provisioned offers/ });
+            expect(trigger).toHaveTextContent('Idle provisioned offers');
+            expect(within(trigger).getByText(label)).toBeVisible();
+            expect(trigger).toHaveAccessibleName(`Idle provisioned offers. ${label}. Show affected resources.`);
+            expect(trigger).not.toHaveTextContent(/containers? affected/);
+        });
 
         function showDismissibleGroup() {
             function Harness() {
@@ -223,7 +241,7 @@ describe('metric coverage and actionable findings', () => {
         ])('keeps focus inside the dialog after dismissing db/%s', async (removed, next, key) => {
             const user = userEvent.setup();
             showDismissibleGroup();
-            const trigger = screen.getByRole('button', { name: /^Idle containers/ });
+            const trigger = screen.getByRole('button', { name: /^Idle provisioned offers/ });
             await user.click(trigger);
             screen.getByRole('button', { name: `Dismiss advisory for db/${removed}` }).focus();
             await user.keyboard(key);
@@ -239,14 +257,14 @@ describe('metric coverage and actionable findings', () => {
         it('closes the emptied group and focuses the surviving section after the last dismissal', async () => {
             const user = userEvent.setup();
             showDismissibleGroup();
-            await user.click(screen.getByRole('button', { name: /^Idle containers/ }));
+            await user.click(screen.getByRole('button', { name: /^Idle provisioned offers/ }));
             screen.getByRole('button', { name: 'Dismiss advisory for db/a' }).focus();
             for (const key of ['a', 'b', 'c']) {
                 expect(screen.getByRole('button', { name: `Dismiss advisory for db/${key}` })).toHaveFocus();
                 await user.keyboard('{Enter}');
             }
             expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-            expect(screen.queryByRole('button', { name: /^Idle containers/ })).not.toBeInTheDocument();
+            expect(screen.queryByRole('button', { name: /^Idle provisioned offers/ })).not.toBeInTheDocument();
             expect(screen.getByLabelText('Recommendations')).toHaveFocus();
             expect(screen.getByText('No advisories from your telemetry right now.')).toBeVisible();
         });
@@ -254,7 +272,7 @@ describe('metric coverage and actionable findings', () => {
         it('does not move focus when a dismissal removes an unfocused button', async () => {
             const user = userEvent.setup();
             showDismissibleGroup();
-            await user.click(screen.getByRole('button', { name: /^Idle containers/ }));
+            await user.click(screen.getByRole('button', { name: /^Idle provisioned offers/ }));
             const close = screen.getByRole('button', { name: 'Close' });
             close.focus();
             fireEvent.click(screen.getByRole('button', { name: 'Dismiss advisory for db/a' }));
@@ -270,9 +288,9 @@ describe('metric coverage and actionable findings', () => {
                     { ...common, id: 'idle-b', scope: 'db/b' },
                 ],
             });
-            await user.click(screen.getByRole('button', { name: /^Idle containers/ }));
+            await user.click(screen.getByRole('button', { name: /^Idle provisioned offers/ }));
             const dialog = within(screen.getByRole('dialog'));
-            const list = dialog.getByRole('list', { name: 'Idle containers' });
+            const list = dialog.getByRole('list', { name: 'Idle provisioned offers' });
             const items = within(list).getAllByRole('listitem');
             expect(items).toHaveLength(2);
             expect(items[0]).toHaveTextContent(/^db\/a$/);
@@ -303,14 +321,14 @@ describe('metric coverage and actionable findings', () => {
                         { ...common, id: 'idle-b', scope: 'db/b', rationale: 'Peak: 20 RU.' },
                     ],
                 });
-                const trigger = screen.getByRole('button', { name: /^Idle containers/ });
+                const trigger = screen.getByRole('button', { name: /^Idle provisioned offers/ });
                 expect(trigger).toHaveClass(cardClassNames.root);
                 const badge = within(trigger).getByText('Low');
                 expect(badge).toHaveClass(badgeClassNames.root);
                 expect(badge).not.toHaveAttribute('tabindex');
                 expect(badge).not.toHaveAttribute('aria-hidden');
-                expect(trigger).toHaveTextContent('Idle containers');
-                expect(trigger).toHaveAccessibleName(/^Idle containers/);
+                expect(trigger).toHaveTextContent('Idle provisioned offers');
+                expect(trigger).toHaveAccessibleName(/^Idle provisioned offers/);
                 const descriptions = trigger
                     .getAttribute('aria-describedby')
                     ?.split(' ')
@@ -327,7 +345,7 @@ describe('metric coverage and actionable findings', () => {
                 expect(screen.queryAllByRole('dialog')).toHaveLength(openWith === 'Enter' ? 1 : 0);
                 await user.keyboard(`[/${openWith}]`);
                 const dialog = within(screen.getByRole('dialog'));
-                const list = dialog.getByRole('list', { name: 'Idle containers' });
+                const list = dialog.getByRole('list', { name: 'Idle provisioned offers' });
                 const summary = within(list).getByRole('button', { name: 'db/a' });
                 expect(summary).toHaveClass(accordionHeaderClassNames.button);
                 expect(summary).toHaveTextContent('db/a');
@@ -403,7 +421,7 @@ describe('metric coverage and actionable findings', () => {
                     },
                 ],
             });
-            await user.click(screen.getByRole('button', { name: /^Idle containers/ }));
+            await user.click(screen.getByRole('button', { name: /^Idle provisioned offers/ }));
             const dialog = within(screen.getByRole('dialog'));
             expect(dialog.getByText('400 RU/s').tagName).toBe('SPAN');
             expect(dialog.getByText('50 RU').tagName).toBe('SPAN');

@@ -7,7 +7,12 @@ import * as l10n from '@vscode/l10n';
 import { Detector, type DetectorContext } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
-import { type DerivedAdvisory, type ServerlessCandidateInput, type ServerlessCandidateThresholds } from '../core/types';
+import {
+    type AdvisoryEvaluation,
+    type DerivedAdvisory,
+    type ServerlessCandidateInput,
+    type ServerlessCandidateThresholds,
+} from '../core/types';
 
 /**
  * ServerlessCandidate (CODA DX-014): the account's total consumed throughput is **low and sporadic** — a small
@@ -20,21 +25,27 @@ import { type DerivedAdvisory, type ServerlessCandidateInput, type ServerlessCan
 function evaluateServerlessCandidate(
     input: ServerlessCandidateInput,
     thresholds: ServerlessCandidateThresholds,
-): DerivedAdvisory | undefined {
-    if (input.isServerless || input.sampleCount < DIAGNOSTIC_POLICY.serverless.minSamples) {
-        return undefined;
+): AdvisoryEvaluation<'ServerlessCandidate'> {
+    if (input.isServerless) {
+        return { rootCause: 'already_serverless' };
     }
-    if (input.peakRuPerSec < thresholds.peakFloorRuPerSec || input.peakRuPerSec > thresholds.peakCeilingRuPerSec) {
-        return undefined;
+    if (input.sampleCount < DIAGNOSTIC_POLICY.serverless.minSamples) {
+        return { rootCause: 'insufficient_data' };
+    }
+    if (input.peakRuPerSec < thresholds.peakFloorRuPerSec) {
+        return { rootCause: 'idle_or_empty' };
+    }
+    if (input.peakRuPerSec > thresholds.peakCeilingRuPerSec) {
+        return { rootCause: 'too_high' };
     }
     const ratio = input.peakRuPerSec > 0 ? input.avgRuPerSec / input.peakRuPerSec : 0;
     if (ratio >= thresholds.sporadicRatio) {
-        return undefined;
+        return { rootCause: 'steady_load' };
     }
     const peak = Math.round(input.peakRuPerSec);
     const avg = Math.round(input.avgRuPerSec);
     const ratioPct = Math.round(ratio * 100);
-    return {
+    const advisory: DerivedAdvisory = {
         id: 'ServerlessCandidate',
         rule: 'ServerlessCandidate',
         severity: 'Low',
@@ -59,11 +70,14 @@ function evaluateServerlessCandidate(
             ratio: thresholds.sporadicRatio,
         }),
     };
+    return { rootCause: 'serverless_candidate', advisory };
 }
 
 export class ServerlessCandidateDetector extends Detector {
     readonly rule = 'ServerlessCandidate' as const;
-    evaluate = evaluateServerlessCandidate;
+    evaluateResult = evaluateServerlessCandidate;
+    evaluate = (...args: Parameters<typeof evaluateServerlessCandidate>) =>
+        evaluateServerlessCandidate(...args).advisory;
     run(ctx: DetectorContext): DerivedAdvisory[] {
         const { inputs, thresholds } = ctx;
         if (!inputs.serverless) {

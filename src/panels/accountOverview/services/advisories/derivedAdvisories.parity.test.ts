@@ -6,13 +6,9 @@
 /**
  * CODA parity tests (P10.6 Part B).
  *
- * Each `describe` below mirrors, scenario-for-scenario, a CODA detector's own offline unit test so that our ported
- * TypeScript detectors reproduce CODA's classification methodology (positive **and** negative cases). The CODA source
- * fixture is cited on each block; the scenarios are the same input shapes and expected verdicts, re-expressed against
- * our `evaluate*` surface. This is a methodology-parity harness — it deliberately overlaps the behavioural coverage in
- * `derivedAdvisories.test.ts`, but organised by CODA fixture so a reviewer can check parity rule-by-rule.
- *
- * CODA reference repo: azure-data-database-platform/coda — tests/test_*.py.
+ * Native methodology regressions, including the adopted 0.17.15 corrections.
+ * Historical fixture references below explain provenance; this is not an executable imported contract or a
+ * complete parity certificate. Newly authored boundary coverage lives in nativeParity.test.ts.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -690,10 +686,10 @@ describe('CODA parity — DX-016 ExpensiveConsistency (test_consistency.py)', ()
         expect(v?.severity).toBe('Low');
     });
 
-    it('Strong on a single region is not flagged (test_strong_single_region_not_flagged)', () => {
+    it('Strong on a known single region is Medium', () => {
         expect(
             evaluateExpensiveConsistency(accountConfig({ consistencyLevel: 'Strong', regionCount: 1 })),
-        ).toBeUndefined();
+        ).toMatchObject({ severity: 'Medium' });
     });
 
     it('an enum-style level is normalised (test_enum_style_value_normalized)', () => {
@@ -858,7 +854,6 @@ describe('CODA parity — DX-008 MultiRegionWriteAntipattern (test_multi_region_
 const CP_THRESHOLDS = {
     minQueries: DEFAULT_ADVISORY_THRESHOLDS.crossPartitionMinQueries,
     fanoutThreshold: DEFAULT_ADVISORY_THRESHOLDS.crossPartitionFanoutThreshold,
-    highPct: DEFAULT_ADVISORY_THRESHOLDS.crossPartitionHighPct,
     medPct: DEFAULT_ADVISORY_THRESHOLDS.crossPartitionMedPct,
 };
 
@@ -867,11 +862,11 @@ function shape(text: string, executions: number, avgFanout: number, maxFanout: n
 }
 
 function cpInput(shapes: QueryShapeInput[]): CrossPartitionInput {
-    return { databaseId: 'db', containerId: 'c', shapes };
+    return { databaseId: 'db', containerId: 'c', shapes, evaluationWindowSeconds: 1000 };
 }
 
 describe('DX-002 cross-partition query fan-out parity', () => {
-    it('flags High when the dominant share of executions fans out', () => {
+    it('flags Low for a two-partition workload above the fan-out rate floor', () => {
         const v = evaluateCrossPartitionQuery(
             cpInput([
                 shape('SELECT * FROM c WHERE c.email=@e', 800, 2.0, 2),
@@ -880,12 +875,12 @@ describe('DX-002 cross-partition query fan-out parity', () => {
             CP_THRESHOLDS,
         );
         expect(v?.rule).toBe('CrossPartitionQuery');
-        expect(v?.severity).toBe('High'); // 80% cross
+        expect(v?.severity).toBe('Low');
         expect(v?.scope).toBe('db/c');
         expect(v?.rationale).toContain('email');
     });
 
-    it('flags Medium at a moderate cross-partition share', () => {
+    it('flags Low at a moderate cross-partition share on two partitions', () => {
         const v = evaluateCrossPartitionQuery(
             cpInput([
                 shape('SELECT * FROM c WHERE c.email=@e', 150, 2.0, 2),
@@ -893,7 +888,7 @@ describe('DX-002 cross-partition query fan-out parity', () => {
             ]),
             CP_THRESHOLDS,
         );
-        expect(v?.severity).toBe('Medium'); // 15% cross
+        expect(v?.severity).toBe('Low');
     });
 
     it('does not flag a mostly single-partition workload', () => {
@@ -926,7 +921,6 @@ describe('DX-002 cross-partition query fan-out parity', () => {
 const SHARD_THRESHOLDS = {
     structuralPct: DEFAULT_ADVISORY_THRESHOLDS.shardKeyStructuralPct,
     minPartitions: 2,
-    highPct: DEFAULT_ADVISORY_THRESHOLDS.shardKeyHighPct,
 };
 const CP_FANOUT = DEFAULT_ADVISORY_THRESHOLDS.crossPartitionFanoutThreshold;
 
@@ -938,16 +932,16 @@ function shardRows(crossExec: number, singleExec: number): CrossPartitionInput {
 }
 
 describe('DX-007 shard-key misalignment parity', () => {
-    it('flags High when the dominant share fans out (≥ 80%)', () => {
+    it('flags Low when the dominant share fans out over only two partitions', () => {
         const v = evaluateShardKeyMisalignment(shardRows(850, 150), SHARD_THRESHOLDS, CP_FANOUT);
         expect(v?.rule).toBe('ShardKeyMisalignment');
-        expect(v?.severity).toBe('High');
+        expect(v?.severity).toBe('Low');
         expect(v?.suggestedAction.toLowerCase()).toContain('re-key');
     });
 
-    it('flags Medium at a moderate-dominant share ([60,80))', () => {
+    it('flags Low at a structural share on two partitions', () => {
         const v = evaluateShardKeyMisalignment(shardRows(650, 350), SHARD_THRESHOLDS, CP_FANOUT);
-        expect(v?.severity).toBe('Medium');
+        expect(v?.severity).toBe('Low');
     });
 
     it('does not flag a per-query-only problem (< structural share)', () => {
@@ -973,10 +967,9 @@ describe('DX-007 shard-key misalignment parity', () => {
         expect(v).toBeUndefined(); // container only spans 2 partitions
     });
 
-    it('inherits DX-002s minimum-query sufficiency gate and one-decimal share rounding', () => {
+    it('inherits the minimum-query gate without rounding a below-threshold share into a finding', () => {
         expect(evaluateShardKeyMisalignment(shardRows(30, 19), SHARD_THRESHOLDS, CP_FANOUT)).toBeUndefined();
-        const rounded = evaluateShardKeyMisalignment(shardRows(5995, 4005), SHARD_THRESHOLDS, CP_FANOUT);
-        expect(rounded?.severity).toBe('Medium');
+        expect(evaluateShardKeyMisalignment(shardRows(5995, 4005), SHARD_THRESHOLDS, CP_FANOUT)).toBeUndefined();
     });
 });
 
@@ -1110,6 +1103,7 @@ describe('DX-003 shared-throughput starvation parity', () => {
             {
                 databaseId: 'shareddb',
                 sharedRu: 1000,
+                sharedContainerIds: ['hot', 'cold'],
                 collections: [coll('hot', 10000, 500, 900000), coll('cold', 1000, 300, 50000)],
             },
             SHARED_THRESHOLDS,
@@ -1126,6 +1120,7 @@ describe('DX-003 shared-throughput starvation parity', () => {
             {
                 databaseId: 'shareddb',
                 sharedRu: 1000,
+                sharedContainerIds: ['a', 'b'],
                 collections: [coll('a', 10000, 50, 600000), coll('b', 8000, 40, 400000)],
             },
             SHARED_THRESHOLDS,
@@ -1138,6 +1133,7 @@ describe('DX-003 shared-throughput starvation parity', () => {
             {
                 databaseId: 'shareddb',
                 sharedRu: 1000,
+                sharedContainerIds: ['a', 'b'],
                 collections: [coll('a', 10000, 800, 520000), coll('b', 10000, 700, 480000)],
             },
             SHARED_THRESHOLDS,
@@ -1150,6 +1146,7 @@ describe('DX-003 shared-throughput starvation parity', () => {
             {
                 databaseId: 'shareddb',
                 sharedRu: 1000,
+                sharedContainerIds: ['solo', 'idle'],
                 collections: [coll('solo', 10000, 900, 900000), coll('idle', 5, 0, 10)],
             },
             SHARED_THRESHOLDS,
@@ -1162,6 +1159,7 @@ describe('DX-003 shared-throughput starvation parity', () => {
             {
                 databaseId: 'shareddb',
                 sharedRu: 1000,
+                sharedContainerIds: ['hot', 'cold'],
                 collections: [coll('hot', 10000, 900, 950000), coll('cold', 1000, 5, 50000)],
             },
             SHARED_THRESHOLDS,

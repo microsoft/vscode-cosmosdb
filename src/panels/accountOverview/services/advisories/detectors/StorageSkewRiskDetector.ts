@@ -9,7 +9,12 @@ import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
 import { clampRationale, hasMinimumKnownResourceAge } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
-import { type ContainerStorageInput, type DerivedAdvisory, type DerivedAdvisorySeverity } from '../core/types';
+import {
+    type AdvisoryEvaluation,
+    type ContainerStorageInput,
+    type DerivedAdvisory,
+    type DerivedAdvisorySeverity,
+} from '../core/types';
 import {
     balanceRatio,
     GIB,
@@ -29,12 +34,15 @@ import {
  * ceiling (≥ 80% → High, ≥ 50% → Medium). Balanced-but-large partitions are
  * healthy: they simply split as they grow. Pure.
  */
-function evaluateStorageSkewRisk(input: ContainerStorageInput, balanceThreshold: number): DerivedAdvisory | undefined {
+function evaluateStorageSkewRisk(
+    input: ContainerStorageInput,
+    balanceThreshold: number,
+): AdvisoryEvaluation<'StorageSkewRisk'> {
     if (
         balanceThreshold <= 0 ||
         !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.storageSkew.minResourceAgeDays)
     ) {
-        return undefined;
+        return { rootCause: 'insufficient_data' };
     }
     const sizes = input.partitions
         .map((partition) => {
@@ -45,12 +53,18 @@ function evaluateStorageSkewRisk(input: ContainerStorageInput, balanceThreshold:
         })
         .filter((bytes): bytes is number => bytes !== undefined);
     const ratio = balanceRatio(sizes);
+    if (sizes.length === 0) {
+        return { rootCause: 'insufficient_data' };
+    }
+    if (sizes.length === 1) {
+        return { rootCause: 'single_partition' };
+    }
     if (ratio === undefined || ratio >= balanceThreshold) {
-        return undefined;
+        return { rootCause: 'uniform_storage' };
     }
     const busiestBytes = Math.max(...sizes);
     if (busiestBytes < STORAGE_SKEW_MIN_BUSIEST_BYTES) {
-        return undefined;
+        return { rootCause: 'too_small' };
     }
 
     const severity: DerivedAdvisorySeverity =
@@ -60,7 +74,7 @@ function evaluateStorageSkewRisk(input: ContainerStorageInput, balanceThreshold:
     const balance = Math.round(ratio * 100) / 100;
     const threshold = Math.round(balanceThreshold * 100) / 100;
     const ceilingPercent = Math.round((busiestBytes / PARTITION_STORAGE_LIMIT_BYTES) * 100);
-    return {
+    const advisory: DerivedAdvisory = {
         id: `StorageSkewRisk:${scope}`,
         rule: 'StorageSkewRisk',
         severity,
@@ -93,11 +107,13 @@ function evaluateStorageSkewRisk(input: ContainerStorageInput, balanceThreshold:
         }),
         scope,
     };
+    return { rootCause: 'storage_skew', advisory };
 }
 
 export class StorageSkewRiskDetector extends Detector {
     readonly rule = 'StorageSkewRisk' as const;
-    evaluate = evaluateStorageSkewRisk;
+    evaluateResult = evaluateStorageSkewRisk;
+    evaluate = (...args: Parameters<typeof evaluateStorageSkewRisk>) => evaluateStorageSkewRisk(...args).advisory;
     run(ctx: DetectorContext): DerivedAdvisory[] {
         const out: DerivedAdvisory[] = [];
         for (const storage of ctx.inputs.storageSkew ?? ctx.inputs.storage) {

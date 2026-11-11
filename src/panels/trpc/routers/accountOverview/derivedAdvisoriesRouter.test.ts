@@ -10,6 +10,7 @@ import { API } from '../../../../AzureDBExperiences';
 import { collectDerivedAdvisories } from '../../../accountOverview/services/advisories';
 import type * as advisories from '../../../accountOverview/services/advisories';
 import { DEFAULT_ADVISORY_THRESHOLDS } from '../../../accountOverview/services/advisories/core/thresholds';
+import { PartitionMergeCandidateDetector } from '../../../accountOverview/services/advisories/detectors/PartitionMergeCandidateDetector';
 import { mockClient } from '../../../accountOverview/services/testFixtures';
 import { getDerivedAdvisoriesForAccount } from './derivedAdvisoriesRouter';
 
@@ -27,12 +28,18 @@ function metadata(account: DatabaseAccountGetResults = {}) {
         accountId: '/subscriptions/sub/resourceGroups/rg/providers/Microsoft.DocumentDB/databaseAccounts/account',
         accountName: 'account',
         resourceGroup: 'rg',
-        subscription: { name: 'Production' },
+        subscription: {
+            name: 'Production',
+            subscriptionId: 'sub',
+            environment: { resourceManagerEndpointUrl: 'https://management.azure.com' },
+        },
         isServerless: false,
         databaseAccount: {
             kind: 'GlobalDocumentDB',
             locations: [{ locationName: 'westus' }, { locationName: 'eastus' }],
             consistencyPolicy: { defaultConsistencyLevel: 'Strong' },
+            backupPolicy: { type: 'Periodic' },
+            enablePerRegionPerPartitionAutoscale: true,
             ...account,
         },
         getMonitorClient: vi.fn<Metadata['getMonitorClient']>().mockResolvedValue(mockClient({})),
@@ -46,6 +53,56 @@ function metadata(account: DatabaseAccountGetResults = {}) {
 beforeEach(() => vi.clearAllMocks());
 
 describe('account advisory acquisition', () => {
+    it.each([
+        [true, { type: 'Periodic' }, 'blocked'],
+        [false, { type: 'Periodic' }, 'requiresValidation'],
+        [undefined, { type: 'Periodic' }, 'requiresValidation'],
+        [true, undefined, 'blocked'],
+        [false, undefined, 'unknown'],
+        [undefined, undefined, 'unknown'],
+    ] as const)(
+        'preserves change-feed state %s with backup %j through merge eligibility %s',
+        async (enabled, backupPolicy, eligibility) => {
+            vi.mocked(collectDerivedAdvisories).mockResolvedValueOnce({
+                advisories: [],
+                logSource: { available: true },
+                metricSource: { available: true, failures: [] },
+            });
+            const account = { backupPolicy, enableAllVersionsAndDeletesChangeFeed: enabled };
+            await getDerivedAdvisoriesForAccount(metadata(account));
+            const params = vi.mocked(collectDerivedAdvisories).mock.calls[0][0];
+            expect(params.accountConfig?.backupPolicy?.fullFidelityChangeFeedEnabled).toBe(enabled);
+            const merge = new PartitionMergeCandidateDetector().evaluate({
+                databaseId: 'db',
+                containerId: 'items',
+                actualPartitions: 4,
+                provisionedRu: 1000,
+                dataUsageBytes: 0,
+                backupPolicy: params.accountConfig?.backupPolicy,
+            });
+            expect(merge?.actionEligibility).toBe(eligibility);
+            expect(params.accountConfig?.backupPolicy?.type).toBe(backupPolicy?.type);
+        },
+    );
+
+    it('passes existing ARM backup and migration metadata without acquiring another identity', async () => {
+        const backupPolicy = { type: 'Periodic', migrationState: { status: 'InProgress', targetType: 'Continuous' } };
+        const input = metadata({ backupPolicy });
+        vi.mocked(collectDerivedAdvisories).mockResolvedValueOnce({
+            advisories: [],
+            logSource: { available: false, reason: 'noData' },
+            metricSource: { available: true, failures: [] },
+        });
+        await getDerivedAdvisoriesForAccount(input);
+        expect(collectDerivedAdvisories).toHaveBeenCalledWith(
+            expect.objectContaining({
+                accountConfig: expect.objectContaining({ backupPolicy }),
+            }),
+        );
+        expect(input.getClient).toHaveBeenCalledOnce();
+        expect(input.getMonitorClient).toHaveBeenCalledOnce();
+    });
+
     it.each(['unsupported', 'noData', 'rbac'] as const)(
         'separates metric and log coverage in the %s configuration-only fallback',
         async (reason) => {

@@ -8,34 +8,14 @@ import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
+import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import {
+    type AdvisoryEvaluation,
     type CrossPartitionInput,
     type CrossPartitionThresholds,
     type DerivedAdvisory,
-    type DerivedAdvisorySeverity,
-    type QueryShapeInput,
 } from '../core/types';
-
-/** Folds the per-shape fan-out into total executions, cross-partition share, and the worst (most frequent) shape. Pure. */
-interface CrossPartitionStats {
-    totalQueries: number;
-    containerPartitions: number;
-    crossPartitionPct: number;
-    worst: QueryShapeInput | undefined;
-}
-
-function crossPartitionStats(shapes: readonly QueryShapeInput[], fanoutThreshold: number): CrossPartitionStats {
-    const totalQueries = shapes.reduce((sum, s) => sum + s.executions, 0);
-    const containerPartitions = shapes.reduce((max, s) => Math.max(max, s.maxFanout), 0);
-    const crossShapes = shapes.filter((s) => s.avgFanout >= fanoutThreshold);
-    const crossExec = crossShapes.reduce((sum, s) => sum + s.executions, 0);
-    const crossPartitionPct = totalQueries > 0 ? (100 * crossExec) / totalQueries : 0;
-    const worst = crossShapes.reduce<QueryShapeInput | undefined>(
-        (best, s) => (best === undefined || s.executions > best.executions ? s : best),
-        undefined,
-    );
-    return { totalQueries, containerPartitions, crossPartitionPct, worst };
-}
+import { fanoutRuDescription, fanoutRuEvidence, fanoutSeverity, fanoutStats } from './fanout';
 
 /** Collapses whitespace and truncates an anonymized query shape for display. Pure. */
 function shortQueryShape(text: string): string {
@@ -47,28 +27,36 @@ function shortQueryShape(text: string): string {
  * CrossPartitionQuery (CODA DX-002): query shapes that do not filter on the container's partition key fan out
  * across every physical partition, multiplying RU and latency. Fires when the container has ≥ 2 physical
  * partitions, there is enough query traffic (`minQueries`), and the share of executions whose shape fans out
- * (average ≥ `fanoutThreshold` partitions) is at or above `medPct` — High at/above `highPct`, else Medium. The
+ * (average ≥ `fanoutThreshold` partitions) is at or above `medPct`, with at least 0.1 fan-out queries/s.
+ * Severity uses physical-partition count and the unrounded fan-out rate. The
  * surfaced text is the service-anonymized shape, so remediation is structural (add the partition key to the
  * filter). Container-scoped. Pure.
  */
 function evaluateCrossPartitionQuery(
     input: CrossPartitionInput,
     thresholds: CrossPartitionThresholds,
-): DerivedAdvisory | undefined {
-    const { totalQueries, containerPartitions, crossPartitionPct, worst } = crossPartitionStats(
-        input.shapes,
-        thresholds.fanoutThreshold,
-    );
-    if (totalQueries < thresholds.minQueries || containerPartitions <= 1) {
-        return undefined;
+): AdvisoryEvaluation<'CrossPartitionQuery'> {
+    const stats = fanoutStats(input, thresholds.fanoutThreshold);
+    if (!stats) {
+        return { rootCause: 'insufficient_data' };
+    }
+    const { totalQueries, containerPartitions, crossPartitionPct, crossQueriesPerSecond, worst } = stats;
+    if (totalQueries < thresholds.minQueries) {
+        return { rootCause: 'insufficient_data' };
+    }
+    if (containerPartitions <= 1) {
+        return { rootCause: 'single_partition_container' };
     }
     if (crossPartitionPct < thresholds.medPct || worst === undefined) {
-        return undefined;
+        return { rootCause: 'mostly_single_partition' };
     }
-    const severity: DerivedAdvisorySeverity = crossPartitionPct >= thresholds.highPct ? 'High' : 'Medium';
+    if (crossQueriesPerSecond < DIAGNOSTIC_POLICY.crossPartition.minQueriesPerSecond) {
+        return { rootCause: 'occasional_fanout' };
+    }
+    const severity = fanoutSeverity(containerPartitions, crossQueriesPerSecond);
     const pct = Math.round(crossPartitionPct);
     const shape = shortQueryShape(worst.text);
-    return {
+    const advisory: DerivedAdvisory = {
         id: `CrossPartitionQuery/${containerKey(input.databaseId, input.containerId)}`,
         rule: 'CrossPartitionQuery',
         severity,
@@ -87,24 +75,38 @@ function evaluateCrossPartitionQuery(
         ),
         suggestedAction:
             l10n.t(
-                "Add the container's partition key to the query filter (or a composite index) so it targets a single logical partition.",
+                "Include the container's partition key in the query filter where the access pattern permits. A composite index alone does not eliminate fan-out.",
             ) +
             ' ' +
             l10n.t(
                 'For access patterns that inherently filter on a different key, serve them from a global secondary index or a change-feed-synced copy.',
             ) +
             ' ' +
-            l10n.t('Cross-partition fan-out multiplies RU and latency and does not scale as the container grows.'),
-        thresholdReference: l10n.t('Threshold: ≥ `{pct}%` of executions fan out (avg ≥ `{fanout} partitions/query`)', {
-            pct: thresholds.medPct,
-            fanout: thresholds.fanoutThreshold,
-        }),
+            l10n.t('Cross-partition fan-out multiplies RU and latency and does not scale as the container grows.') +
+            fanoutRuDescription(worst),
+        evidence: {
+            totalQueries,
+            containerPartitions,
+            crossPartitionPct,
+            crossQueriesPerSecond,
+            ...fanoutRuEvidence(input, worst),
+        },
+        thresholdReference: l10n.t(
+            'Threshold: ≥ `{pct}%` fan-out share, avg ≥ `{fanout} partitions/query`, and ≥ `0.1 fan-out queries/s`',
+            {
+                pct: thresholds.medPct,
+                fanout: thresholds.fanoutThreshold,
+            },
+        ),
     };
+    return { rootCause: 'cross_partition', advisory };
 }
 
 export class CrossPartitionQueryDetector extends Detector {
     readonly rule = 'CrossPartitionQuery' as const;
-    evaluate = evaluateCrossPartitionQuery;
+    evaluateResult = evaluateCrossPartitionQuery;
+    evaluate = (...args: Parameters<typeof evaluateCrossPartitionQuery>) =>
+        evaluateCrossPartitionQuery(...args).advisory;
     run(ctx: DetectorContext): DerivedAdvisory[] {
         const t = ctx.thresholds;
         const out: DerivedAdvisory[] = [];
@@ -112,7 +114,6 @@ export class CrossPartitionQueryDetector extends Detector {
             const a = this.evaluate(input, {
                 minQueries: t.crossPartitionMinQueries,
                 fanoutThreshold: t.crossPartitionFanoutThreshold,
-                highPct: t.crossPartitionHighPct,
                 medPct: t.crossPartitionMedPct,
             });
             if (a) {

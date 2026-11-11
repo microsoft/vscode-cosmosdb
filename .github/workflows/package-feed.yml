@@ -1,6 +1,6 @@
-# Advisory unless "Package Feed Check" is added to required checks in branch protection / rulesets.
+# Advisory unless the individual job names are added to required checks in branch protection / rulesets.
 # A failed check stays red; optional does not mean suppressing policy, network or authentication failures.
-name: Package Feed Check
+name: Advisory Checks
 
 permissions:
   contents: read
@@ -41,3 +41,25 @@ jobs:
       # No npm ci or secrets: the checker uses only Node built-ins and the no-auth Microsoft proxy.
       - name: Check package feed policy and availability
         run: npm run feed:check -- --visibility public
+
+  coda-freshness:
+    name: CODA Freshness
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+
+      # Independent optional job, not continue-on-error: stale/unverifiable is red without cancelling other checks.
+      # Never expose private-source credentials to PR code, including same-repository PRs.
+      - name: Compare configured CODA branch HEAD and pin
+        env:
+          CODA_READ_TOKEN: ${{ github.event_name != 'pull_request' && secrets.CODA_READ_TOKEN || '' }}
+        run: npm run coda:check

@@ -8,6 +8,7 @@ import { type ThroughputMode } from '../../inventory';
 import { type PartitionStorageSeries } from '../../partitionHealth';
 import { type UnavailableReason } from '../../shared';
 import { type LogsFailureKind, type LogsOperation } from '../fetchers/logsDiagnostics';
+import { type OperationCategory } from './requestMetrics';
 
 // ─── Client-side derived advisories ──────────────────────────────────────────────
 //
@@ -38,7 +39,12 @@ export type DerivedAdvisoryRule =
     | 'CrossPartitionQuery'
     | 'ShardKeyMisalignment'
     | 'UncontrolledIngestion'
-    | 'SharedThroughputStarvation';
+    | 'SharedThroughputStarvation'
+    | 'PaidContinuousBackup'
+    | 'NonThrottlingErrors'
+    | 'ThrottlingByOperation'
+    | 'PerRegionAutoscaleCandidate'
+    | 'ReservedCapacityCandidate';
 
 export type DerivedAdvisorySeverity = 'High' | 'Medium' | 'Low';
 
@@ -49,6 +55,13 @@ export interface ProvisioningEvaluation {
     band: UtilizationBand;
     recommendedRu?: number;
     recoverableRu?: number;
+    advisory?: DerivedAdvisory;
+}
+
+export interface RequestErrorEvaluation {
+    rootCause: 'too_few_requests' | 'clean' | 'has_errors';
+    errorRatePercent: number;
+    dominantStatus?: number;
     advisory?: DerivedAdvisory;
 }
 
@@ -99,6 +112,14 @@ interface AdvisoryEvaluationResults {
                   removableExtraRegionRu: number | null;
               };
     };
+    PaidContinuousBackup: EvaluationOutcome<
+        | 'periodic_backup'
+        | 'unknown'
+        | 'uncharged_7day_backup'
+        | 'unknown_continuous_tier'
+        | 'legitimate_prod_backup'
+        | 'nonprod_paid_continuous_backup'
+    >;
     PartitionMergeCandidate:
         | EvaluationOutcome<'insufficient_data' | 'single_partition' | 'right_sized'>
         | EvaluationOutcome<
@@ -111,6 +132,10 @@ interface AdvisoryEvaluationResults {
                       | 'unknown';
               }
           >;
+    PerRegionAutoscaleCandidate: EvaluationOutcome<
+        'serverless' | 'unknown' | 'single_region' | 'already_enabled' | 'prpa_candidate'
+    >;
+    ReservedCapacityCandidate: EvaluationOutcome<'serverless' | 'unknown' | 'below_baseline' | 'reserved_candidate'>;
     ServerlessCandidate: EvaluationOutcome<
         | 'already_serverless'
         | 'insufficient_data'
@@ -135,6 +160,19 @@ interface AdvisoryEvaluationResults {
     SustainedThrottlingInRegion: EvaluationOutcome<
         'insufficient_data' | 'not_throttling' | 'skew_suspected' | 'global_under_provisioning'
     >;
+    ThrottlingByOperation:
+        | EvaluationOutcome<'too_few_requests' | 'not_throttling'>
+        | EvaluationOutcome<
+              'decomposed',
+              {
+                  totalRequests: number;
+                  totalThrottled: number;
+                  throttleRatePercent: number;
+                  dominantOperation: string;
+                  dominantCategory: OperationCategory;
+                  dominantSharePercent: number;
+              } & Partial<Record<`${OperationCategory}SharePercent`, number>>
+          >;
     UncontrolledIngestion: EvaluationOutcome<'insufficient_data' | 'not_uncontrolled' | 'uncontrolled_ingestion'>;
 }
 
@@ -165,6 +203,8 @@ export interface DerivedAdvisory {
     evidence?: Record<string, number | string | boolean | null>;
     /** Structural findings can remain visible while a proposed action is blocked or unverified. */
     actionEligibility?: 'requiresValidation' | 'blocked' | 'unknown';
+    /** Conditional investigation guidance, not a confirmed application antipattern or authorization to remediate. */
+    agentKitRule?: string | null;
 }
 
 /**
@@ -582,6 +622,13 @@ export interface SharedThroughputThresholds {
     victimSharePct: number;
 }
 
+/** Account-level Count TotalRequests over one common seven-day observation, not Log Analytics events. */
+export interface AccountRequestMetricsInput {
+    statusCounts: Readonly<Record<string, number>>;
+    /** 429 counts split by OperationType; absent when unavailable, not an observed zero. */
+    throttledOperationCounts?: Readonly<Record<string, number>>;
+}
+
 /** Already-fetched telemetry the derived-advisory engine consumes. */
 export interface DerivedAdvisoryInputs {
     manualThroughput?: readonly ManualThroughputInput[];
@@ -624,4 +671,5 @@ export interface DerivedAdvisoryInputs {
     ingestion?: readonly UncontrolledIngestionInput[];
     /** Per-shared-database collection traffic (Log Analytics) for the shared-throughput-starvation rule (DX-003). */
     sharedThroughput?: readonly SharedThroughputInput[];
+    accountRequests?: AccountRequestMetricsInput;
 }

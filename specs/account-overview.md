@@ -538,6 +538,8 @@ over observed hourly buckets. Missing buckets do not become zero samples in eith
 | AutoscaledRU                        | 30 days / 1 hour                               | Dedicated and shared database autoscale offers            |
 | Consumed-RU shape                   | 30 days / 1 hour                               | Non-Serverless account, no database filter                |
 | Serverless request-rate totals      | 7 days / 1 hour                                | Serverless containers                                     |
+| Account status counts               | 7 days / 1 hour, Count TotalRequests           | Account, one shared input for DX-020/021                  |
+| Throttled operation counts          | Same window / grain, StatusCode=429            | Account; only after DX-021 volume/rate gates pass         |
 | Log query fan-out evidence          | Last 24 hours, raw event aggregation           | Dedicated and Serverless containers                       |
 | Log ingestion evidence              | 24 hours, five-minute aggregates or raw events | Dedicated containers                                      |
 | Log shared-pool evidence            | Same selected request-log source/window        | Shared-throughput database offers                         |
@@ -615,6 +617,20 @@ The result exposes metric and log coverage separately. An empty finding list doe
 Some empty successful sources abstain via sample gates without marking a failure; coverage flags are not a
 complete inventory of every insufficient-evidence case.
 
+DX-019/022 use the existing ARM snapshot, including continuous retention tier and the explicit
+per-region/per-partition autoscale flag. Missing backup mode, unknown tier on non-production, and missing
+applicable autoscale configuration are reported in workload coverage, not interpreted as disabled/free.
+DX-020 and DX-021 do not require Log Analytics or inventory. Status parsing accepts finite positive counts
+with numeric integer status codes; hard errors are codes >=400 excluding 429. All parsed requests, including
+429s, remain in the denominator. One status read feeds both rules; a failed/empty operation breakdown at a
+qualifying throttle rate marks DX-021 incomplete without removing a successful DX-020 finding.
+Both split queries request up to 1,000 series and reject a response at that cap as potentially truncated.
+DX-023 uses the same distinct-offer total as materiality, not replicated container rows or regional copies.
+Unavailable, incomplete, invalid or duplicate inventory withholds its baseline and records incomplete coverage.
+The inventory-completeness flag is checked before summing returned numeric offers: an omitted unknown-throughput
+offer is not zero capacity. Incomplete inventory also withholds DX-008 regional quantification and account/manual
+materiality totals, while known per-offer workload findings and configuration-only DX-008 findings remain available.
+
 Known age below a rule's minimum suppresses that rule; unknown/non-finite age does not.
 Collector age derives from resource/offer creation metadata with account creation as fallback.
 Manual/autoscale utilization rules require at least 24 finite observations; this is not 24 days or complete coverage.
@@ -672,6 +688,29 @@ not entries in the derived-detector registry.
 | AO-D20 `SharedThroughputStarvation` / DX-003  | Known shared members; >=2 active members each with >=100 requests; their pool rate >=5%, total RU >0, largest RU share >=60%, and a different member has rate >=5% and RU share <=20% | High                                                                 |
 | AO-D21 `ServerlessThrottling` / DX-018        | Serverless container; >=1,000 requests; rate >=1%; no normalized-RU prerequisite                                                                                                      | High rate >=20%; Medium >=5%; otherwise Low                          |
 | AO-D3 `StorageSkewRisk` / DX-015              | Age not known <1 day; >=2 valid non-negative partition peaks; busiest >=1 GiB; coolest/busiest <0.7                                                                                   | High busiest >=40 GiB; Medium >=25 GiB; otherwise Low                |
+| `PaidContinuousBackup` / DX-019               | Continuous30Days/Continuous35Days, case-insensitive, and positively classified non-production                                                                                         | Medium                                                               |
+| `NonThrottlingErrors` / DX-020                | >=1,000 account requests and >=1% hard non-429 errors                                                                                                                                 | High >=10%; Medium >=5%; otherwise Low                               |
+| `ThrottlingByOperation` / DX-021              | >=1,000 account requests, >=1% 429s and a positive operation breakdown                                                                                                                | High >=20%; Medium >=5%; otherwise Low                               |
+| `PerRegionAutoscaleCandidate` / DX-022        | Known provisioned account, >=2 regions and independent autoscale explicitly disabled; an autoscale offer is not required for this review                                              | Low                                                                  |
+| `ReservedCapacityCandidate` / DX-023          | Known provisioned account and complete distinct-offer baseline >=3,000 RU/s                                                                                                           | Always Low, including very large accounts                            |
+
+The proposed CODA DX-020/021/023 thresholds above were explicitly adopted for native advisories.
+They remain ranking heuristics, separate from Account Health and user settings.
+DX-019 advises reviewing seven-day continuous retention only if recovery requirements allow losing older restore
+points; it never recommends switching to Periodic. Monetary estimates are not collected.
+DX-020 uses the most frequent individual hard-error status. Only dominant 404/409 map to
+`sdk-conditional-create-etag`, only 412 maps to `sdk-etag-concurrency`; other statuses map to null.
+These are conditional investigations, not proof of existence-check-before-create, a missing ETag or a hot item.
+SDK-specific atomic-create semantics matter: unconditional upsert can overwrite, and .NET IfNoneMatchEtag is
+not write protection. Expected 412s may show concurrency protection working.
+DX-021 selects the most frequent individual throttled operation, not the largest combined category.
+Category shares use status-reported total 429s; independent breakdowns may differ in completeness.
+Write/read/query/execute/other map respectively to `sdk-ingestion-rate-control`, `partition-avoid-hotspots`,
+`query-avoid-cross-partition`, `monitoring-ru-consumption`, `monitoring-throttling`.
+The nullable `agentKitRule` field preserves these mappings for consumers; it does not execute a skill.
+DX-022 requires throughput/feature/demand review and quantifies no savings.
+DX-023 does not establish a stable billable baseline, absent reservations, future demand or a discount.
+Its constant Low severity describes a reservation-review advisory, not low utilization or small potential savings.
 
 **Capacity materiality M:** with positive known account offer total, High if recoverable/total >=5%,
 Medium if >=1%, otherwise Low. Without that total, High if recoverable >=5,000 RU/s,

@@ -19,7 +19,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { type DerivedAdvisoriesResult } from '../../api/types';
+import { type DerivedAdvisoriesResult, type DerivedAdvisoryRule } from '../../api/types';
 import { DashboardActionsProvider } from './DashboardChrome';
 import { DerivedAdvisories } from './DerivedAdvisories';
 
@@ -178,6 +178,41 @@ describe('log coverage guidance', () => {
 });
 
 describe('metric coverage and actionable findings', () => {
+    it.each<{ rule: DerivedAdvisoryRule; name: string }>([
+        { rule: 'PaidContinuousBackup', name: 'Paid continuous backup' },
+        { rule: 'NonThrottlingErrors', name: 'Non-throttling errors' },
+        { rule: 'ThrottlingByOperation', name: 'Throttling by operation' },
+        { rule: 'PerRegionAutoscaleCandidate', name: 'Per-region autoscale review' },
+        { rule: 'ReservedCapacityCandidate', name: 'Reserved-capacity review' },
+    ])('renders an accessible account-wide $rule review and opens its details by keyboard', async ({ rule, name }) => {
+        const user = userEvent.setup();
+        showCoverage(
+            { available: true },
+            {
+                advisories: [
+                    {
+                        id: rule,
+                        rule,
+                        severity: 'Low',
+                        title: name,
+                        rationale: 'Account observation.',
+                        suggestedAction: 'Review requirements.',
+                        thresholdReference: 'Internal policy.',
+                    },
+                ],
+            },
+        );
+        const button = screen.getByRole('button', { name: new RegExp(`^${name}\\.`) });
+        expect(button).toHaveTextContent(name);
+        expect(button).toHaveAccessibleName(new RegExp(`^${name}\\.`));
+        expect(button).toHaveAttribute('aria-haspopup', 'dialog');
+        button.focus();
+        await user.keyboard('{Enter}');
+        const dialog = screen.getByRole('dialog', { name });
+        expect(dialog).toHaveTextContent('Account observation.');
+        expect(dialog).toHaveTextContent('Review requirements.');
+    });
+
     it('announces incomplete metric checks without claiming a clean result or blaming Log Analytics', () => {
         showCoverage(
             { available: true },

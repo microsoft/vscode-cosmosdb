@@ -10,6 +10,7 @@ import { createLogsOutputReporter } from '../../../accountOverview/logsOutput';
 import {
     collectDerivedAdvisories,
     computeDerivedAdvisories,
+    configurationFailures,
     type AccountConfigInput,
     type DerivedAdvisoriesResult,
 } from '../../../accountOverview/services/advisories';
@@ -91,15 +92,21 @@ export async function getDerivedAdvisoriesForAccount(
         ),
         metricSource: {
             available: false,
-            failures: DETECTORS.filter(
-                ({ rule }) =>
-                    rule !== 'ExpensiveConsistency' &&
-                    rule !== 'MultiRegionWriteAntipattern' &&
-                    rule !== 'CrossPartitionQuery' &&
-                    rule !== 'ShardKeyMisalignment' &&
-                    rule !== 'UncontrolledIngestion' &&
-                    rule !== 'SharedThroughputStarvation',
-            ).map(({ rule }) => ({ rule, reason })),
+            failures: [
+                ...configurationFailures(accountConfig),
+                ...DETECTORS.filter(
+                    ({ rule }) =>
+                        rule !== 'ExpensiveConsistency' &&
+                        rule !== 'MultiRegionWriteAntipattern' &&
+                        rule !== 'PaidContinuousBackup' &&
+                        rule !== 'PerRegionAutoscaleCandidate' &&
+                        !(rule === 'ReservedCapacityCandidate' && metadata.isServerless) &&
+                        rule !== 'CrossPartitionQuery' &&
+                        rule !== 'ShardKeyMisalignment' &&
+                        rule !== 'UncontrolledIngestion' &&
+                        rule !== 'SharedThroughputStarvation',
+                ).map(({ rule }) => ({ rule, reason })),
+            ],
         },
         logSource: { available: false, reason },
         generatedAt: Date.now(),

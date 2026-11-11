@@ -31,6 +31,62 @@ function advisoryTimespan(observation: RangeConfig, now = Date.now()): string {
     return `${new Date(start).toISOString()}/${new Date(now).toISOString()}`;
 }
 
+/** Split only one low-cardinality account dimension, never database/container inventory discovery. */
+async function getAccountRequestDimension(
+    client: MonitorClient,
+    resourceUri: string,
+    dimension: 'StatusCode' | 'OperationType',
+    now: number,
+): Promise<Record<string, number>> {
+    const observation = DIAGNOSTIC_POLICY.accountRequests.observation;
+    const seriesLimit = 1000;
+    const response = await client.metrics.list(resourceUri, {
+        metricnames: 'TotalRequests',
+        aggregation: 'Count',
+        timespan: advisoryTimespan(observation, now),
+        interval: observation.interval,
+        filter: dimension === 'StatusCode' ? "StatusCode eq '*'" : "StatusCode eq '429' and OperationType eq '*'",
+        top: seriesLimit,
+    });
+    const counts = new Map<string, number>();
+    for (const metric of response.value ?? []) {
+        if (metric.errorCode && metric.errorCode !== 'Success') {
+            throw new Error(metric.errorMessage ?? metric.errorCode);
+        }
+        if ((metric.timeseries?.length ?? 0) >= seriesLimit) {
+            throw new Error('Account request metric series may be truncated.');
+        }
+        for (const series of metric.timeseries ?? []) {
+            const key = series.metadatavalues
+                ?.find((value) => value.name?.value?.toLowerCase() === dimension.toLowerCase())
+                ?.value?.trim();
+            if (!key) {
+                continue;
+            }
+            for (const point of series.data ?? []) {
+                const count = pickPointValue(point, 'Count');
+                if (count === undefined || count <= 0 || parseMonitorTimestamp(point.timeStamp) === undefined) {
+                    continue;
+                }
+                const total = (counts.get(key) ?? 0) + count;
+                if (!Number.isFinite(total)) {
+                    throw new Error('Account request metric count is not finite.');
+                }
+                counts.set(key, total);
+            }
+        }
+    }
+    return Object.fromEntries(counts);
+}
+
+export function getAccountRequestStatusCounts(client: MonitorClient, resourceUri: string, now = Date.now()) {
+    return getAccountRequestDimension(client, resourceUri, 'StatusCode', now);
+}
+
+export function getThrottledOperationCounts(client: MonitorClient, resourceUri: string, now = Date.now()) {
+    return getAccountRequestDimension(client, resourceUri, 'OperationType', now);
+}
+
 /** Account-total consumed-RU shape over the 30-day window (DX-014 serverless-candidate signal). */
 export interface AccountConsumedRuShape {
     /** Account-total average consumed RU/s across the sampled buckets. */

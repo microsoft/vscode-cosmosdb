@@ -144,7 +144,6 @@ describe('log coverage guidance', () => {
 });
 
 describe('metric coverage and actionable findings', () => {
-
     it('announces incomplete metric checks without claiming a clean result or blaming Log Analytics', () => {
         showCoverage(
             { available: true },

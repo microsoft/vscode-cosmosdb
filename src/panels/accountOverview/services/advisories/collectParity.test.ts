@@ -55,7 +55,7 @@ vi.mock('./fetchers/metrics', () => ({
     getContainerPartitionCount: vi.fn(),
 }));
 
-import { CosmosDBManagementClient, type ThroughputSettingsGetResults } from '@azure/arm-cosmosdb';
+import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { MonitorClient, type Response as MetricsResponse } from '@azure/arm-monitor';
 import { getSqlInventoryDetails } from '../inventory';
 import { getPartitionHealth, getPartitionStorageSeries } from '../partitionHealth';

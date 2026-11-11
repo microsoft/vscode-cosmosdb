@@ -39,6 +39,8 @@ export const DIAGNOSTIC_POLICY = {
     },
     // DX-001 and DX-011 share the right-sizing band, peak guard and headroom policy.
     overProvisioning: {
+        idleBandPercent: 1,
+        lowBandPercent: 10,
         minResourceAgeDays: 7,
         minSamples: 24,
         bandPercent: 30,
@@ -128,6 +130,8 @@ export const DIAGNOSTIC_POLICY = {
     },
     indexing: {
         usageRatio: 0.3,
+        mediumRatio: 1,
+        observation: { windowMs: 6 * HOUR, interval: 'PT5M', bucketMs: 5 * MINUTE } satisfies RangeConfig,
     },
     partitionMerge: {
         mediumExcessRatio: 2,
@@ -140,13 +144,15 @@ export const DIAGNOSTIC_POLICY = {
     crossPartition: {
         minQueries: 50,
         fanoutThreshold: 1.5,
-        highPercent: 30,
         mediumPercent: 10,
+        minQueriesPerSecond: 0.1,
+        highQueriesPerSecond: 1,
+        mediumPartitions: 4,
+        highPartitions: 7,
     },
     shardKey: {
         structuralPercent: 60,
         minPartitions: 2,
-        highPercent: 80,
     },
     ingestion: {
         writeRuPercentFloor: 80,
@@ -164,7 +170,8 @@ export const DIAGNOSTIC_POLICY = {
         victimSharePercent: 20,
     },
     expensiveConsistency: {
-        minRegions: 2,
+        minStrongRegions: 1,
+        minBoundedStalenessRegions: 2,
     },
     multiRegionWrite: {
         minWriteRegions: 2,
@@ -193,10 +200,8 @@ export const DEFAULT_ADVISORY_THRESHOLDS: DerivedAdvisoryThresholds = {
     // uncontrolled_ingestion.py, shared_throughput.py).
     crossPartitionMinQueries: DIAGNOSTIC_POLICY.crossPartition.minQueries,
     crossPartitionFanoutThreshold: DIAGNOSTIC_POLICY.crossPartition.fanoutThreshold,
-    crossPartitionHighPct: DIAGNOSTIC_POLICY.crossPartition.highPercent,
     crossPartitionMedPct: DIAGNOSTIC_POLICY.crossPartition.mediumPercent,
     shardKeyStructuralPct: DIAGNOSTIC_POLICY.shardKey.structuralPercent,
-    shardKeyHighPct: DIAGNOSTIC_POLICY.shardKey.highPercent,
     ingestionWriteRuPctFloor: DIAGNOSTIC_POLICY.ingestion.writeRuPercentFloor,
     ingestionThrottleRatePct: DIAGNOSTIC_POLICY.ingestion.throttleRatePercent,
     ingestionHighPct: DIAGNOSTIC_POLICY.ingestion.highPercent,

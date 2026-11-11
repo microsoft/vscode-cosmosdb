@@ -12,9 +12,11 @@ import {
     clampRationale,
     finiteNumbers,
     hasMinimumKnownResourceAge,
+    offerScope,
+    utilizationBand,
 } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
-import { type DerivedAdvisory, type ManualThroughputInput } from '../core/types';
+import { type DerivedAdvisory, type ManualThroughputInput, type ProvisioningEvaluation } from '../core/types';
 
 // Platform minimum RU/s floor a right-size recommendation never drops below — a container's minimum manual
 // throughput is 400 RU/s:
@@ -74,13 +76,15 @@ function evaluateOverProvisioning(
             : 'Medium';
     const materiality =
         wastedRu !== undefined && recommendedRu !== undefined
-            ? l10n.t(
-                  ' That leaves roughly `{wasted} RU/s` recoverable by lowering the offer toward `~{recommended} RU/s`.',
-                  {
-                      wasted: wastedRu.toLocaleString(),
-                      recommended: recommendedRu.toLocaleString(),
-                  },
-              )
+            ? wastedExact === 0
+                ? l10n.t(
+                      ' The modeled recoverable capacity is `{wasted} RU/s`; the target remains `~{recommended} RU/s`, so no reduction is available.',
+                      { wasted: wastedRu.toLocaleString(), recommended: recommendedRu.toLocaleString() },
+                  )
+                : l10n.t(
+                      ' That leaves roughly `{wasted} RU/s` recoverable by lowering the offer toward `~{recommended} RU/s`.',
+                      { wasted: wastedRu.toLocaleString(), recommended: recommendedRu.toLocaleString() },
+                  )
             : '';
 
     return {
@@ -93,7 +97,7 @@ function evaluateOverProvisioning(
         rationale: clampRationale(
             (containerId
                 ? l10n.t(
-                      'Container "{container}" stayed at `{p99}%` 99th-percentile normalized RU over the last `{window}`.',
+                      'Offer "{container}" stayed at `{p99}%` 99th-percentile normalized RU over the last `{window}`.',
                       { container: escapeAdvisoryText(containerId), p99, window: observationLabel },
                   ) +
                   ' ' +
@@ -107,19 +111,31 @@ function evaluateOverProvisioning(
                 ) +
                 materiality,
         ),
+        evidence: {
+            p99Percent,
+            peakPercent: peakPercent ?? null,
+            provisionedRu: provisionedRu ?? null,
+            recommendedRu: recommendedRu ?? null,
+            recoverableRu: wastedExact ?? null,
+        },
+        actionEligibility: wastedExact === 0 ? 'blocked' : 'requiresValidation',
         suggestedAction:
-            containerId && recommendedRu !== undefined && provisionedRu !== undefined
+            wastedExact === 0
                 ? l10n.t(
-                      'Lower "{container}" from `{provisioned} RU/s` toward `~{recommended} RU/s`, or switch it to autoscale if demand is bursty.',
-                      {
-                          container: escapeAdvisoryText(containerId),
-                          provisioned: Math.round(provisionedRu).toLocaleString(),
-                          recommended: recommendedRu.toLocaleString(),
-                      },
+                      'No throughput reduction is available under this model. Validate the service minimum and workload needs; do not apply an unchanged target.',
                   )
-                : l10n.t(
-                      'Lower provisioned RU/s to match observed demand, or switch to autoscale so capacity tracks usage automatically.',
-                  ),
+                : containerId && recommendedRu !== undefined && provisionedRu !== undefined
+                  ? l10n.t(
+                        'Lower "{container}" from `{provisioned} RU/s` toward `~{recommended} RU/s`, or switch it to autoscale if demand is bursty.',
+                        {
+                            container: escapeAdvisoryText(containerId),
+                            provisioned: Math.round(provisionedRu).toLocaleString(),
+                            recommended: recommendedRu.toLocaleString(),
+                        },
+                    )
+                  : l10n.t(
+                        'Lower provisioned RU/s to match observed demand, or switch to autoscale so capacity tracks usage automatically.',
+                    ),
         thresholdReference: l10n.t('Threshold: p99 RU < `{threshold}%` and peak < `90%`', { threshold }),
         scope,
     };
@@ -129,40 +145,55 @@ function evaluateManualThroughput(
     input: ManualThroughputInput,
     thresholdPercent: number,
     scopeProvisionedRuTotal?: number,
-): DerivedAdvisory | undefined {
+): ProvisioningEvaluation {
     const samples = finiteNumbers(input.ruPercents);
     if (
         samples.length < DIAGNOSTIC_POLICY.overProvisioning.minSamples ||
         !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.overProvisioning.minResourceAgeDays)
     ) {
-        return undefined;
+        return { band: 'insufficient_data' };
     }
-    return evaluateOverProvisioning(
-        percentile(samples, DIAGNOSTIC_POLICY.overProvisioning.percentile),
-        input.peakPercent ?? (samples.length > 0 ? Math.max(...samples) : undefined),
+    const p99 = percentile(samples, DIAGNOSTIC_POLICY.overProvisioning.percentile);
+    if (p99 === undefined) {
+        return { band: 'insufficient_data' };
+    }
+    const peak = input.peakPercent ?? Math.max(...samples);
+    const advisory = evaluateOverProvisioning(
+        p99,
+        peak,
         thresholdPercent,
         true,
         input.provisionedRu,
         scopeProvisionedRuTotal,
-        `${input.databaseId}/${input.containerId}`,
-        input.containerId,
+        offerScope(input),
+        input.containerId ?? input.databaseId,
         l10n.t('30 days'),
     );
+    const recommendedRu = advisory?.evidence?.recommendedRu;
+    return {
+        band:
+            peak >= DIAGNOSTIC_POLICY.overProvisioning.peakGuardPercent ? 'ok' : utilizationBand(p99, thresholdPercent),
+        recommendedRu: typeof recommendedRu === 'number' ? recommendedRu : input.provisionedRu,
+        recoverableRu: typeof advisory?.evidence?.recoverableRu === 'number' ? advisory.evidence.recoverableRu : 0,
+        advisory,
+    };
 }
 
 export class OverProvisioningDetector extends Detector {
     readonly rule = 'OverProvisioning' as const;
     evaluate = evaluateOverProvisioning;
+    evaluateResult = evaluateManualThroughput;
     run(ctx: DetectorContext): DerivedAdvisory[] {
         const { inputs, thresholds } = ctx;
         if (inputs.manualThroughput !== undefined) {
             return inputs.manualThroughput
-                .map((input) =>
-                    evaluateManualThroughput(
-                        input,
-                        thresholds.overProvisioningBandPercent,
-                        inputs.scopeProvisionedRuTotal,
-                    ),
+                .map(
+                    (input) =>
+                        this.evaluateResult(
+                            input,
+                            thresholds.overProvisioningBandPercent,
+                            inputs.scopeProvisionedRuTotal,
+                        ).advisory,
                 )
                 .filter((advisory): advisory is DerivedAdvisory => advisory !== undefined);
         }

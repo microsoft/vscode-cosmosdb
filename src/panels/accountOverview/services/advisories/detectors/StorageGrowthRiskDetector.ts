@@ -8,9 +8,15 @@ import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
-import { type ContainerStorageInput, type DerivedAdvisory, type DerivedAdvisorySeverity } from '../core/types';
+import {
+    type AdvisoryEvaluation,
+    type ContainerStorageInput,
+    type DerivedAdvisory,
+    type DerivedAdvisorySeverity,
+} from '../core/types';
 import {
     daysToStorageLimit,
+    fitStorageGrowth,
     GIB,
     latestBytes,
     PARTITION_STORAGE_LIMIT_BYTES,
@@ -18,7 +24,6 @@ import {
     STORAGE_GROWTH_MEDIUM_DAYS,
     STORAGE_GROWTH_MIN_MATERIAL_BYTES,
     STORAGE_GROWTH_MIN_SLOPE_BYTES_PER_DAY,
-    storageGrowthSlopeBytesPerDay,
 } from './storageMath';
 
 /**
@@ -30,43 +35,87 @@ import {
  * growing steadily does. Immaterial (< 1 GiB) and flat/noisy (< 0.1 GiB/day)
  * partitions are ignored. Severity grades by horizon. Pure.
  */
-function evaluateStorageGrowthRisk(input: ContainerStorageInput, horizonDays: number): DerivedAdvisory | undefined {
+function evaluateStorageGrowthRisk(
+    input: ContainerStorageInput,
+    horizonDays: number,
+): AdvisoryEvaluation<'StorageGrowthRisk'> {
     if (horizonDays <= 0) {
-        return undefined;
+        return { rootCause: 'stable' };
     }
-    let soonest: { days: number; currentBytes: number; slopeBytesPerDay: number; atOrOverLimit: boolean } | undefined;
+    let soonest:
+        | {
+              days: number;
+              currentBytes: number;
+              slopeBytesPerDay: number;
+              roundoffBytesPerDay: number;
+              atOrOverLimit: boolean;
+          }
+        | undefined;
+    let largestObserved = 0;
+    let missingHistory = false;
     for (const partition of input.partitions) {
         const currentBytes = latestBytes(partition);
-        if (currentBytes === undefined || currentBytes < STORAGE_GROWTH_MIN_MATERIAL_BYTES) {
+        if (currentBytes !== undefined) {
+            largestObserved = Math.max(largestObserved, currentBytes);
+        }
+        if (currentBytes === undefined) {
+            missingHistory = true;
+            continue;
+        }
+        if (currentBytes < STORAGE_GROWTH_MIN_MATERIAL_BYTES) {
             continue;
         }
         if (currentBytes >= PARTITION_STORAGE_LIMIT_BYTES) {
-            const atLimit = { days: 0, currentBytes, slopeBytesPerDay: 0, atOrOverLimit: true };
+            const atLimit = { days: 0, currentBytes, slopeBytesPerDay: 0, roundoffBytesPerDay: 0, atOrOverLimit: true };
             if (soonest === undefined || !soonest.atOrOverLimit || currentBytes > soonest.currentBytes) {
                 soonest = atLimit;
             }
             continue;
         }
-        const slopeBytesPerDay = storageGrowthSlopeBytesPerDay(partition.samples);
-        if (slopeBytesPerDay === undefined || slopeBytesPerDay < STORAGE_GROWTH_MIN_SLOPE_BYTES_PER_DAY) {
+        const trend = fitStorageGrowth(partition.samples);
+        if (trend === undefined) {
+            missingHistory = true;
             continue;
         }
+        if (trend.slopeBytesPerDay + trend.roundoffBytesPerDay < STORAGE_GROWTH_MIN_SLOPE_BYTES_PER_DAY) {
+            continue;
+        }
+        const { slopeBytesPerDay } = trend;
         const days = daysToStorageLimit(currentBytes, slopeBytesPerDay, PARTITION_STORAGE_LIMIT_BYTES);
         if (days === undefined) {
             continue;
         }
         if (soonest === undefined || (!soonest.atOrOverLimit && days < soonest.days)) {
-            soonest = { days, currentBytes, slopeBytesPerDay, atOrOverLimit: false };
+            soonest = {
+                days,
+                currentBytes,
+                slopeBytesPerDay,
+                roundoffBytesPerDay: trend.roundoffBytesPerDay,
+                atOrOverLimit: false,
+            };
         }
     }
-    if (soonest === undefined || soonest.days > horizonDays) {
-        return undefined;
+    // Compare in bytes/day so the same regression roundoff protects every inclusive boundary.
+    const reachesWithinDays = (days: number): boolean =>
+        soonest !== undefined &&
+        (soonest.atOrOverLimit ||
+            soonest.slopeBytesPerDay + soonest.roundoffBytesPerDay >=
+                (PARTITION_STORAGE_LIMIT_BYTES - soonest.currentBytes) / days);
+    if (soonest === undefined || !reachesWithinDays(horizonDays)) {
+        return {
+            rootCause:
+                missingHistory || largestObserved <= 0
+                    ? 'insufficient_data'
+                    : largestObserved < STORAGE_GROWTH_MIN_MATERIAL_BYTES
+                      ? 'too_small'
+                      : 'stable',
+        };
     }
 
     if (soonest.atOrOverLimit) {
         const scope = containerKey(input.databaseId, input.containerId);
         const currentGiB = Math.round((soonest.currentBytes / GIB) * 10) / 10;
-        return {
+        const advisory: DerivedAdvisory = {
             id: `StorageGrowthRisk:${scope}`,
             rule: 'StorageGrowthRisk',
             severity: 'High',
@@ -92,20 +141,20 @@ function evaluateStorageGrowthRisk(input: ContainerStorageInput, horizonDays: nu
             thresholdReference: l10n.t('Threshold: current partition size ≥ `50 GiB`'),
             scope,
         };
+        return { rootCause: 'at_or_over_limit', advisory, observations: { daysToLimit: 0 } };
     }
 
-    const severity: DerivedAdvisorySeverity =
-        soonest.days <= STORAGE_GROWTH_HIGH_DAYS
-            ? 'High'
-            : soonest.days <= STORAGE_GROWTH_MEDIUM_DAYS
-              ? 'Medium'
-              : 'Low';
+    const severity: DerivedAdvisorySeverity = reachesWithinDays(STORAGE_GROWTH_HIGH_DAYS)
+        ? 'High'
+        : reachesWithinDays(STORAGE_GROWTH_MEDIUM_DAYS)
+          ? 'Medium'
+          : 'Low';
     const scope = containerKey(input.databaseId, input.containerId);
     const days = Math.max(0, Math.round(soonest.days));
     const currentGiB = Math.round((soonest.currentBytes / GIB) * 10) / 10;
     const perDayGiB = Math.round((soonest.slopeBytesPerDay / GIB) * 100) / 100;
     const horizon = Math.round(horizonDays);
-    return {
+    const advisory: DerivedAdvisory = {
         id: `StorageGrowthRisk:${scope}`,
         rule: 'StorageGrowthRisk',
         severity,
@@ -129,16 +178,18 @@ function evaluateStorageGrowthRisk(input: ContainerStorageInput, horizonDays: nu
             l10n.t('Confirm the partition key spreads new data across partitions, and archive or delete cold data.') +
             ' ' +
             l10n.t('Ensure large logical keys stay well under the `20 GiB` per-key cap so partitions split cleanly.'),
-        thresholdReference: l10n.t('Threshold: projected < `{horizon} days` to the `50 GiB` partition ceiling', {
+        thresholdReference: l10n.t('Threshold: projected ≤ `{horizon} days` to the `50 GiB` partition ceiling', {
             horizon,
         }),
         scope,
     };
+    return { rootCause: 'rapid_growth', advisory, observations: { daysToLimit: soonest.days } };
 }
 
 export class StorageGrowthRiskDetector extends Detector {
     readonly rule = 'StorageGrowthRisk' as const;
-    evaluate = evaluateStorageGrowthRisk;
+    evaluateResult = evaluateStorageGrowthRisk;
+    evaluate = (...args: Parameters<typeof evaluateStorageGrowthRisk>) => evaluateStorageGrowthRisk(...args).advisory;
     run(ctx: DetectorContext): DerivedAdvisory[] {
         const out: DerivedAdvisory[] = [];
         for (const storage of ctx.inputs.storage) {

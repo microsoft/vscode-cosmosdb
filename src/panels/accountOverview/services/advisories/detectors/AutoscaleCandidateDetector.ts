@@ -5,11 +5,15 @@
 
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
-import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
-import { clampRationale, finiteNumbers, hasMinimumKnownResourceAge, mean } from '../core/helpers';
+import { clampRationale, finiteNumbers, hasMinimumKnownResourceAge, mean, offerScope } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
-import { type AutoscaleThresholds, type DerivedAdvisory, type ManualThroughputInput } from '../core/types';
+import {
+    type AdvisoryEvaluation,
+    type AutoscaleThresholds,
+    type DerivedAdvisory,
+    type ManualThroughputInput,
+} from '../core/types';
 
 const AUTOSCALE_MIN_MAX_RU = 1_000;
 const AUTOSCALE_STEP_RU = 1_000;
@@ -79,9 +83,9 @@ function evaluateAutoscaleCandidate(
         ),
         suggestedAction:
             containerId && recommendedMax !== undefined
-                ? l10n.t('Enable autoscale on "{container}" and start with a maximum near `{recommended} RU/s`.', {
+                ? l10n.t('Convert to autoscale on "{container}" and start with `max ≈ {recommended} RU/s`.', {
                       container: escapeAdvisoryText(containerId),
-                      recommended: recommendedMax.toLocaleString(),
+                      recommended: recommendedMax,
                   }) +
                   ' ' +
                   l10n.t('This ceiling still covers the observed peak with headroom.')
@@ -93,6 +97,7 @@ function evaluateAutoscaleCandidate(
             avg: thresholds.avgPercent,
             ratio: thresholds.peakToAvgRatio,
         }),
+        evidence: { recommendedMaxRu: recommendedMax ?? null },
         scope,
     };
 }
@@ -100,30 +105,32 @@ function evaluateAutoscaleCandidate(
 function evaluateManualThroughput(
     input: ManualThroughputInput,
     thresholds: AutoscaleThresholds,
-): DerivedAdvisory | undefined {
+): AdvisoryEvaluation<'AutoscaleCandidate'> {
     const samples = finiteNumbers(input.ruPercents);
     if (
         samples.length < DIAGNOSTIC_POLICY.overProvisioning.minSamples ||
         !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.overProvisioning.minResourceAgeDays)
     ) {
-        return undefined;
+        return { rootCause: 'insufficient_data' };
     }
-    return evaluateAutoscaleCandidate(
+    const advisory = evaluateAutoscaleCandidate(
         input.peakPercent ?? (samples.length > 0 ? Math.max(...samples) : undefined),
         mean(samples),
         thresholds,
         true,
         input.provisionedRu,
-        containerKey(input.databaseId, input.containerId),
-        input.containerId,
+        offerScope(input),
+        input.containerId ?? input.databaseId,
         l10n.t('30 days'),
     );
+    return { rootCause: advisory ? 'spiky_manual' : 'well_matched', advisory };
 }
 
 export class AutoscaleCandidateDetector extends Detector {
     readonly rule = 'AutoscaleCandidate' as const;
     readonly supersedes = ['OverProvisioning'] as const;
     evaluate = evaluateAutoscaleCandidate;
+    evaluateResult = evaluateManualThroughput;
     run(ctx: DetectorContext): DerivedAdvisory[] {
         const { inputs, thresholds } = ctx;
         const dutyCycle = {
@@ -133,7 +140,7 @@ export class AutoscaleCandidateDetector extends Detector {
         };
         if (inputs.manualThroughput !== undefined) {
             return inputs.manualThroughput
-                .map((input) => evaluateManualThroughput(input, dutyCycle))
+                .map((input) => this.evaluateResult(input, dutyCycle).advisory)
                 .filter((advisory): advisory is DerivedAdvisory => advisory !== undefined);
         }
         const advisory = this.evaluate(

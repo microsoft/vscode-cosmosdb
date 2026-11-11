@@ -9,16 +9,21 @@ import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
-import { type DerivedAdvisory, type DerivedAdvisorySeverity, type ServerlessThrottlingInput } from '../core/types';
+import {
+    type AdvisoryEvaluation,
+    type DerivedAdvisory,
+    type DerivedAdvisorySeverity,
+    type ServerlessThrottlingInput,
+} from '../core/types';
 
 const SERVERLESS_RU_PER_PARTITION = 5_000;
 
-function evaluateServerlessThrottling(input: ServerlessThrottlingInput): DerivedAdvisory | undefined {
+function evaluateServerlessThrottling(input: ServerlessThrottlingInput): AdvisoryEvaluation<'ServerlessThrottling'> {
     if (input.totalRequests < DIAGNOSTIC_POLICY.serverlessThrottling.minRequests) {
-        return undefined;
+        return { rootCause: 'insufficient_data' };
     }
     if (input.throttleRatePercent < DIAGNOSTIC_POLICY.serverlessThrottling.throttleRatePercent) {
-        return undefined;
+        return { rootCause: 'not_throttling' };
     }
     const scope = containerKey(input.databaseId, input.containerId);
     const severity: DerivedAdvisorySeverity =
@@ -28,7 +33,7 @@ function evaluateServerlessThrottling(input: ServerlessThrottlingInput): Derived
               ? 'Medium'
               : 'Low';
     const rate = Math.round(input.throttleRatePercent * 10) / 10;
-    return {
+    const advisory: DerivedAdvisory = {
         id: `ServerlessThrottling:${scope}`,
         rule: 'ServerlessThrottling',
         severity,
@@ -59,11 +64,18 @@ function evaluateServerlessThrottling(input: ServerlessThrottlingInput): Derived
         }),
         scope,
     };
+    return {
+        rootCause: 'serverless_throttling',
+        advisory,
+        observations: { throttleRatePercent: input.throttleRatePercent },
+    };
 }
 
 export class ServerlessThrottlingDetector extends Detector {
     readonly rule = 'ServerlessThrottling' as const;
-    evaluate = evaluateServerlessThrottling;
+    evaluateResult = evaluateServerlessThrottling;
+    evaluate = (...args: Parameters<typeof evaluateServerlessThrottling>) =>
+        evaluateServerlessThrottling(...args).advisory;
     run(ctx: DetectorContext): DerivedAdvisory[] {
         const out: DerivedAdvisory[] = [];
         for (const input of ctx.inputs.serverlessThrottling ?? []) {

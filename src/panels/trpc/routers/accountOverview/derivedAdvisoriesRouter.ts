@@ -35,12 +35,19 @@ type AdvisoryAccountMetadata = Pick<
     | 'getMonitorClient'
     | 'getClient'
     | 'getLogsQueryClient'
-> & { subscription: { readonly name: string } };
+> & {
+    subscription: {
+        readonly name: string;
+        readonly subscriptionId: string;
+        readonly environment: { readonly resourceManagerEndpointUrl: string };
+    };
+};
 
 export async function getDerivedAdvisoriesForAccount(
     metadata: AdvisoryAccountMetadata,
 ): Promise<DerivedAdvisoriesResult> {
     const account = metadata.databaseAccount as DatabaseAccountGetResults;
+    const fullFidelityChangeFeedEnabled = metadata.databaseAccount.enableAllVersionsAndDeletesChangeFeed;
     const api = tryGetExperience(account)?.api;
     const accountConfig: AccountConfigInput = {
         accountName: metadata.accountName,
@@ -51,6 +58,21 @@ export async function getDerivedAdvisoriesForAccount(
         multiRegionWritesEnabled: account.enableMultipleWriteLocations ?? false,
         writeRegionCount: account.writeLocations?.length ?? 0,
         api,
+        isServerless: metadata.isServerless,
+        perRegionPerPartitionAutoscaleEnabled: account.enablePerRegionPerPartitionAutoscale,
+        backupPolicy:
+            account.backupPolicy || fullFidelityChangeFeedEnabled !== undefined
+                ? {
+                      type: account.backupPolicy?.type,
+                      migrationState: account.backupPolicy?.migrationState,
+                      continuousTier:
+                          account.backupPolicy?.type === 'Continuous' &&
+                          'continuousModeProperties' in account.backupPolicy
+                              ? account.backupPolicy.continuousModeProperties?.tier
+                              : undefined,
+                      fullFidelityChangeFeedEnabled,
+                  }
+                : undefined,
     };
     const advisoryThresholds = DEFAULT_ADVISORY_THRESHOLDS;
     const configOnly = (reason: UnavailableReason): DerivedAdvisoriesResult => ({
@@ -69,15 +91,17 @@ export async function getDerivedAdvisoriesForAccount(
         ),
         metricSource: {
             available: false,
-            failures: DETECTORS.filter(
-                ({ rule }) =>
-                    rule !== 'ExpensiveConsistency' &&
-                    rule !== 'MultiRegionWriteAntipattern' &&
-                    rule !== 'CrossPartitionQuery' &&
-                    rule !== 'ShardKeyMisalignment' &&
-                    rule !== 'UncontrolledIngestion' &&
-                    rule !== 'SharedThroughputStarvation',
-            ).map(({ rule }) => ({ rule, reason })),
+            failures: [
+                ...DETECTORS.filter(
+                    ({ rule }) =>
+                        rule !== 'ExpensiveConsistency' &&
+                        rule !== 'MultiRegionWriteAntipattern' &&
+                        rule !== 'CrossPartitionQuery' &&
+                        rule !== 'ShardKeyMisalignment' &&
+                        rule !== 'UncontrolledIngestion' &&
+                        rule !== 'SharedThroughputStarvation',
+                ).map(({ rule }) => ({ rule, reason })),
+            ],
         },
         logSource: { available: false, reason },
         generatedAt: Date.now(),

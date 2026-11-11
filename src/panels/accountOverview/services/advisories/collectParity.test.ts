@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { API } from '../../../../AzureDBExperiences';
 import type * as InventoryModule from '../inventory';
 import type * as RuTrendsModule from '../ruTrends';
@@ -13,11 +13,6 @@ import type * as MetricsModule from './fetchers/metrics';
 vi.mock('../inventory', () => ({
     getSqlInventoryDetails: vi.fn(),
 }));
-
-vi.mock('../inventoryMetrics', async () => {
-    const { OVERVIEW_DEFAULTS } = await import('../healthPolicy');
-    return { DEFAULT_HEALTH_THRESHOLDS: OVERVIEW_DEFAULTS.health, getInventoryMetrics: vi.fn() };
-});
 
 vi.mock('../partitionHealth', async () => {
     const { OVERVIEW_DEFAULTS } = await import('../healthPolicy');
@@ -39,25 +34,30 @@ vi.mock('./engine', () => ({
 }));
 
 vi.mock('./fetchers/logs', () => ({
+    fetchConsistencyReadRu: vi.fn(),
     fetchCrossPartitionShapes: vi.fn(),
     fetchSharedThroughputTraffic: vi.fn(),
     fetchUncontrolledIngestion: vi.fn(),
     logWindow: vi.fn(() => ({ startTime: new Date(0), endTime: new Date(1) })),
     probeCdbLogs: vi.fn(),
+    selectDataPlaneSource: vi.fn(),
+    requestLogWindow: vi.fn(() => ({ startTime: new Date(0), endTime: new Date(1) })),
 }));
 
 vi.mock('./fetchers/metrics', () => ({
     getAccountConsumedRuShape: vi.fn(),
+    getAccountRequestStatusCounts: vi.fn(),
+    getThrottledOperationCounts: vi.fn(),
     getAutoscaleUtilization: vi.fn(),
     getContainerIdlePeak: vi.fn(),
+    getContainerIndexingUsage: vi.fn(),
     getContainerMergeStoragePeak: vi.fn(),
     getContainerPartitionCount: vi.fn(),
 }));
 
-import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
+import { CosmosDBManagementClient, type ThroughputSettingsGetResults } from '@azure/arm-cosmosdb';
 import { MonitorClient, type Response as MetricsResponse } from '@azure/arm-monitor';
 import { getSqlInventoryDetails } from '../inventory';
-import { getInventoryMetrics } from '../inventoryMetrics';
 import { getPartitionHealth, getPartitionStorageSeries } from '../partitionHealth';
 import { getRuTrends, getThrottleRate } from '../ruTrends';
 import { GB, pagedItems } from '../testFixtures';
@@ -75,9 +75,14 @@ import {
     getAccountConsumedRuShape,
     getAutoscaleUtilization,
     getContainerIdlePeak,
+    getContainerIndexingUsage,
     getContainerMergeStoragePeak,
     getContainerPartitionCount,
 } from './fetchers/metrics';
+
+beforeEach(() => {
+    vi.mocked(probeCdbLogs).mockResolvedValue({ available: false, reason: 'noData' });
+});
 
 afterEach(() => {
     vi.resetAllMocks();
@@ -117,6 +122,8 @@ function params(overrides: Partial<Parameters<typeof collectDerivedAdvisories>[0
             multiRegionWritesEnabled: false,
             writeRegionCount: 1,
             api: API.Core,
+            backupPolicy: { type: 'Periodic' },
+            perRegionPerPartitionAutoscaleEnabled: true,
         },
         logsClient: { queryResource: vi.fn() },
         ...overrides,
@@ -158,15 +165,105 @@ describe('collectDerivedAdvisories parity wiring', () => {
         },
     );
 
+    it.each(['none', 'NoNe', 'NONE'])(
+        'skips DX-024 metric acquisition and coverage failures for %s indexing',
+        async (indexingMode) => {
+            const inventory = await vi.importActual<typeof InventoryModule>('../inventory');
+            const engine = await vi.importActual<typeof EngineModule>('./engine');
+            vi.mocked(getSqlInventoryDetails).mockImplementation(inventory.getSqlInventoryDetails);
+            vi.mocked(computeDerivedAdvisories).mockImplementation(engine.computeDerivedAdvisories);
+            const cosmosClient = new CosmosDBManagementClient({ getToken: async () => null }, 'sub');
+            vi.spyOn(cosmosClient.databaseAccounts, 'get').mockResolvedValue({});
+            vi.spyOn(cosmosClient.sqlResources, 'listSqlDatabases').mockImplementation(() =>
+                pagedItems([{ resource: { id: 'db' } }]),
+            );
+            vi.spyOn(cosmosClient.sqlResources, 'listSqlContainers').mockImplementation(() =>
+                pagedItems([{ resource: { id: 'disabled', indexingPolicy: { indexingMode } } }]),
+            );
+            vi.mocked(getThrottleRate).mockResolvedValue({ ratePercent: 0, totalRequests: 0 });
+            vi.mocked(getContainerIndexingUsage).mockRejectedValue({ statusCode: 403 });
+
+            const result = await collectDerivedAdvisories(
+                params({ cosmosClient, isServerless: true, logsClient: undefined }),
+            );
+
+            expect(result.metricSource.failures.filter((failure) => failure.rule === 'IndexingCostRisk')).toEqual([]);
+            expect(getContainerIndexingUsage).not.toHaveBeenCalled();
+            expect(result.advisories.filter((item) => item.rule === 'IndexingCostRisk')).toEqual([]);
+            expect(vi.mocked(computeDerivedAdvisories).mock.calls[0][0].indexing).toEqual([]);
+        },
+    );
+
+    it.each<{ indexingMode: string | undefined; outcome: 'positive' | 'empty' | 'denied' }>([
+        { indexingMode: 'consistent', outcome: 'positive' },
+        { indexingMode: 'lazy', outcome: 'positive' },
+        { indexingMode: undefined, outcome: 'positive' },
+        { indexingMode: 'unknown', outcome: 'positive' },
+        { indexingMode: 'consistent', outcome: 'empty' },
+        { indexingMode: 'consistent', outcome: 'denied' },
+    ])(
+        'preserves DX-024 $outcome results for $indexingMode indexing beside a disabled container',
+        async ({ indexingMode, outcome }) => {
+            const inventory = await vi.importActual<typeof InventoryModule>('../inventory');
+            const engine = await vi.importActual<typeof EngineModule>('./engine');
+            vi.mocked(getSqlInventoryDetails).mockImplementation(inventory.getSqlInventoryDetails);
+            vi.mocked(computeDerivedAdvisories).mockImplementation(engine.computeDerivedAdvisories);
+            const cosmosClient = new CosmosDBManagementClient({ getToken: async () => null }, 'sub');
+            vi.spyOn(cosmosClient.databaseAccounts, 'get').mockResolvedValue({});
+            vi.spyOn(cosmosClient.sqlResources, 'listSqlDatabases').mockImplementation(() =>
+                pagedItems([{ resource: { id: 'db' } }]),
+            );
+            vi.spyOn(cosmosClient.sqlResources, 'listSqlContainers').mockImplementation(() =>
+                pagedItems([
+                    { resource: { id: 'disabled', indexingPolicy: { indexingMode: 'none' } } },
+                    { resource: { id: 'eligible', indexingPolicy: { indexingMode } } },
+                ]),
+            );
+            vi.mocked(getThrottleRate).mockResolvedValue({ ratePercent: 0, totalRequests: 0 });
+            if (outcome === 'denied') {
+                vi.mocked(getContainerIndexingUsage).mockRejectedValue({ statusCode: 403 });
+            } else {
+                vi.mocked(getContainerIndexingUsage).mockResolvedValue(
+                    outcome === 'positive' ? { indexUsageBytes: 60, dataUsageBytes: 100 } : {},
+                );
+            }
+
+            const collectionParams = params({ cosmosClient, isServerless: true, logsClient: undefined });
+            const result = await collectDerivedAdvisories(collectionParams);
+
+            expect(getContainerIndexingUsage).toHaveBeenCalledExactlyOnceWith(
+                collectionParams.monitorClient,
+                collectionParams.accountId,
+                'db',
+                'eligible',
+                expect.any(Number),
+            );
+            expect(
+                result.advisories.filter((item) => item.rule === 'IndexingCostRisk').map((item) => item.scope),
+            ).toEqual(outcome === 'positive' ? ['db/eligible'] : []);
+            expect(result.metricSource.failures.filter((failure) => failure.rule === 'IndexingCostRisk')).toEqual(
+                outcome === 'positive'
+                    ? []
+                    : [
+                          {
+                              rule: 'IndexingCostRisk',
+                              scope: 'db/eligible',
+                              reason: outcome === 'denied' ? 'rbac' : 'noData',
+                          },
+                      ],
+            );
+        },
+    );
+
     it.each([
         { paths: [], indexUsageBytes: 50, dataUsageBytes: 100, fires: true },
         { paths: ['/_etag/?'], indexUsageBytes: 50, dataUsageBytes: 100, fires: true },
         { paths: ['/"_etag"/?'], indexUsageBytes: 50, dataUsageBytes: 100, fires: true },
-        { paths: ['/_etag/?', '/payload/*'], indexUsageBytes: 50, dataUsageBytes: 100, fires: false },
-        { paths: ['/"_etag"/?', '/payload/*'], indexUsageBytes: 50, dataUsageBytes: 100, fires: false },
-        { paths: ['/payload/_etag/?'], indexUsageBytes: 50, dataUsageBytes: 100, fires: false },
-        { paths: ['/payload/"_etag"/?'], indexUsageBytes: 50, dataUsageBytes: 100, fires: false },
-        { paths: ['/_etag/*'], indexUsageBytes: 50, dataUsageBytes: 100, fires: false },
+        { paths: ['/_etag/?', '/payload/*'], indexUsageBytes: 50, dataUsageBytes: 100, fires: true },
+        { paths: ['/"_etag"/?', '/payload/*'], indexUsageBytes: 50, dataUsageBytes: 100, fires: true },
+        { paths: ['/payload/_etag/?'], indexUsageBytes: 50, dataUsageBytes: 100, fires: true },
+        { paths: ['/payload/"_etag"/?'], indexUsageBytes: 50, dataUsageBytes: 100, fires: true },
+        { paths: ['/_etag/*'], indexUsageBytes: 50, dataUsageBytes: 100, fires: true },
         { paths: ['/_etag/?'], indexUsageBytes: 20, dataUsageBytes: 100, fires: false },
         { paths: ['/_etag/?'], indexUsageBytes: 30, dataUsageBytes: 100, fires: false },
         { paths: ['/_etag/?'], indexUsageBytes: undefined, dataUsageBytes: 100, fires: false },
@@ -196,47 +293,27 @@ describe('collectDerivedAdvisories parity wiring', () => {
                 pagedItems([{ resource: { id: 'events', indexingPolicy } }]),
             );
             vi.mocked(getThrottleRate).mockResolvedValue({ ratePercent: 0, totalRequests: 0 });
-            vi.mocked(getInventoryMetrics).mockResolvedValue({
-                available: true,
-                metrics: {
-                    'db/events': {
-                        databaseId: 'db',
-                        containerId: 'events',
-                        storage: {
-                            data:
-                                dataUsageBytes === undefined
-                                    ? { status: 'unavailable', reason: 'noData' }
-                                    : { status: 'available', bytes: dataUsageBytes, timestamp: 0 },
-                            index:
-                                indexUsageBytes === undefined
-                                    ? { status: 'unavailable', reason: 'noData' }
-                                    : { status: 'available', bytes: indexUsageBytes, timestamp: 0 },
-                        },
-                        throttled: false,
-                        health: 'Healthy',
-                    },
-                },
-                generatedAt: 0,
-            });
+            vi.mocked(getContainerIndexingUsage).mockResolvedValue({ indexUsageBytes, dataUsageBytes });
 
             const result = await collectDerivedAdvisories(
                 params({ cosmosClient, isServerless: true, logsClient: undefined }),
             );
 
             expect(result.advisories.filter((item) => item.rule === 'IndexingCostRisk')).toHaveLength(fires ? 1 : 0);
-            expect(vi.mocked(getInventoryMetrics).mock.calls[0][5]).toBe(true);
+            expect(getContainerIndexingUsage).toHaveBeenCalledWith(
+                expect.anything(),
+                expect.any(String),
+                'db',
+                'events',
+                expect.any(Number),
+            );
             expect(getRuTrends).not.toHaveBeenCalled();
             expect(getPartitionHealth).not.toHaveBeenCalled();
             const collectedInventory = await vi.mocked(getSqlInventoryDetails).mock.results[0].value;
             expect(collectedInventory.rows[0].excludedPathCount).toBe(paths.length);
             expect(indexingPolicy).toEqual(originalPolicy);
 
-            vi.mocked(getInventoryMetrics).mockResolvedValue({
-                available: false,
-                reason: 'noData',
-                metrics: {},
-                generatedAt: 0,
-            });
+            vi.mocked(getContainerIndexingUsage).mockResolvedValue({});
             const unavailable = await collectDerivedAdvisories(
                 params({ cosmosClient, isServerless: true, logsClient: undefined }),
             );
@@ -244,7 +321,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
             expect(unavailable.metricSource.failures).toContainEqual({
                 rule: 'IndexingCostRisk',
                 reason: 'noData',
-                scope: undefined,
+                scope: 'db/events',
             });
         },
     );
@@ -256,6 +333,9 @@ describe('collectDerivedAdvisories parity wiring', () => {
         'missing storage',
         'zero storage',
         'access denied',
+        'full fidelity',
+        'full fidelity without backup policy',
+        'disabled full fidelity',
     ] as const)(
         'collects idle and merge metrics for all twelve active containers without wildcard truncation: %s',
         async (scenario) => {
@@ -293,11 +373,6 @@ describe('collectDerivedAdvisories parity wiring', () => {
                 points: [],
                 provisionedPercent: 100,
                 timeRange: '7D',
-                generatedAt: 0,
-            });
-            vi.mocked(getInventoryMetrics).mockResolvedValue({
-                available: false,
-                metrics: {},
                 generatedAt: 0,
             });
             vi.mocked(getPartitionHealth).mockRejectedValue(new Error('unavailable'));
@@ -365,9 +440,21 @@ describe('collectDerivedAdvisories parity wiring', () => {
                     };
                 });
 
-            const result = await collectDerivedAdvisories(params({ monitorClient, logsClient: undefined }));
+            const fullFidelityChangeFeedEnabled =
+                scenario === 'full fidelity' || scenario === 'full fidelity without backup policy'
+                    ? true
+                    : scenario === 'disabled full fidelity'
+                      ? false
+                      : undefined;
+            const backupPolicy = {
+                type: scenario === 'full fidelity without backup policy' ? undefined : 'Periodic',
+                fullFidelityChangeFeedEnabled,
+            };
+            const options = params({ monitorClient, logsClient: undefined });
+            options.accountConfig = { ...options.accountConfig, backupPolicy };
+            const result = await collectDerivedAdvisories(options);
             const inputs = vi.mocked(computeDerivedAdvisories).mock.calls[0][0];
-            const missingIdle = scenario === 'missing idle' || scenario === 'access denied';
+            const missingIdle = scenario === 'access denied';
             const missingMerge =
                 scenario === 'missing partition count' ||
                 scenario === 'missing storage' ||
@@ -378,13 +465,25 @@ describe('collectDerivedAdvisories parity wiring', () => {
                 (failure) => failure.rule === 'IdleContainer' || failure.rule === 'PartitionMergeCandidate',
             );
 
-            expect.soft(result.advisories.filter((item) => item.rule === 'IdleContainer')).toEqual([]);
+            const idleAdvisories = result.advisories.filter((item) => item.rule === 'IdleContainer');
+            const idleFinding = expect.objectContaining({
+                scope: 'db0/c0',
+                evidence: { peakRuPerBucket: 0, provisionedRu: 1000, recoverableRu: 1000 },
+            });
+            expect.soft(idleAdvisories).toEqual(scenario === 'missing idle' ? [idleFinding] : []);
             expect.soft(inputs.idleContainers).toHaveLength(idleRows.length);
-            expect.soft(inputs.idleContainers?.every((item) => item.peakRuPerBucket === 1000)).toBe(true);
+            for (const row of idleRows) {
+                expect.soft(inputs.idleContainers).toContainEqual(
+                    expect.objectContaining({
+                        databaseId: row.databaseId,
+                        containerId: row.containerId,
+                        peakRuPerBucket: scenario === 'missing idle' && row === rows[0] ? 0 : 1000,
+                    }),
+                );
+            }
             expect.soft(inputs.partitionMerges).toHaveLength(mergeRows.length);
-            expect
-                .soft(result.advisories.filter((item) => item.rule === 'PartitionMergeCandidate'))
-                .toHaveLength(mergeRows.length);
+            const mergeAdvisories = result.advisories.filter((item) => item.rule === 'PartitionMergeCandidate');
+            expect.soft(mergeAdvisories).toHaveLength(mergeRows.length);
             for (const row of mergeRows) {
                 expect.soft(inputs.partitionMerges).toContainEqual({
                     databaseId: row.databaseId,
@@ -392,7 +491,14 @@ describe('collectDerivedAdvisories parity wiring', () => {
                     actualPartitions: 4,
                     provisionedRu: 1000,
                     dataUsageBytes: scenario === 'zero storage' && row === rows[0] ? 0 : GB,
+                    backupPolicy,
                 });
+                expect
+                    .soft(
+                        mergeAdvisories.find((advisory) => advisory.scope === `${row.databaseId}/${row.containerId}`)
+                            ?.actionEligibility,
+                    )
+                    .toBe(fullFidelityChangeFeedEnabled === true ? 'blocked' : 'requiresValidation');
             }
             expect.soft(list).toHaveBeenCalledTimes(rows.length * 3);
             expect.soft(peakConcurrency).toBeGreaterThan(1);
@@ -456,11 +562,6 @@ describe('collectDerivedAdvisories parity wiring', () => {
             generatedAt: 0,
         });
         vi.mocked(getContainerIdlePeak).mockResolvedValue(1000);
-        vi.mocked(getInventoryMetrics).mockResolvedValue({
-            available: false,
-            metrics: {},
-            generatedAt: 0,
-        });
         vi.mocked(getPartitionHealth).mockRejectedValue(new Error('unavailable'));
         vi.mocked(getPartitionStorageSeries).mockRejectedValue(new Error('unavailable'));
         vi.mocked(getThrottleRate).mockResolvedValue({ ratePercent: 0, totalRequests: 1000 });
@@ -484,7 +585,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
         expect(sizing.some((item) => item.scope === 'db/c11')).toBe(true);
     });
 
-    it('uses dedicated offers for container checks, includes serverless throttling, and counts scope RU once per offer', async () => {
+    it('evaluates dedicated and shared database offers, with capacity counted once per offer', async () => {
         vi.mocked(getSqlInventoryDetails).mockResolvedValue({
             databases: ['db-shared', 'db-manual', 'db-auto', 'db-sls'],
             throughputInventoryComplete: true,
@@ -586,11 +687,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
         vi.mocked(getContainerIdlePeak).mockImplementation(async (_client, _resource, databaseId) =>
             databaseId === 'db-manual' ? 0 : 20,
         );
-        vi.mocked(getInventoryMetrics).mockResolvedValue({
-            available: true,
-            metrics: {},
-            generatedAt: 1,
-        });
+        vi.mocked(getContainerIndexingUsage).mockResolvedValue({ indexUsageBytes: 20, dataUsageBytes: 100 });
         vi.mocked(getPartitionHealth).mockResolvedValue({
             available: true,
             mode: 'ru',
@@ -634,6 +731,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
             databaseId,
             containerId,
             shapes: [],
+            evaluationWindowSeconds: 86400,
         }));
         vi.mocked(fetchUncontrolledIngestion).mockImplementation(async (_logs, _account, databaseId, containerId) => ({
             databaseId,
@@ -678,14 +776,16 @@ describe('collectDerivedAdvisories parity wiring', () => {
             expect.objectContaining({ databaseId: 'db-manual', containerId: 'manual-c', provisionedRu: 1000 }),
         ]);
         expect(inputs.idleContainers).toEqual([
+            expect.objectContaining({ databaseId: 'db-shared', containerId: undefined, peakRuPerBucket: 20 }),
             expect.objectContaining({ containerId: 'manual-c', peakRuPerBucket: 0 }),
             expect.objectContaining({ containerId: 'auto-c', peakRuPerBucket: 20 }),
         ]);
-        expect(inputs.partitions.map((item) => item.containerId)).toEqual(['manual-c', 'auto-c']);
+        expect(inputs.partitions.map((item) => item.containerId)).toEqual([undefined, 'manual-c', 'auto-c']);
         expect(inputs.partitionMerges?.map((item) => item.containerId)).toEqual(['manual-c', 'auto-c']);
-        expect(inputs.autoscaleUtilizations?.map((item) => item.containerId)).toEqual(['auto-c']);
+        expect(inputs.autoscaleUtilizations?.map((item) => item.containerId)).toEqual([undefined, 'auto-c']);
         expect(inputs.serverlessThrottling?.map((item) => item.containerId)).toEqual(['serverless-c']);
         expect(inputs.scopeProvisionedRuTotal).toBe(10_000);
+        expect(inputs.manualRegionalCapacityRu).toBeUndefined();
         expect(inputs.sharedThroughput).toEqual([expect.objectContaining({ databaseId: 'db-shared', sharedRu: 4000 })]);
         expect(vi.mocked(fetchCrossPartitionShapes).mock.calls.map((call) => call[3])).toEqual([
             'manual-c',
@@ -735,11 +835,6 @@ describe('collectDerivedAdvisories parity wiring', () => {
             generatedAt: 1,
         });
         vi.mocked(getContainerIdlePeak).mockRejectedValue(new Error('idle failed'));
-        vi.mocked(getInventoryMetrics).mockResolvedValue({
-            available: true,
-            metrics: {},
-            generatedAt: 1,
-        });
         vi.mocked(getPartitionHealth).mockResolvedValue({
             available: true,
             mode: 'ru',
@@ -774,7 +869,12 @@ describe('collectDerivedAdvisories parity wiring', () => {
             sampleCount: 50,
         });
         vi.mocked(probeCdbLogs).mockResolvedValue({ available: true });
-        vi.mocked(fetchCrossPartitionShapes).mockResolvedValue({ databaseId: 'db', containerId: 'c', shapes: [] });
+        vi.mocked(fetchCrossPartitionShapes).mockResolvedValue({
+            databaseId: 'db',
+            containerId: 'c',
+            shapes: [],
+            evaluationWindowSeconds: 86400,
+        });
         vi.mocked(fetchUncontrolledIngestion).mockResolvedValue(undefined);
         vi.mocked(fetchSharedThroughputTraffic).mockResolvedValue({
             databaseId: 'db',
@@ -810,7 +910,12 @@ describe('collectDerivedAdvisories parity wiring', () => {
             sampleCount: 30,
         });
         vi.mocked(probeCdbLogs).mockResolvedValue({ available: true });
-        vi.mocked(fetchCrossPartitionShapes).mockResolvedValue({ databaseId: 'db', containerId: 'c', shapes: [] });
+        vi.mocked(fetchCrossPartitionShapes).mockResolvedValue({
+            databaseId: 'db',
+            containerId: 'c',
+            shapes: [],
+            evaluationWindowSeconds: 86400,
+        });
         vi.mocked(fetchUncontrolledIngestion).mockResolvedValue(undefined);
         vi.mocked(fetchSharedThroughputTraffic).mockResolvedValue({
             databaseId: 'db',

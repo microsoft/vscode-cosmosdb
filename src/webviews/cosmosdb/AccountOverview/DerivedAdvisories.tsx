@@ -283,7 +283,7 @@ function ruleMeta(rule: DerivedAdvisoryRule): { name: string; description: strin
             return {
                 name: l10n.t('Indexing cost risk'),
                 description: l10n.t(
-                    'Index storage is large relative to data, suggesting the indexing policy covers more than the workload actually queries.',
+                    'Index storage is large relative to data. Review query requirements; this ratio alone does not prove indexes are unused.',
                 ),
             };
         case 'ExpensiveConsistency':
@@ -297,14 +297,14 @@ function ruleMeta(rule: DerivedAdvisoryRule): { name: string; description: strin
             return {
                 name: l10n.t('Multi-region write antipattern'),
                 description: l10n.t(
-                    'Multi-region writes are enabled without a conflict-resolution setup that fits the workload, risking write conflicts.',
+                    'Review whether multi-region writes fit the API, write-region configuration and environment requirements.',
                 ),
             };
         case 'IdleContainer':
             return {
-                name: l10n.t('Idle containers'),
+                name: l10n.t('Idle provisioned offers'),
                 description: l10n.t(
-                    'Containers are provisioned but serve almost no traffic. Their entire reservation is round-the-clock waste.',
+                    'Provisioned containers or shared database offers serve almost no traffic. Review recoverable manual capacity or the autoscale idle floor.',
                 ),
             };
         case 'PartitionMergeCandidate':
@@ -318,7 +318,7 @@ function ruleMeta(rule: DerivedAdvisoryRule): { name: string; description: strin
             return {
                 name: l10n.t('Autoscale max set too high'),
                 description: l10n.t(
-                    'Autoscale containers rarely approach their configured maximum, so the max can be lowered to cap cost safely.',
+                    'Autoscale offers rarely approach their configured maximum. Review analytical targets and service minima before changing capacity.',
                 ),
             };
         case 'AutoscaleToManualCandidate':
@@ -384,13 +384,13 @@ interface AdvisoryGroup {
     /** The most severe advisory in the group drives the card's badge and sort order. */
     severity: DerivedAdvisorySeverity;
     advisories: DerivedAdvisory[];
-    /** Distinct container scopes that fired this rule; empty for account-wide rules. */
+    /** Distinct resource scopes that fired this rule; empty for account-wide rules. */
     scopeCount: number;
 }
 
 /**
- * Collapses the flat advisory list into one entry per detector. At scale a per-container list can run to tens of
- * thousands of rows; grouping keeps the card to at most one row per detector and defers the container list to
+ * Collapses the flat advisory list into one entry per detector. At scale a per-resource list can run to tens of
+ * thousands of rows; grouping keeps the card to at most one row per detector and defers the resource list to
  * an on-demand dialog, so the DOM never holds every finding at once.
  */
 function groupAdvisories(advisories: readonly DerivedAdvisory[]): AdvisoryGroup[] {
@@ -474,17 +474,17 @@ function logCoverageNotice(reason: UnavailableReason | undefined): {
     }
 }
 
-/** Card summary line: how many containers a scoped detector hit, or that the finding is account-wide. */
+/** Card summary line: whether a scoped detector hit one or multiple resources, or the finding is account-wide. */
 function groupCountLabel(group: AdvisoryGroup): string {
     if (group.scopeCount === 0) {
         return l10n.t('Account-wide');
     }
-    return group.scopeCount === 1 ? l10n.t('1 container affected') : l10n.t('Some containers affected');
+    return group.scopeCount === 1 ? l10n.t('1 resource affected') : l10n.t('Some resources affected');
 }
 
 /**
- * One summary card per detector. Shows the detector's name, description, headline severity, and how many containers
- * matched — but not the containers themselves. Activating it opens the drill-in dialog with the full per-container
+ * One summary card per detector. Shows the detector's name, description, headline severity, and affected-resource
+ * summary — but not the resources themselves. Activating it opens the drill-in dialog with the full per-resource
  * list, so the section stays at one row per detector no matter how many findings the account has.
  */
 const AdvisoryGroupCard = ({
@@ -526,7 +526,7 @@ const AdvisoryGroupCard = ({
                     event.currentTarget.click();
                 }
             }}
-            aria-label={l10n.t('{name}. {count}. Show affected containers.', { name: group.name, count })}
+            aria-label={l10n.t('{name}. {count}. Show affected resources.', { name: group.name, count })}
             aria-describedby={`${id}-severity ${id}-description`}
             aria-haspopup="dialog"
             {...restoreFocusTargetAttributes}

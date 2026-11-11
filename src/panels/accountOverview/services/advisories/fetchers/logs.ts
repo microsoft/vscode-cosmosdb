@@ -239,7 +239,12 @@ export async function fetchCrossPartitionShapes(
             avgFanout: num(r.avgFanout),
             maxFanout: Math.round(num(r.maxFanout)),
         }));
-    return { databaseId, containerId, shapes };
+    return {
+        databaseId,
+        containerId,
+        shapes,
+        evaluationWindowSeconds: (timespan.endTime.getTime() - timespan.startTime.getTime()) / 1000,
+    };
 }
 
 /**

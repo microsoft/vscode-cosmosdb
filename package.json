@@ -70,8 +70,8 @@
     "test:proxy": "node scripts/test-proxy.mjs",
     "test:migration-skill": "node --test skills/cosmosdb-relational-migration/tests/*.test.mjs",
     "test:shell-mcp": "cross-env COSMOSDB_SHELL_MCP_INTEGRATION=1 vitest run src/cosmosDBShell/mcpProvider.test.ts",
-    "vitest": "concurrently -P -n vitest,migration-skill -c magenta,cyan \"vitest run {@}\" \"npm run test:migration-skill\" --",
-    "vitest:coverage": "concurrently -P -n vitest,migration-skill -c magenta,cyan \"vitest run --coverage {@}\" \"npm run test:migration-skill\" --",
+    "vitest": "concurrently -P -n vitest,migration-skill,coda-tools -c magenta,cyan,yellow \"vitest run {@}\" \"npm run test:migration-skill\" \"npm run test:coda-tools\" --",
+    "vitest:coverage": "concurrently -P -n vitest,migration-skill,coda-tools -c magenta,cyan,yellow \"vitest run --coverage {@}\" \"npm run test:migration-skill\" \"npm run test:coda-tools\" --",
     "vitest:ui": "vitest --ui",
     "vite-dev": "rimraf ./dist && concurrently -n ext,views -c redBright,whiteBright \"npm run vite-dev-ext\" \"npm run vite-dev-wv\"",
     "vite-prod": "rimraf ./dist && concurrently -n ext,views -c redBright,whiteBright \"npm run vite-prod-ext\" \"npm run vite-prod-wv\"",
@@ -91,6 +91,9 @@
     "l10n:export": "npx @vscode/l10n-dev generate-xlf ./l10n/bundle.l10n.json --outFile vscode-cosmosdb.xlf",
     "l10n:import": "npx @vscode/l10n-dev import-xlf ./translations.xlf",
     "fetch-skill": "node scripts/fetch-skill.mjs",
+    "fetch-coda": "node scripts/coda.mjs fetch",
+    "test:coda": "node scripts/coda.mjs test",
+    "test:coda-tools": "node --test scripts/coda.test.mjs",
     "pre-commit": "npm run build && npm run prettier-fix && npm run lint-fix && npm run l10n && npm run vitest",
     "docker-up": "docker compose up -d",
     "docker-down": "docker compose down",
@@ -118,7 +121,17 @@
       ]
     }
   },
+  "externalSpecifications": {
+    "coda": {
+      "repo": "https://dev.azure.com/msdata/CosmosDB/_git/CODA",
+      "trackingRef": "refs/heads/main",
+      "commit": "86549e6b118a4e88596427fb5c008a9bc0570928",
+      "featurePath": "specs/detectors"
+    }
+  },
   "devDependencies": {
+    "@cucumber/gherkin": "~42.0.1",
+    "@cucumber/messages": "~34.2.1",
     "@playwright/test": "~1.64.0",
     "@testing-library/jest-dom": "~7.0.0",
     "@testing-library/react": "~16.3.2",

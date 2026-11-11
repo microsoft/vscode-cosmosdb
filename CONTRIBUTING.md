@@ -33,6 +33,7 @@ another revision; normal builds and unit tests never fetch or repin CODA.
 npm run fetch-coda
 npm run test:coda -- --detectors DX-001,DX-011,DX-020
 npm run test:coda
+npm run coda:check
 ```
 
 The fetch command requires Git and access to the configured private Azure DevOps repository through your existing
@@ -55,10 +56,23 @@ not-selected counts. This report and downloaded files are private, Git-ignored, 
 excluded from VSIX packaging. Do not upload them to public logs or artifacts. Public GitHub Actions execution is refused
 unless an operator explicitly sets `CODA_TRUSTED_PRIVATE_RUNNER=1` on a genuinely trusted private runner.
 Ordinary contributors without private-source access can run the infrastructure's synthetic unit tests without CODA.
-`npm run test:coda-tools` checks download integrity against disposable local Git repositories.
+`npm run test:coda-tools` checks download integrity and freshness relationships against disposable local Git repositories.
 It runs as an independent yellow `coda-tools` branch alongside magenta Vitest and cyan migration-skill tests in both
 `npm run vitest` and `npm run vitest:coverage`. Parser/binding regressions do not need private-source access.
 Public CI against the original contracts requires an approved redistributable upstream bundle.
+
+`npm run coda:check` compares the configured `trackingRef` HEAD with the immutable pin without repinning or touching the
+conformance cache. Equality exits 0; a mismatch exits 1 with exact upstream-ahead and upstream-behind commit counts.
+Rewound, divergent and unrelated histories are distinguished. Authentication, missing refs/objects and network errors
+also fail explicitly as unverifiable. History is fetched into a disposable bare repository, never checked out or executed.
+
+The existing package-feed workflow has an independent `CODA Freshness` advisory job. Failures remain red without
+cancelling the package-feed job or adding dependencies to build/package workflows. Keep this job optional in branch
+rulesets; required-check configuration is an owner responsibility and is not changed by the workflow.
+Push/manual runs can use an owner-configured read-only Azure DevOps `CODA_READ_TOKEN` secret. Git credentials also work
+locally. **All pull requests receive no private-source token**, including same-repository PRs; without another authorized
+credential the private-repository check fails as unverifiable, not as current. This metadata-only job does not run
+private scenarios or publish their logs/artifacts.
 
 This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
 For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/)

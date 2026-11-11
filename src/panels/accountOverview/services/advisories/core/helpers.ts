@@ -4,11 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DIAGNOSTIC_POLICY } from './thresholds';
-import {
-    type DerivedAdvisory,
-    type DerivedAdvisorySeverity,
-    type UtilizationBand,
-} from './types';
+import { type DerivedAdvisory, type DerivedAdvisorySeverity, type UtilizationBand } from './types';
 
 export function utilizationBand(value: number, moderateUpperPercent: number): UtilizationBand {
     return value < DIAGNOSTIC_POLICY.overProvisioning.idleBandPercent

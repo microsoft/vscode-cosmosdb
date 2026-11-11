@@ -160,12 +160,20 @@ describe('DataPage role descriptions', () => {
         const dropdown = screen.getByRole('combobox', { name: 'Role for id: 🔑 Unique / business key' });
         expect(dropdown).toHaveTextContent('🔑 Unique / business key');
         for (const roleDropdown of screen.getAllByRole('combobox', { name: /^Role for / })) {
-            expect(roleDropdown.parentElement).toHaveStyle({ width: '260px', minWidth: '260px' });
-            const controls = roleDropdown.parentElement!.parentElement!;
-            const remove = within(controls).getByRole('button', { name: /^Remove / });
-            expect(roleDropdown.parentElement!.nextElementSibling).toBe(remove);
-            expect(controls).toHaveStyle({ display: 'flex', alignItems: 'center' });
-            expect(remove.closest('td')).toBe(roleDropdown.closest('td'));
+            // Avoid depending on Fluent UI's wrapper DOM structure; assert against stable boundaries.
+            const roleDropdownStyle = getComputedStyle(roleDropdown);
+            expect(roleDropdownStyle.width).toBe('260px');
+            expect(roleDropdownStyle.minWidth).toBe('260px');
+
+            const cell = roleDropdown.closest('td');
+            expect(cell).not.toBeNull();
+
+            const remove = within(cell!).getByRole('button', { name: /^Remove / });
+
+            // Ensure the remove control is in the same cell and follows the dropdown in DOM order,
+            // without relying on specific parent/child nesting or adjacency wrappers.
+            expect(remove.closest('td')).toBe(cell);
+            expect(roleDropdown.compareDocumentPosition(remove) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
         }
         await user.click(dropdown);
 

@@ -95,6 +95,7 @@ function inventoryClient(): CosmosDBManagementClient {
 describe('getSqlInventoryDetails', () => {
     it('exposes authoritative offers without double-counting inherited shared children', async () => {
         const inventory = await getSqlInventoryDetails(inventoryClient(), 'rg', 'acct', false);
+        expect(inventory.throughputInventoryComplete).toBe(true);
         expect(inventory.databases).toEqual(['db-empty', 'db-shared', 'db-dedicated']);
         expect(inventory.offers).toEqual([
             expect.objectContaining({
@@ -162,6 +163,7 @@ describe('getSqlInventoryDetails', () => {
         } as unknown as CosmosDBManagementClient;
 
         const details = await getSqlInventoryDetails(client, 'rg', 'acct', true);
+        expect(details.throughputInventoryComplete).toBe(true);
         const rows = await getSqlInventory(client, 'rg', 'acct', true);
         expect(details.offers).toEqual([]);
         expect(details.databases).toEqual(['db']);

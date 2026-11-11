@@ -13,14 +13,19 @@ import { hotPartitionRiskDetector } from './detectors/HotPartitionRiskDetector';
 import { idleContainerDetector } from './detectors/IdleContainerDetector';
 import { indexingCostRiskDetector } from './detectors/IndexingCostRiskDetector';
 import { multiRegionWriteAntipatternDetector } from './detectors/MultiRegionWriteAntipatternDetector';
+import { nonThrottlingErrorsDetector } from './detectors/NonThrottlingErrorsDetector';
 import { overProvisioningDetector } from './detectors/OverProvisioningDetector';
+import { paidContinuousBackupDetector } from './detectors/PaidContinuousBackupDetector';
 import { partitionMergeCandidateDetector } from './detectors/PartitionMergeCandidateDetector';
+import { perRegionAutoscaleCandidateDetector } from './detectors/PerRegionAutoscaleCandidateDetector';
+import { reservedCapacityCandidateDetector } from './detectors/ReservedCapacityCandidateDetector';
 import { serverlessCandidateDetector } from './detectors/ServerlessCandidateDetector';
 import { serverlessThrottlingDetector } from './detectors/ServerlessThrottlingDetector';
 import { shardKeyMisalignmentDetector } from './detectors/ShardKeyMisalignmentDetector';
 import { sharedThroughputStarvationDetector } from './detectors/SharedThroughputStarvationDetector';
 import { storageGrowthRiskDetector } from './detectors/StorageGrowthRiskDetector';
 import { storageSkewRiskDetector } from './detectors/StorageSkewRiskDetector';
+import { throttlingByOperationDetector } from './detectors/ThrottlingByOperationDetector';
 import { uncontrolledIngestionDetector } from './detectors/UncontrolledIngestionDetector';
 import { underProvisioningDetector } from './detectors/UnderProvisioningDetector';
 
@@ -49,4 +54,9 @@ export const DETECTORS: readonly Detector[] = [
     crossPartitionQueryDetector,
     uncontrolledIngestionDetector,
     sharedThroughputStarvationDetector,
+    paidContinuousBackupDetector,
+    nonThrottlingErrorsDetector,
+    throttlingByOperationDetector,
+    perRegionAutoscaleCandidateDetector,
+    reservedCapacityCandidateDetector,
 ];

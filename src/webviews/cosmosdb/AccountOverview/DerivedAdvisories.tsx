@@ -373,6 +373,41 @@ function ruleMeta(rule: DerivedAdvisoryRule): { name: string; description: strin
                     'Containers in a shared-throughput database compete for one RU pool and starve each other under load.',
                 ),
             };
+        case 'PaidContinuousBackup':
+            return {
+                name: l10n.t('Paid continuous backup'),
+                description: l10n.t(
+                    'Review paid restore-history retention on positively inferred non-production accounts without compromising recovery requirements.',
+                ),
+            };
+        case 'NonThrottlingErrors':
+            return {
+                name: l10n.t('Non-throttling errors'),
+                description: l10n.t(
+                    'Account request errors excluding 429 warrant investigation. Status counts alone do not establish an application defect or identify its source.',
+                ),
+            };
+        case 'ThrottlingByOperation':
+            return {
+                name: l10n.t('Throttling by operation'),
+                description: l10n.t(
+                    'See which operation contributes the most 429s. Operation mix guides investigation but does not prove a root cause.',
+                ),
+            };
+        case 'PerRegionAutoscaleCandidate':
+            return {
+                name: l10n.t('Per-region autoscale review'),
+                description: l10n.t(
+                    'Multi-region provisioned accounts with independent scaling disabled may benefit if autoscale usage and uneven demand justify it.',
+                ),
+            };
+        case 'ReservedCapacityCandidate':
+            return {
+                name: l10n.t('Reserved-capacity review'),
+                description: l10n.t(
+                    'Provisioned capacity warrants reviewing eligible usage and existing reservations. This is not a savings estimate or a purchase recommendation.',
+                ),
+            };
     }
 }
 

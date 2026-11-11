@@ -5,8 +5,11 @@
 
 import { LogsQueryResultStatus, type LogsQueryResult, type LogsTable } from '@azure/monitor-query-logs';
 import { describe, expect, it, vi } from 'vitest';
+import { API } from '../../../../AzureDBExperiences';
 import { createLogsOutputReporter } from '../../logsOutput';
 import { collectTier2Logs } from './collect';
+import { DEFAULT_ADVISORY_THRESHOLDS } from './core/thresholds';
+import { computeDerivedAdvisories } from './engine';
 import { type LogsQueryExecutor } from './fetchers/logs';
 
 const resource = '/subscriptions/test/resourceGroups/test/providers/Microsoft.DocumentDB/databaseAccounts/test';
@@ -26,6 +29,17 @@ function client(fail?: (query: string) => unknown): LogsQueryExecutor {
             const error = fail?.(query);
             if (error) {
                 throw Object.assign(new Error('Simulated Log Analytics failure'), error);
+            }
+            if (query === 'CDBDataPlaneRequests5M | take 0') {
+                throw Object.assign(new Error('Failed to resolve table CDBDataPlaneRequests5M'), {
+                    code: 'SemanticError',
+                });
+            }
+            if (query.includes('totalQueryRu')) {
+                return success(
+                    ['QueryText', 'executions', 'matchedExecutions', 'totalQueryRu'],
+                    [['SELECT 1', 100, 100, 1000]],
+                );
             }
             if (query.includes('by CorrelatedActivityId')) {
                 return success(['QueryText', 'executions', 'avgFanout', 'maxFanout'], [['SELECT 1', 100, 2, 2]]);
@@ -48,6 +62,112 @@ function client(fail?: (query: string) => unknown): LogsQueryExecutor {
 }
 
 describe('Log Analytics collection coverage', () => {
+    it('uses one aligned aggregate source for ingestion, shared-pool and consistency evidence, with raw-only fan-out enrichment', async () => {
+        const queryResource = vi.fn<LogsQueryExecutor['queryResource']>(async (_id, query) => {
+            if (query.endsWith('| take 0')) {
+                return success();
+            }
+            if (query.includes('totalQueryRu')) {
+                return success(
+                    ['QueryText', 'executions', 'matchedExecutions', 'totalQueryRu'],
+                    [['SELECT 1', 100, 100, 2000]],
+                );
+            }
+            if (query.startsWith('CDBQueryRuntimeStatistics')) {
+                return success(['QueryText', 'executions', 'avgFanout', 'maxFanout'], [['SELECT 1', 100, 4, 4]]);
+            }
+            if (query.includes('totalRu =')) {
+                return success(['totalRu', 'writeRu', 'reqs', 'throttles', 'invalidRows'], [[1000, 900, 2000, 500, 0]]);
+            }
+            if (query.includes('peak =')) {
+                return success(['peak', 'avg', 'invalidRows'], [[600, 100, 0]]);
+            }
+            if (query.includes('by UserAgent')) {
+                return success(['UserAgent', 'n', 'invalidRows'], [['bulk', 1500, 0]]);
+            }
+            if (query.includes('by OperationName')) {
+                return success(['OperationName', 'requests', 'ru', 'invalidRows'], [['Read', 10, 100, 0]]);
+            }
+            return success(
+                ['CollectionName', 'requests', 'throttled', 'ru', 'invalidRows'],
+                [['container', 2000, 500, 1000, 0]],
+            );
+        });
+        const result = await collectTier2Logs(
+            { queryResource },
+            resource,
+            targets,
+            inventory,
+            undefined,
+            targets,
+            targets,
+            true,
+        );
+        expect(result.logSource).toEqual({ available: true });
+        expect(result.crossPartition[0].shapes[0].avgRu).toBe(20);
+        expect(result.ingestion[0].requestLogEvidence?.sourceTable).toBe('CDBDataPlaneRequests5M');
+        expect(result.sharedThroughput[0].requestLogEvidence).toEqual(result.ingestion[0].requestLogEvidence);
+        expect(result.consistencyReadRu).toMatchObject({
+            status: 'observed',
+            sourceTable: 'CDBDataPlaneRequests5M',
+            readRu: 100,
+        });
+        const aggregateCalls = queryResource.mock.calls.filter(
+            (call) => call[1].startsWith('CDBDataPlaneRequests5M ') && !call[1].endsWith('| take 0'),
+        );
+        expect(aggregateCalls).toHaveLength(5);
+        for (const [, query, span] of aggregateCalls) {
+            expect(span.startTime.getTime() % 300_000).toBe(0);
+            expect(span.endTime.getTime() % 300_000).toBe(0);
+            expect(span.endTime.getTime() - span.startTime.getTime()).toBe(86_400_000);
+            expect(query).not.toMatch(/union|CDBDataPlaneRequests /);
+        }
+    });
+
+    it('retains structural and config findings when optional query/read RU fails, and reports both failures', async () => {
+        const executor = client((query) =>
+            query.includes('totalQueryRu') || query.includes('by OperationName')
+                ? { statusCode: 403, code: 'Forbidden' }
+                : undefined,
+        );
+        const logs = await collectTier2Logs(executor, resource, targets, inventory, undefined, targets, targets, true);
+        expect(logs.crossPartition).toHaveLength(1);
+        expect(logs.crossPartition[0].shapes[0]).not.toHaveProperty('avgRu');
+        expect(logs.consistencyReadRu).toBeUndefined();
+        expect(logs.logSource).toMatchObject({
+            available: false,
+            reason: 'rbac',
+            failures: expect.arrayContaining([
+                { operation: 'crossPartitionRu', kind: 'accessDenied', reason: 'rbac' },
+                { operation: 'consistencyReadRu', kind: 'accessDenied', reason: 'rbac' },
+            ]),
+        });
+        const findings = computeDerivedAdvisories(
+            {
+                weeklyRuPercents: [],
+                hasManualThroughput: false,
+                partitions: [],
+                storage: [],
+                indexing: [],
+                crossPartition: logs.crossPartition,
+                consistencyReadRu: logs.consistencyReadRu,
+                accountConfig: {
+                    accountName: 'prod',
+                    consistencyLevel: 'Strong',
+                    regionCount: 2,
+                    multiRegionWritesEnabled: false,
+                    writeRegionCount: 1,
+                    api: API.Core,
+                },
+            },
+            DEFAULT_ADVISORY_THRESHOLDS,
+        );
+        expect(findings.find((finding) => finding.rule === 'ExpensiveConsistency')).toMatchObject({
+            severity: 'Medium',
+            evidence: { readRuStatus: 'unavailable' },
+        });
+    });
+
     it('keeps successful log findings and records query-runtime table unavailability', async () => {
         const executor = client((query) =>
             query.startsWith('CDBQueryRuntimeStatistics')

@@ -7,8 +7,11 @@ import { type UnavailableReason } from '../../shared';
 
 export type LogsOperation =
     | 'probeDataPlane'
+    | 'probeDataPlane5M'
     | 'probeQueryRuntime'
     | 'crossPartition'
+    | 'crossPartitionRu'
+    | 'consistencyReadRu'
     | 'ingestionSummary'
     | 'ingestionBurst'
     | 'ingestionUserAgent'
@@ -145,7 +148,7 @@ function errorFields(error: unknown): { codes: string[]; messages: string[]; sta
 }
 
 function missingCdbTable(message: string): boolean {
-    const table = String.raw`['"\x60]?(?:CDBDataPlaneRequests|CDBQueryRuntimeStatistics)['"\x60]?(?![\w])`;
+    const table = String.raw`['"\x60]?(?:CDBDataPlaneRequests5M|CDBDataPlaneRequests|CDBQueryRuntimeStatistics)['"\x60]?(?![\w])`;
     return (
         new RegExp(
             String.raw`\bfailed to resolve (?:table(?: or column)?(?: expression)?|tabular expression)(?: named)?\s+${table}`,

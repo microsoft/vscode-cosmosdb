@@ -526,21 +526,58 @@ It is not normalized RU divided by the configured max. The Serverless-candidate 
 `TotalRequestUnits` Total collisions per timestamp, divides each bucket by 3,600 seconds, then takes peak/mean
 over observed hourly buckets. Missing buckets do not become zero samples in either calculation.
 
-| Evidence                            | Window / grain                                | Live collector targets                                    |
-| ----------------------------------- | --------------------------------------------- | --------------------------------------------------------- |
-| Manual normalized RU                | 30 days / 1 hour                              | Dedicated manual and shared manual database offers        |
-| Idle consumed RU, Total             | 30 days / 5 minutes                           | Dedicated and shared database offers, manual/autoscale    |
-| Partition p99 + request-rate totals | 7 days / 1 hour                               | Dedicated and shared database offers                      |
-| Partition storage for growth        | 30 days / 1 hour                              | Dedicated containers                                      |
-| Partition storage for skew          | 7 days / 1 hour                               | Dedicated containers                                      |
-| Index/data storage                  | Latest populated samples, 6 hours / 5 minutes | All inventory containers, including shared and Serverless |
-| Partition count and DataUsage peaks | 6 hours / 5 minutes                           | Dedicated containers, explicit database/container queries |
-| AutoscaledRU                        | 30 days / 1 hour                              | Dedicated and shared database autoscale offers            |
-| Consumed-RU shape                   | 30 days / 1 hour                              | Non-Serverless account, no database filter                |
-| Serverless request-rate totals      | 7 days / 1 hour                               | Serverless containers                                     |
-| Log query fan-out evidence          | Last 24 hours, raw event aggregation          | Dedicated and Serverless containers                       |
-| Log ingestion evidence              | Last 24 hours, raw event aggregation          | Dedicated containers                                      |
-| Log shared-pool evidence            | Last 24 hours, raw event aggregation          | Shared-throughput database offers                         |
+| Evidence                            | Window / grain                                 | Live collector targets                                    |
+| ----------------------------------- | ---------------------------------------------- | --------------------------------------------------------- |
+| Manual normalized RU                | 30 days / 1 hour                               | Dedicated manual and shared manual database offers        |
+| Idle consumed RU, Total             | 30 days / 5 minutes                            | Dedicated and shared database offers, manual/autoscale    |
+| Partition p99 + request-rate totals | 7 days / 1 hour                                | Dedicated and shared database offers                      |
+| Partition storage for growth        | 30 days / 1 hour                               | Dedicated containers                                      |
+| Partition storage for skew          | 7 days / 1 hour                                | Dedicated containers                                      |
+| Index/data storage                  | Latest populated samples, 6 hours / 5 minutes  | All inventory containers, including shared and Serverless |
+| Partition count and DataUsage peaks | 6 hours / 5 minutes                            | Dedicated containers, explicit database/container queries |
+| AutoscaledRU                        | 30 days / 1 hour                               | Dedicated and shared database autoscale offers            |
+| Consumed-RU shape                   | 30 days / 1 hour                               | Non-Serverless account, no database filter                |
+| Serverless request-rate totals      | 7 days / 1 hour                                | Serverless containers                                     |
+| Log query fan-out evidence          | Last 24 hours, raw event aggregation           | Dedicated and Serverless containers                       |
+| Log ingestion evidence              | 24 hours, five-minute aggregates or raw events | Dedicated containers                                      |
+| Log shared-pool evidence            | Same selected request-log source/window        | Shared-throughput database offers                         |
+| Optional consistency read charge    | Same selected request-log source/window        | Account; only after a positive configuration finding      |
+
+Workload log queries count one diagnostic destination per table, not every workspace copy returned by a
+resource-context query. Within the explicit half-open observation window `[start, end)`, choose the workspace
+(`TenantId`) with the most rows of that table across the account; ties use ascending `TenantId`.
+Apply this selection before database/container/operation filters. Fan-out, ingestion summary/burst/user-agent and
+shared-pool queries use the same selection policy; different tables may select different workspaces.
+Selection runs inside each KQL query without additional HTTP requests. It avoids counting diagnostic copies
+together, but row counts do not prove complete collection or visibility into every destination.
+Schema-only probes remain independent and do not select a destination.
+
+Request-log acquisition prefers `CDBDataPlaneRequests5M`, with `CDBDataPlaneRequests` as compatibility source only
+when the aggregate table is explicitly missing. A denied, malformed, partial or failed aggregate query is not
+silently retried against raw logs. A successful empty aggregate source is not proof of missing collection and
+does not cause fallback. Select the table once per collection; never union or add raw and aggregate representations.
+Aggregate windows retain a full 24 hours and end at the last five-minute boundary. Both ends are explicit,
+half-open and aligned; explicit partial-bucket windows are rejected rather than prorated.
+Aggregate requests/429s/user-agent frequencies use `RequestCount` weights; RU uses `TotalRequestCharge`, never
+the mean of aggregate rows. Null, nonfinite, negative or fractional request counts, nonpositive input-row
+counts, invalid RU and misaligned source buckets invalidate the affected check, with local diagnostics and
+partial coverage. Successful all-zero totals remain distinct from invalid aggregates.
+Burst evidence uses observed five-minute write buckets for aggregates and one-minute write buckets for raw
+events, without filling missing buckets with zero. Findings retain source table/resolution and absolute bounds.
+
+DX-002/007 keep their query-runtime-only structural decision. Raw data-plane logs optionally enrich query RU:
+each table selects one destination over the same absolute window; distinct logical-query/activity/shape tuples
+join charges pre-aggregated by activity ID. Mean logical-query RU is exposed only when every execution and
+its activities matched valid charges. Missing matches do not become zero RU. A missing raw table or failed
+enrichment records partial coverage but does not suppress structural findings, change thresholds or severity.
+The same observed cost evidence survives DX-007 superseding DX-002; it is not recoverable capacity or money.
+
+DX-016 optionally observes only live-validated `Read`, `Query` and `QueryPlan` operations, with an exact
+case-insensitive account-resource predicate and the selected request-log window/source. Invalid or duplicate
+operation aggregates are failures, not zero observations. Successful empty results record `noObservations`;
+failed/unavailable enrichment records `unavailable`, while the ARM configuration finding stays visible.
+Observed read RU and half that amount as a theoretical upper bound are separate evidence: diagnostic logs do
+not identify per-request consistency overrides. Neither value establishes measured or monetary savings.
 
 Per-container idle/merge queries MUST target known containers, not discover them through wildcard metric series or a larger `top`.
 Shared-offer throughput utilization/saturation queries select the database offer's empty `CollectionName` dimension,

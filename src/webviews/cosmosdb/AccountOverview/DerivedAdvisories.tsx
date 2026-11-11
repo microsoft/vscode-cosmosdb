@@ -441,7 +441,7 @@ function logCoverageNotice(reason: UnavailableReason | undefined): {
                     l10n.t('Some required CDB log tables could not be queried.') +
                     ' ' +
                     l10n.t(
-                        'Check that DataPlaneRequests and QueryRuntimeStatistics are exported to Log Analytics in resource-specific mode, not only AzureDiagnostics.',
+                        'Check that DataPlaneRequests5M or DataPlaneRequests, and QueryRuntimeStatistics, are exported to Log Analytics in resource-specific mode, not only AzureDiagnostics. Query RU evidence requires raw DataPlaneRequests.',
                     ) +
                     ' ' +
                     l10n.t('Missing tables can also reflect access restrictions or delayed ingestion.'),
@@ -906,8 +906,11 @@ const PartialCoverageNotice = ({ source }: { source: DerivedAdvisoriesResult['lo
     const { body, linkLabel, linkUrl } = logCoverageNotice(source?.reason);
     const operations = {
         probeDataPlane: l10n.t('DataPlaneRequests availability'),
+        probeDataPlane5M: l10n.t('DataPlaneRequests5M availability'),
         probeQueryRuntime: l10n.t('QueryRuntimeStatistics availability'),
         crossPartition: l10n.t('Query fan-out'),
+        crossPartitionRu: l10n.t('Query RU evidence'),
+        consistencyReadRu: l10n.t('Consistency read RU evidence'),
         ingestionSummary: l10n.t('Ingestion totals'),
         ingestionBurst: l10n.t('Ingestion bursts'),
         ingestionUserAgent: l10n.t('Ingestion clients'),

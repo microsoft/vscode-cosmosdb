@@ -66,10 +66,12 @@ import { DEFAULT_ADVISORY_THRESHOLDS, DIAGNOSTIC_POLICY } from './core/threshold
 import { type DerivedAdvisory, type DerivedAdvisoryRule } from './core/types';
 import { computeDerivedAdvisories } from './engine';
 import {
+    fetchConsistencyReadRu,
     fetchCrossPartitionShapes,
     fetchSharedThroughputTraffic,
     fetchUncontrolledIngestion,
     probeCdbLogs,
+    selectDataPlaneSource,
 } from './fetchers/logs';
 import {
     getAccountConsumedRuShape,
@@ -81,6 +83,7 @@ import {
 } from './fetchers/metrics';
 
 beforeEach(() => {
+    vi.mocked(selectDataPlaneSource).mockResolvedValue('CDBDataPlaneRequests');
     vi.mocked(probeCdbLogs).mockResolvedValue({ available: false, reason: 'noData' });
 });
 
@@ -263,6 +266,62 @@ describe('collectDerivedAdvisories parity wiring', () => {
                           removableExtraRegionRu: 14000,
                       },
             );
+        },
+    );
+
+    it('passes optional read-charge evidence through the production collector to the configuration finding', async () => {
+        const engine = await vi.importActual<typeof EngineModule>('./engine');
+        vi.mocked(computeDerivedAdvisories).mockImplementation(engine.computeDerivedAdvisories);
+        vi.mocked(getSqlInventoryDetails).mockResolvedValue({
+            rows: [],
+            offers: [],
+            databases: [],
+            throughputInventoryComplete: true,
+        });
+        const readCharge = {
+            sourceTable: 'CDBDataPlaneRequests' as const,
+            sourceResolution: 'perRequest' as const,
+            observationStart: '2026-11-10T00:00:00Z',
+            observationEnd: '2026-11-11T00:00:00Z',
+            status: 'observed' as const,
+            readRequests: 50,
+            readRu: 400,
+        };
+        vi.mocked(fetchConsistencyReadRu).mockResolvedValue(readCharge);
+        const base = params();
+        const result = await collectDerivedAdvisories({
+            ...base,
+            accountConfig: { ...base.accountConfig, consistencyLevel: 'Strong' },
+        });
+        expect(fetchConsistencyReadRu).toHaveBeenCalledOnce();
+        expect(result.advisories.find((item) => item.rule === 'ExpensiveConsistency')?.evidence).toMatchObject({
+            readRuStatus: 'observed',
+            observedReadRequests: 50,
+            observedReadRu: 400,
+            upperBoundAvoidableReadRu: 200,
+        });
+    });
+
+    it.each([
+        ['Session', 2],
+        ['BoundedStaleness', 1],
+        [undefined, 2],
+    ] as const)(
+        'does not request optional read RU without a positive consistency finding: %s/%s',
+        async (consistencyLevel, regionCount) => {
+            vi.mocked(getSqlInventoryDetails).mockResolvedValue({
+                rows: [],
+                offers: [],
+                databases: [],
+                throughputInventoryComplete: true,
+            });
+            vi.mocked(computeDerivedAdvisories).mockReturnValue([]);
+            const base = params();
+            await collectDerivedAdvisories({
+                ...base,
+                accountConfig: { ...base.accountConfig, consistencyLevel, regionCount },
+            });
+            expect(fetchConsistencyReadRu).not.toHaveBeenCalled();
         },
     );
 

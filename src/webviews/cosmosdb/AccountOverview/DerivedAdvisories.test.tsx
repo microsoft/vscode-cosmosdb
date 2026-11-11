@@ -80,8 +80,8 @@ describe('log coverage guidance', () => {
         expect(
             screen.getByText(
                 'Some required CDB log tables could not be queried. ' +
-                    'Check that DataPlaneRequests and QueryRuntimeStatistics are exported to Log Analytics ' +
-                    'in resource-specific mode, not only AzureDiagnostics. ' +
+                    'Check that DataPlaneRequests5M or DataPlaneRequests, and QueryRuntimeStatistics, are exported to Log Analytics ' +
+                    'in resource-specific mode, not only AzureDiagnostics. Query RU evidence requires raw DataPlaneRequests. ' +
                     'Missing tables can also reflect access restrictions or delayed ingestion.',
             ),
         ).toBeInTheDocument();
@@ -110,6 +110,40 @@ describe('log coverage guidance', () => {
         showCoverage({ available: true });
         expect(screen.queryByText('Partial coverage')).toBeNull();
         expect(screen.queryByRole('button', { name: 'Show Output' })).not.toBeInTheDocument();
+    });
+
+    it('names optional enrichment failures without hiding configuration findings', () => {
+        showCoverage(
+            {
+                available: false,
+                reason: 'noData',
+                failures: [
+                    { operation: 'probeDataPlane5M', kind: 'queryError', reason: 'noData' },
+                    { operation: 'crossPartitionRu', kind: 'partialFailure', reason: 'noData' },
+                    { operation: 'consistencyReadRu', kind: 'unknown', reason: 'noData' },
+                ],
+            },
+            {
+                advisories: [
+                    {
+                        id: 'ExpensiveConsistency',
+                        rule: 'ExpensiveConsistency',
+                        severity: 'Medium',
+                        title: 'Review consistency',
+                        rationale: 'Strong in two regions.',
+                        suggestedAction: 'Validate application requirements.',
+                        thresholdReference: 'Configuration policy.',
+                    },
+                ],
+            },
+        );
+        const notice = screen.getByRole('group', { name: 'Partial coverage' });
+        expect(notice).toHaveTextContent('DataPlaneRequests5M availability: Query error');
+        expect(notice).toHaveTextContent('Query RU evidence: Incomplete query result');
+        expect(notice).toHaveTextContent('Consistency read RU evidence: Unknown query failure');
+        const review = screen.getByRole('button', { name: /^Expensive consistency\./ });
+        expect(review).toHaveTextContent('Expensive consistency');
+        expect(review).toHaveAccessibleName(/^Expensive consistency\./);
     });
 
     it.each(['rbac', 'logAnalyticsDisabled', 'noData'] as const)(

@@ -205,6 +205,61 @@ export interface DerivedAdvisory {
     actionEligibility?: 'requiresValidation' | 'blocked' | 'unknown';
     /** Conditional investigation guidance, not a confirmed application antipattern or authorization to remediate. */
     agentKitRule?: string | null;
+    /** Optional financial enrichment; never changes the detector's decision, severity or supersession. */
+    costEstimate?: AdvisoryCostEstimate;
+}
+
+export interface ThroughputRate {
+    source: 'customerAmortizedBill';
+    scope: 'account';
+    currency: string;
+    cost: number;
+    usage100RuHours: number;
+    meters: string[];
+    observationStart: string;
+    observationEnd: string;
+    perRuMonth: number;
+}
+
+export interface BackupPrice {
+    region: string;
+    perGbMonth: number;
+    meterId: string;
+    effectiveStart: string;
+    effectiveEnd?: string;
+}
+
+export type AdvisoryCostEstimate = {
+    monthlyAmount: number;
+    currency: string;
+} & (
+    | { basis: 'customerAmortizedBill'; recoverableRu: number; rate: ThroughputRate }
+    | {
+          basis: 'azureRetailPrice';
+          storageBytes: number;
+          snapshotAt: string;
+          referenceRegion: string;
+          logicalContainers: number;
+          prices: BackupPrice[];
+      }
+);
+
+export type CostFailureKind =
+    | 'notConfigured'
+    | 'authentication'
+    | 'accessDenied'
+    | 'rateLimited'
+    | 'timeout'
+    | 'serviceError'
+    | 'queryError'
+    | 'invalidData'
+    | 'noData'
+    | 'unsupported';
+
+/** Optional financial coverage is separate from detector coverage. No raw service errors or billing rows. */
+export interface CostSourceStatus {
+    available: boolean;
+    failures: { operation: 'throughput' | 'backup'; kind: CostFailureKind }[];
 }
 
 /**
@@ -241,6 +296,7 @@ export interface DerivedAdvisoriesResult {
      */
     logSource?: LogsSourceStatus;
     metricSource?: MetricSourceStatus;
+    costSource?: CostSourceStatus;
     /** Epoch milliseconds when the server produced this snapshot. */
     generatedAt: number;
 }

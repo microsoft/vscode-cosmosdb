@@ -178,6 +178,148 @@ describe('log coverage guidance', () => {
 });
 
 describe('metric coverage and actionable findings', () => {
+    it('keeps cost coverage separate and names access/rate failures without hiding recommendations', () => {
+        showCoverage(
+            { available: true },
+            {
+                metricSource: { available: true, failures: [] },
+                costSource: {
+                    available: false,
+                    failures: [
+                        { operation: 'throughput', kind: 'accessDenied' },
+                        { operation: 'backup', kind: 'rateLimited' },
+                    ],
+                },
+                advisories: [
+                    {
+                        id: 'idle',
+                        rule: 'IdleContainer',
+                        severity: 'Low',
+                        title: 'Idle',
+                        rationale: 'Capacity observation.',
+                        suggestedAction: 'Review.',
+                        thresholdReference: 'Policy.',
+                    },
+                ],
+            },
+        );
+        const notice = screen.getByRole('group', { name: 'Some cost estimates are unavailable' });
+        expect(notice).toHaveTextContent(
+            'Capacity and configuration recommendations remain valid without monetary estimates.',
+        );
+        expect(notice).toHaveTextContent('Cost Management Reader may be required');
+        expect(notice).toHaveTextContent('Continuous backup: The service rate-limited the cost query.');
+        expect(notice.querySelector(`.${messageBarClassNames.icon}`)).toHaveAttribute('aria-hidden', 'true');
+        expect(screen.queryByText('Incomplete workload analysis')).not.toBeInTheDocument();
+        expect(screen.queryByText('Partial coverage')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /^Idle provisioned offers\./ })).toHaveTextContent(
+            'Idle provisioned offers',
+        );
+    });
+
+    it('exposes billing provenance in keyboard-accessible resource details even when all other copy is shared', async () => {
+        const user = userEvent.setup();
+        showCoverage(
+            { available: true },
+            {
+                advisories: [
+                    {
+                        id: 'idle',
+                        rule: 'IdleContainer',
+                        severity: 'Low',
+                        title: 'Idle',
+                        scope: 'db/items',
+                        rationale: 'Shared observation.',
+                        suggestedAction: 'Review.',
+                        thresholdReference: 'Policy.',
+                        costEstimate: {
+                            basis: 'customerAmortizedBill',
+                            currency: 'EUR',
+                            monthlyAmount: 58.4,
+                            recoverableRu: 1000,
+                            rate: {
+                                source: 'customerAmortizedBill',
+                                scope: 'account',
+                                currency: 'EUR',
+                                cost: 8,
+                                usage100RuHours: 1000,
+                                meters: ['100 RU/s'],
+                                observationStart: '2026-10-12T00:00:00.000Z',
+                                observationEnd: '2026-11-11T00:00:00.000Z',
+                                perRuMonth: 0.0584,
+                            },
+                        },
+                    },
+                ],
+            },
+        );
+        const trigger = screen.getByRole('button', { name: /^Idle provisioned offers\./ });
+        trigger.focus();
+        await user.keyboard('{Enter}');
+        const dialog = screen.getByRole('dialog', { name: 'Idle provisioned offers' });
+        const resource = within(dialog).getByRole('button', { name: 'db/items' });
+        expect(resource).toHaveTextContent('db/items');
+        expect(resource).toHaveAccessibleName('db/items');
+        resource.focus();
+        await user.keyboard('{Enter}');
+        const detail = within(dialog).getByRole('region', { name: 'db/items' });
+        expect(detail).toHaveTextContent('Estimated capacity savings: 58.40 EUR per month');
+        expect(detail).toHaveTextContent('not a guaranteed bill reduction');
+        expect(detail).toHaveTextContent('Estimates can overlap and must not be added together.');
+        expect(detail).toHaveTextContent('Contributing meters: 100 RU/s');
+        expect(detail).toHaveTextContent('2026-10-12T00:00:00.000Z');
+        await user.keyboard('{Escape}');
+        expect(trigger).toHaveFocus();
+    });
+
+    it('labels backup as a separate retail scenario and does not render a tiny positive estimate as zero', async () => {
+        const user = userEvent.setup();
+        showCoverage(
+            { available: true },
+            {
+                advisories: [
+                    {
+                        id: 'backup',
+                        rule: 'PaidContinuousBackup',
+                        severity: 'Low',
+                        title: 'Backup',
+                        rationale: 'Configuration observation.',
+                        suggestedAction: 'Review.',
+                        thresholdReference: 'Policy.',
+                        costEstimate: {
+                            basis: 'azureRetailPrice',
+                            currency: 'USD',
+                            monthlyAmount: 0.001,
+                            storageBytes: 1_000_000,
+                            snapshotAt: '2026-11-11T12:00:00Z',
+                            referenceRegion: 'East US',
+                            logicalContainers: 1,
+                            prices: [
+                                {
+                                    region: 'eastus',
+                                    perGbMonth: 0.2,
+                                    meterId: 'meter',
+                                    effectiveStart: '2026-01-01T00:00:00Z',
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+        );
+        await user.click(screen.getByRole('button', { name: /^Paid continuous backup\./ }));
+        await user.click(screen.getByRole('button', { name: 'Account-wide' }));
+        const detail = screen.getByRole('region', { name: 'Account-wide' });
+        expect(detail).toHaveTextContent('Estimated backup storage at retail prices: Less than 0.01 USD per month');
+        expect(detail).toHaveTextContent('not customer-bill savings');
+        expect(detail).toHaveTextContent('Discounts, restore charges and future storage changes are excluded.');
+        expect(detail).toHaveTextContent('0.001 decimal GB');
+        expect(detail).toHaveTextContent(
+            'eastus: 0.2 USD per decimal GB-month; meter meter; effective from 2026-01-01T00:00:00Z.',
+        );
+        expect(detail).not.toHaveTextContent('0.00 USD per month');
+    });
+
     it.each<{ rule: DerivedAdvisoryRule; name: string }>([
         { rule: 'PaidContinuousBackup', name: 'Paid continuous backup' },
         { rule: 'NonThrottlingErrors', name: 'Non-throttling errors' },

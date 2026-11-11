@@ -57,6 +57,7 @@ vi.mock('./fetchers/metrics', () => ({
 
 import { CosmosDBManagementClient, type ThroughputSettingsGetResults } from '@azure/arm-cosmosdb';
 import { MonitorClient, type Response as MetricsResponse } from '@azure/arm-monitor';
+import { createHttpHeaders } from '@azure/core-rest-pipeline';
 import { getSqlInventoryDetails } from '../inventory';
 import { getPartitionHealth, getPartitionStorageSeries } from '../partitionHealth';
 import { getRuTrends, getThrottleRate } from '../ruTrends';
@@ -283,6 +284,96 @@ describe('collectDerivedAdvisories parity wiring', () => {
                           removableExtraRegionRu: 14000,
                       },
             );
+        },
+    );
+
+    it.each([200, 403])(
+        'preserves production supersession and capacity findings with billing HTTP %s',
+        async (status) => {
+            const engine = await vi.importActual<typeof EngineModule>('./engine');
+            vi.mocked(computeDerivedAdvisories).mockImplementation(engine.computeDerivedAdvisories);
+            const row = {
+                databaseId: 'db',
+                containerId: 'items',
+                throughputMode: 'dedicated' as const,
+                throughputRU: 1000,
+                offerLevel: 'container' as const,
+                offerThroughputMode: 'manual' as const,
+                resourceCreatedAt: '2020-01-01T00:00:00Z',
+                partitionKeyPaths: [],
+                indexingMode: 'none',
+                excludedPathCount: 0,
+                userExcludedPathCount: 0,
+                compositeIndexCount: 0,
+                health: 'Healthy' as const,
+            };
+            vi.mocked(getSqlInventoryDetails).mockResolvedValue({
+                rows: [row],
+                offers: [row],
+                databases: ['db'],
+                throughputInventoryComplete: true,
+            });
+            vi.mocked(getRuTrends).mockResolvedValue({
+                available: true,
+                points: Array.from({ length: 720 }, (_, timestamp) => ({ timestamp, ruPercent: 5, throttled: false })),
+                peakPercent: 5,
+                provisionedPercent: 100,
+                timeRange: '7D',
+                generatedAt: 0,
+            });
+            vi.mocked(getContainerIdlePeak).mockResolvedValue(0);
+            vi.mocked(getPartitionHealth).mockRejectedValue(new Error('unavailable'));
+            vi.mocked(getPartitionStorageSeries).mockRejectedValue(new Error('unavailable'));
+            vi.mocked(getThrottleRate).mockResolvedValue({ ratePercent: 0, totalRequests: 1000 });
+            const cosmosClient = new CosmosDBManagementClient({ getToken: async () => null }, 'sub');
+            vi.spyOn(cosmosClient.databaseAccounts, 'get').mockResolvedValue({
+                systemData: { createdAt: new Date('2020-01-01T00:00:00Z') },
+            });
+            const send = vi.spyOn(cosmosClient.pipeline, 'sendRequest').mockImplementation(async (_http, request) => ({
+                request,
+                status,
+                headers: createHttpHeaders(),
+                bodyAsText: JSON.stringify({
+                    properties: {
+                        columns: [
+                            { name: 'Cost', type: 'Number' },
+                            { name: 'UsageQuantity', type: 'Number' },
+                            { name: 'MeterCategory', type: 'String' },
+                            { name: 'Meter', type: 'String' },
+                            { name: 'Currency', type: 'String' },
+                        ],
+                        rows: [[8, 1000, 'Azure Cosmos DB', '100 RU/s', 'EUR']],
+                    },
+                }),
+            }));
+            const result = await collectDerivedAdvisories(
+                params({
+                    cosmosClient,
+                    logsClient: undefined,
+                    costContext: {
+                        subscriptionId: 'sub',
+                        resourceManagerEndpoint: 'https://management.azure.com',
+                        locationNames: ['East US', 'West US'],
+                    },
+                }),
+            );
+            const idle = result.advisories.find((finding) => finding.rule === 'IdleContainer');
+            const sizing = result.advisories.find((finding) => finding.rule === 'OverProvisioning');
+            expect(idle?.evidence).toMatchObject({ provisionedRu: 1000, recoverableRu: 1000, peakRuPerBucket: 0 });
+            expect(sizing?.supersededBy).toBe('IdleContainer');
+            expect(sizing?.costEstimate).toBeUndefined();
+            const estimated = expect.objectContaining({
+                basis: 'customerAmortizedBill',
+                currency: 'EUR',
+                monthlyAmount: expect.closeTo(58.4, 8),
+            });
+            expect(idle?.costEstimate).toEqual(status === 200 ? estimated : undefined);
+            expect(result.costSource).toEqual(
+                status === 200
+                    ? { available: true, failures: [] }
+                    : { available: false, failures: [{ operation: 'throughput', kind: 'accessDenied' }] },
+            );
+            expect(send).toHaveBeenCalledOnce();
         },
     );
 

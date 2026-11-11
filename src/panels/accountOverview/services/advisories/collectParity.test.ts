@@ -252,6 +252,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
                 rows,
                 offers: rows,
                 databases: [...new Set(rows.map((row) => row.databaseId))],
+                throughputInventoryComplete: true,
             });
             vi.mocked(getRuTrends).mockResolvedValue({
                 available: false,
@@ -410,6 +411,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
             rows,
             offers: rows,
             databases: [...new Set(rows.map((row) => row.databaseId))],
+            throughputInventoryComplete: true,
         });
         vi.mocked(getRuTrends).mockResolvedValue({
             available: true,
@@ -451,6 +453,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
     it('uses dedicated offers for container checks, includes serverless throttling, and counts scope RU once per offer', async () => {
         vi.mocked(getSqlInventoryDetails).mockResolvedValue({
             databases: ['db-shared', 'db-manual', 'db-auto', 'db-sls'],
+            throughputInventoryComplete: true,
             rows: [
                 {
                     databaseId: 'db-shared',
@@ -662,6 +665,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
     it('records failures instead of downgrading missing metrics to zero', async () => {
         vi.mocked(getSqlInventoryDetails).mockResolvedValue({
             databases: ['db'],
+            throughputInventoryComplete: true,
             rows: [
                 {
                     databaseId: 'db',

@@ -159,8 +159,18 @@ describe('DataPage role descriptions', () => {
         );
         const dropdown = screen.getByRole('combobox', { name: 'Role for id: 🔑 Unique / business key' });
         expect(dropdown).toHaveTextContent('🔑 Unique / business key');
+        for (const roleDropdown of screen.getAllByRole('combobox', { name: /^Role for / })) {
+            expect(roleDropdown.parentElement).toHaveStyle({ width: '260px', minWidth: '260px' });
+            const controls = roleDropdown.parentElement!.parentElement!;
+            const remove = within(controls).getByRole('button', { name: /^Remove / });
+            expect(roleDropdown.parentElement!.nextElementSibling).toBe(remove);
+            expect(controls).toHaveStyle({ display: 'flex', alignItems: 'center' });
+            expect(remove.closest('td')).toBe(roleDropdown.closest('td'));
+        }
         await user.click(dropdown);
 
+        expect(screen.getByRole('listbox')).toHaveStyle({ width: 'max-content' });
+        expect(getComputedStyle(screen.getByRole('listbox')).maxWidth).toBe(`${window.innerWidth - 32}px`);
         for (const [label, description] of [
             [
                 '🔑 Unique / business key',
@@ -175,9 +185,38 @@ describe('DataPage role descriptions', () => {
             const option = screen.getByRole('option', { name: label });
             expect(option).toHaveAccessibleName(label);
             expect(option).toHaveAccessibleDescription(description);
-            expect(within(option).getByText(label)).toBeVisible();
-            expect(within(option).getByText(description)).toBeVisible();
+            expect(option).toHaveStyle({
+                display: 'grid',
+                gridTemplateColumns: 'auto minmax(0, 1fr)',
+                textAlign: 'left',
+                whiteSpace: 'normal',
+            });
+            const [icon, ...titleWords] = label.split(' ');
+            expect(within(option).getByText(icon)).toBeVisible();
+            const heading = within(option).getByText(titleWords.join(' '));
+            expect(heading).toBeVisible();
+            expect(heading).toHaveStyle({ whiteSpace: 'nowrap', gridColumn: '2' });
+            expect(option.querySelector('svg')).not.toBeInTheDocument();
+            const descriptionText = within(option).getByText(description);
+            expect(descriptionText).toBeVisible();
+            // The description starts in the title column, so it lines up with the title text after the icon.
+            expect(descriptionText).toHaveStyle({ gridColumn: '2' });
+            expect(heading.parentElement).toBe(option);
+            expect(descriptionText.parentElement).toBe(option);
         }
+        // jsdom drops the SelectedItem system colour, so compare the classes applied to the current selection.
+        const roleMenu = () => within(screen.getByRole('listbox'));
+        const selectionClasses = (option: HTMLElement) => {
+            const others = roleMenu()
+                .getAllByRole('option')
+                .filter((other) => other !== option);
+            return Array.from(option.classList).filter(
+                (name) => !others.some((other) => other.classList.contains(name)),
+            );
+        };
+        const selectedClasses = selectionClasses(roleMenu().getByRole('option', { selected: true }));
+        expect(roleMenu().getByRole('option', { selected: true })).toHaveAccessibleName('🔑 Unique / business key');
+        expect(selectedClasses.length).toBeGreaterThan(0);
 
         await user.click(screen.getByRole('option', { name: '🔎 Query filter' }));
         const filtered = onChange.mock.lastCall![0];
@@ -188,7 +227,10 @@ describe('DataPage role descriptions', () => {
         expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
 
         dropdown.focus();
-        await user.keyboard('{ArrowDown}{End}{Enter}');
+        await user.keyboard('{ArrowDown}');
+        const queryFilter = roleMenu().getByRole('option', { name: '🔎 Query filter', selected: true });
+        expect(selectionClasses(queryFilter)).toEqual(selectedClasses);
+        await user.keyboard('{End}{Enter}');
         const payload = onChange.mock.lastCall![0];
         expect(payload.containers[0].properties.find((property) => property.name === 'id')?.role).toBe('payload');
         page.rerender(<DataPage model={payload} onChange={onChange} />);

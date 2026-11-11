@@ -19,7 +19,7 @@ import { createEventChannel } from '@microsoft/vscode-ext-webview/webview';
 import { act, createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type PropsWithChildren } from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { getAccountMetricApplicability } from '../../../panels/accountOverview/metrics/contracts';
 import { HEALTH_POLICY } from '../../../panels/accountOverview/services/healthPolicy';
 import { HOUR } from '../../../panels/accountOverview/services/units';
@@ -153,6 +153,23 @@ let modelerCallbacks: typeof aiCallbacks;
 
 function Wrapper({ children }: PropsWithChildren) {
     return <FluentProvider theme={webLightTheme}>{children}</FluentProvider>;
+}
+
+function mockWebviewLinkHandling() {
+    const open = vi.fn();
+    const handleClick = (event: MouseEvent) => {
+        // VS Code handles bubbled anchor clicks even when React has already called preventDefault().
+        for (const element of event.composedPath()) {
+            if (element instanceof HTMLAnchorElement && element.href) {
+                open(element.href);
+                event.preventDefault();
+                return;
+            }
+        }
+    };
+    window.addEventListener('click', handleClick);
+    onTestFinished(() => window.removeEventListener('click', handleClick));
+    return open;
 }
 
 function navigate(target: AccountOverviewTarget, revision: number) {
@@ -2170,7 +2187,8 @@ describe('alert monitor condition and active health', () => {
         expect(queries.activeAlerts).toHaveBeenCalledExactlyOnceWith();
     });
 
-    it('opens the general portal alerts page by keyboard even when both alert queries fail', async () => {
+    it.each(['mouse', 'keyboard'])('opens the general portal alerts page once via VS Code (%s)', async (input) => {
+        const nativeOpen = mockWebviewLinkHandling();
         queries.activeAlerts.mockResolvedValue({ ...activeAlertSummary(), available: false, reason: 'rbac' });
         queries.alerts.mockImplementation(async (filter: AlertFilter) => ({
             ...result(filter),
@@ -2186,9 +2204,24 @@ describe('alert monitor condition and active health', () => {
         );
         expect(link).toHaveAttribute('href', summary.alertsPortalUrl);
         expect(link.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+        queries.reportEvent.mockClear();
         act(() => link.focus());
-        await user.keyboard('{Enter}');
-        expect(queries.openUrl).toHaveBeenCalledExactlyOnceWith({ url: summary.alertsPortalUrl });
+        if (input === 'keyboard') {
+            await user.keyboard('{Enter}');
+        } else {
+            await user.click(link);
+        }
+        expect(nativeOpen).toHaveBeenCalledExactlyOnceWith(summary.alertsPortalUrl);
+        expect(queries.openUrl).not.toHaveBeenCalled();
+        expect(queries.reportEvent.mock.calls.filter(([event]) => event.eventName === 'deepLinkFollowed')).toEqual([
+            [
+                {
+                    eventName: 'deepLinkFollowed',
+                    properties: { target: 'portal' },
+                    measurements: undefined,
+                },
+            ],
+        ]);
         expect(link).toHaveFocus();
     });
 
@@ -2959,6 +2992,7 @@ describe('local result announcements', () => {
 
 describe('Advisor recommendation accessibility', () => {
     it('describes documentation and portal links with their recommendation and opens the matching URL', async () => {
+        const nativeOpen = mockWebviewLinkHandling();
         const user = userEvent.setup();
         const recommendations: RecommendationsResult['recommendations'] = [
             {
@@ -3012,6 +3046,7 @@ describe('Advisor recommendation accessibility', () => {
             expect(queries.openUrl).toHaveBeenNthCalledWith(index + 1, { url: recommendation.learnMoreLink });
         }
         expect(queries.openUrl).toHaveBeenCalledTimes(2);
+        expect(nativeOpen).not.toHaveBeenCalled();
         expect(screen.getByText('Recommendation without documentation')).toBeVisible();
         const portalLinks = screen.getAllByRole('link', { name: 'View in Azure portal' });
         expect(portalLinks).toHaveLength(3);
@@ -3032,9 +3067,10 @@ describe('Advisor recommendation accessibility', () => {
             } else {
                 await user.click(link);
             }
-            expect(queries.openUrl).toHaveBeenNthCalledWith(index + 1, { url: recommendation.portalUrl });
+            expect(nativeOpen).toHaveBeenNthCalledWith(index + 1, recommendation.portalUrl);
         }
-        expect(queries.openUrl).toHaveBeenCalledTimes(3);
+        expect(nativeOpen).toHaveBeenCalledTimes(3);
+        expect(queries.openUrl).not.toHaveBeenCalled();
         expect(queries.reportEvent.mock.calls).toEqual(
             recommendations.slice(0, 3).map((recommendation) => [
                 {

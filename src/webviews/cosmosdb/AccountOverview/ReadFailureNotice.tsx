@@ -50,7 +50,7 @@ function permissionGuidance(source: ReadSource): string {
             );
         case 'logs':
             return l10n.t(
-                'Resource-context queries normally use Reader on this account. If the workspace requires workspace permissions, Log Analytics Reader or equivalent access to both CDBDataPlaneRequests and CDBQueryRuntimeStatistics is needed. Check any table or row restrictions.',
+                'Resource-context queries normally use Reader on this account. If the workspace requires workspace permissions, ask for Log Analytics Reader or equivalent access. Allow the CDB tables used by the failed checks: CDBDataPlaneRequests5M, CDBDataPlaneRequests and CDBQueryRuntimeStatistics. Check any table or row restrictions.',
             );
     }
 }

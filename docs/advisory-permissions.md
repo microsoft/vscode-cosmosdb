@@ -1,6 +1,6 @@
 # Permissions for Account Overview Advisories
 
-Reviewed on **November 5, 2026**.
+Reviewed on **November 12, 2026**.
 
 This document covers read-only access to the **Advisories** tab for Azure Cosmos DB for NoSQL:
 extension-generated advisories, Azure Advisor recommendations, Azure Monitor alerts and alert counts.
@@ -30,15 +30,15 @@ Sources: [Azure built-in roles][roles], [Azure Monitor access][monitor-access],
 
 The permissions in this table are Azure RBAC **Actions**. Log Analytics granular **DataActions** are discussed separately.
 
-| Source                                    | Permission                                                                                       | Scope and role guidance                                                                                                                |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Account configuration and NoSQL inventory | Five `Microsoft.DocumentDB/.../read` actions listed below                                        | Reader on the account or an inherited parent scope                                                                                     |
-| Azure Monitor metrics                     | `Microsoft.Insights/Metrics/read`                                                                | Reader or Monitoring Reader on the account                                                                                             |
-| Activity Log: container-age fallback      | `Microsoft.Insights/eventtypes/values/Read`                                                      | Subscription-scoped Reader or Monitoring Reader is the broad profile; a narrower minimum is not established here                       |
-| Resource-context diagnostic logs          | `Microsoft.Insights/logs/*/read`, or table-specific resource log permissions for both CDB tables | Reader on the account normally covers this when resource permissions are enabled; workspace restrictions may require additional access |
-| Azure Advisor recommendations             | `Microsoft.Advisor/recommendations/read`                                                         | Read access to the associated resource; Reader on the account or an inherited parent scope                                             |
-| Azure Monitor alerts                      | `Microsoft.AlertsManagement/alerts/read`                                                         | Read access to the target resources; Reader or Monitoring Reader                                                                       |
-| Resource Graph: alert counts              | `Microsoft.ResourceGraph/resources/read` and read access to the queried alert resources          | Subscription-scoped Reader or Monitoring Reader is the broad profile; account-only sufficiency is not established here                 |
+| Source                                    | Permission                                                                                              | Scope and role guidance                                                                                                                |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Account configuration and NoSQL inventory | Five `Microsoft.DocumentDB/.../read` actions listed below                                               | Reader on the account or an inherited parent scope                                                                                     |
+| Azure Monitor metrics                     | `Microsoft.Insights/Metrics/read`                                                                       | Reader or Monitoring Reader on the account                                                                                             |
+| Activity Log: container-age fallback      | `Microsoft.Insights/eventtypes/values/Read`                                                             | Subscription-scoped Reader or Monitoring Reader is the broad profile; a narrower minimum is not established here                       |
+| Resource-context diagnostic logs          | `Microsoft.Insights/logs/*/read`, or table-specific resource log permissions for the queried CDB tables | Reader on the account normally covers this when resource permissions are enabled; workspace restrictions may require additional access |
+| Azure Advisor recommendations             | `Microsoft.Advisor/recommendations/read`                                                                | Read access to the associated resource; Reader on the account or an inherited parent scope                                             |
+| Azure Monitor alerts                      | `Microsoft.AlertsManagement/alerts/read`                                                                | Read access to the target resources; Reader or Monitoring Reader                                                                       |
+| Resource Graph: alert counts              | `Microsoft.ResourceGraph/resources/read` and read access to the queried alert resources                 | Subscription-scoped Reader or Monitoring Reader is the broad profile; account-only sufficiency is not established here                 |
 
 ### Account configuration and NoSQL inventory
 
@@ -74,15 +74,28 @@ Permission sources: [DocumentDB permissions][database-permissions], [Monitor per
 Scope and retention sources: [Azure Monitor access][monitor-access], [Advisor permissions][advisor],
 [Resource Graph access][resource-graph], [Activity Log REST API][activity-api], [Activity Log retention][activity-log].
 
+### Optional financial estimates
+
+The broad read-only profile above does not guarantee billing access. Throughput cost estimates use an account-filtered
+Cost Management query; Cost Management Reader or equivalent billing access may be required.
+Backup estimates instead combine resource storage metrics with public retail prices.
+Unavailable billing, pricing or complete storage evidence does not hide capacity/configuration findings, does not
+become zero cost, and does not change metric/log coverage. The separate cost notice preserves its categorized reason,
+including rate limiting after the existing SDK retry budget is exhausted.
+
 ## Log Analytics access
 
 The extension calls `LogsQueryClient.queryResource` with the Cosmos DB account ARM ID.
 It queries these tables independently:
 
 - `CDBDataPlaneRequests`
+- `CDBDataPlaneRequests5M`
 - `CDBQueryRuntimeStatistics`
 
-Full log-based advisory coverage requires access to both tables and the relevant records for the account.
+Request-log checks prefer `CDBDataPlaneRequests5M` and fall back to `CDBDataPlaneRequests` only when the aggregate
+table is explicitly missing. Query-runtime structural checks use `CDBQueryRuntimeStatistics` independently.
+Optional query-RU enrichment also requires raw `CDBDataPlaneRequests`.
+Coverage requires access to the tables used by the checks and the relevant records for the account.
 Access to one table does not imply access to the other under custom or granular permission policies.
 
 ### Use resource or workspace permissions
@@ -96,6 +109,7 @@ A legacy, table-specific custom-role alternative is:
 
 ```text
 Microsoft.Insights/logs/CDBDataPlaneRequests/read
+Microsoft.Insights/logs/CDBDataPlaneRequests5M/read
 Microsoft.Insights/logs/CDBQueryRuntimeStatistics/read
 ```
 
@@ -116,6 +130,7 @@ and legacy per-table permissions such as:
 
 ```text
 Microsoft.OperationalInsights/workspaces/query/CDBDataPlaneRequests/read
+Microsoft.OperationalInsights/workspaces/query/CDBDataPlaneRequests5M/read
 Microsoft.OperationalInsights/workspaces/query/CDBQueryRuntimeStatistics/read
 ```
 
@@ -135,7 +150,7 @@ DataActions:
 ```
 
 The table-data DataAction supports granular conditions.
-Any conditions must allow both CDB tables and the relevant rows for this account.
+Any conditions must allow the queried CDB tables and the relevant rows for this account.
 Log Analytics Reader is a different role: its broad read Actions are not equivalent to a conditioned Data Reader assignment.
 
 Sources: [Manage access to Log Analytics workspaces][log-access], [Log Analytics role definitions][monitor-roles].
@@ -144,7 +159,8 @@ Sources: [Manage access to Log Analytics workspaces][log-access], [Log Analytics
 
 Permissions alone do not ensure that every advisory can run or produce a finding.
 
-Configure diagnostic settings to export **DataPlaneRequests** and **QueryRuntimeStatistics** to Log Analytics
+Configure diagnostic settings to export **DataPlaneRequests5M** (or **DataPlaneRequests**) and
+**QueryRuntimeStatistics** to Log Analytics
 in **resource-specific / Dedicated mode**, which produces the CDB tables the extension queries.
 Exporting only to the legacy `AzureDiagnostics` table does not satisfy the current queries.
 
@@ -156,9 +172,10 @@ These setup permissions are **not required merely to view advisories** once logg
 They work with anonymized query shapes and request/partition fan-out observations.
 Do not recommend enabling full-text logging as a permission or advisory prerequisite.
 
-Even with full read access, coverage can remain partial because logging was not enabled,
-tables have not received data, metrics are unavailable, historical Activity Log events have expired,
-or a detector is not applicable to the account.
+Even with full read access, coverage can remain partial because required tables are missing,
+metrics are unavailable, historical Activity Log events have expired, or a detector is not applicable to the account.
+Accessible log tables with no data in the analysis window skip only their dependent checks without reporting a read failure.
+An empty request-log table does not suppress independent query-runtime checks.
 An empty result does not establish that a role is missing.
 
 Sources: [Cosmos DB resource logs][cosmos-logs], [Supported Cosmos DB log categories][supported-logs],
@@ -189,6 +206,8 @@ Read-failure and partial-coverage notices are collapsed by default. Their titles
 remain visible; expand a notice to review skipped checks, failure details and permission guidance.
 **Show Output** and guidance links remain available while details are collapsed.
 Actual advisory findings are not hidden by these diagnostic disclosures.
+Cost-evidence failures retain a separate collapsed **Some cost estimates are unavailable** notice.
+They do not mark workload metrics or log coverage as failed, and successful recommendations and billing provenance remain visible.
 
 This covers collection after the dashboard has account metadata, including Monitoring and inventory reads.
 Failures while initially opening the dashboard remain outside this table.
@@ -286,15 +305,15 @@ These messages are proposed improvements, not the current copy listed above.
 Show the unavailable source, meaningful read permission, an example role and the relevant assignment scope.
 Do not present role names as mandatory when equivalent custom permissions can work.
 
-| Failure source                     | Suggested message                                                                                                                                                                                                                                                      |
-| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Account configuration or inventory | Access was denied while reading account configuration or inventory. Ask your Azure administrator for Reader on this Cosmos DB account, or equivalent read permissions.                                                                                                 |
-| Metrics                            | Access was denied while reading Azure Monitor metrics. Ask your Azure administrator for Reader or Monitoring Reader on this Cosmos DB account, or equivalent read permissions.                                                                                         |
-| Activity Log                       | Access was denied while reading Azure Activity Log. The required permission is Microsoft.Insights/eventtypes/values/Read. Subscription-scoped Reader or Monitoring Reader is a broad option.                                                                           |
-| Azure Advisor                      | Access was denied while reading Azure Advisor recommendations. Ask your Azure administrator for Reader on the associated resources, or equivalent recommendation-read permissions.                                                                                     |
-| Azure Monitor alerts               | Access was denied while reading Azure Monitor alerts. Ask your Azure administrator for Reader or Monitoring Reader on the target resources, or equivalent alert-read permissions.                                                                                      |
-| Resource Graph alert counts        | Access was denied while querying alert counts. Read access to Resource Graph and the queried alert resources is required. Subscription-scoped Reader or Monitoring Reader is a broad option.                                                                           |
-| Diagnostic logs                    | Access was denied while querying diagnostic logs. Check resource log permissions and the workspace access-control mode. Log Analytics Reader on the destination workspace may be required. Both CDBDataPlaneRequests and CDBQueryRuntimeStatistics must be accessible. |
+| Failure source                     | Suggested message                                                                                                                                                                                                                                                                                             |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Account configuration or inventory | Access was denied while reading account configuration or inventory. Ask your Azure administrator for Reader on this Cosmos DB account, or equivalent read permissions.                                                                                                                                        |
+| Metrics                            | Access was denied while reading Azure Monitor metrics. Ask your Azure administrator for Reader or Monitoring Reader on this Cosmos DB account, or equivalent read permissions.                                                                                                                                |
+| Activity Log                       | Access was denied while reading Azure Activity Log. The required permission is Microsoft.Insights/eventtypes/values/Read. Subscription-scoped Reader or Monitoring Reader is a broad option.                                                                                                                  |
+| Azure Advisor                      | Access was denied while reading Azure Advisor recommendations. Ask your Azure administrator for Reader on the associated resources, or equivalent recommendation-read permissions.                                                                                                                            |
+| Azure Monitor alerts               | Access was denied while reading Azure Monitor alerts. Ask your Azure administrator for Reader or Monitoring Reader on the target resources, or equivalent alert-read permissions.                                                                                                                             |
+| Resource Graph alert counts        | Access was denied while querying alert counts. Read access to Resource Graph and the queried alert resources is required. Subscription-scoped Reader or Monitoring Reader is a broad option.                                                                                                                  |
+| Diagnostic logs                    | Access was denied while querying diagnostic logs. Check resource log permissions and the workspace access-control mode. Log Analytics Reader on the destination workspace may be required. Allow the CDB tables used by the failed checks, including aggregate/raw request logs and query-runtime statistics. |
 
 Keep authentication, authorization, configuration and no-data states separate:
 

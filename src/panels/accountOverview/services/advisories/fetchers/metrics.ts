@@ -41,7 +41,7 @@ async function getAccountRequestDimension(
 ): Promise<Record<string, number>> {
     const observation = DIAGNOSTIC_POLICY.accountRequests.observation;
     const seriesLimit = 1000;
-    const response = await client.metrics.list(resourceUri, {
+    const response = await readMetrics(client, resourceUri, {
         metricnames: 'TotalRequests',
         aggregation: 'Count',
         timespan: advisoryTimespan(observation, now),

@@ -10,6 +10,7 @@ import { MonitorClient, type EventData } from '@azure/arm-monitor';
 import { createHttpHeaders } from '@azure/core-rest-pipeline';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getAccountHealth } from './accountHealth';
+import { getAccountRequestStatusCounts, getThrottledOperationCounts } from './advisories/fetchers/metrics';
 import { __resetAdvisorCache, getActiveAlertSummary, getAlerts, getRecommendations } from './alertsRecommendations';
 import { getInventoryResult } from './inventory';
 import { readMetrics, readRequest, withReadDiagnostics } from './readDiagnostics';
@@ -31,6 +32,27 @@ beforeEach(() => {
 });
 
 describe('Account Overview read diagnostics', () => {
+    it.each([
+        ['request statuses', getAccountRequestStatusCounts],
+        ['throttled operations', getThrottledOperationCounts],
+    ] as const)('reports failures from the account %s split without issuing another read', async (_label, read) => {
+        const client = throwingClient(denied());
+        const list = vi.spyOn(client.metrics, 'list');
+        const warn = vi.fn();
+        const result = await withReadDiagnostics(
+            'metrics',
+            [accountId],
+            warn,
+            () => read(client, accountId),
+            () => ({}),
+        );
+        expect(result.diagnostics).toEqual([{ source: 'metrics', kind: 'accessDenied', reason: 'rbac' }]);
+        expect(list).toHaveBeenCalledOnce();
+        expect(warn).toHaveBeenCalledOnce();
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('HTTP 403'));
+        expect(warn.mock.calls.flat().join('\n')).not.toContain(accountId);
+    });
+
     it('logs real metric failures before health degrades, with only categories sent to the UI', async () => {
         const warn = vi.fn();
         const result = await withReadDiagnostics('metrics', [accountId], warn, () =>

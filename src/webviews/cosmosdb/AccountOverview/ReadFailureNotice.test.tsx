@@ -100,7 +100,9 @@ describe('read failure guidance', () => {
         expandNotice();
         expect(screen.getByText(/Resource-context queries normally use Reader on this account/)).toBeInTheDocument();
         expect(screen.getByText(/If the workspace requires workspace permissions/)).toBeInTheDocument();
-        expect(screen.getByText(/CDBDataPlaneRequests and CDBQueryRuntimeStatistics/)).toBeInTheDocument();
+        expect(
+            screen.getByText(/CDBDataPlaneRequests5M, CDBDataPlaneRequests and CDBQueryRuntimeStatistics/),
+        ).toBeInTheDocument();
     });
 
     it('asks for sign-in rather than role grants on authentication failures', () => {

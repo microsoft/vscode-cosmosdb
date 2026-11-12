@@ -38,6 +38,11 @@ export interface WizardState {
     step: number;
     /** Visited steps remain navigable when revisiting an earlier step. Optional for older saved models. */
     reachedSteps?: string[];
+    /**
+     * Whether model inputs changed since the user last moved ahead. Persisted so reopening cannot skip the restart
+     * confirmation; a missing value (older saved models) is treated as changed.
+     */
+    inputsChangedSinceAdvance?: boolean;
     scenario?: ScenarioId;
     dataModel: DataModel;
 }
@@ -205,6 +210,7 @@ export function createBlankContainer(entity = 'NewContainer'): ContainerModel {
 export function createInitialState(): WizardState {
     return {
         step: 1,
+        inputsChangedSinceAdvance: false,
         scenario: undefined,
         dataModel: createEmptyDataModel(),
     };

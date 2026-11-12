@@ -68,8 +68,10 @@ it('records workload choices before Start, for mouse and keyboard, without filte
         { type: 'scenarioSelected', scenario: 'chat' },
         { type: 'scenarioSelected', scenario: 'iot' },
     ]);
+    expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Start' }));
     expect(client.dataModeling.saveState.mutate).toHaveBeenLastCalledWith(
-        expect.objectContaining({ wizard: expect.objectContaining({ scenario: 'iot' }) }),
+        expect.objectContaining({ wizard: expect.objectContaining({ scenario: 'iot', step: 2 }) }),
     );
     expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
     expect(JSON.stringify(client.dataModeling.recordTelemetry.mutate.mock.calls)).not.toContain(

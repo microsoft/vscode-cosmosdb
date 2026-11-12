@@ -7,11 +7,17 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, posix, relative, sep } from 'node:path';
-import { checkPhaseCompletions } from '../../../skills/cosmosdb-relational-migration/scripts/check-phase-completion.mjs';
-import { buildProvisioningArtifacts } from '../../../skills/cosmosdb-relational-migration/scripts/generate-provisioning-artifacts.mjs';
-import { readIdentityManifest } from '../../../skills/cosmosdb-relational-migration/scripts/identity-mapping.mjs';
-import { validateCodeMigrationPlan } from '../../../skills/cosmosdb-relational-migration/scripts/validate-code-migration-plan.mjs';
-import { createSourceResolver } from '../../../skills/cosmosdb-relational-migration/scripts/validate-source-evidence.mjs';
+import { checkPhaseCompletions } from '../../../skills/cosmosdb-migration/scripts/check-phase-completion.mjs';
+import { buildProvisioningArtifacts } from '../../../skills/cosmosdb-migration/scripts/generate-provisioning-artifacts.mjs';
+import { readIdentityManifest } from '../../../skills/cosmosdb-migration/scripts/identity-mapping.mjs';
+import {
+    domainSources,
+    entitySource,
+    normalizeLegacyInventory,
+    relationalDetails,
+} from '../../../skills/cosmosdb-migration/scripts/source-contract.mjs';
+import { validateCodeMigrationPlan } from '../../../skills/cosmosdb-migration/scripts/validate-code-migration-plan.mjs';
+import { createSourceResolver } from '../../../skills/cosmosdb-migration/scripts/validate-source-evidence.mjs';
 import { phaseOrder, prerequisiteStages, readCheckpoint, sha256 } from './checkpoints.mjs';
 import { captureHandoffBaseline, checkHandoffBoundary } from './handoff.mjs';
 import { createAdventureWorksJudge } from './judge.mjs';
@@ -24,7 +30,10 @@ export { checkAdventureWorksInventory } from './source-contract.mjs';
 
 const suppliedDdl = readFileSync(new URL('./AdventureworksLT.sql', import.meta.url));
 const schemaPath = '.cosmosdb-migration/phases/1-discovery/schema-ddl/AdventureworksLT.sql';
-const identity = (table) => table.identity.map(({ name }) => name).join('.');
+const identity = (table) =>
+    relationalDetails(table)
+        .identity.map(({ name }) => name)
+        .join('.');
 const evidencePath = (source) => posix.normalize(source.split('#')[0].replaceAll('\\', '/'));
 const phaseKeys = {
     preflight: 'discovery',
@@ -116,6 +125,38 @@ export function checkControllerCoverage(discovery) {
     }
 }
 
+export function checkInferenceEvidence(inventory, sourceFiles) {
+    if (inventory.version === 2) {
+        for (const file of inventory.files) {
+            assert.ok(sourceFiles.has(file.path), `Invalid inference evidence: ${file.path}`);
+            assert.equal(sourceFiles.get(file.path), file.sha256, `Changed inference evidence: ${file.path}`);
+        }
+        const code = new Set(
+            inventory.files
+                .filter((file) => file.kind === 'code' && file.disposition === 'used')
+                .map((file) => file.path),
+        );
+        for (const dataset of inventory.datasets) {
+            assert.ok(
+                ['code', 'inferred'].includes(dataset.coverage.basis),
+                'Inferred coverage must retain its origin',
+            );
+            assert.equal(dataset.coverage.complete, false, 'Code cannot certify a complete deployed schema');
+            assert.ok(
+                dataset.evidence.some((path) => code.has(path)),
+                'Inferred dataset requires application code evidence',
+            );
+        }
+    } else {
+        for (const file of inventory.files) {
+            assert.equal(file.origin, 'inferred', 'Inferred schema must retain its origin');
+            assert.ok(file.sourcePaths?.length > 0, 'Inferred schema must identify its application evidence');
+            for (const source of file.sourcePaths)
+                assert.ok(sourceFiles.has(evidencePath(source)), `Invalid inference evidence: ${source}`);
+        }
+    }
+}
+
 function checkProvisioningBoundary(project, provisioningManifest) {
     assert.notEqual(
         project.phases.provisioning?.status,
@@ -188,13 +229,7 @@ export function checkAdventureWorks(workspace, scenario, sample, handoffBaseline
     checkControllerCoverage(discovery);
     if (scenario === 'discovery') return;
     if (scenario === 'inferred-ddl') {
-        const sourceFiles = applicationSnapshot(sample);
-        for (const file of inventory.files) {
-            assert.equal(file.origin, 'inferred', 'Inferred schema must retain its origin');
-            assert.ok(file.sourcePaths?.length > 0, 'Inferred schema must identify its application evidence');
-            for (const source of file.sourcePaths)
-                assert.ok(sourceFiles.has(evidencePath(source)), `Invalid inference evidence: ${source}`);
-        }
+        checkInferenceEvidence(inventory, applicationSnapshot(sample));
         for (const phase of ['assessment', 'schemaConversion', 'provisioning', 'codeMigration']) {
             assert.ok([undefined, 'not-started'].includes(project.phases[phase]?.status), `Advanced ${phase}`);
         }
@@ -204,10 +239,10 @@ export function checkAdventureWorks(workspace, scenario, sample, handoffBaseline
         return;
     }
 
-    const resolve = createSourceResolver(inventory);
+    const resolve = createSourceResolver(inventory.version === 1 ? normalizeLegacyInventory(inventory) : inventory);
     const canonicalName = (name) => identity(resolve(name));
     assert.deepEqual(
-        project.phases.assessment.domains.flatMap(({ tables }) => tables.map(canonicalName)).sort(),
+        project.phases.assessment.domains.flatMap((domain) => domainSources(domain).map(canonicalName)).sort(),
         tableNames,
         'Assessment must retain exactly one owner for every table',
     );
@@ -217,7 +252,7 @@ export function checkAdventureWorks(workspace, scenario, sample, handoffBaseline
     const model = JSON.parse(modelContent);
     assert.deepEqual(
         model.containers
-            .flatMap(({ entities }) => entities.map(({ sourceTable }) => canonicalName(sourceTable)))
+            .flatMap(({ entities }) => entities.map((entity) => canonicalName(entitySource(entity))))
             .sort(),
         tableNames,
         'Conversion must map every selected table exactly once',

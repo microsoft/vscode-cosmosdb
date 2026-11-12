@@ -115,6 +115,6 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
         process.env.MIGRATION_EVAL_ADVENTUREWORKS_SOURCE,
         process.argv[2] === 'inferred' ? undefined : resolve('AdventureworksLT.sql'),
         phase,
-        { checkpointRoot: resolve('.checkpoints'), skillRoot: resolve('cosmosdb-relational-migration') },
+        { checkpointRoot: resolve('.checkpoints'), skillRoot: resolve('cosmosdb-migration') },
     );
 }

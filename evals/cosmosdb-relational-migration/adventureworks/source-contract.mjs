@@ -5,10 +5,11 @@
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { relationalDetails, sourceDatasets } from '../../../skills/cosmosdb-migration/scripts/source-contract.mjs';
 import {
     createSourceResolver,
     sourceIdentity,
-} from '../../../skills/cosmosdb-relational-migration/scripts/validate-source-evidence.mjs';
+} from '../../../skills/cosmosdb-migration/scripts/validate-source-evidence.mjs';
 
 const schema = JSON.parse(readFileSync(new URL('./schema-contract.json', import.meta.url), 'utf8'));
 export const tableNames = Object.keys(schema).sort();
@@ -268,12 +269,11 @@ function checkIndexes(inventory, resolve, source) {
 
 export function checkAdventureWorksInventory(inventory, { source = 'supplied' } = {}) {
     assert.ok(['supplied', 'inferred'].includes(source), 'Unknown source-evidence mode');
-    assert.deepEqual(
-        inventory.tables.map(identity).sort(),
-        tableNames,
-        'Source table inventory differs from the fixture',
-    );
-    const resolve = createSourceResolver(inventory);
+    const tables = sourceDatasets(inventory).map(relationalDetails);
+    assert.ok(tables.every(Boolean), 'Every AdventureWorks dataset requires native relational details');
+    const nativeInventory = { ...inventory, version: 1, datasets: undefined, tables };
+    assert.deepEqual(tables.map(identity).sort(), tableNames, 'Source table inventory differs from the fixture');
+    const resolve = createSourceResolver(nativeInventory);
     for (const [name, expected] of Object.entries(schema)) {
         const actual = resolve(name);
         assert.deepEqual(
@@ -312,5 +312,5 @@ export function checkAdventureWorksInventory(inventory, { source = 'supplied' } 
             }
         }
     }
-    checkIndexes(inventory, resolve, source);
+    checkIndexes(nativeInventory, resolve, source);
 }

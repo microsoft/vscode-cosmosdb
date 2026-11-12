@@ -14,7 +14,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'skills/cosmosdb-relational-migration/**'
+      - 'skills/cosmosdb-migration/**'
       - 'skills/cosmosdb-best-practices/**'
       - 'evals/**'
       - 'scripts/eval*.mjs'
@@ -68,7 +68,7 @@ jobs:
           live=false
           while IFS= read -r -d '' path; do
             case "$path" in
-              skills/cosmosdb-relational-migration/*|skills/cosmosdb-best-practices/*)
+              skills/cosmosdb-migration/*|skills/cosmosdb-best-practices/*)
                 offline=true
                 live=true
                 ;;

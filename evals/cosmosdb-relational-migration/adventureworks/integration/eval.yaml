@@ -4,7 +4,7 @@ type: capability
 
 agent_environment:
   skills:
-    - ../../../../skills/cosmosdb-relational-migration
+    - ../../../../skills/cosmosdb-migration
     - ../../../../skills/cosmosdb-best-practices
   files:
     - { src: ../setup.mjs, dest: setup-adventureworks.mjs }
@@ -98,7 +98,7 @@ stimuli:
     graders:
       - type: completed
       - type: skill-invocation
-        config: { required: [cosmosdb-relational-migration, cosmosdb-best-practices] }
+        config: { required: [cosmosdb-migration, cosmosdb-best-practices] }
       - type: adventureworks-artifacts
         config: { scenario: supplied-ddl }
       - type: prompt

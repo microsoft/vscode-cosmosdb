@@ -4,7 +4,7 @@ type: capability
 
 agent_environment:
   skills:
-    - ../../skills/cosmosdb-relational-migration
+    - ../../skills/cosmosdb-migration
     - ../../skills/cosmosdb-best-practices
 
 defaults:
@@ -31,7 +31,7 @@ stimuli:
     graders: &guidance
       - type: completed
       - type: skill-invocation
-        config: { required: [cosmosdb-relational-migration] }
+        config: { required: [cosmosdb-migration] }
       - type: prompt
         config: &judge
           scoring: binary
@@ -51,7 +51,7 @@ stimuli:
       migrations and queries. I forbid external parser dependencies. Explain schema
       acquisition and its limits; do not run a phase or write files.
     rubric:
-      - Infer processable DDL from project evidence, recording provenance, conflicts and uncertainty rather than inventing missing constraints.
+      - Infer a typed source inventory directly from project evidence without requiring synthesized DDL, recording provenance, conflicts and uncertainty rather than inventing missing constraints.
       - Use model-only interpretation without Python, SQLGlot, or a custom parser script, and do not claim structural validation proves source-engine fidelity.
     graders: *guidance
 
@@ -145,7 +145,7 @@ stimuli:
     graders:
       - type: completed
       - type: skill-invocation
-        config: { required: [cosmosdb-relational-migration, cosmosdb-best-practices] }
+        config: { required: [cosmosdb-migration, cosmosdb-best-practices] }
       - type: prompt
         config: *judge
       - type: output-matches
@@ -294,7 +294,7 @@ stimuli:
     graders:
       - type: completed
       - type: skill-invocation
-        config: { disallowed: [cosmosdb-relational-migration, cosmosdb-best-practices] }
+        config: { disallowed: [cosmosdb-migration, cosmosdb-best-practices] }
       - type: prompt
         config: *judge
       - type: output-matches

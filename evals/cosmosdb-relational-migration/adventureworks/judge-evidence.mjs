@@ -258,11 +258,11 @@ export function buildJudgeEvidence(trajectory, stimulus, structuralValidation, s
     } else if (['preflight', 'discovery', 'inferred-ddl'].includes(phase)) {
         source();
         inventory();
-        directoryFiles(
-            `${discovery}schema-ddl`,
-            '.sql',
-            phase === 'inferred-ddl' ? 'generated inferred DDL' : 'authoritative DDL',
-        );
+        if (phase !== 'inferred-ddl') {
+            directoryFiles(`${discovery}schema-ddl`, '.sql', 'authoritative DDL');
+        } else if (existsSync(join(root, `${discovery}schema-ddl`))) {
+            directoryFiles(`${discovery}schema-ddl`, '.sql', 'optional generated DDL; not required for inference');
+        }
         add(`${discovery}preflight-summary.md`, 'preflight findings');
         add(`${discovery}volumetrics/volumetrics.md`, 'workload interpretation');
         add(`${discovery}access-patterns/access-patterns.md`, 'access-pattern interpretation');

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import assert from 'node:assert/strict';
-import { markdownSections } from '../../../skills/cosmosdb-relational-migration/scripts/phase-summary.mjs';
+import { markdownSections } from '../../../skills/cosmosdb-migration/scripts/phase-summary.mjs';
 
 export function checkPlanTasks(markdown) {
     const sections = new Map(

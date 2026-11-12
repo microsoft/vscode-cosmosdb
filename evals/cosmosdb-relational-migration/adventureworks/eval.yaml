@@ -4,7 +4,7 @@ type: capability
 
 agent_environment:
   skills:
-    - ../../../skills/cosmosdb-relational-migration
+    - ../../../skills/cosmosdb-migration
     - ../../../skills/cosmosdb-best-practices
   files:
     - { src: setup.mjs, dest: setup-adventureworks.mjs }
@@ -49,7 +49,7 @@ stimuli:
       - &completed { type: completed }
       - &migration
         type: skill-invocation
-        config: { required: [cosmosdb-relational-migration] }
+        config: { required: [cosmosdb-migration] }
       - type: adventureworks-artifacts
         config: { scenario: preflight }
       - &judge
@@ -172,7 +172,7 @@ stimuli:
       - *completed
       - &peers
         type: skill-invocation
-        config: { required: [cosmosdb-relational-migration, cosmosdb-best-practices] }
+        config: { required: [cosmosdb-migration, cosmosdb-best-practices] }
       - type: adventureworks-artifacts
         config: { scenario: schema-conversion }
       - type: adventureworks-judge
@@ -284,7 +284,7 @@ stimuli:
       commands: [node setup-adventureworks.mjs inferred]
     prompt: |
       Run discovery, including preflight, for a relational-to-Cosmos DB migration in
-      ./app. No DDL was supplied. Infer processable SQL Server DDL from this application's
+      ./app. No DDL was supplied. Infer a typed SQL Server source inventory directly from this application's
       Entity Framework mappings, models and controller evidence, with schema-source: infer
       and ddl-parser: model. Work autonomously. Record inference provenance, source paths,
       uncertainties and distinctions between model declarations and observed access.
@@ -297,7 +297,7 @@ stimuli:
       Validate discovery and stop before assessment or target model design.
     rubric:
       - Infer all twelve mapped tables with the declared columns and ordered primary/foreign keys, including composite keys and ProductCategory self-reference, from the EF/model evidence rather than inventing constraints.
-      - Write processable inferred DDL under the migration schema folder, record origin inferred and source-file provenance, and distinguish unresolved source facts from validated source-engine behavior.
+      - Record a version-2 typed source inventory with code/inferred coverage and exact source-file provenance, without synthesizing DDL; distinguish unresolved source facts from validated source-engine behavior.
       - Derive real access patterns from all three CRUD controllers and evaluate the .NET SDK while identifying the obsolete framework; classify schema-only mappings honestly.
       - Complete and validate discovery without modifying application code or advancing assessment, and label workload values as synthetic rather than measured production data.
     graders:

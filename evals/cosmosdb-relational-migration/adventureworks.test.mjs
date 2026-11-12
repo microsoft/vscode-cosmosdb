@@ -13,12 +13,13 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { acceptedTrial, handoffSpec, runHandoff } from '../../scripts/eval-handoff.mjs';
 import { resolveEvalSelection } from '../../scripts/eval-options.mjs';
-import { checkPhaseCompletions } from '../../skills/cosmosdb-relational-migration/scripts/check-phase-completion.mjs';
+import { checkPhaseCompletions } from '../../skills/cosmosdb-migration/scripts/check-phase-completion.mjs';
 import {
     applicationSnapshot,
     checkAdventureWorks,
     checkAdventureWorksInventory,
     checkControllerCoverage,
+    checkInferenceEvidence,
     checkPlanningBoundary,
     checkPhaseBoundary,
 } from './adventureworks/check-artifacts.mjs';
@@ -544,6 +545,68 @@ test('independent inventory checks accept quoted references and reject lost rela
         const changed = structuredClone(inventory);
         mutate(changed);
         assert.throws(() => checkAdventureWorksInventory(changed));
+    }
+});
+
+test('version-2 relational projection retains independent source-fact checks', () => {
+    const legacy = schemaInventory();
+    const inventory = {
+        version: 2,
+        dialect: legacy.dialect,
+        datasets: legacy.tables.map((table) => ({
+            id: table.name,
+            kind: 'relational',
+            relational: { ...table, indexes: legacy.indexes.filter((index) => index.table === table.name) },
+        })),
+    };
+    checkAdventureWorksInventory(inventory);
+    for (const mutate of [
+        (value) => value.datasets.pop(),
+        (value) => delete value.datasets[0].relational,
+        (value) => value.datasets.find(({ id }) => id === 'SalesLT.Product').relational.columns.pop(),
+        (value) => value.datasets.find(({ id }) => id === 'SalesLT.CustomerAddress').relational.primaryKey.reverse(),
+        (value) => value.datasets.find(({ id }) => id === 'SalesLT.ProductCategory').relational.foreignKeys.splice(0),
+        (value) => value.datasets.find(({ id }) => id === 'SalesLT.Product').relational.indexes.splice(0),
+    ]) {
+        const changed = structuredClone(inventory);
+        mutate(changed);
+        assert.throws(() => checkAdventureWorksInventory(changed));
+    }
+});
+
+test('code-only inference requires exact application evidence and cannot claim deployed completeness', () => {
+    const path = 'Models/sampledbContext.cs';
+    const hash = sha256('reviewed application mapping');
+    const source = new Map([[path, hash]]);
+    const inventory = {
+        version: 2,
+        files: [{ path, sha256: hash, kind: 'code', disposition: 'used' }],
+        datasets: [{ coverage: { basis: 'code', complete: false }, evidence: [path] }],
+    };
+    checkInferenceEvidence(inventory, source);
+    for (const mutate of [
+        (value) => {
+            value.files[0].path = 'invented.cs';
+        },
+        (value) => {
+            value.files[0].sha256 = 'changed';
+        },
+        (value) => {
+            value.files[0].disposition = 'excluded';
+        },
+        (value) => {
+            value.datasets[0].coverage.basis = 'declared';
+        },
+        (value) => {
+            value.datasets[0].coverage.complete = true;
+        },
+        (value) => {
+            value.datasets[0].evidence = ['other.cs'];
+        },
+    ]) {
+        const changed = structuredClone(inventory);
+        mutate(changed);
+        assert.throws(() => checkInferenceEvidence(changed, source));
     }
 });
 

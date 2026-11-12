@@ -116,6 +116,16 @@ test('large plans remain complete and retain exact source hashes; JSON projectio
     assert.deepEqual(JSON.parse(project.content).customMetadata, { preserve: true });
 });
 
+test('inference judge receives code and inventory without requiring synthesized DDL', (t) => {
+    const { root, trajectory } = fixture(t);
+    rmSync(join(root, 'app', migration, 'phases/1-discovery/schema-ddl'), { recursive: true });
+    const { packet } = buildJudgeEvidence(trajectory, stimulus('inferred-ddl'), validation);
+    assert.ok(packet.files.some(({ path }) => path.endsWith('Models/sampledbContext.cs')));
+    assert.ok(packet.files.some(({ path }) => path.endsWith('preflight-manifest.json')));
+    assert.ok(!packet.files.some(({ path }) => path.endsWith('.sql')));
+    assert.throws(() => buildJudgeEvidence(trajectory, stimulus('preflight'), validation), /ENOENT/);
+});
+
 test('audit preserves commands and executable edits without duplicating migration patches or skill bodies', (t) => {
     const { trajectory } = fixture(t);
     trajectory.events = [

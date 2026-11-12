@@ -17,18 +17,19 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { checkPhaseCompletion } from '../../skills/cosmosdb-relational-migration/scripts/check-phase-completion.mjs';
-import { buildFreshnessManifest } from '../../skills/cosmosdb-relational-migration/scripts/freshness.mjs';
-import { buildProvisioningArtifacts } from '../../skills/cosmosdb-relational-migration/scripts/generate-provisioning-artifacts.mjs';
+import { checkPhaseCompletion } from '../../skills/cosmosdb-migration/scripts/check-phase-completion.mjs';
+import { buildFreshnessManifest } from '../../skills/cosmosdb-migration/scripts/freshness.mjs';
+import { buildProvisioningArtifacts } from '../../skills/cosmosdb-migration/scripts/generate-provisioning-artifacts.mjs';
+import { normalizeLegacyInventory } from '../../skills/cosmosdb-migration/scripts/source-contract.mjs';
 import {
     assessmentFixture,
     evidenceReport,
     writeFixture,
-} from '../../skills/cosmosdb-relational-migration/tests/source-evidence-fixtures.mjs';
+} from '../../skills/cosmosdb-migration/tests/source-evidence-fixtures.mjs';
 import { checkArtifacts, registerGraders } from './check-artifacts.mjs';
 import { prepareFixture } from './fixtures.mjs';
 
-const skillRoot = fileURLToPath(new URL('../../skills/cosmosdb-relational-migration/', import.meta.url));
+const skillRoot = fileURLToPath(new URL('../../skills/cosmosdb-migration/', import.meta.url));
 const { evals, errors } = await discoverEvals([import.meta.dirname]);
 assert.deepEqual(errors, []);
 const specs = await Promise.all(evals.map(({ filePath }) => loadEvalSpec(filePath)));
@@ -411,6 +412,31 @@ test('target-switch checks reject identity, upstream, regeneration and verificat
             await assert.rejects(checkArtifacts(root, 'provisioning', skillRoot));
         });
     }
+});
+
+test('assessment accepts dataset IDs from validated legacy inventory without rewriting predecessor evidence', async (t) => {
+    const root = workspace(t);
+    await completeFixture(root, 'assessment');
+    const inventory = JSON.parse(
+        readFileSync(join(root, '.cosmosdb-migration/phases/1-discovery/preflight-manifest.json')),
+    ).sourceInventory;
+    updateProject(root, (project) => {
+        const [domain] = project.phases.assessment.domains;
+        domain.datasets = normalizeLegacyInventory(inventory).datasets.map(({ id }) => id);
+        delete domain.tables;
+        writeFixture(
+            root,
+            'phases/2-assessment/domains/Orders.md',
+            evidenceReport(['Purpose', 'Datasets', 'Access Patterns', 'Cross-Domain Dependencies']),
+        );
+        const manifestPath = 'phases/2-assessment/domains/Orders.manifest.json';
+        const manifest = JSON.parse(readFileSync(join(root, '.cosmosdb-migration', manifestPath)));
+        manifest.datasets = domain.datasets;
+        delete manifest.tables;
+        writeFixture(root, manifestPath, JSON.stringify(manifest));
+        project.freshness.assessment = buildFreshnessManifest(root, project, 'assessment');
+    });
+    await checkArtifacts(root, 'assessment', skillRoot);
 });
 
 for (const phase of ['preflight', 'assessment']) {

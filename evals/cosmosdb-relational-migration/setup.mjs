@@ -6,4 +6,4 @@
 import { resolve } from 'node:path';
 import { prepareFixture } from './fixtures.mjs';
 
-await prepareFixture(resolve('app'), process.argv[2], resolve('cosmosdb-relational-migration'));
+await prepareFixture(resolve('app'), process.argv[2], resolve('cosmosdb-migration'));

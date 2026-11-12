@@ -8,6 +8,13 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import {
+    domainSources,
+    normalizeLegacyInventory,
+    relationalDetails,
+    sourceDatasets,
+} from '../../skills/cosmosdb-migration/scripts/source-contract.mjs';
+import { createSourceResolver } from '../../skills/cosmosdb-migration/scripts/validate-source-evidence.mjs';
 import { prepareFixture } from './fixtures.mjs';
 
 function snapshot(root) {
@@ -167,11 +174,13 @@ export async function checkArtifacts(workspace, phase, skillRoot) {
         assert.equal(result.complete, true, JSON.stringify(result, null, 2));
         const manifest = JSON.parse(after.get(`${discovery}/preflight-manifest.json`));
         assert.equal(Object.hasOwn(manifest, 'sdkCompatibility'), false, 'SDK compatibility is discovery-owned');
+        const inventory = manifest.sourceInventory;
+        const tables = sourceDatasets(inventory).map(relationalDetails);
         assert.deepEqual(
-            manifest.sourceInventory.tables.map(({ name }) => name),
+            tables.map(({ name }) => name),
             ['dbo.Orders'],
         );
-        const [table] = manifest.sourceInventory.tables;
+        const [table] = tables;
         assert.deepEqual(table.columns.map(({ name }) => name).sort(), ['Id', 'Pk', 'TenantId']);
         assert.deepEqual(table.primaryKey, ['Id']);
         if (phase === 'preflight') {
@@ -179,7 +188,15 @@ export async function checkArtifacts(workspace, phase, skillRoot) {
             assert.deepEqual(project.phases.assessment, initial.phases.assessment, 'Advanced assessment');
         } else {
             assert.deepEqual(project.phases.discovery, initial.phases.discovery, 'Changed accepted discovery state');
-            assert.deepEqual(project.phases.assessment.domains.flatMap(({ tables }) => tables).sort(), ['dbo.Orders']);
+            const resolve = createSourceResolver(
+                inventory.version === 1 ? normalizeLegacyInventory(inventory) : inventory,
+            );
+            assert.deepEqual(
+                project.phases.assessment.domains
+                    .flatMap((domain) => domainSources(domain).map((source) => relationalDetails(resolve(source)).name))
+                    .sort(),
+                ['dbo.Orders'],
+            );
             assert.ok(project.phases.assessment.domains.every(({ isMapped }) => isMapped === true));
         }
     } finally {
@@ -208,7 +225,7 @@ export function registerGraders(registry) {
                 await checkArtifacts(
                     join(trajectory.workDir, 'app'),
                     config.phase,
-                    fileURLToPath(new URL('../../skills/cosmosdb-relational-migration/', import.meta.url)),
+                    fileURLToPath(new URL('../../skills/cosmosdb-migration/', import.meta.url)),
                 );
                 return {
                     name: 'migration-artifacts',

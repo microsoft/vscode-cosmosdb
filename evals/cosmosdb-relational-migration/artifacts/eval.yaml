@@ -4,7 +4,7 @@ type: capability
 
 agent_environment:
   skills:
-    - ../../../skills/cosmosdb-relational-migration
+    - ../../../skills/cosmosdb-migration
     - ../../../skills/cosmosdb-best-practices
   files:
     - { src: ../setup.mjs, dest: setup.mjs }
@@ -43,7 +43,7 @@ stimuli:
     graders:
       - type: completed
       - type: skill-invocation
-        config: { required: [cosmosdb-relational-migration] }
+        config: { required: [cosmosdb-migration] }
       - type: migration-artifacts
         config: { phase: preflight }
       - type: prompt
@@ -88,7 +88,7 @@ stimuli:
     graders:
       - type: completed
       - type: skill-invocation
-        config: { required: [cosmosdb-relational-migration] }
+        config: { required: [cosmosdb-migration] }
       - type: migration-artifacts
         config: { phase: provisioning }
       - type: prompt
@@ -118,7 +118,7 @@ stimuli:
     graders:
       - type: completed
       - type: skill-invocation
-        config: { required: [cosmosdb-relational-migration] }
+        config: { required: [cosmosdb-migration] }
       - type: migration-artifacts
         config: { phase: assessment }
       - type: prompt

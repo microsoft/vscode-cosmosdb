@@ -17,7 +17,7 @@ vscode-cosmosdb/
 │   └── **/*.test.ts              # Vitest unit tests (run in Node, vscode is mocked)
 ├── packages/*/src/
 │   └── **/*.test.ts              # Vitest unit tests for workspace packages
-├── skills/cosmosdb-relational-migration/tests/
+├── skills/cosmosdb-migration/tests/
 │   └── *.test.mjs                # Portable migration helper and contract tests
 ├── evals/cosmosdb-relational-migration/
 │   ├── **/eval.yaml              # Vally capability and artifact evaluation specs
@@ -167,6 +167,10 @@ npm run vitest:ui      # Vitest watch UI (excludes migration skill tests)
 The [Vally suite](../evals/cosmosdb-relational-migration/) follows the live capability-evaluation approach in
 [AzureCosmosDB/cosmosdb-agent-kit#277](https://github.com/AzureCosmosDB/cosmosdb-agent-kit/pull/277).
 It supplements, rather than replaces, `npm run test:migration-skill` and the extension's unit and UI tests.
+The suite retains its relational scenario names and fixtures while exercising `cosmosdb-migration`.
+Graders accept validated legacy inventories and version-2 relational datasets without relaxing source-fact
+checks. Fresh code-only inference records a typed inventory directly, not a synthesized SQL intermediate.
+Reviewed prerequisite snapshots stay unchanged to exercise version-1 resumption.
 
 Use the Node.js version in `.nvmrc` and install the pinned development dependencies with `npm ci`.
 
@@ -261,7 +265,7 @@ and rate limits at most twice; failed correctness verdicts are not retried or re
 The extended CI job disables executor retries to avoid repeating an expensive full migration after a timeout.
 
 The [evaluation workflow](../.github/workflows/migration-evals.yml) runs offline checks when evaluation inputs
-change. Automatic live runs require changes under `skills/cosmosdb-relational-migration/` or its required
+change. Automatic live runs require changes under `skills/cosmosdb-migration/` or its required
 `skills/cosmosdb-best-practices/` peer; evaluation-only and unrelated changes skip model calls.
 Fork and Dependabot PRs are always offline-only. A manual workflow dispatch runs the default suites;
 its `integration` input additionally enables the chained scenario, and its independent `handoff` input enables

@@ -11,7 +11,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { sampleRevision } from './sample.mjs';
 
 export const checkpointRoot = fileURLToPath(new URL('./checkpoints/', import.meta.url));
-export const skillRoot = fileURLToPath(new URL('../../../skills/cosmosdb-relational-migration/', import.meta.url));
+export const skillRoot = fileURLToPath(new URL('../../../skills/cosmosdb-migration/', import.meta.url));
 export const phaseOrder = [
     'preflight',
     'discovery',

@@ -286,25 +286,11 @@ export function buildJudgeEvidence(trajectory, stimulus, structuralValidation, s
         }
     } else if (['preflight', 'discovery', 'inferred-ddl'].includes(phase)) {
         source();
-        if (scope !== 'access-boundary') inventory();
-        if (phase === 'inferred-ddl') {
-            add('Program.cs', 'application entry point and runtime evidence');
-            if (scope !== 'inventory') {
-                const ddl = directoryFiles(
-                    `${discovery}schema-ddl`,
-                    /\.(?:sql|ddl)$/iu,
-                    'generated SQL/DDL in inference workspace',
-                    { optional: true },
-                );
-                if (!ddl) absentOptionalFiles.push(`app/${discovery}schema-ddl/*.{sql,ddl}`);
-            }
-        } else {
+        inventory();
+        if (phase !== 'inferred-ddl') {
             directoryFiles(`${discovery}schema-ddl`, '.sql', 'authoritative DDL');
-        }
-        if (scope === 'access-boundary') {
-            for (const controller of ['Customers', 'ProductCategories', 'Products']) {
-                directoryFiles(`Views/${controller}`, '.cshtml', 'source CRUD view and navigation evidence');
-            }
+        } else if (existsSync(join(root, `${discovery}schema-ddl`))) {
+            directoryFiles(`${discovery}schema-ddl`, '.sql', 'optional generated DDL; not required for inference');
         }
         add(`${discovery}preflight-summary.md`, 'preflight findings');
         if (scope !== 'inventory') {

@@ -78,7 +78,11 @@ describe('DataPage partition-key eligibility', () => {
             expect(icon).toBeVisible();
             expect(icon).toHaveAttribute('aria-hidden', 'true');
             expect(icon?.parentElement).toHaveStyle({ color: 'var(--vscode-editorWarning-foreground)' });
-            expect(roleCell).toHaveAccessibleName(roleCell.textContent);
+            // The remove button shares the cell, so browsers may append its label to the cell's computed name.
+            const warning = roleCell.textContent ?? '';
+            expect(warning).toMatch(/^Not usable as a partition key: /);
+            expect(roleCell).toHaveAccessibleName(expect.stringContaining(warning));
+            expect(within(roleCell).getByRole('button', { name: /^Remove items/ })).toBeVisible();
         }
         expect(table.queryByRole('combobox', { name: 'Role for items' })).not.toBeInTheDocument();
         expect(table.queryByRole('combobox', { name: 'Role for items/productId' })).not.toBeInTheDocument();
@@ -159,8 +163,26 @@ describe('DataPage role descriptions', () => {
         );
         const dropdown = screen.getByRole('combobox', { name: 'Role for id: 🔑 Unique / business key' });
         expect(dropdown).toHaveTextContent('🔑 Unique / business key');
+        for (const roleDropdown of screen.getAllByRole('combobox', { name: /^Role for / })) {
+            // Fluent applies className to the documented .fui-Dropdown root; the inner button fills it at 100%.
+            const roleDropdownStyle = getComputedStyle(roleDropdown.closest('.fui-Dropdown')!);
+            expect(roleDropdownStyle.width).toBe('260px');
+            expect(roleDropdownStyle.minWidth).toBe('260px');
+
+            const cell = roleDropdown.closest('td');
+            expect(cell).not.toBeNull();
+
+            const remove = within(cell!).getByRole('button', { name: /^Remove / });
+
+            // Ensure the remove control is in the same cell and follows the dropdown in DOM order,
+            // without relying on specific parent/child nesting or adjacency wrappers.
+            expect(remove.closest('td')).toBe(cell);
+            expect(roleDropdown.compareDocumentPosition(remove) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        }
         await user.click(dropdown);
 
+        expect(screen.getByRole('listbox')).toHaveStyle({ width: 'max-content' });
+        expect(getComputedStyle(screen.getByRole('listbox')).maxWidth).toBe(`${window.innerWidth - 32}px`);
         for (const [label, description] of [
             [
                 '🔑 Unique / business key',
@@ -175,9 +197,36 @@ describe('DataPage role descriptions', () => {
             const option = screen.getByRole('option', { name: label });
             expect(option).toHaveAccessibleName(label);
             expect(option).toHaveAccessibleDescription(description);
-            expect(within(option).getByText(label)).toBeVisible();
-            expect(within(option).getByText(description)).toBeVisible();
+            expect(option).toHaveStyle({
+                display: 'grid',
+                gridTemplateColumns: 'auto minmax(0, 1fr)',
+                textAlign: 'left',
+                whiteSpace: 'normal',
+            });
+            const [icon, ...titleWords] = label.split(' ');
+            expect(within(option).getByText(icon)).toBeVisible();
+            const heading = within(option).getByText(titleWords.join(' '));
+            expect(heading).toBeVisible();
+            expect(heading).toHaveStyle({ whiteSpace: 'nowrap', gridColumn: '2' });
+            expect(option.querySelector('svg')).not.toBeInTheDocument();
+            const descriptionText = within(option).getByText(description);
+            expect(descriptionText).toBeVisible();
+            // The description starts in the title column, so it lines up with the title text after the icon.
+            expect(descriptionText).toHaveStyle({ gridColumn: '2' });
+            expect(heading.parentElement).toBe(option);
+            expect(descriptionText.parentElement).toBe(option);
         }
+        // jsdom drops the SelectedItem system colour, so verify the generated rule and that it keys off aria-selected.
+        const roleMenu = () => within(screen.getByRole('listbox'));
+        const selectedRule = Array.from(document.styleSheets)
+            .flatMap((sheet) => Array.from(sheet.cssRules))
+            .find((rule) => rule.cssText.includes('[aria-selected="true"]') && /SelectedItem\b/i.test(rule.cssText));
+        expect(selectedRule).toBeDefined();
+        const selectedClass = selectedRule!.cssText.match(/^\.([\w-]+)\[aria-selected/)![1];
+        for (const option of roleMenu().getAllByRole('option')) {
+            expect(option).toHaveClass(selectedClass);
+        }
+        expect(roleMenu().getByRole('option', { selected: true })).toHaveAccessibleName('🔑 Unique / business key');
 
         await user.click(screen.getByRole('option', { name: '🔎 Query filter' }));
         const filtered = onChange.mock.lastCall![0];
@@ -188,13 +237,41 @@ describe('DataPage role descriptions', () => {
         expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
 
         dropdown.focus();
-        await user.keyboard('{ArrowDown}{End}{Enter}');
+        await user.keyboard('{ArrowDown}{ArrowDown}');
+        // Arrow keys move the active option (focus ring); aria-selected, and so the blue highlight, changes on commit.
+        const payloadOption = roleMenu().getByRole('option', { name: '📄 Payload / other' });
+        expect(dropdown).toHaveAttribute('aria-activedescendant', payloadOption.id);
+        expect(payloadOption).toHaveAttribute('aria-selected', 'false');
+        expect(roleMenu().getByRole('option', { name: '🔎 Query filter' })).toHaveAttribute('aria-selected', 'true');
+        expect(onChange.mock.lastCall![0]).toBe(filtered);
+        await user.keyboard('{Enter}');
         const payload = onChange.mock.lastCall![0];
         expect(payload.containers[0].properties.find((property) => property.name === 'id')?.role).toBe('payload');
         page.rerender(<DataPage model={payload} onChange={onChange} />);
         expect(dropdown).toHaveTextContent('📄 Payload / other');
         expect(dropdown).toHaveAccessibleName('Role for id: 📄 Payload / other');
         expect(dropdown).toHaveFocus();
+    });
+
+    it('does not size the role menu to the closed control width', async () => {
+        const user = userEvent.setup();
+        const container = createBlankContainer();
+        render(<DataPage model={{ containers: [container], activeContainerId: container.id }} onChange={vi.fn()} />);
+        const dropdown = screen.getByRole('combobox', { name: 'Role for id: 🔑 Unique / business key' });
+        // jsdom has no layout; give the trigger a width so Fluent's matchTargetSize middleware would act if enabled.
+        const rect = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+            const width = this === dropdown || this === dropdown.parentElement ? 260 : 0;
+            return DOMRect.fromRect({ width, height: width ? 32 : 0 });
+        });
+        try {
+            await user.click(dropdown);
+            const listbox = screen.getByRole('listbox');
+            await waitFor(() => expect(listbox.style.position).not.toBe(''));
+            expect(listbox.style.getPropertyValue('--fui-match-target-size')).toBe('');
+            expect(listbox.style.width).toBe('');
+        } finally {
+            rect.mockRestore();
+        }
     });
 });
 

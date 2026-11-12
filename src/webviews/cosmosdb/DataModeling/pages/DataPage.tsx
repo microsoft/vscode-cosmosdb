@@ -112,11 +112,39 @@ const useStyles = makeStyles({
     cellSelect: {
         minWidth: '120px',
     },
-    roleOption: {
+    roleDropdown: {
+        width: '260px',
+        minWidth: '260px',
+    },
+    roleControls: {
         display: 'flex',
-        flexDirection: 'column',
-        maxWidth: '320px',
+        alignItems: 'center',
+        gap: tokens.spacingHorizontalXS,
+    },
+    roleListbox: {
+        width: 'max-content',
+        maxWidth: 'calc(100vw - 32px)',
+    },
+    roleOption: {
+        display: 'grid',
+        gridTemplateColumns: 'auto minmax(0, 1fr)',
+        columnGap: tokens.spacingHorizontalXS,
+        alignItems: 'baseline',
+        textAlign: 'left',
         whiteSpace: 'normal',
+        // Follows Fluent's committed selection (aria-selected); arrow-key navigation shows the focus ring instead.
+        // Native select highlight; engines without system colours fall back to the theme menu colours.
+        '&[aria-selected="true"], &[aria-selected="true"]:hover, &[aria-selected="true"]:active': {
+            backgroundColor: ['var(--vscode-menu-selectionBackground)', 'SelectedItem'],
+            color: ['var(--vscode-menu-selectionForeground)', 'SelectedItemText'],
+        },
+    },
+    roleOptionHeading: {
+        gridColumn: '2',
+        whiteSpace: 'nowrap',
+    },
+    roleOptionDescription: {
+        gridColumn: '2',
     },
     propertyWarning: {
         display: 'inline-flex',
@@ -540,7 +568,6 @@ export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPa
                                 <TableHeaderCell>{l10n.t('Property')}</TableHeaderCell>
                                 <TableHeaderCell>{l10n.t('Type')}</TableHeaderCell>
                                 <TableHeaderCell>{l10n.t('Role')}</TableHeaderCell>
-                                <TableHeaderCell />
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -572,66 +599,90 @@ export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPa
                                             </Select>
                                         </TableCell>
                                         <TableCell>
-                                            {restriction ? (
-                                                <span className={styles.propertyWarning}>
-                                                    <WarningRegular
-                                                        className={styles.warningIcon}
-                                                        fontSize={16}
-                                                        aria-hidden
-                                                    />
-                                                    <Text size={200}>
-                                                        {restriction === 'arrayAncestor'
-                                                            ? l10n.t(
-                                                                  'Not usable as a partition key: this field is inside an array.',
-                                                              )
-                                                            : l10n.t(
-                                                                  'Not usable as a partition key: this field has object or array values.',
-                                                              )}
-                                                    </Text>
-                                                </span>
-                                            ) : (
-                                                <Dropdown
-                                                    className={styles.cellSelect}
-                                                    aria-label={l10n.t('Role for {name}: {role}', {
-                                                        name: p.name,
-                                                        role: selectedRole?.label ?? p.role,
-                                                    })}
-                                                    value={selectedRole?.label}
-                                                    selectedOptions={[p.role]}
-                                                    onOptionSelect={(_, data) => {
-                                                        const option = roleOptions.find(
-                                                            (option) => option.value === data.optionValue,
-                                                        );
-                                                        if (option) {
-                                                            patchProperty(p.id, { role: option.value });
-                                                        }
-                                                    }}
-                                                >
-                                                    {roleOptions.map((o) => (
-                                                        <Option
-                                                            key={o.value}
-                                                            value={o.value}
-                                                            text={o.label}
-                                                            aria-label={o.label}
-                                                            aria-description={o.description}
-                                                        >
-                                                            <span className={styles.roleOption} aria-hidden="true">
-                                                                <span>{o.label}</span>
-                                                                <Text size={200}>{o.description}</Text>
-                                                            </span>
-                                                        </Option>
-                                                    ))}
-                                                </Dropdown>
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Button
-                                                icon={<DismissRegular />}
-                                                appearance="subtle"
-                                                size="small"
-                                                aria-label={l10n.t('Remove {name}', { name: p.name })}
-                                                onClick={() => removeProperty(p.id)}
-                                            />
+                                            <div className={styles.roleControls}>
+                                                {restriction ? (
+                                                    <span className={styles.propertyWarning}>
+                                                        <WarningRegular
+                                                            className={styles.warningIcon}
+                                                            fontSize={16}
+                                                            aria-hidden
+                                                        />
+                                                        <Text size={200}>
+                                                            {restriction === 'arrayAncestor'
+                                                                ? l10n.t(
+                                                                      'Not usable as a partition key: this field is inside an array.',
+                                                                  )
+                                                                : l10n.t(
+                                                                      'Not usable as a partition key: this field has object or array values.',
+                                                                  )}
+                                                        </Text>
+                                                    </span>
+                                                ) : (
+                                                    <Dropdown
+                                                        className={styles.roleDropdown}
+                                                        listbox={{ className: styles.roleListbox }}
+                                                        positioning={{
+                                                            // Overrides the dropdown's default 'width' so the menu can be wider than the control.
+                                                            matchTargetSize: undefined,
+                                                            autoSize: 'height',
+                                                            // Stay below when possible; right-align to the control before flipping above.
+                                                            fallbackPositions: [
+                                                                'below-end',
+                                                                'above-start',
+                                                                'above-end',
+                                                            ],
+                                                        }}
+                                                        aria-label={l10n.t('Role for {name}: {role}', {
+                                                            name: p.name,
+                                                            role: selectedRole?.label ?? p.role,
+                                                        })}
+                                                        value={selectedRole?.label}
+                                                        selectedOptions={[p.role]}
+                                                        onOptionSelect={(_, data) => {
+                                                            const option = roleOptions.find(
+                                                                (option) => option.value === data.optionValue,
+                                                            );
+                                                            if (option) {
+                                                                patchProperty(p.id, { role: option.value });
+                                                            }
+                                                        }}
+                                                    >
+                                                        {roleOptions.map((o) => (
+                                                            <Option
+                                                                key={o.value}
+                                                                className={styles.roleOption}
+                                                                checkIcon={null}
+                                                                value={o.value}
+                                                                text={o.label}
+                                                                aria-label={o.label}
+                                                                aria-description={o.description}
+                                                            >
+                                                                <span aria-hidden="true">{o.icon}</span>
+                                                                <span
+                                                                    className={styles.roleOptionHeading}
+                                                                    aria-hidden="true"
+                                                                >
+                                                                    {o.title}
+                                                                </span>
+                                                                <Text
+                                                                    className={styles.roleOptionDescription}
+                                                                    size={200}
+                                                                    aria-hidden="true"
+                                                                >
+                                                                    {o.description}
+                                                                </Text>
+                                                            </Option>
+                                                        ))}
+                                                    </Dropdown>
+                                                )}
+                                                <Button
+                                                    icon={<DismissRegular />}
+                                                    appearance="subtle"
+                                                    size="small"
+                                                    aria-label={l10n.t('Remove {name}', { name: p.name })}
+                                                    onClick={() => removeProperty(p.id)}
+                                                />
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 );

@@ -52,6 +52,21 @@ function expandNotice(title: string) {
 }
 
 describe('log coverage guidance', () => {
+    it('explains expired log authentication without suggesting that a role grant will fix it', () => {
+        showCoverage({
+            available: false,
+            reason: 'rbac',
+            failures: [{ operation: 'probeDataPlane5M', kind: 'authentication', reason: 'rbac' }],
+        });
+        const notice = expandNotice('Partial coverage');
+        expect(within(notice).getByText(/Sign-in required\. Check your Azure sign-in/)).toBeVisible();
+        expect(within(notice).getByText('DataPlaneRequests5M availability: Sign-in required')).toBeVisible();
+        expect(within(notice).queryByText(/Some log-based checks were denied access/)).not.toBeInTheDocument();
+        expect(
+            within(notice).queryByRole('button', { name: 'Learn about Log Analytics access' }),
+        ).not.toBeInTheDocument();
+    });
+
     it('names the failed check and explains resource/workspace access instead of assuming one missing role', () => {
         const { openUrl } = showCoverage({
             available: false,
@@ -238,6 +253,7 @@ describe('metric coverage and actionable findings', () => {
                 ]),
             );
             const notice = screen.getByRole('group', { name: 'Some cost estimates are unavailable' });
+            fireEvent.click(within(notice).getByRole('button', { name: 'Some cost estimates are unavailable' }));
             expect(within(notice).getAllByRole('listitem')).toHaveLength(2);
             rerender(view([{ operation: 'throughput', kind: 'accessDenied' }]));
             expect(within(notice).getAllByRole('listitem')).toHaveLength(1);
@@ -265,7 +281,8 @@ describe('metric coverage and actionable findings', () => {
         }
     });
 
-    it('keeps cost coverage separate and names access/rate failures without hiding recommendations', () => {
+    it('keeps cost coverage collapsed and separate without hiding recommendations or losing keyboard access', async () => {
+        const user = userEvent.setup();
         showCoverage(
             { available: true },
             {
@@ -291,6 +308,15 @@ describe('metric coverage and actionable findings', () => {
             },
         );
         const notice = screen.getByRole('group', { name: 'Some cost estimates are unavailable' });
+        const toggle = within(notice).getByRole('button', { name: 'Some cost estimates are unavailable' });
+        expect(toggle).toHaveTextContent('Some cost estimates are unavailable');
+        expect(toggle).toHaveAccessibleName('Some cost estimates are unavailable');
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        expect(within(notice).queryByRole('list')).not.toBeInTheDocument();
+        toggle.focus();
+        await user.keyboard('{Enter}');
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
+        expect(within(notice).getByRole('list')).toBeVisible();
         expect(notice).toHaveTextContent(
             'Capacity and configuration recommendations remain valid without monetary estimates.',
         );
@@ -482,7 +508,7 @@ describe('metric coverage and actionable findings', () => {
         const section = screen.getByLabelText('Recommendations');
         expect(getComputedStyle(section).overflow).not.toBe('hidden');
         const content = withFindings
-            ? within(section).getByRole('button', { name: /^Idle containers/ })
+            ? within(section).getByRole('button', { name: /^Idle provisioned offers\./ })
             : within(section).getByText('No advisories from the checks that completed.');
         expect(content).toBeVisible();
         const notice = screen.getByRole('group', { name: 'Incomplete workload analysis' });

@@ -639,7 +639,7 @@ describe('account-wide health collection', () => {
         );
         expect(tab.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
         await user.click(tab);
-        await user.click(screen.getByRole('button', { name: /^Idle containers/ }));
+        await user.click(screen.getByRole('button', { name: /^Idle provisioned offers\./ }));
         const dialog = screen.getByRole('dialog');
         expect(within(dialog).queryByText('database/hidden')).not.toBeInTheDocument();
         await user.click(within(dialog).getByRole('button', { name: 'Dismiss advisory for database/orders' }));

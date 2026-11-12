@@ -447,12 +447,19 @@ function groupAdvisories(advisories: readonly DerivedAdvisory[]): AdvisoryGroup[
  * skipped. Each reason has a different fix, so the notice names it and, where actionable, links to guidance. The
  * Tier-1 advisories still render above/below — this notice explains that some log-based checks did not run.
  */
-function logCoverageNotice(reason: UnavailableReason | undefined): {
+function logCoverageNotice(source: DerivedAdvisoriesResult['logSource']): {
     body: string;
     linkLabel?: string;
     linkUrl?: string;
 } {
-    switch (reason) {
+    if (source?.failures?.length && source.failures.every((failure) => failure.kind === 'authentication')) {
+        return {
+            body: l10n.t(
+                'Sign-in required. Check your Azure sign-in, tenant and credentials; assigning a role alone may not resolve this failure.',
+            ),
+        };
+    }
+    switch (source?.reason) {
         case 'logAnalyticsDisabled':
             return {
                 body:
@@ -985,7 +992,6 @@ const CostEstimateDetails = ({ estimate }: { estimate: NonNullable<DerivedAdviso
 };
 
 const CostCoverageNotice = ({ source }: { source: NonNullable<DerivedAdvisoriesResult['costSource']> }) => {
-    const styles = useStyles();
     const title = l10n.t('Some cost estimates are unavailable');
     const reasons: Record<NonNullable<DerivedAdvisoriesResult['costSource']>['failures'][number]['kind'], string> = {
         notConfigured: l10n.t('Billing context was not available for this analysis.'),
@@ -1004,30 +1010,18 @@ const CostCoverageNotice = ({ source }: { source: NonNullable<DerivedAdvisoriesR
         unsupported: l10n.t('Cost estimates are not supported for this account API or Azure cloud.'),
     };
     return (
-        <MessageBar
-            className={styles.notice}
-            intent="warning"
-            layout="multiline"
-            politeness="polite"
-            icon={{ 'aria-hidden': true }}
-            aria-label={title}
-        >
-            <MessageBarBody>
-                <MessageBarTitle>{title}</MessageBarTitle>
-                <div>
-                    {l10n.t('Capacity and configuration recommendations remain valid without monetary estimates.')}
-                </div>
-                <ul>
-                    {source.failures.map((failure) => (
-                        <li key={`${failure.operation}-${failure.kind}`}>
-                            {failure.operation === 'throughput'
-                                ? l10n.t('Throughput: {reason}', { reason: reasons[failure.kind] })
-                                : l10n.t('Continuous backup: {reason}', { reason: reasons[failure.kind] })}
-                        </li>
-                    ))}
-                </ul>
-            </MessageBarBody>
-        </MessageBar>
+        <CollapsibleNotice title={title} intent="warning" actions={null}>
+            <div>{l10n.t('Capacity and configuration recommendations remain valid without monetary estimates.')}</div>
+            <ul>
+                {source.failures.map((failure) => (
+                    <li key={`${failure.operation}-${failure.kind}`}>
+                        {failure.operation === 'throughput'
+                            ? l10n.t('Throughput: {reason}', { reason: reasons[failure.kind] })
+                            : l10n.t('Continuous backup: {reason}', { reason: reasons[failure.kind] })}
+                    </li>
+                ))}
+            </ul>
+        </CollapsibleNotice>
     );
 };
 
@@ -1083,7 +1077,7 @@ const MetricCoverageNotice = ({
  */
 const PartialCoverageNotice = ({ source }: { source: DerivedAdvisoriesResult['logSource'] }) => {
     const { openUrl, showOutput } = useDashboardActions();
-    const { body, linkLabel, linkUrl } = logCoverageNotice(source?.reason);
+    const { body, linkLabel, linkUrl } = logCoverageNotice(source);
     const operations = {
         probeDataPlane: l10n.t('DataPlaneRequests availability'),
         probeDataPlane5M: l10n.t('DataPlaneRequests5M availability'),

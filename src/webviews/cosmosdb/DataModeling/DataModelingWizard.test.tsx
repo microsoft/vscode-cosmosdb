@@ -1989,6 +1989,23 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(persisted.wizard.step).toBe(2);
     });
 
+    it('asks before switching workloads while a recommendation request is pending', async () => {
+        const saved = createInitialSnapshot();
+        saved.wizard = applyScenario(saved.wizard, 'chat');
+        saved.wizard.step = saved.wizard.dataModel.containers.length + 2;
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
+        await waitFor(() => expect(lastSave().recommendation.status).toBe('waiting'));
+        await userEvent.click(await getStepControl('Workload'));
+        await userEvent.click(screen.getByRole('radio', { name: 'Orders & Transactions' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Start' }));
+        await answerConfirmation('Reset model to workload defaults?', undefined);
+        expect(lastSave().recommendation.status).toBe('waiting');
+        expect(lastSave().wizard.scenario).toBe('chat');
+    });
+
     it('discards an unapplied workload card when leaving Workload', async () => {
         const saved = deployedSnapshot();
         client.dataModeling.loadState.query.mockResolvedValue(saved);
@@ -2018,6 +2035,43 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(lastSave().deployment).toEqual(saved.deployment);
         expect(await getStepControl('Result')).not.toHaveAttribute('aria-disabled', 'true');
     });
+
+    it.each(['edited before reopening', 'saved without the change marker'] as const)(
+        'asks to restart from a revisited container after reopening when inputs were %s',
+        async (kind) => {
+            const saved = deployedSnapshot();
+            if (kind === 'saved without the change marker') {
+                Reflect.deleteProperty(saved.wizard, 'inputsChangedSinceAdvance');
+            }
+            client.dataModeling.loadState.query.mockResolvedValue(saved);
+            const mounted = render(<DataModelingWizard />);
+            await continueExisting();
+            await userEvent.click(await getStepControl('Container: Orders'));
+            if (kind === 'edited before reopening') {
+                fireEvent.change(screen.getByRole('spinbutton', { name: 'Average document size' }), {
+                    target: { value: '2' },
+                });
+            }
+            const persisted = lastSave();
+            expect(persisted.wizard.inputsChangedSinceAdvance).toBe(
+                kind === 'edited before reopening' ? true : undefined,
+            );
+            mounted.unmount();
+            client.dataModeling.loadState.query.mockResolvedValue(persisted);
+            render(<DataModelingWizard />);
+            await continueExisting();
+            await userEvent.click(await getStepControl('Container: Orders'));
+            await userEvent.click(screen.getByRole('tab', { name: 'Scale' }));
+            await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+            await answerConfirmation('Restart from this step?', undefined);
+            expect(lastSave()).toEqual(persisted);
+            expect(await getStepControl('Container: Orders')).toHaveAttribute('aria-current', 'step');
+            await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+            await confirmAdvance();
+            expect(lastSave().wizard.inputsChangedSinceAdvance).toBe(false);
+            expect(await getStepControl('Result')).toHaveAttribute('aria-disabled', 'true');
+        },
+    );
 
     it('invalidates downstream progress from a changed container step after confirmation without resetting inputs', async () => {
         const saved = restored(4);

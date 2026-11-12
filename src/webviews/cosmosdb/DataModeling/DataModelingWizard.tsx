@@ -324,8 +324,6 @@ const HydratedDataModelingWizard = ({
         value: DeploymentDraft;
     }>();
     const currentSnapshot = useRef<typeof snapshot | undefined>(snapshot);
-    // Model inputs when the user last moved ahead; Next only offers a restart when they changed since then.
-    const progressBaseline = useRef(snapshot.wizard.dataModel);
     const containerNameRequest = useRef(0);
     const containerNamePending = useRef(false);
     useEffect(
@@ -380,6 +378,7 @@ const HydratedDataModelingWizard = ({
                     ...previous,
                     wizard: {
                         ...wizard,
+                        inputsChangedSinceAdvance: true,
                         reachedSteps:
                             wizard.reachedSteps ??
                             (previous.recommendation.value ? buildStepValues(previous.wizard.dataModel) : undefined),
@@ -814,11 +813,11 @@ const HydratedDataModelingWizard = ({
         requestId.current = attemptId;
         deliveredRequestId.current = undefined;
         const generation = ++requestGeneration.current;
-        progressBaseline.current = current.wizard.dataModel;
         const next: typeof snapshot = {
             ...current,
             wizard: {
                 ...current.wizard,
+                inputsChangedSinceAdvance: false,
                 step: buildStepValues(current.wizard.dataModel).length,
                 reachedSteps: buildStepValues(current.wizard.dataModel),
             },
@@ -942,7 +941,6 @@ const HydratedDataModelingWizard = ({
         setDeploymentDraft(undefined);
         setContainerTab('data');
         setPendingScenario(undefined);
-        progressBaseline.current = nextSnapshot.wizard.dataModel;
         setSnapshot(nextSnapshot);
     };
 
@@ -955,10 +953,13 @@ const HydratedDataModelingWizard = ({
             requestRecommendation();
         } else {
             abandonRecommendation();
-            progressBaseline.current = currentSnapshot.current?.wizard.dataModel ?? state.dataModel;
             setSnapshot((previous) => ({
                 ...previous,
-                wizard: { ...previous.wizard, reachedSteps: stepValues.slice(0, stepIndex + 1) },
+                wizard: {
+                    ...previous.wizard,
+                    inputsChangedSinceAdvance: false,
+                    reachedSteps: stepValues.slice(0, stepIndex + 1),
+                },
                 recommendation: { status: 'idle' },
                 deployment: undefined,
             }));
@@ -970,7 +971,13 @@ const HydratedDataModelingWizard = ({
             const dataModel = buildDataModel(scenario);
             resetModel({
                 ...createInitialSnapshot(),
-                wizard: { scenario, step: 2, dataModel, reachedSteps: buildStepValues(dataModel).slice(0, 2) },
+                wizard: {
+                    scenario,
+                    step: 2,
+                    dataModel,
+                    reachedSteps: buildStepValues(dataModel).slice(0, 2),
+                    inputsChangedSinceAdvance: false,
+                },
             });
         };
         const hasProgress = !!recommendation || reachedSteps.some((value) => stepValues.indexOf(value) > 0);
@@ -979,7 +986,8 @@ const HydratedDataModelingWizard = ({
         const title = l10n.t('Reset model to workload defaults?');
         const resetLabel = l10n.t('Reset to defaults');
         if (scenario !== state.scenario) {
-            if (!edited && !recommendation) {
+            // A pending request is in-flight work, so switching asks first even when the model is untouched.
+            if (!edited && !recommendation && recommendationStatus !== 'waiting') {
                 resetToDefaults();
                 return;
             }
@@ -1045,11 +1053,7 @@ const HydratedDataModelingWizard = ({
             !!recommendation || reachedSteps.some((value) => stepValues.indexOf(value) >= stepIndex);
         // Get Recommendation always replaces an existing or pending result, so that remains confirmed.
         const replacesRecommendation = isReview && (!!recommendation || recommendationStatus === 'waiting');
-        if (
-            hasLaterProgress &&
-            !replacesRecommendation &&
-            modelingInputsEqual(state.dataModel, progressBaseline.current)
-        ) {
+        if (hasLaterProgress && !replacesRecommendation && state.inputsChangedSinceAdvance === false) {
             // Nothing changed since moving ahead, so continue without discarding later progress.
             if (isReview) advance();
             else goToStep(stepIndex + 1);

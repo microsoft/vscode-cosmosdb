@@ -192,7 +192,7 @@ test('Workload and Scale cards use native radio keyboard navigation, including f
         await expect(rapid).toBeFocused();
         await expect(rapid).toBeChecked();
         await rapid.press('Tab');
-        const next = webview.getByRole('button', { name: 'Next', exact: true });
+        const next = webview.getByRole('button', { name: 'Next container', exact: true });
         await expect(next).toBeFocused();
         await next.press('Shift+Tab');
         await expect(rapid).toBeFocused();

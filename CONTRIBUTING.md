@@ -66,9 +66,12 @@ conformance cache. Equality exits 0; a mismatch exits 1 with exact upstream-ahea
 Rewound, divergent and unrelated histories are distinguished. Authentication, missing refs/objects and network errors
 also fail explicitly as unverifiable. History is fetched into a disposable bare repository, never checked out or executed.
 
-The existing package-feed workflow has an independent `CODA Freshness` advisory job. Failures remain red without
-cancelling the package-feed job or adding dependencies to build/package workflows. Keep this job optional in branch
-rulesets; required-check configuration is an owner responsibility and is not changed by the workflow.
+The existing package-feed workflow has an independent `CODA Freshness` advisory job. It is temporarily disabled for all
+hosted triggers with `if: ${{ false }}` until server-side verification and private-source access are needed. The job
+appears as skipped, not as verified current; local `npm run coda:check` remains available.
+When re-enabled, failures remain red without cancelling the package-feed job or adding dependencies to build/package
+workflows. Keep this job optional in branch rulesets; required-check configuration is an owner responsibility and is not
+changed by the workflow.
 Push/manual runs can use an owner-configured read-only Azure DevOps `CODA_READ_TOKEN` secret. Git credentials also work
 locally. **All pull requests receive no private-source token**, including same-repository PRs; without another authorized
 credential the private-repository check fails as unverifiable, not as current. This metadata-only job does not run

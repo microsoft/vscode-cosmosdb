@@ -162,11 +162,12 @@ test('command returns nonzero on mismatch and zero only on equality', (t) => {
     assert.throws(() => main(['--repin'], pin), /Usage/);
 });
 
-test('hosted freshness is independent and private credentials are withheld from every PR', () => {
+test('hosted freshness is paused and independent, with private credentials withheld from every PR', () => {
     const workflow = readFileSync(new URL('../.github/workflows/package-feed.yml', import.meta.url), 'utf8');
     const job = workflow.split('\n  coda-freshness:\n')[1];
     assert.ok(job, 'The checker must have its own sibling job.');
     assert.match(workflow, /\n  package-feed:\n/);
+    assert.match(job, /^    if: \$\{\{ false \}\}$/m);
     assert.doesNotMatch(job, /^\s+(?:needs|continue-on-error|strategy):/m);
     assert.match(job, /persist-credentials: false/);
     assert.match(job, /github\.event_name != 'pull_request' && secrets\.CODA_READ_TOKEN/);

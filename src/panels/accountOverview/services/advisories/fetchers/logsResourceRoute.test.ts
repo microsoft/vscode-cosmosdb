@@ -30,14 +30,19 @@ describe('Log Analytics SDK resource route', () => {
                                 status: 200,
                                 headers: createHttpHeaders(),
                                 bodyAsText: JSON.stringify({
-                                    tables: [{ name: 'PrimaryResult', columns: [], rows: [] }],
+                                    tables: [
+                                        { name: 'PrimaryResult', columns: [{ name: 'n', type: 'long' }], rows: [[0]] },
+                                    ],
                                 }),
                             };
                         },
                     },
                 },
             );
-            await expect(probeCdbLogs(client, resource, logWindow())).resolves.toEqual({ available: true });
+            await expect(probeCdbLogs(client, resource, logWindow())).resolves.toEqual({
+                available: true,
+                hasData: false,
+            });
             expect(requests).toHaveLength(1);
             const url = new URL(requests[0].url);
             expect(url.origin).toBe('https://api.loganalytics.io');

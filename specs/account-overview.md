@@ -552,7 +552,12 @@ Apply this selection before database/container/operation filters. Fan-out, inges
 shared-pool queries use the same selection policy; different tables may select different workspaces.
 Selection runs inside each KQL query without additional HTTP requests. It avoids counting diagnostic copies
 together, but row counts do not prove complete collection or visibility into every destination.
-Schema-only probes remain independent and do not select a destination.
+Table-presence probes remain independent and do not select a destination. Each applies the same explicit
+half-open analysis window as its downstream queries, takes at most one row, and returns only a validated
+zero/one count. Aggregate probes use the same five-minute-aligned boundaries as aggregate analysis.
+An accessible table with no rows skips only that table's dependent queries, without reporting a service failure,
+falling back to another source or claiming a healthy workload. Query-runtime structural checks still run when
+query-runtime data exists but request logs are empty.
 
 Request-log acquisition prefers `CDBDataPlaneRequests5M`, with `CDBDataPlaneRequests` as compatibility source only
 when the aggregate table is explicitly missing. A denied, malformed, partial or failed aggregate query is not
@@ -566,11 +571,13 @@ counts, invalid RU and misaligned source buckets invalidate the affected check, 
 partial coverage. Successful all-zero totals remain distinct from invalid aggregates.
 Burst evidence uses observed five-minute write buckets for aggregates and one-minute write buckets for raw
 events, without filling missing buckets with zero. Findings retain source table/resolution and absolute bounds.
-For a window without write buckets, Kusto's `NaN` average is normalized to null before validation and the burst
-factor is zero. Nonempty invalid burst measurements and invalid source-row counts remain failures.
+For a window without write buckets, Kusto's `NaN` average (serialized as `"NaN"`) is normalized to null before
+validation and the burst factor is zero. This requires a null peak and zero invalid source-row count.
+Nonempty invalid burst measurements and invalid source-row counts remain failures.
 
 DX-002/007 keep their query-runtime-only structural decision. Raw data-plane logs optionally enrich query RU.
 Charge reads start only after nonempty structural observations, without a separate raw-table probe.
+An already selected raw source with no rows skips optional charge reads as well.
 Each table selects one destination over the same absolute window; distinct logical-query/activity/shape tuples
 join charges pre-aggregated by activity ID. Mean logical-query RU is exposed only when every execution and
 its activities matched valid charges. Runtime rows with missing activity IDs stay on the left side of the
@@ -586,6 +593,7 @@ DX-016 optionally observes only live-validated `Read`, `Query` and `QueryPlan` o
 case-insensitive account-resource predicate and the selected request-log window/source. Invalid or duplicate
 operation aggregates are failures, not zero observations. Successful empty results record `noObservations`;
 failed/unavailable enrichment records `unavailable`, while the ARM configuration finding stays visible.
+An empty successful source probe also records `noObservations` without an additional read-charge query.
 Observed read RU and half that amount as a theoretical upper bound are separate evidence: diagnostic logs do
 not identify per-request consistency overrides. Neither value establishes measured or monetary savings.
 
@@ -599,6 +607,12 @@ meters do not. Responses require unique typed columns, complete rows, one curren
 cost/usage and positive totals. Pagination is rejected rather than treating a first page as a complete rate.
 The native client reuses the authenticated ARM pipeline and configured cloud endpoint, including bounded
 SDK retries; it does not acquire credentials, add dependencies or change role assignments.
+Cost Management HTTP 429 responses also honor the service's
+`x-ms-ratelimit-microsoft.costmanagement-{qpu,entity,tenant,clienttype}-retry-after` headers, in seconds.
+A response adapter supplies the longest valid service/standard delay to that same SDK retry policy, including
+standard HTTP-date delays, without adding a retry loop or changing its attempt limits or cancellation.
+Empty, invalid, negative and timer-overflowing service delays do not create an immediate retry; unhandled or
+exhausted throttling remains a categorized cost-coverage failure. Other ARM providers are unchanged.
 
 The account's blended rate is `(amortizedCost / billed100RuHours) / 100 * 730`; the estimate is positive
 recoverable regional RU/s times that rate. Offer-level manual/idle and autoscale idle-floor capacity is
@@ -622,11 +636,16 @@ Only the public Azure cloud is supported for this source. Every configured accou
 unambiguously through subscription location metadata, and ARM container inventory must have completed.
 Accepted region aliases resolve separately to the canonical retail key and the Monitor display name.
 Storage filters, dimension validation and provenance use the resolved display name, not the caller's alias.
-`DataUsageV2` (`Total`, bytes, five-minute grain, last 24 hours) is read per known logical container in one
-reference region. The newest complete common timestamp must contain every inventory container exactly once,
+`DataUsageV2` (`Total`, bytes, five-minute grain, last 24 hours) is read in one reference-region request,
+split by database and container dimensions. The series limit is explicitly set to the authoritative inventory
+size rather than Azure Monitor's default ten. Returned identities must belong to that inventory; missing or
+truncated series never establish a partial account total or trigger pricing.
+The newest complete common timestamp must contain every inventory container exactly once,
 with correct resource/region dimensions, finite nonnegative bytes, age at most six hours and future skew at
 most five minutes. Missing/duplicate series and partial inventories never become zero storage. Observed zero
 bytes are valid. No time buckets or replicated-region storage copies are added together.
+Monitor dimension values are matched case-insensitively to ARM database/container names.
+Inventories with identities that collide after case folding are rejected rather than double-counted.
 
 Unauthenticated Azure Retail Prices requests accept no redirects and follow only bounded, non-looping
 pagination on the fixed HTTPS endpoint. Every configured region needs exactly one current primary consumption

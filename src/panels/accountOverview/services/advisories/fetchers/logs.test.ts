@@ -21,6 +21,7 @@ import {
     fetchUncontrolledIngestion,
     logWindow,
     probeCdbLogs,
+    requestLogWindow,
     tableToRecords,
     type LogsQueryExecutor,
     type LogsTimespan,
@@ -173,23 +174,76 @@ describe('classifyLogsError', () => {
 
 describe('probeCdbLogs', () => {
     it.each(['CDBDataPlaneRequests', 'CDBDataPlaneRequests5M', 'CDBQueryRuntimeStatistics'] as const)(
-        'probes only the schema of %s using the normalized Cosmos ARM resource ID',
+        'probes window-local presence in %s without returning log rows, using the normalized ARM ID',
         async (tableName) => {
-            const queryResource = vi.fn().mockResolvedValue(success(table(['x'], [])));
+            const queryResource = vi.fn().mockResolvedValue(success(table(['n'], [[1]])));
             const onDiagnostic = vi.fn();
             await expect(
                 probeCdbLogs({ queryResource }, RESOURCE, SPAN, { table: tableName, onDiagnostic }),
-            ).resolves.toEqual({ available: true });
-            expect(queryResource).toHaveBeenCalledExactlyOnceWith(RESOURCE.slice(1), `${tableName} | take 0`, SPAN);
+            ).resolves.toEqual({ available: true, hasData: true });
+            expect(queryResource).toHaveBeenCalledExactlyOnceWith(
+                RESOURCE.slice(1),
+                `${tableName} | where TimeGenerated >= datetime(2024-01-01T00:00:00.000Z) ` +
+                    'and TimeGenerated < datetime(2024-01-02T00:00:00.000Z) | take 1 | summarize n = count()',
+                SPAN,
+            );
             expect(onDiagnostic).not.toHaveBeenCalled();
         },
     );
 
-    it('reports available when the probe query succeeds (even with zero rows)', async () => {
+    it('distinguishes a successful empty window from unavailable access', async () => {
         const executor: LogsQueryExecutor = {
-            queryResource: () => Promise.resolve(success(table(['x'], []))),
+            queryResource: () => Promise.resolve(success(table(['n'], [[0]]))),
         };
-        await expect(probeCdbLogs(executor, RESOURCE, SPAN)).resolves.toEqual({ available: true });
+        await expect(probeCdbLogs(executor, RESOURCE, SPAN)).resolves.toEqual({ available: true, hasData: false });
+    });
+
+    it.each(['CDBDataPlaneRequests', 'CDBDataPlaneRequests5M', 'CDBQueryRuntimeStatistics'] as const)(
+        'uses the same half-open analysis window as downstream queries for %s',
+        async (tableName) => {
+            const now = Date.parse('2026-11-11T09:17:23.456Z');
+            const queryResource = vi.fn().mockResolvedValue(success(table(['n'], [[0]])));
+            await probeCdbLogs({ queryResource }, RESOURCE, logWindow(now), { table: tableName });
+            const expected = tableName === 'CDBDataPlaneRequests5M' ? requestLogWindow(tableName, now) : logWindow(now);
+            expect(queryResource).toHaveBeenCalledExactlyOnceWith(
+                RESOURCE.slice(1),
+                `${tableName} | where TimeGenerated >= datetime(${expected.startTime.toISOString()}) ` +
+                    `and TimeGenerated < datetime(${expected.endTime.toISOString()}) | take 1 | summarize n = count()`,
+                expected,
+            );
+        },
+    );
+
+    it.each([
+        table(['n'], []),
+        table(['n'], [[null]]),
+        table(['n'], [['0']]),
+        table(['n'], [[Number.NaN]]),
+        table(['n'], [[2]]),
+        table(['n'], [[-1]]),
+        table(['n'], [[0], [1]]),
+        table(['other'], [[0]]),
+    ])('rejects malformed presence evidence rather than treating it as an empty window: %j', async (resultTable) => {
+        const onDiagnostic = vi.fn();
+        await expect(
+            probeCdbLogs({ queryResource: async () => success(resultTable) }, RESOURCE, SPAN, { onDiagnostic }),
+        ).resolves.toEqual({ available: false, reason: 'noData' });
+        expect(onDiagnostic).toHaveBeenCalledOnce();
+    });
+
+    it.each([
+        { startTime: new Date(Number.NaN), endTime: SPAN.endTime },
+        { startTime: SPAN.endTime, endTime: SPAN.startTime },
+        { startTime: SPAN.startTime, endTime: SPAN.startTime },
+    ])('reports an invalid observation window without issuing a query: %j', async (window) => {
+        const queryResource = vi.fn();
+        const onDiagnostic = vi.fn();
+        await expect(probeCdbLogs({ queryResource }, RESOURCE, window, { onDiagnostic })).resolves.toEqual({
+            available: false,
+            reason: 'noData',
+        });
+        expect(queryResource).not.toHaveBeenCalled();
+        expect(onDiagnostic).toHaveBeenCalledOnce();
     });
 
     it('classifies a missing-table failure as logAnalyticsDisabled', async () => {
@@ -240,7 +294,11 @@ describe('probeCdbLogs', () => {
             available: false,
             reason: 'noData',
         });
-        expect(queryResource).toHaveBeenCalledExactlyOnceWith(RESOURCE.slice(1), 'CDBDataPlaneRequests | take 0', SPAN);
+        expect(queryResource).toHaveBeenCalledExactlyOnceWith(
+            RESOURCE.slice(1),
+            expect.stringMatching(/^CDBDataPlaneRequests .* \| take 1 \| summarize n = count\(\)$/),
+            SPAN,
+        );
         expect(onDiagnostic).toHaveBeenCalledExactlyOnceWith(
             expect.objectContaining({
                 operation: 'probeDataPlane',

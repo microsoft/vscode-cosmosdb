@@ -39,35 +39,40 @@ function missingTable(table: string) {
 }
 
 describe('request-log source selection', () => {
-    it('prefers one aggregate source without querying raw data or requiring nonempty telemetry', async () => {
-        const queryResource = vi.fn<LogsQueryExecutor['queryResource']>().mockResolvedValue(success());
+    it.each([0, 1])('selects the aggregate source with presence=%i without querying raw data', async (n) => {
+        const queryResource = vi.fn<LogsQueryExecutor['queryResource']>().mockResolvedValue(success(['n'], [[n]]));
         const report = vi.fn();
-        await expect(selectDataPlaneSource({ queryResource }, RESOURCE, SPAN, report)).resolves.toBe(
-            'CDBDataPlaneRequests5M',
-        );
+        await expect(selectDataPlaneSource({ queryResource }, RESOURCE, SPAN, report)).resolves.toEqual({
+            source: 'CDBDataPlaneRequests5M',
+            hasData: n > 0,
+        });
         expect(queryResource).toHaveBeenCalledExactlyOnceWith(
             RESOURCE.slice(1),
-            'CDBDataPlaneRequests5M | take 0',
+            expect.stringMatching(/^CDBDataPlaneRequests5M .* \| take 1 \| summarize n = count\(\)$/),
             SPAN,
         );
         expect(report).not.toHaveBeenCalled();
     });
 
-    it('falls back to raw only for an explicitly missing aggregate table, without false partial coverage', async () => {
-        const queryResource = vi
-            .fn<LogsQueryExecutor['queryResource']>()
-            .mockRejectedValueOnce(missingTable('CDBDataPlaneRequests5M'))
-            .mockResolvedValueOnce(success());
-        const report = vi.fn();
-        await expect(selectDataPlaneSource({ queryResource }, RESOURCE, SPAN, report)).resolves.toBe(
-            'CDBDataPlaneRequests',
-        );
-        expect(queryResource.mock.calls.map((call) => call[1])).toEqual([
-            'CDBDataPlaneRequests5M | take 0',
-            'CDBDataPlaneRequests | take 0',
-        ]);
-        expect(report).not.toHaveBeenCalled();
-    });
+    it.each([0, 1])(
+        'falls back only for a missing aggregate table, with raw presence=%i and no false failure',
+        async (n) => {
+            const queryResource = vi
+                .fn<LogsQueryExecutor['queryResource']>()
+                .mockRejectedValueOnce(missingTable('CDBDataPlaneRequests5M'))
+                .mockResolvedValueOnce(success(['n'], [[n]]));
+            const report = vi.fn();
+            await expect(selectDataPlaneSource({ queryResource }, RESOURCE, SPAN, report)).resolves.toEqual({
+                source: 'CDBDataPlaneRequests',
+                hasData: n > 0,
+            });
+            expect(queryResource.mock.calls.map((call) => call[1].split(' ')[0])).toEqual([
+                'CDBDataPlaneRequests5M',
+                'CDBDataPlaneRequests',
+            ]);
+            expect(report).not.toHaveBeenCalled();
+        },
+    );
 
     it.each([
         { statusCode: 403, code: 'Forbidden' },
@@ -269,6 +274,53 @@ describe('weighted five-minute request logs', () => {
             expect(report).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ operation: 'ingestionBurst' }));
         },
     );
+
+    it.each([0, 20])('accepts Kusto empty-write averages with %s total requests', async (requests) => {
+        const report = vi.fn();
+        const executor: LogsQueryExecutor = {
+            queryResource: async (_id, query) =>
+                query.includes('totalRu =')
+                    ? success(
+                          ['totalRu', 'writeRu', 'reqs', 'throttles', 'invalidRows'],
+                          [[requests * 5, 0, requests, 0, 0]],
+                      )
+                    : query.includes('peak =')
+                      ? success(['peak', 'avg', 'invalidRows'], [[null, 'NaN', 0]])
+                      : success(['UserAgent', 'n', 'invalidRows']),
+        };
+        await expect(
+            fetchUncontrolledIngestion(executor, RESOURCE, 'db', 'items', SPAN, report, 'CDBDataPlaneRequests5M'),
+        ).resolves.toMatchObject({
+            totalRequests: requests,
+            writeRu: 0,
+            burstFactor: 0,
+            dominantUserAgent: undefined,
+        });
+        expect(report).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        [100, 'NaN', 0],
+        [100, Number.NaN, 0],
+        [null, 'Infinity', 0],
+        [null, 100, 0],
+        [null, 'NaN', 1],
+        [null, 'NaN', undefined],
+    ])('still rejects invalid burst aggregates: %j', async (...row) => {
+        const report = vi.fn();
+        const executor: LogsQueryExecutor = {
+            queryResource: async (_id, query) =>
+                query.includes('totalRu =')
+                    ? success(['totalRu', 'writeRu', 'reqs', 'throttles', 'invalidRows'], [[100, 0, 20, 0, 0]])
+                    : query.includes('peak =')
+                      ? success(['peak', 'avg', 'invalidRows'], [row])
+                      : success(),
+        };
+        await expect(
+            fetchUncontrolledIngestion(executor, RESOURCE, 'db', 'items', SPAN, report, 'CDBDataPlaneRequests5M'),
+        ).rejects.toMatchObject({ name: 'LogsFetchError', reason: 'noData' });
+        expect(report).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ operation: 'ingestionBurst' }));
+    });
 
     it.each(['startTime', 'endTime'] as const)('rejects partial %s buckets before querying', async (boundary) => {
         const queryResource = vi.fn();

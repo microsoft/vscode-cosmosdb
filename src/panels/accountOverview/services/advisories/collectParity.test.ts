@@ -87,7 +87,7 @@ import {
 
 beforeEach(() => {
     vi.mocked(getAccountRequestStatusCounts).mockResolvedValue({ 200: 1000 });
-    vi.mocked(selectDataPlaneSource).mockResolvedValue('CDBDataPlaneRequests');
+    vi.mocked(selectDataPlaneSource).mockResolvedValue({ source: 'CDBDataPlaneRequests', hasData: true });
     vi.mocked(probeCdbLogs).mockResolvedValue({ available: false, reason: 'noData' });
 });
 
@@ -1277,7 +1277,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
             peakRuPerSec: 100,
             sampleCount: 50,
         });
-        vi.mocked(probeCdbLogs).mockResolvedValue({ available: true });
+        vi.mocked(probeCdbLogs).mockResolvedValue({ available: true, hasData: true });
         vi.mocked(fetchCrossPartitionShapes).mockImplementation(async (_logs, _account, databaseId, containerId) => ({
             databaseId,
             containerId,
@@ -1419,7 +1419,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
             peakRuPerSec: 100,
             sampleCount: 50,
         });
-        vi.mocked(probeCdbLogs).mockResolvedValue({ available: true });
+        vi.mocked(probeCdbLogs).mockResolvedValue({ available: true, hasData: true });
         vi.mocked(fetchCrossPartitionShapes).mockResolvedValue({
             databaseId: 'db',
             containerId: 'c',
@@ -1460,7 +1460,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
             peakRuPerSec: 20,
             sampleCount: 30,
         });
-        vi.mocked(probeCdbLogs).mockResolvedValue({ available: true });
+        vi.mocked(probeCdbLogs).mockResolvedValue({ available: true, hasData: true });
         vi.mocked(fetchCrossPartitionShapes).mockResolvedValue({
             databaseId: 'db',
             containerId: 'c',

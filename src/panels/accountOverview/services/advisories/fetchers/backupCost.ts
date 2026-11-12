@@ -8,7 +8,7 @@ import { type MonitorClient } from '@azure/arm-monitor';
 import { RestError } from '@azure/core-rest-pipeline';
 import { z } from 'zod';
 import { type InventoryContainerRow } from '../../inventory';
-import { containerFilter, DAY, escapeODataLiteral, HOUR, MINUTE, parseMonitorTimestamp } from '../../shared';
+import { DAY, escapeODataLiteral, HOUR, MINUTE, parseMonitorTimestamp } from '../../shared';
 import { type AdvisoryCostEstimate, type BackupPrice } from '../core/types';
 import { CostEvidenceError, readCostArmJson, type CostContext } from './costManagement';
 
@@ -191,59 +191,54 @@ async function getStorageSnapshot(
     }
     const snapshots = new Map<number, Map<string, number>>();
     const duplicates = new Set<number>();
-    for (let offset = 0; offset < rows.length; offset += 5) {
-        await Promise.all(
-            rows.slice(offset, offset + 5).map(async (row) => {
-                const response = await client.metrics.list(accountId, {
-                    metricnames: 'DataUsageV2',
-                    aggregation: 'Total',
-                    timespan: `${new Date(now - DAY).toISOString()}/${new Date(now).toISOString()}`,
-                    interval: 'PT5M',
-                    filter: `${containerFilter(row.databaseId, row.containerId)} and Region eq '${escapeODataLiteral(referenceRegion)}'`,
-                });
-                if (
-                    response.value?.length !== 1 ||
-                    response.value[0].name?.value !== 'DataUsageV2' ||
-                    response.value[0].unit !== 'Bytes' ||
-                    (response.value[0].errorCode && response.value[0].errorCode !== 'Success')
-                ) {
-                    throw new CostEvidenceError('invalidData');
-                }
-                for (const series of response.value[0].timeseries ?? []) {
-                    const metadata = new Map(
-                        series.metadatavalues?.map((value) => [value.name?.value?.toLowerCase(), value.value]),
-                    );
-                    const databaseId = metadata.get('databasename');
-                    const containerId = metadata.get('collectionname');
-                    if (
-                        metadata.size !== series.metadatavalues?.length ||
-                        metadata.size !== 3 ||
-                        !databaseId ||
-                        !containerId ||
-                        identity(databaseId, containerId) !== identity(row.databaseId, row.containerId) ||
-                        metadata.get('region')?.toLowerCase() !== referenceRegion.toLowerCase()
-                    ) {
-                        throw new CostEvidenceError('invalidData');
-                    }
-                    for (const point of series.data ?? []) {
-                        if (point.total === undefined || point.total === null) {
-                            continue;
-                        }
-                        const timestamp = parseMonitorTimestamp(point.timeStamp);
-                        if (timestamp === undefined || !Number.isFinite(point.total) || point.total < 0) {
-                            throw new CostEvidenceError('invalidData');
-                        }
-                        const snapshot = snapshots.get(timestamp) ?? new Map<string, number>();
-                        const key = identity(databaseId, containerId);
-                        if (snapshot.has(key)) {
-                            duplicates.add(timestamp);
-                        }
-                        snapshot.set(key, point.total);
-                        snapshots.set(timestamp, snapshot);
-                    }
-                }
-            }),
+    const response = await client.metrics.list(accountId, {
+        metricnames: 'DataUsageV2',
+        aggregation: 'Total',
+        timespan: `${new Date(now - DAY).toISOString()}/${new Date(now).toISOString()}`,
+        interval: 'PT5M',
+        filter: `DatabaseName eq '*' and CollectionName eq '*' and Region eq '${escapeODataLiteral(referenceRegion)}'`,
+        top: expected.size,
+    });
+    if (
+        response.value?.length !== 1 ||
+        response.value[0].name?.value !== 'DataUsageV2' ||
+        response.value[0].unit !== 'Bytes' ||
+        (response.value[0].errorCode && response.value[0].errorCode !== 'Success')
+    ) {
+        throw new CostEvidenceError('invalidData');
+    }
+    for (const series of response.value[0].timeseries ?? []) {
+        const metadata = new Map(
+            series.metadatavalues?.map((value) => [value.name?.value?.toLowerCase(), value.value]),
         );
+        const databaseId = metadata.get('databasename');
+        const containerId = metadata.get('collectionname');
+        if (
+            metadata.size !== series.metadatavalues?.length ||
+            metadata.size !== 3 ||
+            !databaseId ||
+            !containerId ||
+            !expected.has(identity(databaseId, containerId)) ||
+            metadata.get('region')?.toLowerCase() !== referenceRegion.toLowerCase()
+        ) {
+            throw new CostEvidenceError('invalidData');
+        }
+        const key = identity(databaseId, containerId);
+        for (const point of series.data ?? []) {
+            if (point.total === undefined || point.total === null) {
+                continue;
+            }
+            const timestamp = parseMonitorTimestamp(point.timeStamp);
+            if (timestamp === undefined || !Number.isFinite(point.total) || point.total < 0) {
+                throw new CostEvidenceError('invalidData');
+            }
+            const snapshot = snapshots.get(timestamp) ?? new Map<string, number>();
+            if (snapshot.has(key)) {
+                duplicates.add(timestamp);
+            }
+            snapshot.set(key, point.total);
+            snapshots.set(timestamp, snapshot);
+        }
     }
     const timestamp = [...snapshots.keys()]
         .sort((a, b) => b - a)

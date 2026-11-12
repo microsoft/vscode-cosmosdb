@@ -44,6 +44,8 @@ jobs:
 
   coda-freshness:
     name: CODA Freshness
+    # Temporarily paused until hosted freshness verification and private-source access are needed.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

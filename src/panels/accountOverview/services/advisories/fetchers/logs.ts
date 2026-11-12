@@ -61,7 +61,7 @@ export function requestLogWindow(source: DataPlaneSource, now = Date.now()): Log
     );
 }
 
-function requestLogEvidence(source: DataPlaneSource, timespan: LogsTimespan): RequestLogEvidence {
+export function requestLogEvidence(source: DataPlaneSource, timespan: LogsTimespan): RequestLogEvidence {
     return {
         sourceTable: source,
         sourceResolution: source === 'CDBDataPlaneRequests5M' ? 'PT5M' : 'perRequest',
@@ -266,9 +266,8 @@ export function classifyLogsError(error: unknown): UnavailableReason {
 }
 
 /**
- * Probes one required resource-specific table without retrieving log rows. Success means the table query completed,
- * not that every backing workspace is accessible or that the time window contains data. Each table gates its own
- * detectors; missing-table failures retain the legacy `logAnalyticsDisabled` reason without asserting logs are disabled.
+ * Probes table access and window-local data presence without returning log rows. A successful empty probe is not a
+ * missing table or proof of complete collection. Each table gates only its dependent detector/enrichment queries.
  */
 export async function probeCdbLogs(
     executor: LogsQueryExecutor,
@@ -278,24 +277,51 @@ export async function probeCdbLogs(
         onDiagnostic?: LogsDiagnosticReporter;
         table?: DataPlaneSource | 'CDBQueryRuntimeStatistics';
     },
-): Promise<{ available: boolean; reason?: UnavailableReason }> {
+): Promise<{ available: true; hasData: boolean } | { available: false; reason: UnavailableReason }> {
     const table = options?.table ?? 'CDBDataPlaneRequests';
+    const operation =
+        table === 'CDBDataPlaneRequests'
+            ? 'probeDataPlane'
+            : table === 'CDBDataPlaneRequests5M'
+              ? 'probeDataPlane5M'
+              : 'probeQueryRuntime';
+    const window =
+        table === 'CDBDataPlaneRequests5M'
+            ? {
+                  startTime: new Date(
+                      Math.floor(timespan.startTime.getTime() / AGGREGATE_BUCKET_MS) * AGGREGATE_BUCKET_MS,
+                  ),
+                  endTime: new Date(Math.floor(timespan.endTime.getTime() / AGGREGATE_BUCKET_MS) * AGGREGATE_BUCKET_MS),
+              }
+            : timespan;
     try {
-        await executeLogsQuery(
+        if (
+            !Number.isFinite(window.startTime.getTime()) ||
+            !Number.isFinite(window.endTime.getTime()) ||
+            window.startTime >= window.endTime
+        ) {
+            throw new Error('Log table presence probe requires a valid, nonempty observation window.');
+        }
+        const rows = await executeLogsQuery(
             executor,
             resourceId,
-            `${table} | take 0`,
-            timespan,
-            table === 'CDBDataPlaneRequests'
-                ? 'probeDataPlane'
-                : table === 'CDBDataPlaneRequests5M'
-                  ? 'probeDataPlane5M'
-                  : 'probeQueryRuntime',
+            `${table} | where TimeGenerated >= datetime(${window.startTime.toISOString()}) ` +
+                `and TimeGenerated < datetime(${window.endTime.toISOString()}) | take 1 | summarize n = count()`,
+            window,
+            operation,
             [],
             options?.onDiagnostic,
+            (values) => {
+                if (values.length !== 1 || (values[0].n !== 0 && values[0].n !== 1)) {
+                    throw new Error('Log table presence probe returned an invalid row count.');
+                }
+            },
         );
-        return { available: true };
+        return { available: true, hasData: rows[0].n === 1 };
     } catch (error) {
+        if (!(error instanceof LogsFetchError)) {
+            reportDiagnostic(createLogsDiagnostic(error, operation), options?.onDiagnostic);
+        }
         return { available: false, reason: classifyLogsError(error) };
     }
 }
@@ -306,19 +332,19 @@ export async function selectDataPlaneSource(
     resourceId: string,
     timespan: LogsTimespan,
     onDiagnostic?: LogsDiagnosticReporter,
-): Promise<DataPlaneSource | undefined> {
+): Promise<{ source: DataPlaneSource; hasData: boolean } | undefined> {
     const diagnostics: LogsDiagnostic[] = [];
     const aggregate = await probeCdbLogs(executor, resourceId, timespan, {
         table: 'CDBDataPlaneRequests5M',
         onDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
     });
     if (aggregate.available) {
-        return 'CDBDataPlaneRequests5M';
+        return { source: 'CDBDataPlaneRequests5M', hasData: aggregate.hasData };
     }
     if (diagnostics[0]?.kind === 'missingTable') {
         const raw = await probeCdbLogs(executor, resourceId, timespan, { onDiagnostic });
         if (raw.available) {
-            return 'CDBDataPlaneRequests';
+            return { source: 'CDBDataPlaneRequests', hasData: raw.hasData };
         }
     }
     for (const diagnostic of diagnostics) {
@@ -538,6 +564,7 @@ export async function fetchUncontrolledIngestion(
             'ingestionBurst',
             [databaseId, containerId, db, coll],
             onDiagnostic,
+            // Kusto serializes avg() over no write buckets as "NaN", while max() is null.
             (rows) => {
                 for (const row of rows) {
                     if (row.peak === null && (Number.isNaN(row.avg) || row.avg === 'NaN')) {

@@ -146,8 +146,11 @@ describe('data modeler account scope', () => {
             await render({ endpoint: `https://recovery-${failure}.documents.azure.com` });
             expect(vscode.window.createWebviewPanel).toHaveBeenCalledOnce();
             expect(vscode.window.showWarningMessage).toHaveBeenCalledExactlyOnceWith(
-                'Could not load the saved data model. Starting a new model on the Workload page.',
+                failure === 'filesystem'
+                    ? 'Could not read the saved data model. Starting a temporary model on the Workload page. Reopen Data Modeler to retry loading before saving.'
+                    : 'Could not load the saved data model. Starting a new model on the Workload page.',
             );
+            expect(vscode.workspace.fs.delete).toHaveBeenCalledTimes(failure === 'filesystem' ? 0 : 1);
             expect(await lastContext().project.loadState()).toBeNull();
             expect(DataModelerProjectService.prototype.saveState).not.toHaveBeenCalled();
         },

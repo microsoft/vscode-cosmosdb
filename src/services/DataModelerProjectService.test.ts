@@ -285,9 +285,32 @@ describe('DataModelerProjectService', () => {
         expect(await new DataModelerProjectService(endpoint).loadState()).toEqual(state);
     });
 
+    it.each(['stat', 'readFile'] as const)(
+        'preserves a valid model after a transient %s failure and blocks saves until a successful reload',
+        async (operation) => {
+            const state = snapshot();
+            await service.loadState();
+            await service.saveState(state);
+            const original = files.get(service.projectUri.toString());
+            vi.mocked(vscode.workspace.fs.delete).mockClear();
+            vi.mocked(vscode.workspace.fs.writeFile).mockClear();
+            vi.mocked(vscode.workspace.fs[operation]).mockRejectedValueOnce(vscode.FileSystemError.NoPermissions());
+
+            expect(await service.loadState()).toBeNull();
+            expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
+                'Could not read the saved data model. Starting a temporary model on the Workload page. Reopen Data Modeler to retry loading before saving.',
+            );
+            expect(vscode.workspace.fs.delete).not.toHaveBeenCalled();
+            expect(files.get(service.projectUri.toString())).toEqual(original);
+            await expect(service.saveState(snapshot())).rejects.toThrow('Load the saved data model');
+            expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
+            expect(await service.loadState()).toEqual(state);
+            await service.saveState(state);
+        },
+    );
+
     it('opens even if removing the failed file is denied, and reports the cleanup failure', async () => {
         files.set(service.projectUri.toString(), Buffer.from('{}'));
-        vi.mocked(vscode.workspace.fs.readFile).mockRejectedValueOnce(vscode.FileSystemError.NoPermissions());
         vi.mocked(vscode.workspace.fs.delete).mockRejectedValueOnce(vscode.FileSystemError.NoPermissions());
         expect(await service.loadState()).toBeNull();
         expect(vscode.window.showWarningMessage).toHaveBeenCalledOnce();
@@ -302,10 +325,13 @@ describe('DataModelerProjectService', () => {
         expect(files.size).toBe(1);
     });
 
-    it('recovers from unexpected stat failures even when there is no saved file to remove', async () => {
+    it('preserves storage after unexpected stat failures and allows saving after reloading', async () => {
         vi.mocked(vscode.workspace.fs.stat).mockRejectedValueOnce(new Error('Storage unavailable'));
         expect(await service.loadState()).toBeNull();
+        expect(vscode.workspace.fs.delete).not.toHaveBeenCalled();
         const state = snapshot();
+        await expect(service.saveState(state)).rejects.toThrow('Load the saved data model');
+        expect(await service.loadState()).toBeNull();
         await service.saveState(state);
         expect(await new DataModelerProjectService(endpoint).loadState()).toEqual(state);
     });

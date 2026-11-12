@@ -55,6 +55,8 @@ function isFileNotFound(error: unknown): boolean {
     return error instanceof vscode.FileSystemError && error.code === 'FileNotFound';
 }
 
+class InvalidSavedModelError extends Error {}
+
 /** Persists local wizard inputs and results; never emits their contents, names, or paths to telemetry. */
 export class DataModelerProjectService {
     private static readonly instances = new Map<string, DataModelerProjectService>();
@@ -110,13 +112,23 @@ export class DataModelerProjectService {
         return result;
     }
 
-    /** Load failures warn, discard the failed saved model, and start fresh. */
+    /** Invalid saved models are discarded; read failures preserve the file and block saves until a successful load. */
     public loadState(): Promise<ModelingAdvisorSnapshot | null> {
         return DataModelerProjectService.enqueue(async () => {
             let project: ModelingAdvisorProject | undefined;
             try {
                 project = await this.readProject();
-            } catch {
+            } catch (error) {
+                if (!(error instanceof InvalidSavedModelError)) {
+                    this.loadedRevision = undefined;
+                    ext.outputChannel.warn('Could not read the saved data model. The saved file was left unchanged.');
+                    void vscode.window.showWarningMessage(
+                        l10n.t(
+                            'Could not read the saved data model. Starting a temporary model on the Workload page. Reopen Data Modeler to retry loading before saving.',
+                        ),
+                    );
+                    return null;
+                }
                 ext.outputChannel.warn('Could not load the saved data model. Starting a new model.');
                 try {
                     await vscode.workspace.fs.delete(this.projectUri, { recursive: false, useTrash: false });
@@ -184,11 +196,13 @@ export class DataModelerProjectService {
             if (!(error instanceof SyntaxError)) {
                 throw error;
             }
-            throw new Error(l10n.t('The saved data modeler project is not valid JSON. Fix the file before retrying.'));
+            throw new InvalidSavedModelError(
+                l10n.t('The saved data modeler project is not valid JSON. Fix the file before retrying.'),
+            );
         }
         const parsed = ModelingAdvisorProjectSchema.safeParse(json);
         if (!parsed.success) {
-            throw new Error(
+            throw new InvalidSavedModelError(
                 l10n.t(
                     'The saved data modeler project has an invalid format or unsupported version. The file was not changed.',
                 ),

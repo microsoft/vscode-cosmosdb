@@ -94,6 +94,7 @@ const StoredWizardStateSchema: z.ZodType<WizardState> = z
     .object({
         step: z.number().int().min(1),
         reachedSteps: z.array(z.string()).optional(),
+        inputsChangedSinceAdvance: z.boolean().optional(),
         scenario: z
             .enum([
                 'chat',

@@ -61,7 +61,8 @@ export const dataModelingRouterDef = dataModelingRouter({
                 buttons: z
                     .object({
                         primary: z.string().min(1),
-                        secondary: z.string().min(1),
+                        // Omit secondary to offer only the primary action plus VS Code's native Cancel.
+                        secondary: z.string().min(1).optional(),
                         secondaryIsCloseAffordance: z.boolean().optional(),
                     })
                     .optional(),
@@ -69,15 +70,17 @@ export const dataModelingRouterDef = dataModelingRouter({
         )
         .mutation(async ({ input }) => {
             const yes = { title: input.buttons?.primary ?? l10n.t('Yes') };
-            const no: vscode.MessageItem = { title: input.buttons?.secondary ?? l10n.t('No') };
-            if (input.buttons?.secondaryIsCloseAffordance) no.isCloseAffordance = true;
+            const no: vscode.MessageItem | undefined =
+                input.buttons && !input.buttons.secondary
+                    ? undefined
+                    : { title: input.buttons?.secondary ?? l10n.t('No') };
+            if (no && input.buttons?.secondaryIsCloseAffordance) no.isCloseAffordance = true;
             const choice = await vscode.window.showWarningMessage(
                 input.message,
                 { modal: true, detail: input.detail },
-                yes,
-                no,
+                ...(no ? [yes, no] : [yes]),
             );
-            return choice === yes ? true : choice === no ? false : undefined;
+            return choice === yes ? true : no && choice === no ? false : undefined;
         }),
     promptContainerName: stateProcedure
         .input(z.object({ existingNames: z.array(z.string()).max(MAX_CONTAINERS - 1) }))

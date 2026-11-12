@@ -26,7 +26,7 @@ export function useNativeConfirmation() {
         async (
             message: string,
             detail: string,
-            buttons?: { primary: string; secondary: string; secondaryIsCloseAffordance?: boolean },
+            buttons?: { primary: string; secondary?: string; secondaryIsCloseAffordance?: boolean },
         ): Promise<boolean | undefined> => {
             if (pending.current || !mounted.current) return undefined;
             pending.current = true;

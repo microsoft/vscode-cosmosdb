@@ -127,7 +127,9 @@ test('Workload and Scale cards use native radio keyboard navigation, including f
         await expect(chat).toBeFocused();
 
         await filter.fill('transactions');
-        await expect(scenarios.getByRole('radio')).toHaveCount(2);
+        // Orders & Transactions, Financial Ledger, and the custom workload, which stays visible under any filter.
+        await expect(scenarios.getByRole('radio')).toHaveCount(3);
+        await expect(custom).toBeVisible();
         await filter.press('Tab');
         await expect(firstTrait).toBeFocused();
         await firstTrait.press('Tab');
@@ -143,15 +145,20 @@ test('Workload and Scale cards use native radio keyboard navigation, including f
         await expect(ledger).toBeFocused();
         await expect(ledger).toBeChecked();
         await filter.fill('no matching workload');
-        await expect(webview.getByText('No scenarios match your filter.')).toBeVisible();
-        await expect(scenarios).toHaveCount(0);
+        await expect(scenarios.getByRole('radio')).toHaveCount(1);
+        await expect(custom).toBeVisible();
+        await expect(custom).not.toBeChecked();
         await filter.press('Tab');
         await expect(firstTrait).toBeFocused();
         await firstTrait.press('Tab');
         await expect(clear).toBeFocused();
         await clear.press('Tab');
+        await expect(custom).toBeFocused();
+        await custom.press('Tab');
         await expect(webview.getByRole('button', { name: 'Start', exact: true })).toBeFocused();
         await webview.getByRole('button', { name: 'Start', exact: true }).press('Shift+Tab');
+        await expect(custom).toBeFocused();
+        await custom.press('Shift+Tab');
         await expect(clear).toBeFocused();
         await clear.press('Enter');
         await expect(filter).toBeFocused();

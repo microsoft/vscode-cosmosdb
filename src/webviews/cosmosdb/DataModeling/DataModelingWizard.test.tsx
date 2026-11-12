@@ -1283,15 +1283,21 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(screen.getByRole('button', { name: 'Get Recommendation' })).toBeVisible();
     });
 
-    it('reports load failures without enabling edits or saving, and retries detection', async () => {
-        client.dataModeling.loadState.query
-            .mockRejectedValueOnce(new Error('invalid file'))
-            .mockResolvedValue(restored());
+    it('opens Workload after a load failure, reports recovery, and allows starting a new model', async () => {
+        vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1024);
+        client.dataModeling.loadState.query.mockRejectedValueOnce(new Error('invalid file'));
         render(<DataModelingWizard />);
-        await userEvent.click(await screen.findByRole('button', { name: 'Retry loading' }));
         await continueExisting();
+        expect(
+            screen.getByText('Could not load the saved data model. Starting a new model on the Workload page.'),
+        ).toBeVisible();
+        expect(screen.getByRole('button', { name: 'Start' })).toBeDisabled();
         expect(client.dataModeling.confirm.mutate).not.toHaveBeenCalled();
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+        await userEvent.click(screen.getByRole('radio', { name: /Chat & Sessions/ }));
+        await userEvent.click(screen.getByRole('button', { name: 'Start' }));
+        expect(screen.getByRole('tab', { name: 'Data' })).toHaveAttribute('aria-selected', 'true');
+        expect(lastSave().wizard.scenario).toBe('chat');
     });
 
     it('surfaces a failed edit save and retries the updated state', async () => {

@@ -126,6 +126,33 @@ describe('data modeler account scope', () => {
     const render = DataModelingWizardTab.render.bind(DataModelingWizardTab);
     const open = openDataModelingWizard;
 
+    it.each(['json', 'schema', 'filesystem'] as const)(
+        'opens a fresh wizard after a saved-model %s failure instead of blocking panel creation',
+        async (failure) => {
+            vi.mocked(DataModelerProjectService.prototype.loadState).mockRestore();
+            vi.spyOn(vscode.workspace.fs, 'stat').mockResolvedValue({
+                type: vscode.FileType.File,
+                ctime: 0,
+                mtime: Date.now(),
+                size: 1,
+            });
+            vi.spyOn(vscode.workspace.fs, 'readFile').mockImplementation(async () => {
+                if (failure === 'filesystem') throw vscode.FileSystemError.NoPermissions();
+                return Buffer.from(failure === 'json' ? '{broken' : '{"version":99}');
+            });
+            vi.spyOn(vscode.workspace.fs, 'delete').mockImplementation(async () => {
+                vi.mocked(vscode.workspace.fs.stat).mockRejectedValue(vscode.FileSystemError.FileNotFound());
+            });
+            await render({ endpoint: `https://recovery-${failure}.documents.azure.com` });
+            expect(vscode.window.createWebviewPanel).toHaveBeenCalledOnce();
+            expect(vscode.window.showWarningMessage).toHaveBeenCalledExactlyOnceWith(
+                'Could not load the saved data model. Starting a new model on the Workload page.',
+            );
+            expect(await lastContext().project.loadState()).toBeNull();
+            expect(DataModelerProjectService.prototype.saveState).not.toHaveBeenCalled();
+        },
+    );
+
     it.each([undefined, firstAccount])('rejects opens when the Data Modeler flag is disabled', async (source) => {
         vi.mocked(isDataModelerFeatureEnabled).mockReturnValue(false);
         await expect(open(actionContext(), source)).rejects.toThrow('The Data Modeler wizard is disabled in settings.');

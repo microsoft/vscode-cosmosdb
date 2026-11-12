@@ -110,9 +110,25 @@ export class DataModelerProjectService {
         return result;
     }
 
+    /** Load failures warn, discard the failed saved model, and start fresh. */
     public loadState(): Promise<ModelingAdvisorSnapshot | null> {
         return DataModelerProjectService.enqueue(async () => {
-            const project = await this.readProject();
+            let project: ModelingAdvisorProject | undefined;
+            try {
+                project = await this.readProject();
+            } catch {
+                ext.outputChannel.warn('Could not load the saved data model. Starting a new model.');
+                try {
+                    await vscode.workspace.fs.delete(this.projectUri, { recursive: false, useTrash: false });
+                } catch (error) {
+                    if (!isFileNotFound(error)) {
+                        ext.outputChannel.warn('Could not remove the failed saved data model. Saving may still fail.');
+                    }
+                }
+                void vscode.window.showWarningMessage(
+                    l10n.t('Could not load the saved data model. Starting a new model on the Workload page.'),
+                );
+            }
             this.loadedRevision = DataModelerProjectService.revision;
             if (!project) {
                 return null;
@@ -140,7 +156,7 @@ export class DataModelerProjectService {
             if (!parsed.success) {
                 throw new Error(l10n.t('The data modeler state is invalid and could not be saved.'));
             }
-            // Re-read before replacing so an externally damaged or newer-version file is never silently discarded.
+            // Outside load recovery, externally damaged or newer-version files still require reopening the modeler.
             const existing = await this.readProject();
             const state = parsed.data;
             await this.writeProject({ version: 1, name: existing?.name ?? 'Data Modeler', state });

@@ -52,19 +52,26 @@ describe('modeling advisor persistence', () => {
         expect(save).not.toHaveBeenCalled();
     });
 
-    it('blocks saving after a failed load and hydrates the saved model after retry', async () => {
-        const saved = savedSnapshot();
-        const load = vi.fn().mockRejectedValueOnce(new Error('corrupt')).mockResolvedValue(saved);
-        const save = vi.fn().mockResolvedValue(undefined);
-        const { result } = renderHook(() => useModelingAdvisorPersistence({ load, save }));
-        await waitFor(() => expect(result.current.loadStatus).toBe('error'));
-        act(() => result.current.setSnapshot(savedSnapshot()));
-        expect(save).not.toHaveBeenCalled();
-        act(() => result.current.retryLoad());
-        await waitFor(() => expect(result.current.loadStatus).toBe('ready'));
-        expect(result.current.snapshot).toEqual(saved);
-        expect(save).not.toHaveBeenCalled();
-    });
+    it.each(['rejection', 'synchronous throw', 'invalid response'])(
+        'starts fresh with a warning after a load %s, without saving until an edit',
+        async (failure) => {
+            const load = vi.fn<() => Promise<ReturnType<typeof savedSnapshot> | null>>(() => {
+                if (failure === 'synchronous throw') throw new Error('Load failed');
+                return failure === 'rejection'
+                    ? Promise.reject(new Error('Load failed'))
+                    : Promise.resolve({ ...savedSnapshot(), wizard: { ...savedSnapshot().wizard, step: -1 } });
+            });
+            const save = vi.fn().mockResolvedValue(undefined);
+            const { result } = renderHook(() => useModelingAdvisorPersistence({ load, save }));
+            await waitFor(() => expect(result.current.loadStatus).toBe('ready'));
+            expect(result.current.loadFailed).toBe(true);
+            expect(result.current.snapshot).toEqual(createInitialSnapshot());
+            expect(save).not.toHaveBeenCalled();
+            const edited = savedSnapshot();
+            act(() => result.current.setSnapshot(edited));
+            await waitFor(() => expect(save).toHaveBeenCalledWith(edited));
+        },
+    );
 
     it('reports failed saves and retries without reverting current inputs', async () => {
         const load = vi.fn().mockResolvedValue(null);

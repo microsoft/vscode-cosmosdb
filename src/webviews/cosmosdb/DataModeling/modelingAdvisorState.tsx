@@ -4,7 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { type ModelingAdvisorSnapshot } from '../../../dataModeling/modelingAdvisorSchema';
+import {
+    ModelingAdvisorSnapshotSchema,
+    type ModelingAdvisorSnapshot,
+} from '../../../dataModeling/modelingAdvisorSchema';
 import { createInitialSnapshot } from './dataModel';
 
 export { createInitialSnapshot } from './dataModel';
@@ -16,35 +19,37 @@ interface Persistence {
 
 export function useModelingAdvisorPersistence({ load, save }: Persistence) {
     const [snapshot, setSnapshot] = useState(createInitialSnapshot);
-    const [loadStatus, setLoadStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+    const [loadStatus, setLoadStatus] = useState<'loading' | 'ready'>('loading');
+    const [loadFailed, setLoadFailed] = useState(false);
     const [saveFailed, setSaveFailed] = useState(false);
-    const [loadAttempt, setLoadAttempt] = useState(0);
     const lastSnapshot = useRef<ModelingAdvisorSnapshot>(snapshot);
     const saveSequence = useRef(0);
 
     useEffect(() => {
         let disposed = false;
         setLoadStatus('loading');
-        void load().then(
-            (saved) => {
-                if (disposed) {
-                    return;
-                }
-                const loaded = saved ?? createInitialSnapshot();
+        const hydrate = async () => {
+            let loaded: ModelingAdvisorSnapshot;
+            let failed = false;
+            try {
+                const saved = await load();
+                loaded = saved === null ? createInitialSnapshot() : ModelingAdvisorSnapshotSchema.parse(saved);
+            } catch {
+                loaded = createInitialSnapshot();
+                failed = true;
+            }
+            if (!disposed) {
                 lastSnapshot.current = loaded;
                 setSnapshot(loaded);
+                setLoadFailed(failed);
                 setLoadStatus('ready');
-            },
-            () => {
-                if (!disposed) {
-                    setLoadStatus('error');
-                }
-            },
-        );
+            }
+        };
+        void hydrate();
         return () => {
             disposed = true;
         };
-    }, [load, loadAttempt]);
+    }, [load]);
 
     const persist = useCallback(
         (next: ModelingAdvisorSnapshot) => {
@@ -86,9 +91,9 @@ export function useModelingAdvisorPersistence({ load, save }: Persistence) {
         snapshot,
         setSnapshot,
         loadStatus,
+        loadFailed,
         saveFailed,
         flush,
-        retryLoad: () => setLoadAttempt((attempt) => attempt + 1),
         retrySave: () => {
             void persist(snapshot).catch(() => undefined);
         },

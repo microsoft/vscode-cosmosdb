@@ -200,6 +200,13 @@ export class DataModelerProjectService {
                 l10n.t('The saved data modeler project is not valid JSON. Fix the file before retrying.'),
             );
         }
+        if (typeof json === 'object' && json !== null && 'version' in json && json.version !== 1) {
+            throw new Error(
+                l10n.t(
+                    'The saved data modeler project has an invalid format or unsupported version. The file was not changed.',
+                ),
+            );
+        }
         const parsed = ModelingAdvisorProjectSchema.safeParse(json);
         if (!parsed.success) {
             throw new InvalidSavedModelError(

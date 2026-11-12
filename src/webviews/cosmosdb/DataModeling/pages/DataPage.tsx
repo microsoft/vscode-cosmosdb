@@ -10,7 +10,6 @@ import {
     Field,
     Input,
     makeStyles,
-    mergeClasses,
     Option,
     Select,
     Table,
@@ -126,19 +125,6 @@ const useStyles = makeStyles({
         width: 'max-content',
         maxWidth: 'calc(100vw - 32px)',
     },
-    roleOptionSelected: {
-        // Native select highlight; engines without system colours fall back to the theme menu colours.
-        backgroundColor: ['var(--vscode-menu-selectionBackground)', 'SelectedItem'],
-        color: ['var(--vscode-menu-selectionForeground)', 'SelectedItemText'],
-        ':hover': {
-            backgroundColor: ['var(--vscode-menu-selectionBackground)', 'SelectedItem'],
-            color: ['var(--vscode-menu-selectionForeground)', 'SelectedItemText'],
-        },
-        ':active': {
-            backgroundColor: ['var(--vscode-menu-selectionBackground)', 'SelectedItem'],
-            color: ['var(--vscode-menu-selectionForeground)', 'SelectedItemText'],
-        },
-    },
     roleOption: {
         display: 'grid',
         gridTemplateColumns: 'auto minmax(0, 1fr)',
@@ -146,6 +132,12 @@ const useStyles = makeStyles({
         alignItems: 'baseline',
         textAlign: 'left',
         whiteSpace: 'normal',
+        // Follows Fluent's committed selection (aria-selected); arrow-key navigation shows the focus ring instead.
+        // Native select highlight; engines without system colours fall back to the theme menu colours.
+        '&[aria-selected="true"], &[aria-selected="true"]:hover, &[aria-selected="true"]:active': {
+            backgroundColor: ['var(--vscode-menu-selectionBackground)', 'SelectedItem'],
+            color: ['var(--vscode-menu-selectionForeground)', 'SelectedItemText'],
+        },
     },
     roleOptionHeading: {
         gridColumn: '2',

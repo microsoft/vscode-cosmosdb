@@ -160,8 +160,8 @@ describe('DataPage role descriptions', () => {
         const dropdown = screen.getByRole('combobox', { name: 'Role for id: 🔑 Unique / business key' });
         expect(dropdown).toHaveTextContent('🔑 Unique / business key');
         for (const roleDropdown of screen.getAllByRole('combobox', { name: /^Role for / })) {
-            // Avoid depending on Fluent UI's wrapper DOM structure; assert against stable boundaries.
-            const roleDropdownStyle = getComputedStyle(roleDropdown);
+            // Fluent applies className to the documented .fui-Dropdown root; the inner button fills it at 100%.
+            const roleDropdownStyle = getComputedStyle(roleDropdown.closest('.fui-Dropdown')!);
             expect(roleDropdownStyle.width).toBe('260px');
             expect(roleDropdownStyle.minWidth).toBe('260px');
 
@@ -212,19 +212,17 @@ describe('DataPage role descriptions', () => {
             expect(heading.parentElement).toBe(option);
             expect(descriptionText.parentElement).toBe(option);
         }
-        // jsdom drops the SelectedItem system colour, so compare the classes applied to the current selection.
+        // jsdom drops the SelectedItem system colour, so verify the generated rule and that it keys off aria-selected.
         const roleMenu = () => within(screen.getByRole('listbox'));
-        const selectionClasses = (option: HTMLElement) => {
-            const others = roleMenu()
-                .getAllByRole('option')
-                .filter((other) => other !== option);
-            return Array.from(option.classList).filter(
-                (name) => !others.some((other) => other.classList.contains(name)),
-            );
-        };
-        const selectedClasses = selectionClasses(roleMenu().getByRole('option', { selected: true }));
+        const selectedRule = Array.from(document.styleSheets)
+            .flatMap((sheet) => Array.from(sheet.cssRules))
+            .find((rule) => rule.cssText.includes('[aria-selected="true"]') && /SelectedItem\b/i.test(rule.cssText));
+        expect(selectedRule).toBeDefined();
+        const selectedClass = selectedRule!.cssText.match(/^\.([\w-]+)\[aria-selected/)![1];
+        for (const option of roleMenu().getAllByRole('option')) {
+            expect(option).toHaveClass(selectedClass);
+        }
         expect(roleMenu().getByRole('option', { selected: true })).toHaveAccessibleName('🔑 Unique / business key');
-        expect(selectedClasses.length).toBeGreaterThan(0);
 
         await user.click(screen.getByRole('option', { name: '🔎 Query filter' }));
         const filtered = onChange.mock.lastCall![0];
@@ -235,16 +233,41 @@ describe('DataPage role descriptions', () => {
         expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
 
         dropdown.focus();
-        await user.keyboard('{ArrowDown}');
-        const queryFilter = roleMenu().getByRole('option', { name: '🔎 Query filter', selected: true });
-        expect(selectionClasses(queryFilter)).toEqual(selectedClasses);
-        await user.keyboard('{End}{Enter}');
+        await user.keyboard('{ArrowDown}{ArrowDown}');
+        // Arrow keys move the active option (focus ring); aria-selected, and so the blue highlight, changes on commit.
+        const payloadOption = roleMenu().getByRole('option', { name: '📄 Payload / other' });
+        expect(dropdown).toHaveAttribute('aria-activedescendant', payloadOption.id);
+        expect(payloadOption).toHaveAttribute('aria-selected', 'false');
+        expect(roleMenu().getByRole('option', { name: '🔎 Query filter' })).toHaveAttribute('aria-selected', 'true');
+        expect(onChange.mock.lastCall![0]).toBe(filtered);
+        await user.keyboard('{Enter}');
         const payload = onChange.mock.lastCall![0];
         expect(payload.containers[0].properties.find((property) => property.name === 'id')?.role).toBe('payload');
         page.rerender(<DataPage model={payload} onChange={onChange} />);
         expect(dropdown).toHaveTextContent('📄 Payload / other');
         expect(dropdown).toHaveAccessibleName('Role for id: 📄 Payload / other');
         expect(dropdown).toHaveFocus();
+    });
+
+    it('does not size the role menu to the closed control width', async () => {
+        const user = userEvent.setup();
+        const container = createBlankContainer();
+        render(<DataPage model={{ containers: [container], activeContainerId: container.id }} onChange={vi.fn()} />);
+        const dropdown = screen.getByRole('combobox', { name: 'Role for id: 🔑 Unique / business key' });
+        // jsdom has no layout; give the trigger a width so Fluent's matchTargetSize middleware would act if enabled.
+        const rect = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+            const width = this === dropdown || this === dropdown.parentElement ? 260 : 0;
+            return DOMRect.fromRect({ width, height: width ? 32 : 0 });
+        });
+        try {
+            await user.click(dropdown);
+            const listbox = screen.getByRole('listbox');
+            await waitFor(() => expect(listbox.style.position).not.toBe(''));
+            expect(listbox.style.getPropertyValue('--fui-match-target-size')).toBe('');
+            expect(listbox.style.width).toBe('');
+        } finally {
+            rect.mockRestore();
+        }
     });
 });
 

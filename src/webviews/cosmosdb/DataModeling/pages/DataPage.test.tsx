@@ -82,7 +82,9 @@ describe('DataPage partition-key eligibility', () => {
         }
         expect(table.queryByRole('combobox', { name: 'Role for items' })).not.toBeInTheDocument();
         expect(table.queryByRole('combobox', { name: 'Role for items/productId' })).not.toBeInTheDocument();
-        expect(table.getByRole('combobox', { name: 'Role for id' })).toHaveAccessibleName('Role for id');
+        expect(table.getByRole('combobox', { name: 'Role for id: 🔑 Unique / business key' })).toHaveAccessibleName(
+            'Role for id: 🔑 Unique / business key',
+        );
         expect(screen.getByRole('button', { name: 'Upload JSON' })).toHaveFocus();
 
         fireEvent.click(itemsRow.getByRole('button', { name: 'Remove items' }));
@@ -108,7 +110,9 @@ describe('DataPage partition-key eligibility', () => {
         expect(tags.getByText('customer/customerId')).toBeVisible();
         expect(tags.queryByText('customer')).not.toBeInTheDocument();
         expect(tags.queryByText('embedding')).not.toBeInTheDocument();
-        expect(screen.getByRole('combobox', { name: 'Role for customer/customerId' })).toHaveValue('key');
+        expect(
+            screen.getByRole('combobox', { name: 'Role for customer/customerId: 🔑 Unique / business key' }),
+        ).toHaveTextContent('🔑 Unique / business key');
         expect(
             screen.getAllByText('Not usable as a partition key: this field has object or array values.'),
         ).toHaveLength(2);
@@ -136,10 +140,61 @@ describe('DataPage partition-key eligibility', () => {
         const withScalar = withDerivedCandidates(onChange.mock.lastCall![0]);
         page.rerender(<DataPage model={withScalar} onChange={onChange} />);
         expect(tags.getByText('type')).toBeVisible();
-        expect(screen.getByRole('combobox', { name: 'Role for type' })).toHaveValue('filter');
+        expect(screen.getByRole('combobox', { name: 'Role for type: 🔎 Query filter' })).toHaveTextContent(
+            '🔎 Query filter',
+        );
         expect(withScalar.containers[0].scale.candidates.some((candidate) => candidate.attribute === 'type')).toBe(
             true,
         );
+    });
+});
+
+describe('DataPage role descriptions', () => {
+    it('explains each option and preserves role selection by mouse and keyboard', async () => {
+        const user = userEvent.setup();
+        const container = createBlankContainer();
+        const onChange = vi.fn<(next: DataModel) => void>();
+        const page = render(
+            <DataPage model={{ containers: [container], activeContainerId: container.id }} onChange={onChange} />,
+        );
+        const dropdown = screen.getByRole('combobox', { name: 'Role for id: 🔑 Unique / business key' });
+        expect(dropdown).toHaveTextContent('🔑 Unique / business key');
+        await user.click(dropdown);
+
+        for (const [label, description] of [
+            [
+                '🔑 Unique / business key',
+                'Choose for a field that identifies a document or business entity, such as an order ID.',
+            ],
+            ['🔎 Query filter', 'Choose for a field used to filter queries, such as a category or status.'],
+            [
+                '📄 Payload / other',
+                'Choose for a field stored in the document but not used to identify it or filter queries.',
+            ],
+        ]) {
+            const option = screen.getByRole('option', { name: label });
+            expect(option).toHaveAccessibleName(label);
+            expect(option).toHaveAccessibleDescription(description);
+            expect(within(option).getByText(label)).toBeVisible();
+            expect(within(option).getByText(description)).toBeVisible();
+        }
+
+        await user.click(screen.getByRole('option', { name: '🔎 Query filter' }));
+        const filtered = onChange.mock.lastCall![0];
+        expect(filtered.containers[0].properties.find((property) => property.name === 'id')?.role).toBe('filter');
+        page.rerender(<DataPage model={filtered} onChange={onChange} />);
+        expect(dropdown).toHaveTextContent('🔎 Query filter');
+        expect(dropdown).toHaveAccessibleName('Role for id: 🔎 Query filter');
+        expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+
+        dropdown.focus();
+        await user.keyboard('{ArrowDown}{End}{Enter}');
+        const payload = onChange.mock.lastCall![0];
+        expect(payload.containers[0].properties.find((property) => property.name === 'id')?.role).toBe('payload');
+        page.rerender(<DataPage model={payload} onChange={onChange} />);
+        expect(dropdown).toHaveTextContent('📄 Payload / other');
+        expect(dropdown).toHaveAccessibleName('Role for id: 📄 Payload / other');
+        expect(dropdown).toHaveFocus();
     });
 });
 

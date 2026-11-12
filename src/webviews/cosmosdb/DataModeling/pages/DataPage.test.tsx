@@ -78,7 +78,11 @@ describe('DataPage partition-key eligibility', () => {
             expect(icon).toBeVisible();
             expect(icon).toHaveAttribute('aria-hidden', 'true');
             expect(icon?.parentElement).toHaveStyle({ color: 'var(--vscode-editorWarning-foreground)' });
-            expect(roleCell).toHaveAccessibleName(roleCell.textContent);
+            // The remove button shares the cell, so browsers may append its label to the cell's computed name.
+            const warning = roleCell.textContent ?? '';
+            expect(warning).toMatch(/^Not usable as a partition key: /);
+            expect(roleCell).toHaveAccessibleName(expect.stringContaining(warning));
+            expect(within(roleCell).getByRole('button', { name: /^Remove items/ })).toBeVisible();
         }
         expect(table.queryByRole('combobox', { name: 'Role for items' })).not.toBeInTheDocument();
         expect(table.queryByRole('combobox', { name: 'Role for items/productId' })).not.toBeInTheDocument();

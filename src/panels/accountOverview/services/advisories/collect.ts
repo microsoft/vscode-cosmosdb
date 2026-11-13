@@ -98,7 +98,6 @@ const INVENTORY_DEPENDENT_RULES: readonly DerivedAdvisoryRule[] = [
     'ShardKeyMisalignment',
     'UncontrolledIngestion',
     'SharedThroughputStarvation',
-    'ReservedCapacityCandidate',
 ] as const;
 
 interface CollectResult<T> {

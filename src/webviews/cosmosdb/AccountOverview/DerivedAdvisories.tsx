@@ -935,11 +935,16 @@ const CostEstimateDetails = ({ estimate }: { estimate: NonNullable<DerivedAdviso
                 )}
             </Text>
             <Text>
-                {l10n.t('Model: {ru} recoverable RU/s at {rate} {currency} per RU/s-month.', {
-                    ru: format(estimate.recoverableRu),
-                    rate: estimate.rate.perRuMonth.toLocaleString(undefined, { maximumSignificantDigits: 6 }),
-                    currency: estimate.currency,
-                })}
+                {l10n.t(
+                    'Model: {ru} regional RU/s at a {multiplier} billing multiplier: {billedRu} billed-equivalent RU/s at {rate} {currency} per billed-equivalent RU/s-month.',
+                    {
+                        ru: format(estimate.recoverableRu),
+                        multiplier: estimate.billingConversion.quantityMultiplier.toLocaleString(),
+                        billedRu: format(estimate.billingConversion.billedEquivalentRu),
+                        rate: estimate.rate.perRuMonth.toLocaleString(undefined, { maximumSignificantDigits: 6 }),
+                        currency: estimate.currency,
+                    },
+                )}
             </Text>
             {estimate.regionalFootprint && (
                 <Text>
@@ -1007,7 +1012,7 @@ const CostCoverageNotice = ({ source }: { source: NonNullable<DerivedAdvisoriesR
         noData: l10n.t(
             'No usable billing rate or complete fresh storage and regional pricing evidence was available. Missing data is not zero cost.',
         ),
-        unsupported: l10n.t('This cost source is not supported in the account’s Azure cloud.'),
+        unsupported: l10n.t('Cost estimates are not supported for this account API or Azure cloud.'),
     };
     return (
         <MessageBar

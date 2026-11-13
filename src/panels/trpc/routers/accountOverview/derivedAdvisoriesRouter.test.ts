@@ -53,6 +53,18 @@ function metadata(account: DatabaseAccountGetResults = {}) {
 beforeEach(() => vi.clearAllMocks());
 
 describe('account advisory acquisition', () => {
+    it.each([true, false, undefined])('preserves raw write configuration %s for billing conversion', async (writes) => {
+        vi.mocked(collectDerivedAdvisories).mockResolvedValueOnce({
+            advisories: [],
+            logSource: { available: true },
+            metricSource: { available: true, failures: [] },
+        });
+        await getDerivedAdvisoriesForAccount(metadata({ enableMultipleWriteLocations: writes }));
+        expect(collectDerivedAdvisories).toHaveBeenCalledWith(
+            expect.objectContaining({ costContext: expect.objectContaining({ multiRegionWritesEnabled: writes }) }),
+        );
+    });
+
     it.each([
         [true, { type: 'Periodic' }, 'blocked'],
         [false, { type: 'Periodic' }, 'requiresValidation'],

@@ -19,6 +19,8 @@ export interface CostContext {
     resourceManagerEndpoint: string;
     /** Complete configured ARM location list, not a caller-selected subset of regions. */
     locationNames: readonly string[];
+    /** Raw ARM setting; absent is unknown, not a single-write account. */
+    multiRegionWritesEnabled?: boolean;
 }
 
 export class CostEvidenceError extends Error {

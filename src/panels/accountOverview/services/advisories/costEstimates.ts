@@ -6,6 +6,7 @@
 import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { type MonitorClient } from '@azure/arm-monitor';
 import { type InventoryContainerRow } from '../inventory';
+import { type UnavailableReason } from '../shared';
 import { type CostSourceStatus, type DerivedAdvisory } from './core/types';
 import { getBackupCostEstimate } from './fetchers/backupCost';
 import { classifyCostFailure, CostEvidenceError, getThroughputRate, type CostContext } from './fetchers/costManagement';
@@ -43,6 +44,7 @@ export async function enrichAdvisoryCosts(params: {
     context?: CostContext;
     accountId: string;
     inventoryRows?: readonly InventoryContainerRow[];
+    inventoryFailureReason?: UnavailableReason;
     now: number;
 }): Promise<CostSourceStatus | undefined> {
     const { advisories, cosmosClient, monitorClient, context, accountId, inventoryRows, now } = params;
@@ -66,16 +68,39 @@ export async function enrichAdvisoryCosts(params: {
                     : undefined;
             const regionalCapacity = capacity
                 .map(({ advisory, ru }) => {
-                    if (advisory.rule === 'MultiRegionWriteAntipattern') {
-                        return { advisory, ru, regionalFootprint: null };
+                    const throughputMode =
+                        advisory.rule === 'IdleContainer'
+                            ? advisory.evidence?.throughputMode
+                            : advisory.rule === 'AutoscaleMaxOverProvisioned'
+                              ? 'autoscale'
+                              : 'manual';
+                    if (throughputMode !== 'manual' && throughputMode !== 'autoscale') {
+                        return undefined;
                     }
-                    return regionCount === undefined
-                        ? undefined
-                        : {
-                              advisory,
-                              ru: ru * regionCount,
-                              regionalFootprint: { regionCount, recoverableRuPerRegion: ru },
-                          };
+                    const writes = context.multiRegionWritesEnabled;
+                    const quantityMultiplier: 1 | 1.5 | undefined =
+                        throughputMode === 'manual' || writes === true ? 1 : writes === false ? 1.5 : undefined;
+                    const regionalFootprint =
+                        advisory.rule === 'MultiRegionWriteAntipattern'
+                            ? null
+                            : regionCount === undefined
+                              ? undefined
+                              : { regionCount, recoverableRuPerRegion: ru };
+                    if (quantityMultiplier === undefined || regionalFootprint === undefined) {
+                        return undefined;
+                    }
+                    const regionalRu = ru * (regionalFootprint?.regionCount ?? 1);
+                    return {
+                        advisory,
+                        ru: regionalRu,
+                        regionalFootprint,
+                        billingConversion: {
+                            throughputMode,
+                            multiRegionWritesEnabled: writes ?? null,
+                            quantityMultiplier,
+                            billedEquivalentRu: regionalRu * quantityMultiplier,
+                        },
+                    };
                 })
                 .filter((item) => item !== undefined);
             if (regionalCapacity.length < capacity.length) {
@@ -83,20 +108,31 @@ export async function enrichAdvisoryCosts(params: {
             }
             if (regionalCapacity.length > 0) {
                 try {
-                    if (regionalCapacity.some(({ ru }) => !Number.isFinite(ru))) {
+                    if (
+                        regionalCapacity.some(
+                            ({ ru, billingConversion }) =>
+                                !Number.isFinite(ru) || !Number.isFinite(billingConversion.billedEquivalentRu),
+                        )
+                    ) {
                         throw new CostEvidenceError('invalidData');
                     }
                     const rate = await getThroughputRate(cosmosClient, context, accountId, now);
-                    const amounts = regionalCapacity.map(({ ru }) => ru * rate.perRuMonth);
+                    const amounts = regionalCapacity.map(
+                        ({ billingConversion }) => billingConversion.billedEquivalentRu * rate.perRuMonth,
+                    );
                     if (amounts.some((amount) => !Number.isFinite(amount) || amount <= 0)) {
                         throw new CostEvidenceError('invalidData');
                     }
-                    for (const [index, { advisory, ru, regionalFootprint }] of regionalCapacity.entries()) {
+                    for (const [
+                        index,
+                        { advisory, ru, regionalFootprint, billingConversion },
+                    ] of regionalCapacity.entries()) {
                         advisory.costEstimate = {
                             basis: 'customerAmortizedBill',
                             monthlyAmount: amounts[index],
                             currency: rate.currency,
                             recoverableRu: ru,
+                            billingConversion,
                             regionalFootprint,
                             rate,
                         };
@@ -115,6 +151,9 @@ export async function enrichAdvisoryCosts(params: {
             failures.push({ operation: 'backup', kind: 'notConfigured' });
         } else {
             try {
+                if (params.inventoryFailureReason === 'rbac') {
+                    throw new CostEvidenceError('accessDenied');
+                }
                 backup.costEstimate = await getBackupCostEstimate(
                     cosmosClient,
                     monitorClient,

@@ -751,6 +751,7 @@ export async function collectDerivedAdvisories(
         context: params.costContext,
         accountId,
         inventoryRows: inventory.value?.rows,
+        inventoryFailureReason: inventory.reason,
         now,
     });
     return {

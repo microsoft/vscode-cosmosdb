@@ -142,6 +142,20 @@ describe('all native CODA adapters without private-source access', () => {
         );
     });
 
+    it.each(['container', 'shared database'])(
+        'uses scope-relative materiality in both DX-011 evaluation paths for an autoscale %s',
+        async (scope) => {
+            const testCase = scenario(
+                '011',
+                `an autoscale ${scope} with a 10000 RU/s max whose peak total is 1000 RU/s over 720 samples
+    And the container was created 60 days before the window ended
+    And the scope provisions 10000 RU/s in total`,
+                'the severity is High',
+            );
+            expect(await executeCase(testCase)).toBe(1);
+        },
+    );
+
     it.each(fixtures)(
         'executes DX-%s and rejects an incorrect root classification',
         async (detector, given, root, severity) => {

@@ -91,7 +91,7 @@ const priceSchema = z.object({
 });
 
 /** Unauthenticated reads only: no ARM pipeline/tokens and no redirects or pagination outside the fixed endpoint. */
-async function getBackupPrices(regions: readonly string[], now: number): Promise<BackupPrice[]> {
+async function getBackupPrices(regions: readonly string[], now: number, abortSignal?: AbortSignal): Promise<BackupPrice[]> {
     const initial = new URL(RETAIL_URL);
     initial.searchParams.set('$filter', `serviceName eq 'Azure Cosmos DB' and productName eq '${PITR_PRODUCT}'`);
     initial.searchParams.set('currencyCode', CURRENCY);
@@ -112,7 +112,12 @@ async function getBackupPrices(regions: readonly string[], now: number): Promise
             throw new CostEvidenceError('invalidData');
         }
         seen.add(url);
-        const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(15_000) });
+        abortSignal?.throwIfAborted();
+        const timeout = AbortSignal.timeout(15_000);
+        const response = await fetch(url, {
+            redirect: 'error',
+            signal: abortSignal ? AbortSignal.any([abortSignal, timeout]) : timeout,
+        });
         if (!response.ok) {
             throw new RestError('Optional backup price request failed.', { statusCode: response.status });
         }
@@ -181,6 +186,7 @@ async function getStorageSnapshot(
     rows: readonly Pick<InventoryContainerRow, 'databaseId' | 'containerId'>[],
     referenceRegion: string,
     now: number,
+    abortSignal?: AbortSignal,
 ): Promise<{ timestamp: number; bytes: number }> {
     // Azure Monitor folds dimension values to lowercase, independently of ARM resource-name casing.
     const identity = (databaseId: string, containerId: string) =>
@@ -230,6 +236,7 @@ async function getStorageSnapshot(
     const snapshots = new Map<number, Map<string, number>>();
     const duplicates = new Set<number>();
     for (let start = 0; start < requests.length; start += STORAGE_REQUEST_BATCH_SIZE) {
+        abortSignal?.throwIfAborted();
         await Promise.all(
             requests.slice(start, start + STORAGE_REQUEST_BATCH_SIZE).map(async (request) => {
                 const response = await client.metrics.list(accountId, {
@@ -239,6 +246,7 @@ async function getStorageSnapshot(
                     interval: 'PT5M',
                     filter: request.filter,
                     top: request.expected.size,
+                    ...(abortSignal && { abortSignal }),
                 });
                 if (
                     response.value?.length !== 1 ||
@@ -317,11 +325,8 @@ export async function getBackupCostEstimate(
     }
     const regions = await resolveRegions(cosmosClient, context);
     const referenceRegion = regions[0].monitorName;
-    const snapshot = await getStorageSnapshot(monitorClient, accountId, rows, referenceRegion, now);
-    const prices = await getBackupPrices(
-        regions.map((region) => region.retailName),
-        now,
-    );
+    const snapshot = await getStorageSnapshot(monitorClient, accountId, rows, referenceRegion, now, context.abortSignal);
+    const prices = await getBackupPrices(regions.map((region) => region.retailName), now, context.abortSignal);
     const monthlyAmount = (snapshot.bytes / 1_000_000_000) * prices.reduce((sum, price) => sum + price.perGbMonth, 0);
     if (!Number.isFinite(monthlyAmount) || monthlyAmount < 0) {
         throw new CostEvidenceError('invalidData');

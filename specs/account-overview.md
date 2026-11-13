@@ -671,6 +671,10 @@ Physical capacity, offer mode, known write configuration, multiplier and billed-
 See [autoscale billing quantities](https://learn.microsoft.com/en-us/azure/cosmos-db/autoscale-faq#how-does-autoscale-show-up-on-my-bill).
 Denied inventory retains `backup/accessDenied` rather than becoming missing storage data.
 Unsupported-cost guidance covers both account API restrictions and cloud restrictions.
+All optional cost reads share a 20-second cancellable deadline, including SDK retry waits, storage waves and
+retail-price pagination. A server retry delay longer than the remaining budget cancels enrichment rather than
+retrying early or blocking qualitative findings. Completed independent estimates remain available; unfinished
+operations report timeout coverage.
 Authentication, access denial, rate limiting, timeouts, service/query errors, invalid/incomplete evidence,
 unsupported clouds and no usable data stay distinguishable without forwarding raw service errors or billing
 rows. Missing access or data means no monetary figure, never fabricated zero. No billing query runs without

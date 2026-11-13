@@ -36,8 +36,7 @@ export function recoverableCapacity(advisory: DerivedAdvisory): number | undefin
     return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined;
 }
 
-/** Enrichment follows supersession. Independent read failures retain every qualitative/capacity finding. */
-export async function enrichAdvisoryCosts(params: {
+interface CostEnrichmentParams {
     advisories: DerivedAdvisory[];
     cosmosClient: CosmosDBManagementClient;
     monitorClient: MonitorClient;
@@ -46,7 +45,27 @@ export async function enrichAdvisoryCosts(params: {
     inventoryRows?: readonly InventoryContainerRow[];
     inventoryFailureReason?: UnavailableReason;
     now: number;
-}): Promise<CostSourceStatus | undefined> {
+}
+
+/** One deadline includes all optional requests and SDK retry waits; cancellation never retries ahead of the server. */
+export async function enrichAdvisoryCosts(params: CostEnrichmentParams): Promise<CostSourceStatus | undefined> {
+    const deadline = new AbortController();
+    const timer = setTimeout(() => deadline.abort(), 20_000);
+    try {
+        const abortSignal = params.context?.abortSignal
+            ? AbortSignal.any([params.context.abortSignal, deadline.signal])
+            : deadline.signal;
+        return await collectAdvisoryCosts({
+            ...params,
+            context: params.context && { ...params.context, abortSignal },
+        });
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+/** Enrichment follows supersession. Independent read failures retain every qualitative/capacity finding. */
+async function collectAdvisoryCosts(params: CostEnrichmentParams): Promise<CostSourceStatus | undefined> {
     const { advisories, cosmosClient, monitorClient, context, accountId, inventoryRows, now } = params;
     const capacity = advisories.flatMap((advisory) => {
         const ru = recoverableCapacity(advisory);

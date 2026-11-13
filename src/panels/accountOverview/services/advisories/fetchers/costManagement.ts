@@ -21,6 +21,7 @@ export interface CostContext {
     locationNames: readonly string[];
     /** Raw ARM setting; absent is unknown, not a single-write account. */
     multiRegionWritesEnabled?: boolean;
+    abortSignal?: AbortSignal;
 }
 
 export class CostEvidenceError extends Error {
@@ -63,6 +64,7 @@ export async function readCostArmJson(
     path: string,
     body?: unknown,
 ): Promise<unknown> {
+    context.abortSignal?.throwIfAborted();
     const response = await client.pipeline.sendRequest(
         createDefaultHttpClient(),
         createPipelineRequest({
@@ -71,6 +73,7 @@ export async function readCostArmJson(
             headers: createHttpHeaders({ 'Content-Type': 'application/json' }),
             body: body === undefined ? undefined : JSON.stringify(body),
             timeout: 20_000,
+            abortSignal: context.abortSignal,
         }),
     );
     if (response.status < 200 || response.status >= 300) {

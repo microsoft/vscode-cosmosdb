@@ -69,7 +69,12 @@ function normalizeType(value, column, label) {
             return result;
         };
         const declared = match[2] === undefined ? undefined : normalizeLength(match[2]);
-        const recorded = consistentField(column, ['length', 'maxLength'], normalizeLength, `${label}.length`);
+        const recorded = consistentField(
+            column,
+            ['length', 'maxLength'].filter((key) => column[key] !== null),
+            normalizeLength,
+            `${label}.length`,
+        );
         if (declared !== undefined && recorded !== undefined)
             assert.equal(recorded, declared, `${label}: contradictory length`);
         const length = declared ?? recorded;
@@ -250,7 +255,7 @@ function checkIndexes(inventory, resolve, source) {
                 `${label}: unexpected filtered index`,
             );
         }
-        if (index.includedColumns !== undefined)
+        if (index.includedColumns !== undefined && !(source === 'inferred' && index.includedColumns === null))
             assert.deepEqual(index.includedColumns, [], `${label}: unexpected included columns`);
     }
     for (const [table, definition] of Object.entries(schema)) {

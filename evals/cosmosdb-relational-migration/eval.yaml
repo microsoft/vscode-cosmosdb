@@ -79,6 +79,21 @@ stimuli:
       - An unattended-default installation failure warns and falls back to model-only with persisted fallback metadata; an explicit SQLGlot choice fails rather than silently downgrading.
     graders: *guidance
 
+  - name: parser-first-use-consent
+    tags: { category: guidance, phase: preflight, contract: parser-consent, regression: parser-first-use }
+    prompt: |
+      I have selected authoritative SQL Server DDL for my relational-to-Cosmos DB
+      migration, but have not chosen a parser and have no saved parser decision.
+      Present the initial parser choice to me now, then end this turn so I can answer.
+      Do not merely describe what you would ask. You may read installed skill guidance,
+      but do not inspect or interpret source files, initialize a project, record a choice,
+      install anything, run a phase, or make external-service calls.
+    rubric:
+      - Present an actual choice to the user between SQLGlot, model-only interpretation and stopping; do not merely narrate a future permission request.
+      - Identify SQLGlot as an external MIT-licensed Python dependency, link to https://github.com/tobymao/sqlglot, mention possible local installation, and explain that model-only interpretation avoids installing or invoking an external parser.
+      - Stop for the user's answer without choosing or claiming approval, recording a parser decision, interpreting DDL, initializing migration state, installing dependencies or invoking a parser. A noninteractive host does not override this explicit stop request.
+    graders: *guidance
+
   - name: discovery-unsupported-sdk
     tags: { category: guidance, phase: discovery, contract: sdk-eligibility }
     prompt: |
@@ -102,7 +117,7 @@ stimuli:
     rubric:
       - Prioritize business ownership, lifecycle and consistency invariants over reporting joins; a domain is not a logical partition or final container design.
       - Assign each non-excluded table to exactly one domain, retaining the legacy table with explicit mapping uncertainty rather than silently excluding it.
-      - Record cross-domain dependencies and defer final containers and partition keys to schema conversion.
+      - Record cross-domain dependencies and defer final container and partition-key decisions beyond assessment. Accept equivalent wording without requiring the later phase's name; reject choosing a final container layout or partition key during assessment.
     graders: *guidance
 
   - name: conversion-domain-selection

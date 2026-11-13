@@ -604,6 +604,64 @@ test('source semantics accept equivalent type/facet and global/per-table index r
     checkAdventureWorksInventory(inventory);
 });
 
+test('null optional length facets preserve bounds from types and concrete facets without changing evidence', () => {
+    const inventory = schemaInventory();
+    const column = (table, name) =>
+        inventory.tables.find((entry) => entry.name === table).columns.find((entry) => entry.name === name);
+    Object.assign(column('SalesLT.Product', 'ThumbNailPhoto'), { type: 'varbinary(max)', maxLength: null });
+    Object.assign(column('SalesLT.SalesOrderHeader', 'Comment'), {
+        type: 'nvarchar(max)',
+        length: null,
+        maxLength: null,
+    });
+    Object.assign(column('SalesLT.Customer', 'PasswordHash'), { type: 'varchar', length: 128, maxLength: null });
+    Object.assign(column('SalesLT.Product', 'Name'), { type: 'dbo.Name', length: null, maxLength: null });
+    const original = structuredClone(inventory);
+    for (const source of ['supplied', 'inferred']) checkAdventureWorksInventory(inventory, { source });
+    assert.deepEqual(inventory, original);
+});
+
+test('null optional length facets cannot hide missing, contradictory or invalid source facts', () => {
+    for (const [facets, error] of [
+        [{ type: 'varbinary', length: null, maxLength: null }, /length is missing/],
+        [{ type: 'varbinary(max)', length: 8000, maxLength: null }, /contradictory length/],
+        [{ type: 'varbinary', length: 'max', maxLength: 8000 }, /contradictory fields/],
+        [{ type: 'varbinary(8000)', length: null, maxLength: null }, /source type/],
+        [{ type: 'varbinary(max)', length: null, maxLength: '' }, /expected an integer/],
+        [{ type: 'varbinary(max)', length: null, maxLength: false }, /expected an integer/],
+        [{ type: 'varbinary(max)', length: null, maxLength: 0 }, /length must be positive/],
+        [{ type: 'varbinary(max)', maxLength: null, nullable: null }, /explicit boolean evidence/],
+    ]) {
+        const inventory = schemaInventory();
+        const photo = inventory.tables
+            .find(({ name }) => name === 'SalesLT.Product')
+            .columns.find(({ name }) => name === 'ThumbNailPhoto');
+        Object.assign(photo, facets);
+        for (const source of ['supplied', 'inferred']) {
+            assert.throws(() => checkAdventureWorksInventory(inventory, { source }), error);
+        }
+    }
+});
+
+test('inferred unknown included columns do not invent absence or weaken index facts', () => {
+    const inventory = schemaInventory();
+    for (const index of inventory.indexes) index.includedColumns = null;
+    const original = structuredClone(inventory);
+    checkAdventureWorksInventory(inventory, { source: 'inferred' });
+    assert.deepEqual(inventory, original);
+    assert.throws(() => checkAdventureWorksInventory(inventory), /included columns/);
+
+    const index = inventory.indexes.find(({ name }) => name === 'AK_Product_Name');
+    index.includedColumns = ['ProductNumber'];
+    assert.throws(() => checkAdventureWorksInventory(inventory, { source: 'inferred' }), /included columns/);
+    index.includedColumns = null;
+    index.unique = null;
+    assert.throws(() => checkAdventureWorksInventory(inventory, { source: 'inferred' }), /explicit boolean evidence/);
+    index.unique = true;
+    index.keys = [];
+    assert.throws(() => checkAdventureWorksInventory(inventory, { source: 'inferred' }), /index columns are missing/);
+});
+
 test('source semantics reject corrupt or missing column facts', async (t) => {
     const column = (inventory, table, name) =>
         inventory.tables.find((entry) => entry.name === table).columns.find((entry) => entry.name === name);

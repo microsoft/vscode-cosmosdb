@@ -177,6 +177,8 @@ npm run eval -- --tag category=artifacts --tag phase=preflight
 npm run eval -- --tag contract=target-switch --max-retries 0
 # Focused regressions for implied readiness cycles and unselected implementation mechanisms.
 npm run eval -- --tag regression=planning-quality --max-retries 0
+# Parser fallback explanations and the actual first-use permission request.
+npm run eval -- --tag contract=parser-consent --max-retries 0
 # Independent real-sample phases and inference; fetches the pinned application once.
 npm run eval -- --tag category=extended --max-retries 0
 # Run one phase from reviewed prerequisites, without rerunning earlier phases.
@@ -198,6 +200,9 @@ The suite includes:
   historical code-migration completion, and project-local memory.
   Planning regressions cover implementation-versus-production readiness, activation-versus-observation cycles,
   and unresolved service mechanisms being mislabeled as resolved work.
+  Parser coverage includes both fallback explanations and presenting the first-use choice with dependency/license
+  disclosure, then stopping without selecting or invoking a parser. The headless scenario tests the permission
+  request and pause, not a real user-approval round trip or dependency installation.
 - An unrelated PostgreSQL prompt that must activate neither migration nor best-practices skills.
 - Three artifact-producing scenarios: preflight from supplied synthetic inputs, assessment from a valid
   discovery checkpoint, and a database target switch from a synthetic completed provisioning checkpoint.
@@ -402,6 +407,12 @@ with `keys`, `columns`, or `keyColumns`, and unique entries can use `uniqueConst
 never inferred from an `AK_` name. Missing, duplicate, reordered, filtered, combined or invented constraints
 fail. In particular, Product Name and ProductNumber remain separate constraints.
 
+Optional `length` and `maxLength` facets may be omitted or `null` when not separately specified.
+The required length must still come from the type (including resolved fixture aliases) or a concrete facet:
+`varbinary(max)` with `maxLength: null` retains its declared `max`, while bare `varbinary` with only null
+facets fails. Every concrete facet must agree with the type and other concrete facets. This does not relax
+required nullability, precision/scale, key, or uniqueness evidence.
+
 Source mode is selected by the evaluation scenario, not by an agent-controlled `origin` field:
 
 - **Supplied DDL:** require the recorded delete action for every FK and every declared index, including
@@ -410,6 +421,9 @@ Source mode is selected by the evaluation scenario, not by an agent-controlled `
   FK-convention indexes are optional because they are not explicitly declared in the pinned EF configuration.
   Physical FK actions may be missing or `unknown`; any concrete database-action claim must agree with the
   mapped relationship. ORM `ClientSetNull` descriptions are not treated as database `SET NULL`.
+  `includedColumns: null` records unknown physical index metadata and is accepted only in inference mode;
+  it is not normalized into an assertion that the deployed index has no included columns. Concrete included
+  columns must still match the fixture, and supplied-DDL grading continues to reject explicit unknown values.
 - **Computed columns:** retain their computed nature; allow explicit unknown physical type/nullability
   metadata instead of pretending SQL Server ran. Concrete mapped types are checked against the EF mapping,
   including `LineTotal` precision/scale. Nonblank `computedExpression` and `computedSql` strings are equivalent

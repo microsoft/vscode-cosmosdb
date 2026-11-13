@@ -14,7 +14,10 @@ Before reading DDL for interpretation, resolve the choice in this order:
 2. The saved user choice in `phases.discovery.ddlParsing`.
 3. Interactive permission, or the unattended default of `sqlglot`.
 
-In interactive mode, explain the external dependency and ask:
+In interactive mode, include all dependency disclosures in the user-facing permission request:
+SQLGlot is an external MIT-licensed Python dependency, with an upstream link, possible local installation,
+and a model-only alternative. Keep these disclosures when explaining parser-choice behavior too;
+an upstream link or an unnamed "dependency" alone is not enough. Ask:
 
 > May I use [SQLGlot](https://github.com/tobymao/sqlglot), an MIT-licensed Python
 > SQL parser, to assist with the DDL? It may require a local installation. I can

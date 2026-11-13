@@ -20,10 +20,12 @@ import {
 import { getContainerCreatedAt, getKnownResourceAgeDays, getSystemCreatedAt } from '../resourceAge';
 import { getRuTrends, getThrottleRate } from '../ruTrends';
 import { classifyUnavailable, containerKey } from '../shared';
-import { offerScope } from './core/helpers';
+import { configurationFailures, offerScope } from './core/helpers';
+import { summarizeRequestStatuses } from './core/requestMetrics';
 import { DIAGNOSTIC_POLICY } from './core/thresholds';
 import {
     type AccountConfigInput,
+    type AccountRequestMetricsInput,
     type CrossPartitionInput,
     type ConsistencyReadRuInput,
     type DerivedAdvisory,
@@ -56,11 +58,13 @@ import {
 import { type LogsDiagnostic, type LogsDiagnosticReporter } from './fetchers/logsDiagnostics';
 import {
     getAccountConsumedRuShape,
+    getAccountRequestStatusCounts,
     getAutoscaleUtilization,
     getContainerIdlePeak,
     getContainerIndexingUsage,
     getContainerMergeStoragePeak,
     getContainerPartitionCount,
+    getThrottledOperationCounts,
 } from './fetchers/metrics';
 
 // ─── Server-side orchestration ──────────────────────────────────────────────────
@@ -227,8 +231,9 @@ export async function collectDerivedAdvisories(
 
     const now = Date.now();
     const effectiveAccountConfig = accountConfig && { ...accountConfig, isServerless };
-    const metricFailures: MetricSourceStatus['failures'] = [];
+    const metricFailures = configurationFailures(effectiveAccountConfig);
     const accountCreatedAtPromise = capture(getAccountCreatedAt(cosmosClient, resourceGroup, accountName));
+    const accountRequestsPromise = capture(getAccountRequestStatusCounts(monitorClient, accountId, now));
 
     let rows: InventoryContainerRow[] = [];
     let offers: InventoryThroughputOffer[] = [];
@@ -306,6 +311,33 @@ export async function collectDerivedAdvisories(
         inventory.value?.throughputInventoryComplete !== true || invalidOfferScopes.size > 0
             ? undefined
             : offerTargets.reduce((sum, offer) => sum + offer.throughputRU, 0);
+    if (!isServerless && scopeProvisionedRuTotal === undefined) {
+        addMetricFailure(metricFailures, 'ReservedCapacityCandidate', inventory.reason ?? 'noData');
+    }
+
+    const statusResult = await accountRequestsPromise;
+    const statuses = statusResult.value && summarizeRequestStatuses(statusResult.value);
+    let accountRequests: AccountRequestMetricsInput | undefined;
+    if (!statusResult.value || !statuses || !Number.isFinite(statuses.totalRequests) || statuses.totalRequests === 0) {
+        for (const rule of ['NonThrottlingErrors', 'ThrottlingByOperation'] as const) {
+            addMetricFailure(metricFailures, rule, statusResult.reason ?? 'noData');
+        }
+    } else {
+        accountRequests = { statusCounts: statusResult.value };
+        if (
+            statuses.totalRequests >= DIAGNOSTIC_POLICY.accountRequests.minRequests &&
+            (100 * statuses.totalThrottled) / statuses.totalRequests >=
+                DIAGNOSTIC_POLICY.throttlingByOperation.ratePercent
+        ) {
+            const operations = await capture(getThrottledOperationCounts(monitorClient, accountId, now));
+            if (!operations.value || Object.keys(operations.value).length === 0) {
+                addMetricFailure(metricFailures, 'ThrottlingByOperation', operations.reason ?? 'noData');
+            } else {
+                accountRequests.throttledOperationCounts = operations.value;
+            }
+        }
+    }
+
     const manualObservation = DIAGNOSTIC_POLICY.overProvisioning.observation;
     const saturationObservation = DIAGNOSTIC_POLICY.partitionSaturation.observation;
     const storageObservation = DIAGNOSTIC_POLICY.storageGrowth.observation;
@@ -698,6 +730,7 @@ export async function collectDerivedAdvisories(
                     : undefined,
             accountConfig: effectiveAccountConfig,
             consistencyReadRu: logs.consistencyReadRu,
+            accountRequests,
             crossPartition: logs.crossPartition,
             ingestion: logs.ingestion,
             sharedThroughput: logs.sharedThroughput,

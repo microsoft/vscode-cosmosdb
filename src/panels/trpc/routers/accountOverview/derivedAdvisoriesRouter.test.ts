@@ -85,6 +85,63 @@ describe('account advisory acquisition', () => {
         },
     );
 
+    it('retains the new ARM-only findings when Monitor acquisition is denied', async () => {
+        const input = metadata({
+            tags: { environment: 'dev' },
+            backupPolicy: { type: 'Continuous', continuousModeProperties: { tier: 'Continuous30Days' } },
+            enablePerRegionPerPartitionAutoscale: false,
+        });
+        input.getMonitorClient.mockRejectedValue({ statusCode: 403 });
+        const result = await getDerivedAdvisoriesForAccount(input);
+        expect(result.advisories.map((item) => item.rule)).toEqual([
+            'ExpensiveConsistency',
+            'PaidContinuousBackup',
+            'PerRegionAutoscaleCandidate',
+        ]);
+        expect(result.metricSource?.failures.map((failure) => failure.rule)).not.toContain('PaidContinuousBackup');
+        expect(result.metricSource?.failures.map((failure) => failure.rule)).not.toContain(
+            'PerRegionAutoscaleCandidate',
+        );
+        expect(input.getClient).not.toHaveBeenCalled();
+        expect(input.getLogsQueryClient).not.toHaveBeenCalled();
+    });
+
+    it('passes continuous tier and explicit independent-autoscale state from the existing snapshot', async () => {
+        vi.mocked(collectDerivedAdvisories).mockResolvedValueOnce({
+            advisories: [],
+            logSource: { available: true },
+            metricSource: { available: true, failures: [] },
+        });
+        await getDerivedAdvisoriesForAccount(
+            metadata({
+                backupPolicy: { type: 'Continuous', continuousModeProperties: { tier: 'Continuous35Days' } },
+                enablePerRegionPerPartitionAutoscale: false,
+            }),
+        );
+        expect(collectDerivedAdvisories).toHaveBeenCalledWith(
+            expect.objectContaining({
+                accountConfig: expect.objectContaining({
+                    isServerless: false,
+                    perRegionPerPartitionAutoscaleEnabled: false,
+                    backupPolicy: expect.objectContaining({ type: 'Continuous', continuousTier: 'Continuous35Days' }),
+                }),
+            }),
+        );
+    });
+
+    it('reports unknown configuration rather than interpreting absent ARM fields as off', async () => {
+        const input = metadata({ backupPolicy: undefined, enablePerRegionPerPartitionAutoscale: undefined });
+        input.getMonitorClient.mockResolvedValue(undefined);
+        const result = await getDerivedAdvisoriesForAccount(input);
+        expect(result.metricSource?.failures).toEqual(
+            expect.arrayContaining([
+                { rule: 'PaidContinuousBackup', reason: 'noData' },
+                { rule: 'PerRegionAutoscaleCandidate', reason: 'noData' },
+            ]),
+        );
+        expect(result.advisories.map((item) => item.rule)).toEqual(['ExpensiveConsistency']);
+    });
+
     it('passes existing ARM backup and migration metadata without acquiring another identity', async () => {
         const backupPolicy = { type: 'Periodic', migrationState: { status: 'InProgress', targetType: 'Continuous' } };
         const input = metadata({ backupPolicy });
@@ -115,12 +172,14 @@ describe('account advisory acquisition', () => {
 
             const result = await getDerivedAdvisoriesForAccount(input);
             expect(result.metricSource?.available).toBe(false);
-            expect(result.metricSource?.failures).toHaveLength(13);
+            expect(result.metricSource?.failures).toHaveLength(16);
             expect(result.metricSource?.failures.every((failure) => failure.reason === reason)).toBe(true);
             const failedRules = result.metricSource?.failures.map((failure) => failure.rule);
             for (const rule of [
                 'ExpensiveConsistency',
                 'MultiRegionWriteAntipattern',
+                'PaidContinuousBackup',
+                'PerRegionAutoscaleCandidate',
                 'CrossPartitionQuery',
                 'ShardKeyMisalignment',
                 'UncontrolledIngestion',

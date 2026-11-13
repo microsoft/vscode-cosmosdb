@@ -3,8 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { classifyEnvironment } from '../../environmentClassifier';
 import { DIAGNOSTIC_POLICY } from './thresholds';
-import { type DerivedAdvisory, type DerivedAdvisorySeverity, type UtilizationBand } from './types';
+import {
+    type AccountConfigInput,
+    type AdvisoryEvaluation,
+    type DerivedAdvisory,
+    type DerivedAdvisorySeverity,
+    type MetricSourceStatus,
+    type UtilizationBand,
+} from './types';
 
 export function utilizationBand(value: number, moderateUpperPercent: number): UtilizationBand {
     return value < DIAGNOSTIC_POLICY.overProvisioning.idleBandPercent
@@ -14,6 +22,88 @@ export function utilizationBand(value: number, moderateUpperPercent: number): Ut
           : value < moderateUpperPercent
             ? 'moderate'
             : 'ok';
+}
+
+function continuousBackupTier(config: AccountConfigInput) {
+    const tier = config.backupPolicy?.continuousTier?.trim().toLowerCase();
+    return tier === 'continuous7days' || tier === 'continuous30days' || tier === 'continuous35days' ? tier : undefined;
+}
+
+type PaidBackupClassification =
+    | {
+          rootCause: Exclude<AdvisoryEvaluation<'PaidContinuousBackup'>['rootCause'], 'nonprod_paid_continuous_backup'>;
+          hasRequiredInputs: boolean;
+      }
+    | {
+          rootCause: 'nonprod_paid_continuous_backup';
+          hasRequiredInputs: true;
+          tier: 'continuous30days' | 'continuous35days';
+          inferredEnvironment: string;
+      };
+
+export function classifyPaidContinuousBackup(config: AccountConfigInput | undefined): PaidBackupClassification {
+    if (config === undefined) {
+        return { rootCause: 'unknown', hasRequiredInputs: false };
+    }
+    const mode = config.backupPolicy?.type?.toLowerCase();
+    if (mode === 'periodic') {
+        return { rootCause: 'periodic_backup', hasRequiredInputs: true };
+    }
+    if (mode !== 'continuous') {
+        return { rootCause: 'unknown', hasRequiredInputs: false };
+    }
+    const tier = continuousBackupTier(config);
+    if (tier === 'continuous7days') {
+        return { rootCause: 'uncharged_7day_backup', hasRequiredInputs: true };
+    }
+    const environment = classifyEnvironment(config.accountName, config.tags, config.subscriptionName);
+    if (tier === undefined) {
+        return { rootCause: 'unknown_continuous_tier', hasRequiredInputs: !environment.isNonProd };
+    }
+    if (!environment.isNonProd) {
+        return { rootCause: 'legitimate_prod_backup', hasRequiredInputs: true };
+    }
+    return {
+        rootCause: 'nonprod_paid_continuous_backup',
+        hasRequiredInputs: true,
+        tier,
+        inferredEnvironment: environment.inferredEnv,
+    };
+}
+
+export function classifyPerRegionAutoscale(config: AccountConfigInput | undefined): {
+    rootCause: AdvisoryEvaluation<'PerRegionAutoscaleCandidate'>['rootCause'];
+    hasRequiredInputs: boolean;
+} {
+    if (config?.isServerless === true) {
+        return { rootCause: 'serverless', hasRequiredInputs: true };
+    }
+    const validRegions = config !== undefined && Number.isInteger(config.regionCount) && config.regionCount >= 1;
+    if (config?.isServerless !== false || !validRegions) {
+        return { rootCause: 'unknown', hasRequiredInputs: validRegions && config.regionCount === 1 };
+    }
+    if (config.regionCount < 2) {
+        return { rootCause: 'single_region', hasRequiredInputs: true };
+    }
+    if (config.perRegionPerPartitionAutoscaleEnabled === true) {
+        return { rootCause: 'already_enabled', hasRequiredInputs: true };
+    }
+    if (config.perRegionPerPartitionAutoscaleEnabled !== false) {
+        return { rootCause: 'unknown', hasRequiredInputs: false };
+    }
+    return { rootCause: 'prpa_candidate', hasRequiredInputs: true };
+}
+
+/** Configuration-only checks can still report missing inputs when workload collection is unavailable. */
+export function configurationFailures(config: AccountConfigInput | undefined): MetricSourceStatus['failures'] {
+    const failures: MetricSourceStatus['failures'] = [];
+    if (!classifyPaidContinuousBackup(config).hasRequiredInputs) {
+        failures.push({ rule: 'PaidContinuousBackup', reason: 'noData' });
+    }
+    if (!classifyPerRegionAutoscale(config).hasRequiredInputs) {
+        failures.push({ rule: 'PerRegionAutoscaleCandidate', reason: 'noData' });
+    }
+    return failures;
 }
 
 const ADVISORY_SEVERITY_ORDER: Record<DerivedAdvisorySeverity, number> = { High: 0, Medium: 1, Low: 2 };

@@ -35,6 +35,11 @@ export * from './detectors/CrossPartitionQueryDetector';
 export * from './detectors/ShardKeyMisalignmentDetector';
 export * from './detectors/UncontrolledIngestionDetector';
 export * from './detectors/SharedThroughputStarvationDetector';
+export * from './detectors/PaidContinuousBackupDetector';
+export * from './detectors/NonThrottlingErrorsDetector';
+export * from './detectors/ThrottlingByOperationDetector';
+export * from './detectors/PerRegionAutoscaleCandidateDetector';
+export * from './detectors/ReservedCapacityCandidateDetector';
 
 export * from './fetchers/metrics';
 export * from './fetchers/logs';

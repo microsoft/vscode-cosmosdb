@@ -486,7 +486,6 @@
   "Could not open the confirmation dialog. Please try again.": "Could not open the confirmation dialog. Please try again.",
   "Could not open the review: {message}": "Could not open the review: {message}",
   "Could not read {file}. Make sure it is a JSON object or an array of objects.": "Could not read {file}. Make sure it is a JSON object or an array of objects.",
-  "Could not read the saved data model. Starting a temporary model on the Workload page. Reopen Data Modeler to retry loading before saving.": "Could not read the saved data model. Starting a temporary model on the Workload page. Reopen Data Modeler to retry loading before saving.",
   "Could not receive the recommendation from the extension.": "Could not receive the recommendation from the extension.",
   "Could not save the modeling advisor state. Keep this tab open and retry.": "Could not save the modeling advisor state. Keep this tab open and retry.",
   "Could not save your inputs before requesting a recommendation. Please retry.": "Could not save your inputs before requesting a recommendation. Please retry.",

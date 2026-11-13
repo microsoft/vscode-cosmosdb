@@ -266,7 +266,6 @@ describe('DataModelerProjectService', () => {
 
     it.each([
         ['malformed JSON', '{broken'],
-        ['unsupported version', JSON.stringify({ version: 2, name: 'Newer', state: snapshot() })],
         ['invalid state', JSON.stringify({ version: 1, name: 'Invalid', state: {} })],
     ])('discards the saved model after %s and starts fresh', async (_, text) => {
         files.set(service.projectUri.toString(), Buffer.from(text));
@@ -286,7 +285,7 @@ describe('DataModelerProjectService', () => {
     });
 
     it.each(['stat', 'readFile'] as const)(
-        'preserves a valid model after a transient %s failure and blocks saves until a successful reload',
+        'rejects and preserves a valid model after a transient %s failure, blocking saves until a successful reload',
         async (operation) => {
             const state = snapshot();
             await service.loadState();
@@ -296,10 +295,8 @@ describe('DataModelerProjectService', () => {
             vi.mocked(vscode.workspace.fs.writeFile).mockClear();
             vi.mocked(vscode.workspace.fs[operation]).mockRejectedValueOnce(vscode.FileSystemError.NoPermissions());
 
-            expect(await service.loadState()).toBeNull();
-            expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
-                'Could not read the saved data model. Starting a temporary model on the Workload page. Reopen Data Modeler to retry loading before saving.',
-            );
+            await expect(service.loadState()).rejects.toThrow(vscode.FileSystemError);
+            expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
             expect(vscode.workspace.fs.delete).not.toHaveBeenCalled();
             expect(files.get(service.projectUri.toString())).toEqual(original);
             await expect(service.saveState(snapshot())).rejects.toThrow('Load the saved data model');
@@ -325,9 +322,20 @@ describe('DataModelerProjectService', () => {
         expect(files.size).toBe(1);
     });
 
+    it('rejects and preserves a project from a newer version, blocking saves', async () => {
+        const text = JSON.stringify({ version: 2, name: 'Newer', state: snapshot() });
+        files.set(service.projectUri.toString(), Buffer.from(text));
+        await expect(service.loadState()).rejects.toThrow('unsupported version');
+        expect(vscode.workspace.fs.delete).not.toHaveBeenCalled();
+        expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
+        await expect(service.saveState(snapshot())).rejects.toThrow('Load the saved data model');
+        expect(Buffer.from(files.get(service.projectUri.toString())!).toString()).toBe(text);
+        expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
+    });
+
     it('preserves storage after unexpected stat failures and allows saving after reloading', async () => {
         vi.mocked(vscode.workspace.fs.stat).mockRejectedValueOnce(new Error('Storage unavailable'));
-        expect(await service.loadState()).toBeNull();
+        await expect(service.loadState()).rejects.toThrow('Storage unavailable');
         expect(vscode.workspace.fs.delete).not.toHaveBeenCalled();
         const state = snapshot();
         await expect(service.saveState(state)).rejects.toThrow('Load the saved data model');

@@ -112,7 +112,10 @@ export class DataModelerProjectService {
         return result;
     }
 
-    /** Invalid saved models are discarded; read failures preserve the file and block saves until a successful load. */
+    /**
+     * Invalid saved models are discarded. Read failures and newer versions preserve the file, block saves until a
+     * successful load, and reject so the webview can offer Retry loading.
+     */
     public loadState(): Promise<ModelingAdvisorSnapshot | null> {
         return DataModelerProjectService.enqueue(async () => {
             let project: ModelingAdvisorProject | undefined;
@@ -122,12 +125,7 @@ export class DataModelerProjectService {
                 if (!(error instanceof InvalidSavedModelError)) {
                     this.loadedRevision = undefined;
                     ext.outputChannel.warn('Could not read the saved data model. The saved file was left unchanged.');
-                    void vscode.window.showWarningMessage(
-                        l10n.t(
-                            'Could not read the saved data model. Starting a temporary model on the Workload page. Reopen Data Modeler to retry loading before saving.',
-                        ),
-                    );
-                    return null;
+                    throw error;
                 }
                 ext.outputChannel.warn('Could not load the saved data model. Starting a new model.');
                 try {

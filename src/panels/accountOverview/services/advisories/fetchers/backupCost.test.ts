@@ -7,6 +7,7 @@ import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import {
     MonitorClient,
     type Metric,
+    type MetricsListOptionalParams,
     type Response as MetricsResponse,
     type TimeSeriesElement,
 } from '@azure/arm-monitor';
@@ -29,9 +30,9 @@ const rows = [
     { databaseId: 'db', containerId: 'other' },
 ];
 
-function storageSeries(container: string, total = 1_000_000_000): TimeSeriesElement {
+function storageSeries(container: string, total = 1_000_000_000, database = 'db'): TimeSeriesElement {
     return {
-        metadatavalues: [...dims('db', container), { name: { value: 'Region' }, value: 'East US' }],
+        metadatavalues: [...dims(database, container), { name: { value: 'Region' }, value: 'East US' }],
         data: [{ timeStamp: timestamp, total }],
     };
 }
@@ -50,6 +51,29 @@ function metric(series: TimeSeriesElement[], overrides: Partial<Metric> = {}): M
             },
         ],
     };
+}
+
+function filteredStorage(series: TimeSeriesElement[], options?: MetricsListOptionalParams): MetricsResponse {
+    const dimensions = new Map<string, string[]>();
+    for (const [, dimension, literal] of (options?.filter ?? '').matchAll(
+        /(DatabaseName|CollectionName|Region) eq '((?:''|[^'])*)'/g,
+    )) {
+        const values = dimensions.get(dimension) ?? [];
+        values.push(literal.replace(/''/g, "'").toLowerCase());
+        dimensions.set(dimension, values);
+    }
+    return metric(
+        series
+            .filter((entry) =>
+                [...dimensions].every(([dimension, values]) => {
+                    const value = entry.metadatavalues
+                        ?.find((metadata) => metadata.name?.value === dimension)
+                        ?.value?.toLowerCase();
+                    return values.includes('*') || (value !== undefined && values.includes(value));
+                }),
+            )
+            .slice(0, options?.top ?? 10),
+    );
 }
 
 function retailItem(region: string, overrides: Record<string, unknown> = {}) {
@@ -219,7 +243,7 @@ describe('paid continuous-backup retail scenario', () => {
             aggregation: 'Total',
             interval: 'PT5M',
             timespan: '2026-11-10T12:00:00.000Z/2026-11-11T12:00:00.000Z',
-            filter: "DatabaseName eq '*' and CollectionName eq '*' and Region eq 'East US'",
+            filter: "DatabaseName eq 'db' and (CollectionName eq 'items' or CollectionName eq 'other') and Region eq 'East US'",
             top: 2,
         });
         expect(fetchMock).toHaveBeenCalledExactlyOnceWith(
@@ -234,10 +258,26 @@ describe('paid continuous-backup retail scenario', () => {
         expect(
             await read({}, [
                 { databaseId: 'Db', containerId: 'Items' },
-                { databaseId: 'Db', containerId: 'Other' },
+                { databaseId: 'DB', containerId: 'Other' },
             ]),
         ).toMatchObject({ storageBytes: 2_000_000_000, logicalContainers: 2, monthlyAmount: 0.8 });
         expect(list).toHaveBeenCalledOnce();
+    });
+
+    it('excludes a recently deleted container before it can consume a limited series slot', async () => {
+        const { read, list } = setup();
+        const historical = [
+            storageSeries('deleted', 99_000_000_000),
+            ...rows.map((row) => storageSeries(row.containerId)),
+        ];
+        list.mockImplementation(async (_id, options) => filteredStorage(historical, options));
+        expect(await read()).toMatchObject({
+            storageBytes: 2_000_000_000,
+            logicalContainers: 2,
+            monthlyAmount: 0.8,
+        });
+        expect(list).toHaveBeenCalledOnce();
+        expect(list.mock.calls[0][1]?.filter).not.toContain("CollectionName eq '*'");
     });
 
     it('keeps identically named containers in different databases separate', async () => {
@@ -246,19 +286,59 @@ describe('paid continuous-backup retail scenario', () => {
             { databaseId: 'db', containerId: 'items' },
             { databaseId: 'another-db', containerId: 'items' },
         ];
-        list.mockResolvedValue(
-            metric(
-                inventory.map((row) => ({
-                    ...storageSeries(row.containerId),
-                    metadatavalues: [
-                        ...dims(row.databaseId, row.containerId),
-                        { name: { value: 'Region' }, value: 'East US' },
-                    ],
-                })),
+        list.mockImplementation(async (_id, options) =>
+            filteredStorage(
+                inventory.map((row) => storageSeries(row.containerId, 1_000_000_000, row.databaseId)),
+                options,
             ),
         );
         expect(await read({}, inventory)).toMatchObject({ storageBytes: 2_000_000_000, logicalContainers: 2 });
-        expect(list).toHaveBeenCalledOnce();
+        expect(list).toHaveBeenCalledTimes(2);
+        expect(list.mock.calls.map((call) => call[1]?.filter)).toEqual([
+            "DatabaseName eq 'db' and (CollectionName eq 'items') and Region eq 'East US'",
+            "DatabaseName eq 'another-db' and (CollectionName eq 'items') and Region eq 'East US'",
+        ]);
+    });
+
+    it('does not request deleted cross-product identities from containers in different databases', async () => {
+        const { read, list } = setup();
+        const inventory = [
+            { databaseId: 'db', containerId: 'items' },
+            { databaseId: 'other-db', containerId: 'other' },
+        ];
+        const series = [
+            storageSeries('other', 99_000_000_000, 'db'),
+            storageSeries('items', 99_000_000_000, 'other-db'),
+            ...inventory.map((row) => storageSeries(row.containerId, 1_000_000_000, row.databaseId)),
+        ];
+        list.mockImplementation(async (_id, options) => filteredStorage(series, options));
+        expect(await read({}, inventory)).toMatchObject({ storageBytes: 2_000_000_000, logicalContainers: 2 });
+        expect(list).toHaveBeenCalledTimes(2);
+        for (const [, options] of list.mock.calls) {
+            expect(options?.filter?.match(/DatabaseName eq /g)).toHaveLength(1);
+            expect(options?.top).toBe(1);
+        }
+    });
+
+    it('escapes database, container and reference-region literals without broadening the filter', async () => {
+        const { read, list, send } = setup();
+        const inventory = [{ databaseId: "db'quoted", containerId: "items'quoted" }];
+        const series = storageSeries("items'quoted", 1_000_000_000, "db'quoted");
+        series.metadatavalues = [
+            ...dims("db'quoted", "items'quoted"),
+            { name: { value: 'Region' }, value: "East 'US" },
+        ];
+        list.mockResolvedValue(metric([series]));
+        send.mockImplementation(async (_http, request) => ({
+            request,
+            status: 200,
+            headers: createHttpHeaders(),
+            bodyAsText: JSON.stringify({ value: [{ name: 'eastus', displayName: "East 'US" }] }),
+        }));
+        expect(await read({ locationNames: ["East 'US"] }, inventory)).toMatchObject({ storageBytes: 1_000_000_000 });
+        expect(list.mock.calls[0][1]?.filter).toBe(
+            "DatabaseName eq 'db''quoted' and (CollectionName eq 'items''quoted') and Region eq 'East ''US'",
+        );
     });
 
     it.each([
@@ -425,9 +505,89 @@ describe('paid continuous-backup retail scenario', () => {
             accountId,
             expect.objectContaining({
                 top: 13,
-                filter: "DatabaseName eq '*' and CollectionName eq '*' and Region eq 'East US'",
+                filter:
+                    "DatabaseName eq 'db' and (" +
+                    inventory.map((row) => `CollectionName eq '${row.containerId}'`).join(' or ') +
+                    ") and Region eq 'East US'",
             }),
         );
+    });
+
+    it('bounds large inventories and requires a common timestamp across all batches', async () => {
+        const { read, list } = setup();
+        const inventory = Array.from({ length: 45 }, (_, index) => ({ databaseId: 'db', containerId: `c${index}` }));
+        const series = inventory.map((row) => ({
+            ...storageSeries(row.containerId),
+            data: [
+                { timeStamp: timestamp, total: 1_000_000_000 },
+                { timeStamp: new Date(now), total: row.containerId === 'c44' ? undefined : 99_000_000_000 },
+            ],
+        }));
+        list.mockImplementation(async (_id, options) => filteredStorage(series, options));
+        expect(await read({}, inventory)).toMatchObject({
+            storageBytes: 45_000_000_000,
+            logicalContainers: 45,
+            snapshotAt: timestamp.toISOString(),
+        });
+        expect(list.mock.calls.map((call) => call[1]?.top)).toEqual([20, 20, 5]);
+        for (const [, options] of list.mock.calls) {
+            expect(options?.filter?.match(/CollectionName eq /g)).toHaveLength(options?.top ?? 0);
+            expect(new URLSearchParams({ $filter: options?.filter ?? '' }).toString().length).toBeLessThanOrEqual(4096);
+        }
+    });
+
+    it('bounds URL-encoded filters even when long escaped names fit in fewer than twenty terms', async () => {
+        const { read, list } = setup();
+        const inventory = Array.from({ length: 13 }, (_, index) => ({
+            databaseId: 'db',
+            containerId: `${"'".repeat(240)}${index}`,
+        }));
+        const series = inventory.map((row) => storageSeries(row.containerId));
+        list.mockImplementation(async (_id, options) => filteredStorage(series, options));
+        expect(await read({}, inventory)).toMatchObject({ storageBytes: 13_000_000_000, logicalContainers: 13 });
+        expect(list.mock.calls.length).toBeGreaterThan(1);
+        for (const [, options] of list.mock.calls) {
+            expect(new URLSearchParams({ $filter: options?.filter ?? '' }).toString().length).toBeLessThanOrEqual(4096);
+        }
+        expect(list.mock.calls.reduce((sum, call) => sum + (call[1]?.top ?? 0), 0)).toBe(inventory.length);
+    });
+
+    it.each(['missing', 'disjoint', 'failure', 'wrong batch'] as const)(
+        'never prices partial inventory when a later batch has %s evidence',
+        async (failure) => {
+            const { read, list, fetchMock } = setup();
+            const inventory = Array.from({ length: 21 }, (_, index) => ({
+                databaseId: 'db',
+                containerId: `c${index}`,
+            }));
+            const series = inventory.map((row) => storageSeries(row.containerId));
+            list.mockImplementationOnce(async (_id, options) => filteredStorage(series, options));
+            if (failure === 'failure') {
+                list.mockRejectedValueOnce(new Error('Metrics unavailable.'));
+            } else {
+                const last = storageSeries('c20');
+                if (failure === 'disjoint') {
+                    last.data = [{ timeStamp: new Date(now), total: 1_000_000_000 }];
+                }
+                list.mockResolvedValueOnce(
+                    metric(failure === 'missing' ? [] : failure === 'wrong batch' ? [series[0]] : [last]),
+                );
+            }
+            await expect(read({}, inventory)).rejects.toBeInstanceOf(Error);
+            expect(list).toHaveBeenCalledTimes(2);
+            expect(fetchMock).not.toHaveBeenCalled();
+        },
+    );
+
+    it.each([
+        { databaseId: '*', containerId: 'items' },
+        { databaseId: 'db', containerId: '*' },
+        { databaseId: 'db', containerId: "'".repeat(1000) },
+    ])('does not issue wildcard or oversized inventory filters: %j', async (row) => {
+        const { read, list, fetchMock } = setup();
+        await expect(read({}, [row])).rejects.toMatchObject({ kind: 'unsupported' });
+        expect(list).not.toHaveBeenCalled();
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it.each([0, 1, 10])(

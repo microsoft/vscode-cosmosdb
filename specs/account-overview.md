@@ -636,10 +636,14 @@ Only the public Azure cloud is supported for this source. Every configured accou
 unambiguously through subscription location metadata, and ARM container inventory must have completed.
 Accepted region aliases resolve separately to the canonical retail key and the Monitor display name.
 Storage filters, dimension validation and provenance use the resolved display name, not the caller's alias.
-`DataUsageV2` (`Total`, bytes, five-minute grain, last 24 hours) is read in one reference-region request,
-split by database and container dimensions. The series limit is explicitly set to the authoritative inventory
-size rather than Azure Monitor's default ten. Returned identities must belong to that inventory; missing or
-truncated series never establish a partial account total or trigger pricing.
+`DataUsageV2` (`Total`, bytes, five-minute grain, last 24 hours) is read for one reference region,
+with exact current-inventory database/container filters. Requests group containers within each database,
+with at most twenty containers and a 4,096-character URL-encoded filter per request; the series limit equals
+that batch's inventory size rather than Azure Monitor's default ten. This excludes historical deleted-container
+series before limiting results, without introducing cross-product identities across databases.
+Wildcard identities or a single identity exceeding the filter budget are unsupported, not broad wildcard reads.
+Returned identities must belong to the requested batch; missing or truncated series never establish a partial
+account total or trigger pricing. Snapshot completeness is checked across all batches.
 The newest complete common timestamp must contain every inventory container exactly once,
 with correct resource/region dimensions, finite nonnegative bytes, age at most six hours and future skew at
 most five minutes. Missing/duplicate series and partial inventories never become zero storage. Observed zero

@@ -104,7 +104,7 @@ function evaluateStorageGrowthRisk(
     if (soonest === undefined || !reachesWithinDays(horizonDays)) {
         return {
             rootCause:
-                missingHistory || largestObserved <= 0
+                missingHistory || input.partitions.length === 0
                     ? 'insufficient_data'
                     : largestObserved < STORAGE_GROWTH_MIN_MATERIAL_BYTES
                       ? 'too_small'

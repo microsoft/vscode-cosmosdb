@@ -888,11 +888,9 @@ describe('evaluateMultiRegionWrites', () => {
             };
             expect(result.rootCause).toBe(rootCause);
             expect(result.observations).toEqual(observations);
-            expect(result.advisory).toEqual(
-                removableExtraRegionRu === null
-                    ? undefined
-                    : expect.objectContaining({ severity: 'Medium', evidence: observations }),
-            );
+            expect(result).toMatchObject({
+                advisory: removableExtraRegionRu === null ? undefined : { severity: 'Medium', evidence: observations },
+            });
         },
     );
 });

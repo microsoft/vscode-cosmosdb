@@ -24,6 +24,14 @@ import { ScalePage } from './ScalePage';
 
 export type ContainerTab = 'data' | 'queries' | 'scale';
 
+/** Tab order; the wizard footer's Next and Back walk through it before leaving the container step. */
+export const CONTAINER_TABS: readonly ContainerTab[] = ['data', 'queries', 'scale'];
+
+/** Shared by the tabs and the wizard's Next button so both always show the same localized name. */
+export function getContainerTabLabel(tab: ContainerTab): string {
+    return tab === 'data' ? l10n.t('Data') : tab === 'queries' ? l10n.t('Queries') : l10n.t('Scale');
+}
+
 const useStyles = makeStyles({
     stack: {
         display: 'flex',
@@ -39,7 +47,7 @@ export interface ContainerPageProps {
     model: DataModel;
     tab: ContainerTab;
     onTabChange: (tab: ContainerTab) => void;
-    queriesTabRef?: Ref<HTMLButtonElement>;
+    tabRefs?: Partial<Record<ContainerTab, Ref<HTMLButtonElement>>>;
     focusPath?: string[];
     onFocused?: () => void;
     /** Data-tab edits change the schema, so the wizard re-derives partition-key candidates. */
@@ -59,7 +67,7 @@ export function ContainerPage({
     model,
     tab,
     onTabChange,
-    queriesTabRef,
+    tabRefs,
     focusPath,
     onFocused,
     onChangeData,
@@ -126,14 +134,19 @@ export function ContainerPage({
                     }
                 }}
             >
-                <Tab value="data" id={`${id}-data-tab`} aria-controls={`${id}-data-panel`}>
-                    {l10n.t('Data')}
+                <Tab value="data" id={`${id}-data-tab`} aria-controls={`${id}-data-panel`} ref={tabRefs?.data}>
+                    {getContainerTabLabel('data')}
                 </Tab>
-                <Tab value="queries" id={`${id}-queries-tab`} aria-controls={`${id}-queries-panel`} ref={queriesTabRef}>
-                    {l10n.t('Queries')}
+                <Tab
+                    value="queries"
+                    id={`${id}-queries-tab`}
+                    aria-controls={`${id}-queries-panel`}
+                    ref={tabRefs?.queries}
+                >
+                    {getContainerTabLabel('queries')}
                 </Tab>
-                <Tab value="scale" id={`${id}-scale-tab`} aria-controls={`${id}-scale-panel`}>
-                    {l10n.t('Scale')}
+                <Tab value="scale" id={`${id}-scale-tab`} aria-controls={`${id}-scale-panel`} ref={tabRefs?.scale}>
+                    {getContainerTabLabel('scale')}
                 </Tab>
             </TabList>
 

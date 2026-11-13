@@ -6,6 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { ModelingAdvisorProjectSchema, type ModelingAdvisorSnapshot } from '../dataModeling/modelingAdvisorSchema';
+import { ext } from '../extensionVariables';
 import { createBlankContainer, createInitialState } from '../webviews/cosmosdb/DataModeling/dataModel';
 import { DATA_MODELER_RETENTION_MS, DataModelerProjectService } from './DataModelerProjectService';
 
@@ -265,21 +266,82 @@ describe('DataModelerProjectService', () => {
 
     it.each([
         ['malformed JSON', '{broken'],
-        ['unsupported version', JSON.stringify({ version: 2, name: 'Newer', state: snapshot() })],
         ['invalid state', JSON.stringify({ version: 1, name: 'Invalid', state: {} })],
-    ])('preserves a project with %s and blocks saves until a successful load', async (_, text) => {
+    ])('discards the saved model after %s and starts fresh', async (_, text) => {
         files.set(service.projectUri.toString(), Buffer.from(text));
-        await expect(service.loadState()).rejects.toThrow(/valid JSON|invalid format|unsupported version/);
+        expect(await service.loadState()).toBeNull();
+        expect(await service.loadState()).toBeNull();
+        expect(files.size).toBe(0);
+        expect(vscode.workspace.fs.delete).toHaveBeenCalledExactlyOnceWith(service.projectUri, {
+            recursive: false,
+            useTrash: false,
+        });
+        expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
+        expect(vscode.window.showWarningMessage).toHaveBeenCalledOnce();
+        const state = snapshot();
+        await service.saveState(state);
+        expect(files.size).toBe(1);
+        expect(await new DataModelerProjectService(endpoint).loadState()).toEqual(state);
+    });
+
+    it.each(['stat', 'readFile'] as const)(
+        'rejects and preserves a valid model after a transient %s failure, blocking saves until a successful reload',
+        async (operation) => {
+            const state = snapshot();
+            await service.loadState();
+            await service.saveState(state);
+            const original = files.get(service.projectUri.toString());
+            vi.mocked(vscode.workspace.fs.delete).mockClear();
+            vi.mocked(vscode.workspace.fs.writeFile).mockClear();
+            vi.mocked(vscode.workspace.fs[operation]).mockRejectedValueOnce(vscode.FileSystemError.NoPermissions());
+
+            await expect(service.loadState()).rejects.toThrow(vscode.FileSystemError);
+            expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
+            expect(vscode.workspace.fs.delete).not.toHaveBeenCalled();
+            expect(files.get(service.projectUri.toString())).toEqual(original);
+            await expect(service.saveState(snapshot())).rejects.toThrow('Load the saved data model');
+            expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
+            expect(await service.loadState()).toEqual(state);
+            await service.saveState(state);
+        },
+    );
+
+    it('opens even if removing the failed file is denied, and reports the cleanup failure', async () => {
+        files.set(service.projectUri.toString(), Buffer.from('{}'));
+        vi.mocked(vscode.workspace.fs.delete).mockRejectedValueOnce(vscode.FileSystemError.NoPermissions());
+        expect(await service.loadState()).toBeNull();
+        expect(vscode.window.showWarningMessage).toHaveBeenCalledOnce();
+        expect(ext.outputChannel.warn).toHaveBeenCalledWith(
+            'Could not remove the failed saved data model. Saving may still fail.',
+        );
+        await expect(service.saveState(snapshot())).rejects.toThrow('invalid format');
+        expect(Buffer.from(files.get(service.projectUri.toString())!).toString()).toBe('{}');
+        expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
+        expect(await service.loadState()).toBeNull();
+        await service.saveState(snapshot());
+        expect(files.size).toBe(1);
+    });
+
+    it('rejects and preserves a project from a newer version, blocking saves', async () => {
+        const text = JSON.stringify({ version: 2, name: 'Newer', state: snapshot() });
+        files.set(service.projectUri.toString(), Buffer.from(text));
+        await expect(service.loadState()).rejects.toThrow('unsupported version');
+        expect(vscode.workspace.fs.delete).not.toHaveBeenCalled();
+        expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
         await expect(service.saveState(snapshot())).rejects.toThrow('Load the saved data model');
         expect(Buffer.from(files.get(service.projectUri.toString())!).toString()).toBe(text);
         expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
     });
 
-    it('does not treat permission errors as an empty project', async () => {
-        files.set(service.projectUri.toString(), Buffer.from('{}'));
-        vi.mocked(vscode.workspace.fs.readFile).mockRejectedValueOnce(vscode.FileSystemError.NoPermissions());
-        await expect(service.loadState()).rejects.toThrow(vscode.FileSystemError);
-        await expect(service.saveState(snapshot())).rejects.toThrow('Load the saved data model');
+    it('preserves storage after unexpected stat failures and allows saving after reloading', async () => {
+        vi.mocked(vscode.workspace.fs.stat).mockRejectedValueOnce(new Error('Storage unavailable'));
+        await expect(service.loadState()).rejects.toThrow('Storage unavailable');
+        expect(vscode.workspace.fs.delete).not.toHaveBeenCalled();
+        const state = snapshot();
+        await expect(service.saveState(state)).rejects.toThrow('Load the saved data model');
+        expect(await service.loadState()).toBeNull();
+        await service.saveState(state);
+        expect(await new DataModelerProjectService(endpoint).loadState()).toEqual(state);
     });
 
     it('protects files externally changed to an unsupported version after loading', async () => {
@@ -487,7 +549,7 @@ describe('DataModelerProjectService', () => {
     it('does not let a corrupt account file block another account', async () => {
         const second = new DataModelerProjectService('https://account-b.documents.azure.com');
         files.set(service.projectUri.toString(), Buffer.from('invalid'));
-        await expect(service.loadState()).rejects.toThrow('not valid JSON');
+        expect(await service.loadState()).toBeNull();
         expect(await second.loadState()).toBeNull();
         const state = snapshot();
         await second.saveState(state);

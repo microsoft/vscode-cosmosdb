@@ -48,7 +48,7 @@ import {
 } from './dataModel';
 import { createInitialSnapshot, useModelingAdvisorPersistence } from './modelingAdvisorState';
 import { MAX_CONTAINERS, type ScenarioId } from './models';
-import { ContainerPage, type ContainerTab } from './pages/ContainerPage';
+import { CONTAINER_TABS, ContainerPage, type ContainerTab, getContainerTabLabel } from './pages/ContainerPage';
 import { createDeploymentDraft, DeployPage, type DeploymentDraft } from './pages/DeployPage';
 import { ResultPage } from './pages/ResultPage';
 import { ReviewPage, type ReviewValidationIssue } from './pages/ReviewPage';
@@ -68,7 +68,8 @@ import { useNativeConfirmation } from './useNativeConfirmation';
  *
  * The steps are **dynamic**: Workload, one step per modeled container (each a {@link ContainerPage}
  * with Data/Queries/Scale tabs), Review, Result, and a transient Deploy step.
- * The active container tracks the current container step.
+ * The active container tracks the current container step. On a container step, the footer's Next and Back
+ * walk through its tabs before moving to the adjacent step, so every tab is shown on the way to Review.
  */
 
 /** Stable step identifiers for the fixed steps; container steps use {@link containerStep}. */
@@ -210,10 +211,10 @@ const useStyles = makeStyles({
 });
 
 /**
- * Footer hint for the current step: what the step is for, and — on Review — what pressing the
+ * Footer hint for the current step: what the step is for or, on Review and container tabs, what pressing the
  * primary button will do next.
  */
-function footerHint(value: string): string {
+function footerHint(value: string, nextTab: ContainerTab | undefined, nextContainer: string | undefined): string {
     if (value === WORKLOAD_STEP) {
         return l10n.t('Pick the closest workload to pre-fill typical containers, keys, and defaults.');
     }
@@ -223,7 +224,15 @@ function footerHint(value: string): string {
         );
     }
     if (value.startsWith(CONTAINER_PREFIX)) {
-        return l10n.t('Model this container across the Data, Queries and Scale tabs — it gets its own recommendation.');
+        if (nextTab === 'queries') {
+            return l10n.t('Next: describe the reads and writes your app runs against this container.');
+        }
+        if (nextTab === 'scale') {
+            return l10n.t('Next: estimate how this container’s data is distributed and how it grows.');
+        }
+        return nextContainer === undefined
+            ? l10n.t('Next: review the inputs for all containers.')
+            : l10n.t('Next: model the “{entity}” container.', { entity: nextContainer });
     }
     return '';
 }
@@ -238,24 +247,29 @@ export const DataModelingWizard = () => {
     );
     const persistence = useModelingAdvisorPersistence({ load, save });
     const loadMessage = l10n.t('Loading saved modeling advisor state…');
-    const loadError = l10n.t('Could not load the modeling advisor state. Retry before making changes.');
+    const loadError = l10n.t(
+        'Could not load the saved data model. Changes to this temporary model will not be saved. Retry loading to restore the saved model and discard temporary changes.',
+    );
     const saveError = l10n.t('Could not save the modeling advisor state. Keep this tab open and retry.');
 
-    if (persistence.loadStatus === 'loading' || persistence.loadStatus === 'error') {
+    if (persistence.loadStatus === 'loading') {
         return (
             <div>
                 <output aria-live="polite">
-                    <Text>{persistence.loadStatus === 'loading' ? loadMessage : loadError}</Text>
+                    <Text>{loadMessage}</Text>
                 </output>
-                {persistence.loadStatus === 'error' ? (
-                    <Button onClick={persistence.retryLoad}>{l10n.t('Retry loading')}</Button>
-                ) : null}
             </div>
         );
     }
 
     return (
         <div className={styles.viewport}>
+            {persistence.loadFailed ? (
+                <div className={styles.statusRow}>
+                    <Text role="alert">{loadError}</Text>
+                    <Button onClick={persistence.retryLoad}>{l10n.t('Retry loading')}</Button>
+                </div>
+            ) : null}
             <div role="alert" className={styles.statusRow}>
                 {persistence.saveFailed ? <Text>{saveError}</Text> : null}
             </div>
@@ -286,7 +300,10 @@ const HydratedDataModelingWizard = ({
     const visible = useModelingPageVisible();
     const { confirm, confirming, confirmationError } = useNativeConfirmation();
     const advanceButtonRef = useRef<HTMLButtonElement>(null);
+    const dataTabRef = useRef<HTMLButtonElement>(null);
     const queriesTabRef = useRef<HTMLButtonElement>(null);
+    const scaleTabRef = useRef<HTMLButtonElement>(null);
+    const tabRefs = { data: dataTabRef, queries: queriesTabRef, scale: scaleTabRef };
     const [containerTab, setContainerTab] = useState<ContainerTab>('data');
     // A workload card is only a selection until Start applies it, so revisiting Workload is side-effect free.
     const [pendingScenario, setPendingScenario] = useState<ScenarioId>();
@@ -326,6 +343,8 @@ const HydratedDataModelingWizard = ({
     const currentSnapshot = useRef<typeof snapshot | undefined>(snapshot);
     const containerNameRequest = useRef(0);
     const containerNamePending = useRef(false);
+    // Read when an asynchronous container-name prompt completes, after the user may have navigated elsewhere.
+    const activeStepRef = useRef('');
     useEffect(
         () => () => {
             abandonRecommendation();
@@ -356,7 +375,7 @@ const HydratedDataModelingWizard = ({
         [commitSnapshot, abandonRecommendation],
     );
     const state = snapshot.wizard;
-    const { visit, markEdited, visits } = useModelingUsage(state, report);
+    const { visit, markEdited } = useModelingUsage(state, report);
     const [schemaImports] = useState(() => new SchemaImportTracker());
     // A mounted Data page acknowledges its own committed import; this covers imports that outlived their page.
     useEffect(() => {
@@ -571,8 +590,8 @@ const HydratedDataModelingWizard = ({
     // Navigate to a 1-based step index, syncing the active container when the target is a
     // container step without changing any user-entered cardinalities.
     const goToStep = useCallback(
-        (step: number) => {
-            setContainerTab('data');
+        (step: number, tab: ContainerTab = 'data') => {
+            setContainerTab(tab);
             setPendingScenario(undefined);
             setState((prev) => {
                 const values = buildStepValues(prev.dataModel);
@@ -732,13 +751,19 @@ const HydratedDataModelingWizard = ({
             }
             markEdited('data');
             const container = createBlankContainer(value);
-            setState((previous) => ({
-                ...previous,
-                dataModel: {
-                    ...previous.dataModel,
-                    containers: [...previous.dataModel.containers, container],
-                },
-            }));
+            // The new step precedes Review, so it must be stepped through before Review is reachable again.
+            // Keep navigation if the user left the container steps, including for Deploy, while the prompt was open.
+            const requireNewStep = activeStepRef.current.startsWith(CONTAINER_PREFIX);
+            setState((previous) => {
+                const dataModel = { ...previous.dataModel, containers: [...previous.dataModel.containers, container] };
+                if (!requireNewStep) {
+                    return { ...previous, dataModel };
+                }
+                const reachedSteps = (
+                    previous.reachedSteps ?? buildStepValues(previous.dataModel).slice(0, previous.step)
+                ).filter((step) => step !== REVIEW_STEP && step !== RESULT_STEP);
+                return { ...previous, reachedSteps, dataModel };
+            });
         } catch {
             if (request === containerNameRequest.current) {
                 setAddContainerError(l10n.t('Could not add the container. Please try again.'));
@@ -887,6 +912,9 @@ const HydratedDataModelingWizard = ({
     const isReview = activeValue === REVIEW_STEP;
     const isResult = activeValue === RESULT_STEP;
     const isContainerStep = activeValue.startsWith(CONTAINER_PREFIX);
+    useEffect(() => {
+        activeStepRef.current = activeValue;
+    }, [activeValue]);
     const previousStep = useRef<string | undefined>(undefined);
     const displayedRecommendation = useRef<typeof recommendation>(undefined);
     useEffect(() => {
@@ -928,7 +956,18 @@ const HydratedDataModelingWizard = ({
 
     const selectedScenario = pendingScenario ?? state.scenario;
     const canAdvance = (!isWorkload || !!selectedScenario) && (!isReview || workloadErrors.length === 0);
-    const nextLabel = isWorkload ? l10n.t('Start') : isReview ? l10n.t('Get Recommendation') : l10n.t('Next');
+    const nextTab = isContainerStep ? CONTAINER_TABS[CONTAINER_TABS.indexOf(containerTab) + 1] : undefined;
+    const nextContainer = state.dataModel.containers.find((c) => containerStep(c.id) === stepValues[stepIndex]);
+    // Container names are user-defined and unbounded, so the button stays short and the footer note names them.
+    const nextLabel = isWorkload
+        ? l10n.t('Start')
+        : isReview
+          ? l10n.t('Get Recommendation')
+          : nextTab
+            ? l10n.t('Next: {step}', { step: getContainerTabLabel(nextTab) })
+            : nextContainer
+              ? l10n.t('Next container')
+              : l10n.t('Next: {step}', { step: l10n.t('Review') });
 
     const resetModel = (nextSnapshot: typeof snapshot) => {
         abandonRecommendation();
@@ -965,6 +1004,10 @@ const HydratedDataModelingWizard = ({
             }));
             goToStep(stepIndex + 1);
         }
+    };
+    const selectContainerTab = (tab: ContainerTab) => {
+        setContainerTab(tab);
+        tabRefs[tab].current?.focus();
     };
     const startWorkload = async (scenario: ScenarioId) => {
         const resetToDefaults = () => {
@@ -1030,24 +1073,9 @@ const HydratedDataModelingWizard = ({
             if (selectedScenario) await startWorkload(selectedScenario);
             return;
         }
-        const visitedTabs = isContainerStep ? visits.get(activeValue.slice(CONTAINER_PREFIX.length)) : undefined;
-        if (isContainerStep && containerTab === 'data' && !visitedTabs?.has('queries') && !visitedTabs?.has('scale')) {
-            const result = await confirm(
-                l10n.t('Configure queries and scale?'),
-                l10n.t(
-                    'You have not visited the Queries or Scale tabs for this container. Configure them now, or go to the next step?',
-                ),
-                { primary: l10n.t('Configure'), secondary: l10n.t('Next') },
-            );
-            if (result === true) {
-                setContainerTab('queries');
-                queriesTabRef.current?.focus();
-                return;
-            }
-            if (result !== false) {
-                advanceButtonRef.current?.focus();
-                return;
-            }
+        if (nextTab) {
+            selectContainerTab(nextTab);
+            return;
         }
         const hasLaterProgress =
             !!recommendation || reachedSteps.some((value) => stepValues.indexOf(value) >= stepIndex);
@@ -1097,8 +1125,11 @@ const HydratedDataModelingWizard = ({
             if (stepIndex !== stepValues.length) {
                 goToStep(stepValues.length);
             }
+        } else if (isContainerStep && containerTab !== CONTAINER_TABS[0]) {
+            selectContainerTab(CONTAINER_TABS[CONTAINER_TABS.indexOf(containerTab) - 1]);
         } else {
-            goToStep(stepIndex - 1);
+            // Mirror Next: returning to the previous container resumes on its last tab.
+            goToStep(stepIndex - 1, CONTAINER_TABS[CONTAINER_TABS.length - 1]);
         }
     };
     const restart = () => {
@@ -1148,7 +1179,7 @@ const HydratedDataModelingWizard = ({
             </ContainerFooter>
         ) : (
             <ContainerFooter
-                note={footerHint(activeValue)}
+                note={footerHint(activeValue, nextTab, nextContainer?.entity)}
                 contentEnd={
                     <div className={styles.endGroup}>
                         {isContainerStep ? (
@@ -1389,7 +1420,7 @@ const HydratedDataModelingWizard = ({
                                 model={state.dataModel}
                                 tab={containerTab}
                                 onTabChange={setContainerTab}
-                                queriesTabRef={queriesTabRef}
+                                tabRefs={tabRefs}
                                 active={activeValue === containerStep(c.id)}
                                 containerId={c.id}
                                 focusPath={fixTarget?.containerId === c.id ? fixTarget.path : undefined}

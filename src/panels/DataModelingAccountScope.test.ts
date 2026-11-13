@@ -126,6 +126,51 @@ describe('data modeler account scope', () => {
     const render = DataModelingWizardTab.render.bind(DataModelingWizardTab);
     const open = openDataModelingWizard;
 
+    function mockSavedFile(read: () => Promise<Uint8Array>) {
+        vi.mocked(DataModelerProjectService.prototype.loadState).mockRestore();
+        vi.spyOn(vscode.workspace.fs, 'stat').mockResolvedValue({
+            type: vscode.FileType.File,
+            ctime: 0,
+            mtime: Date.now(),
+            size: 1,
+        });
+        vi.spyOn(vscode.workspace.fs, 'readFile').mockImplementation(read);
+        vi.spyOn(vscode.workspace.fs, 'delete').mockImplementation(async () => {
+            vi.mocked(vscode.workspace.fs.stat).mockRejectedValue(vscode.FileSystemError.FileNotFound());
+        });
+    }
+
+    it.each([
+        ['json', '{broken'],
+        ['schema', '{"version":1,"name":"Invalid","state":{}}'],
+    ])('opens a fresh wizard after a saved-model %s failure instead of blocking panel creation', async (kind, text) => {
+        mockSavedFile(async () => Buffer.from(text));
+        await render({ endpoint: `https://recovery-${kind}.documents.azure.com` });
+        expect(vscode.window.createWebviewPanel).toHaveBeenCalledOnce();
+        expect(vscode.window.showWarningMessage).toHaveBeenCalledExactlyOnceWith(
+            'Could not load the saved data model. Starting a new model on the Workload page.',
+        );
+        expect(vscode.workspace.fs.delete).toHaveBeenCalledOnce();
+        expect(await lastContext().project.loadState()).toBeNull();
+        expect(DataModelerProjectService.prototype.saveState).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ['filesystem', () => Promise.reject(vscode.FileSystemError.NoPermissions())],
+        ['newer version', () => Promise.resolve(Buffer.from('{"version":99}'))],
+    ])(
+        'opens the wizard after a saved-model %s failure and lets the webview see the load failure',
+        async (kind, read) => {
+            mockSavedFile(read);
+            await render({ endpoint: `https://preserve-${kind.replace(' ', '-')}.documents.azure.com` });
+            expect(vscode.window.createWebviewPanel).toHaveBeenCalledOnce();
+            expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
+            expect(vscode.workspace.fs.delete).not.toHaveBeenCalled();
+            await expect(lastContext().project.loadState()).rejects.toThrow();
+            expect(DataModelerProjectService.prototype.saveState).not.toHaveBeenCalled();
+        },
+    );
+
     it.each([undefined, firstAccount])('rejects opens when the Data Modeler flag is disabled', async (source) => {
         vi.mocked(isDataModelerFeatureEnabled).mockReturnValue(false);
         await expect(open(actionContext(), source)).rejects.toThrow('The Data Modeler wizard is disabled in settings.');
@@ -358,26 +403,22 @@ describe('data modeler account scope', () => {
         expect(vscode.window.createWebviewPanel).toHaveBeenCalledOnce();
     });
 
-    it.each(['load', 'prompt', 'save'])(
-        'surfaces %s failures without opening a tab and allows retry',
-        async (stage) => {
-            const error = new Error('Storage or prompt unavailable');
-            vi.mocked(DataModelerProjectService.prototype.loadState).mockResolvedValue(createInitialSnapshot());
-            vi.mocked(vscode.window.showWarningMessage).mockImplementation(
-                async (_message, _options, ...items) => items[0],
-            );
-            if (stage === 'load') vi.mocked(DataModelerProjectService.prototype.loadState).mockRejectedValueOnce(error);
-            if (stage === 'prompt') vi.mocked(vscode.window.showWarningMessage).mockRejectedValueOnce(error);
-            if (stage === 'save') vi.mocked(DataModelerProjectService.prototype.saveState).mockRejectedValueOnce(error);
-            const context = actionContext();
-            await expect(open(context, firstAccount)).rejects.toThrow(error);
-            expect(context.telemetry.suppressAll).toBe(true);
-            expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
-            expect(DataModelerProjectService.prototype.saveState).toHaveBeenCalledTimes(stage === 'save' ? 1 : 0);
-            await open(actionContext(), firstAccount);
-            expect(vscode.window.createWebviewPanel).toHaveBeenCalledOnce();
-        },
-    );
+    it.each(['prompt', 'save'])('surfaces %s failures without opening a tab and allows retry', async (stage) => {
+        const error = new Error('Storage or prompt unavailable');
+        vi.mocked(DataModelerProjectService.prototype.loadState).mockResolvedValue(createInitialSnapshot());
+        vi.mocked(vscode.window.showWarningMessage).mockImplementation(
+            async (_message, _options, ...items) => items[0],
+        );
+        if (stage === 'prompt') vi.mocked(vscode.window.showWarningMessage).mockRejectedValueOnce(error);
+        if (stage === 'save') vi.mocked(DataModelerProjectService.prototype.saveState).mockRejectedValueOnce(error);
+        const context = actionContext();
+        await expect(open(context, firstAccount)).rejects.toThrow(error);
+        expect(context.telemetry.suppressAll).toBe(true);
+        expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
+        expect(DataModelerProjectService.prototype.saveState).toHaveBeenCalledTimes(stage === 'save' ? 1 : 0);
+        await open(actionContext(), firstAccount);
+        expect(vscode.window.createWebviewPanel).toHaveBeenCalledOnce();
+    });
 
     it('prompts for an account when launched without context, and uses that account endpoint', async () => {
         const node = { account: { id: 'account-id', name: 'Account' } } as CosmosDBAccountResourceItem;

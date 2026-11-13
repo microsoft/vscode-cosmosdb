@@ -28,7 +28,10 @@ const locationsSchema = z.object({
     ),
 });
 
-async function resolveRegions(client: CosmosDBManagementClient, context: CostContext): Promise<string[]> {
+async function resolveRegions(
+    client: CosmosDBManagementClient,
+    context: CostContext,
+): Promise<{ retailName: string; monitorName: string }[]> {
     const parsed = locationsSchema.safeParse(
         await readCostArmJson(
             client,
@@ -39,13 +42,17 @@ async function resolveRegions(client: CosmosDBManagementClient, context: CostCon
     if (!parsed.success || parsed.data.nextLink) {
         throw new CostEvidenceError('invalidData');
     }
-    const aliases = new Map<string, Set<string>>();
+    const aliases = new Map<string, Map<string, string | undefined>>();
     for (const location of parsed.data.value) {
         for (const alias of [location.name, location.displayName, location.regionalDisplayName]) {
             if (alias) {
                 const key = alias.toLowerCase();
-                const names = aliases.get(key) ?? new Set<string>();
-                names.add(location.name.toLowerCase());
+                const names = aliases.get(key) ?? new Map<string, string | undefined>();
+                const region = location.name.toLowerCase();
+                if (names.has(region) && names.get(region) !== location.displayName) {
+                    throw new CostEvidenceError('invalidData');
+                }
+                names.set(region, location.displayName);
                 aliases.set(key, names);
             }
         }
@@ -55,9 +62,13 @@ async function resolveRegions(client: CosmosDBManagementClient, context: CostCon
         if (candidates?.size !== 1) {
             throw new CostEvidenceError('invalidData');
         }
-        return [...candidates][0];
+        const [retailName, monitorName] = [...candidates][0];
+        if (!monitorName?.trim()) {
+            throw new CostEvidenceError('invalidData');
+        }
+        return { retailName, monitorName };
     });
-    if (regions.length === 0 || new Set(regions).size !== regions.length) {
+    if (regions.length === 0 || new Set(regions.map((region) => region.retailName)).size !== regions.length) {
         throw new CostEvidenceError('invalidData');
     }
     return regions;
@@ -102,7 +113,16 @@ async function getBackupPrices(regions: readonly string[], now: number): Promise
         if (!response.ok) {
             throw new RestError('Optional backup price request failed.', { statusCode: response.status });
         }
-        const parsed = retailPageSchema.safeParse(await response.json());
+        let payload: unknown;
+        try {
+            payload = await response.json();
+        } catch (error) {
+            if (error instanceof SyntaxError) {
+                throw new CostEvidenceError('invalidData');
+            }
+            throw error;
+        }
+        const parsed = retailPageSchema.safeParse(payload);
         if (!parsed.success) {
             throw new CostEvidenceError('invalidData');
         }
@@ -252,9 +272,9 @@ export async function getBackupCostEstimate(
         throw new CostEvidenceError('noData');
     }
     const regions = await resolveRegions(cosmosClient, context);
-    const referenceRegion = context.locationNames[0];
+    const referenceRegion = regions[0].monitorName;
     const snapshot = await getStorageSnapshot(monitorClient, accountId, rows, referenceRegion, now);
-    const prices = await getBackupPrices(regions, now);
+    const prices = await getBackupPrices(regions.map((region) => region.retailName), now);
     const monthlyAmount = (snapshot.bytes / 1_000_000_000) * prices.reduce((sum, price) => sum + price.perGbMonth, 0);
     if (!Number.isFinite(monthlyAmount) || monthlyAmount < 0) {
         throw new CostEvidenceError('invalidData');

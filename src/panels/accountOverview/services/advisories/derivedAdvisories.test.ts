@@ -869,6 +869,32 @@ describe('evaluateMultiRegionWrites', () => {
         const advisory = evaluateMultiRegionWrites(config({ accountName: 'orders-dev', writeRegionCount: 2 }));
         expect(advisory?.severity).toBe('Medium');
     });
+
+    it.each([
+        { accountName: 'orders-dev', rootCause: 'nonprod_multi_region_writes', removableExtraRegionRu: 14000 },
+        { accountName: 'orders-prod', rootCause: 'legitimate_ha', removableExtraRegionRu: null },
+    ])(
+        'quantifies regional footprint without assuming HA regions are removable ($accountName)',
+        ({ accountName, rootCause, removableExtraRegionRu }) => {
+            const result = new MultiRegionWriteAntipatternDetector().evaluateResult(
+                config({ accountName, regionCount: 3, writeRegionCount: 3, isServerless: false }),
+                7000,
+            );
+            const observations = {
+                regionalCapacityQuantified: true,
+                configuredPerRegionRu: 7000,
+                globalRegionalFootprintRu: 21000,
+                removableExtraRegionRu,
+            };
+            expect(result.rootCause).toBe(rootCause);
+            expect(result.observations).toEqual(observations);
+            expect(result.advisory).toEqual(
+                removableExtraRegionRu === null
+                    ? undefined
+                    : expect.objectContaining({ severity: 'Medium', evidence: observations }),
+            );
+        },
+    );
 });
 
 describe('computeDerivedAdvisories with accountConfig', () => {

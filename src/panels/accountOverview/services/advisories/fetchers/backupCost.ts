@@ -274,7 +274,10 @@ export async function getBackupCostEstimate(
     const regions = await resolveRegions(cosmosClient, context);
     const referenceRegion = regions[0].monitorName;
     const snapshot = await getStorageSnapshot(monitorClient, accountId, rows, referenceRegion, now);
-    const prices = await getBackupPrices(regions.map((region) => region.retailName), now);
+    const prices = await getBackupPrices(
+        regions.map((region) => region.retailName),
+        now,
+    );
     const monthlyAmount = (snapshot.bytes / 1_000_000_000) * prices.reduce((sum, price) => sum + price.perGbMonth, 0);
     if (!Number.isFinite(monthlyAmount) || monthlyAmount < 0) {
         throw new CostEvidenceError('invalidData');

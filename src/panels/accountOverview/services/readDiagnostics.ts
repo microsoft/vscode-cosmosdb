@@ -61,7 +61,13 @@ export async function withReadDiagnostics<T extends object>(
 /** Records categories for the UI only. Detailed messages must never be attached to RPC results or telemetry. */
 export function recordReadFailure(source: ReadSource, diagnostic: ErrorDiagnostic<string>): void {
     const context = readContext.getStore();
-    if (context && !context.failures.some((failure) => failure.source === source && failure.kind === diagnostic.kind)) {
+    if (
+        context &&
+        !context.failures.some(
+            (failure) =>
+                failure.source === source && failure.kind === diagnostic.kind && failure.reason === diagnostic.reason,
+        )
+    ) {
         context.failures.push({ source, kind: diagnostic.kind, reason: diagnostic.reason });
     }
 }
@@ -174,13 +180,15 @@ export async function* readItems<T>(
 
 export async function readMetrics(
     client: MonitorClient,
-    ...args: Parameters<MonitorClient['metrics']['list']>
+    resourceUri: string,
+    options?: Parameters<MonitorClient['metrics']['list']>[1],
+    sensitiveValues: readonly string[] = [],
 ): ReturnType<MonitorClient['metrics']['list']> {
     return readRequest(
         'metrics',
         'metrics.list',
         async () => {
-            const response = await client.metrics.list(...args);
+            const response = await client.metrics.list(resourceUri, options);
             const failed = response.value?.find((metric) => metric.errorCode && metric.errorCode !== 'Success');
             if (failed) {
                 throw new RestError(failed.errorMessage ?? failed.errorCode ?? 'Metric request failed.', {
@@ -189,6 +197,6 @@ export async function readMetrics(
             }
             return response;
         },
-        [args[0]],
+        [resourceUri, ...sensitiveValues],
     );
 }

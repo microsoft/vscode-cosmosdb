@@ -83,6 +83,7 @@ export async function getRuTrends(
     const start = end - config.windowMs;
     const timespan = `${new Date(start).toISOString()}/${new Date(end).toISOString()}`;
     const requestFilter = requestMetricFilter(databaseId, containerId, sharedContainerIds);
+    const sensitiveValues = [databaseId ?? '', containerId ?? '', ...(sharedContainerIds ?? [])];
     const filter =
         sharedContainerIds !== undefined && databaseId
             ? throughputOfferFilter(databaseId, containerId)
@@ -108,6 +109,7 @@ export async function getRuTrends(
             timespan,
             config.interval,
             filter,
+            sensitiveValues,
         );
     } catch (error) {
         return { ...base, reason: classifyUnavailable(error) };
@@ -126,6 +128,7 @@ export async function getRuTrends(
             config.interval,
             config.bucketMs,
             requestFilter,
+            sensitiveValues,
         );
     } catch {
         // Throttling overlay is best-effort; keep the RU series even if it fails.
@@ -164,6 +167,7 @@ export async function querySeries(
     timespan: string,
     interval: string,
     filter: MetricFilter,
+    sensitiveValues: readonly string[] = [],
 ): Promise<Map<number, number>> {
     const buckets = new Map<number, number>();
     for (const scopedFilter of metricFilters(filter)) {
@@ -173,7 +177,7 @@ export async function querySeries(
             timespan,
             interval,
             filter: scopedFilter,
-        });
+        }, sensitiveValues);
         for (const metric of response.value ?? []) {
             if (metric.errorCode && metric.errorCode !== 'Success') {
                 throw new Error(metric.errorMessage ?? metric.errorCode);
@@ -230,6 +234,7 @@ export async function getThrottleRate(
         timespan,
         config.interval,
         requestMetricFilter(databaseId, containerId, sharedContainerIds),
+        [databaseId ?? '', containerId ?? '', ...(sharedContainerIds ?? [])],
     );
 
     let total = 0;
@@ -255,8 +260,9 @@ export async function queryThrottlingWindows(
     interval: string,
     bucketMs: number,
     filter: MetricFilter,
+    sensitiveValues: readonly string[] = [],
 ): Promise<Set<number>> {
-    return (await queryThrottlingSummary(client, resourceUri, timespan, interval, bucketMs, filter)).timestamps;
+    return (await queryThrottlingSummary(client, resourceUri, timespan, interval, bucketMs, filter, sensitiveValues)).timestamps;
 }
 
 /** Keeps missing request observations distinct from observed counts, including zero traffic. */
@@ -267,8 +273,9 @@ export async function queryThrottlingSummary(
     interval: string,
     bucketMs: number,
     filter: MetricFilter,
+    sensitiveValues: readonly string[] = [],
 ): Promise<{ timestamps: Set<number>; hasObservations: boolean }> {
-    const totals = await queryRequestBuckets(client, resourceUri, timespan, interval, filter);
+    const totals = await queryRequestBuckets(client, resourceUri, timespan, interval, filter, sensitiveValues);
     const overThreshold = [...totals.entries()]
         .filter(([, v]) => v.total > 0 && v.throttled / v.total > THROTTLING_SHARE_THRESHOLD)
         .map(([ts]) => ts)
@@ -286,6 +293,7 @@ async function queryRequestBuckets(
     timespan: string,
     interval: string,
     filter: MetricFilter,
+    sensitiveValues: readonly string[],
 ): Promise<Map<number, { total: number; throttled: number }>> {
     const totals = new Map<number, { total: number; throttled: number }>();
     for (const scopedFilter of metricFilters(filter)) {
@@ -295,7 +303,7 @@ async function queryRequestBuckets(
             timespan,
             interval,
             filter: scopedFilter ? `${scopedFilter} and StatusCode eq '*'` : `StatusCode eq '*'`,
-        });
+        }, sensitiveValues);
         for (const metric of response.value ?? []) {
             if (metric.errorCode && metric.errorCode !== 'Success') {
                 throw new Error(metric.errorMessage ?? metric.errorCode);

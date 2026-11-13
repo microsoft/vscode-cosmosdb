@@ -452,7 +452,7 @@ async function queryPartitionSplitSeries(
         timespan,
         interval,
         filter,
-    });
+    }, [databaseId, containerId ?? '']);
 
     const dimensionKey = dimension.toLowerCase();
     const byPartition = new Map<string, Map<number, number>>();

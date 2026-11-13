@@ -17,6 +17,7 @@ import {
 } from '../../../accountOverview/services/advisories';
 import { DEFAULT_ADVISORY_THRESHOLDS } from '../../../accountOverview/services/advisories/core/thresholds';
 import { DETECTORS } from '../../../accountOverview/services/advisories/registry';
+import { classifyLogsFailure, type LogsDiagnostic } from '../../../accountOverview/services/advisories/fetchers/logsDiagnostics';
 import {
     readRequest,
     recordReadFailure,
@@ -153,8 +154,10 @@ async function collectForAccount(metadata: AdvisoryAccountMetadata): Promise<Der
             return configOnly('noData');
         }
         // A failed optional log client must not suppress metric-backed or configuration checks.
+        let logsClientFailure: Pick<LogsDiagnostic, 'kind' | 'reason'> | undefined;
         const logsClient = await metadata.getLogsQueryClient().catch((error: unknown) => {
             reportReadFailure('logs', 'logsClient', error);
+            logsClientFailure = classifyLogsFailure(error);
             return undefined;
         });
         const logsOutput = createLogsOutputReporter((message) => ext.outputChannel.warn(message));
@@ -162,6 +165,7 @@ async function collectForAccount(metadata: AdvisoryAccountMetadata): Promise<Der
             monitorClient,
             cosmosClient,
             logsClient,
+            logsClientFailure,
             onLogsDiagnostic: (diagnostic) => {
                 recordReadFailure('logs', diagnostic);
                 logsOutput(diagnostic);

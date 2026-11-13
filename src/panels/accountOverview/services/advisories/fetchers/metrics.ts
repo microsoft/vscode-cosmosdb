@@ -168,6 +168,7 @@ async function getContainerMetricPeak(
         advisoryTimespan(observation, now),
         observation.interval,
         requestMetricFilter(databaseId, containerId, sharedContainerIds),
+        [databaseId, containerId ?? '', ...(sharedContainerIds ?? [])],
     );
     return buckets.size > 0 ? Math.max(...buckets.values()) : undefined;
 }
@@ -282,7 +283,7 @@ export async function getAutoscaleUtilization(
         timespan: advisoryTimespan(observation),
         interval: observation.interval,
         filter,
-    });
+    }, [databaseId, containerId ?? '']);
 
     // timestamp → summed AutoscaledRU across the container's physical partitions.
     const totals = new Map<number, number>();
@@ -333,6 +334,7 @@ export async function getContainerIndexingUsage(
             advisoryTimespan(observation, now),
             observation.interval,
             containerFilter(databaseId, containerId),
+            [databaseId, containerId],
         );
         return buckets.size > 0 ? buckets.get(Math.max(...buckets.keys())) : undefined;
     };

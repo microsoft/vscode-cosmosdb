@@ -5,12 +5,12 @@
 
 import { describe, expect, it } from 'vitest';
 import { getPartitionKeyPaths } from '../../../dataModeling/deploymentModel';
-import { ModelingAdvisorSnapshotSchema } from '../../../dataModeling/modelingAdvisorSchema';
+import { ModelingAdvisorSnapshotSchema, WizardStateSchema } from '../../../dataModeling/modelingAdvisorSchema';
 import { buildDataModel, createBlankContainer, createInitialState, withDerivedCandidates } from './dataModel';
 import { DATA_MODEL_DEFAULTS } from './dataModelDefaults';
 import { getScenarioList } from './scenarios';
 
-const scenarios = getScenarioList().filter((scenario) => scenario.id !== 'other');
+const scenarios = getScenarioList();
 
 describe('new container defaults', () => {
     it('seeds three attributes with matching properties and derived scale candidates', () => {
@@ -67,13 +67,13 @@ describe('new container defaults', () => {
 
 describe('scenario defaults', () => {
     it('covers all built-in scenarios and containers', () => {
-        expect(scenarios).toHaveLength(15);
+        expect(scenarios).toHaveLength(16);
         expect(new Set(Object.keys(DATA_MODEL_DEFAULTS))).toEqual(
             new Set(getScenarioList().map((scenario) => scenario.id)),
         );
         expect(
             scenarios.reduce((count, scenario) => count + DATA_MODEL_DEFAULTS[scenario.id].containers.length, 0),
-        ).toBe(24);
+        ).toBe(25);
     });
 
     it.each(scenarios)('seeds every configured value for $id', ({ id: scenarioId }) => {
@@ -83,9 +83,11 @@ describe('scenario defaults', () => {
             defaults.containers.map((container) => container.entity),
         );
         expect(model.activeContainerId).toBe(model.containers[0].id);
+        const wizard = { ...createInitialState(), scenario: scenarioId, dataModel: model };
+        expect(WizardStateSchema.safeParse(wizard).success).toBe(true);
         expect(
             ModelingAdvisorSnapshotSchema.safeParse({
-                wizard: { ...createInitialState(), scenario: scenarioId, dataModel: model },
+                wizard,
                 recommendation: { status: 'idle' },
             }).success,
         ).toBe(true);

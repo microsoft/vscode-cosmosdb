@@ -745,7 +745,9 @@ not entries in the derived-detector registry.
 The proposed CODA DX-020/021/023 thresholds above were explicitly adopted for native advisories.
 They remain ranking heuristics, separate from Account Health and user settings.
 DX-019 advises reviewing seven-day continuous retention only if recovery requirements allow losing older restore
-points; it never recommends switching to Periodic. No optional storage/retail-price estimate is collected.
+points; it never recommends switching to Periodic. An optional USD storage/retail-price estimate requires
+a complete common-timestamp storage snapshot and current prices for every configured region; otherwise the
+qualitative finding remains without a monetary figure.
 DX-020 uses the most frequent individual hard-error status. Only dominant 404/409 map to
 `sdk-conditional-create-etag`, only 412 maps to `sdk-etag-concurrency`; other statuses map to null.
 These are conditional investigations, not proof of existence-check-before-create, a missing ETag or a hot item.

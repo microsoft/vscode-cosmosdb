@@ -732,8 +732,8 @@ An SDK partial-query failure excludes that query's evidence rather than treating
 Independent probes/queries can still provide successful findings.
 
 Query fan-out groups `dcount(PartitionKeyRangeId)` by correlated activity ID and query text,
-then aggregates execution count/average/max fan-out per query shape and takes the 200 most frequent shapes.
-Execution shares and inferred partition count are therefore based on those returned shapes;
+then aggregates execution count/average/max fan-out per query shape without a top-shape cap.
+Execution shares, rates and inferred partition count use all returned shapes, not a display-limited subset;
 “inferred partitions” is maximum observed fan-out, not an ARM partition inventory.
 The strongest query shape is the qualifying shape with the most executions.
 Ingestion write RU sums RequestCharge for exact operations Create, Upsert, Replace, Delete, Patch, Batch and Execute.

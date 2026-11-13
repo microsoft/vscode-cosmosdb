@@ -220,8 +220,7 @@ export async function fetchCrossPartitionShapes(
         `| where DatabaseName == '${db}' and CollectionName == '${coll}' ` +
         '| summarize partitionsHit = dcount(PartitionKeyRangeId) by CorrelatedActivityId, QueryText ' +
         '| summarize executions = count(), avgFanout = avg(partitionsHit), maxFanout = max(partitionsHit) ' +
-        'by QueryText ' +
-        '| top 200 by executions desc';
+        'by QueryText';
     const rows = await executeLogsQuery(
         executor,
         resourceId,

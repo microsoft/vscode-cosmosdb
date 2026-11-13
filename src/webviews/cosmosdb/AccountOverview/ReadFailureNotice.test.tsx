@@ -37,6 +37,20 @@ function expandNotice() {
 }
 
 describe('read failure guidance', () => {
+    it.each([['noData', 'rbac'], ['rbac', 'noData']] as const)(
+        'preserves permission guidance alongside incomplete data in order %j',
+        (first, second) => {
+            const failures: ReadFailure[] = [first, second, first].map((reason) => ({
+                source: 'logs', kind: 'partialFailure', reason,
+            }));
+            show(failures);
+            expandNotice();
+            expect(screen.getAllByText('Log Analytics')).toHaveLength(2);
+            expect(screen.getByText(/Access denied/)).toBeVisible();
+            expect(screen.getByText(/This is not evidence that no data exists/)).toBeVisible();
+            expect(screen.getByText(READ_PERMISSIONS.logs[0])).toBeVisible();
+        },
+    );
     it.each(Object.keys(READ_PERMISSIONS) as ReadSource[])('shows permissions and Output for %s', (source) => {
         show([{ source, kind: 'accessDenied', reason: 'rbac' }]);
         expect(screen.getByRole('group', { name: 'Some account data could not be loaded' })).toBeInTheDocument();

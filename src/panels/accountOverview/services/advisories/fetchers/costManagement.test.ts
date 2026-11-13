@@ -42,6 +42,23 @@ function setup(properties: unknown = { columns, rows: [row()] }, status = 200) {
 }
 
 describe('account-attributed throughput billing', () => {
+    it.each([
+        [204, '', 'noData'],
+        [204, undefined, 'noData'],
+        [200, '', 'invalidData'],
+        [200, undefined, 'invalidData'],
+    ] as const)('classifies an empty HTTP %s response (body=%j) as %s', async (status, bodyAsText, kind) => {
+        const { client, send } = setup();
+        send.mockImplementation(async (_http, request) => ({
+            request,
+            status,
+            headers: createHttpHeaders(),
+            bodyAsText,
+        }));
+        await expect(getThroughputRate(client, context, accountId, now)).rejects.toMatchObject({ kind });
+        expect(send).toHaveBeenCalledOnce();
+    });
+
     it('uses the existing cloud pipeline, exact account filter and billed usage rather than configured RU', async () => {
         const { client, send } = setup({
             columns,

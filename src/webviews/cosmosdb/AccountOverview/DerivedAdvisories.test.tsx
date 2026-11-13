@@ -178,6 +178,60 @@ describe('log coverage guidance', () => {
 });
 
 describe('metric coverage and actionable findings', () => {
+    it('reconciles multiple cost failures for one operation independently on refresh', () => {
+        const errors = vi.spyOn(console, 'error');
+        const view = (failures: NonNullable<DerivedAdvisoriesResult['costSource']>['failures']) => (
+            <FluentProvider theme={webLightTheme}>
+                <DashboardActionsProvider value={{ openUrl: vi.fn(), showOutput: vi.fn(), reportEvent: vi.fn() }}>
+                    <DerivedAdvisories
+                        result={{
+                            available: true,
+                            generatedAt: 0,
+                            advisories: [],
+                            costSource: { available: false, failures },
+                        }}
+                        loading={false}
+                        dismissedIds={new Set()}
+                        onDismiss={vi.fn()}
+                    />
+                </DashboardActionsProvider>
+            </FluentProvider>
+        );
+        try {
+            const { rerender } = render(
+                view([
+                    { operation: 'throughput', kind: 'noData' },
+                    { operation: 'throughput', kind: 'accessDenied' },
+                ]),
+            );
+            const notice = screen.getByRole('group', { name: 'Some cost estimates are unavailable' });
+            expect(within(notice).getAllByRole('listitem')).toHaveLength(2);
+            rerender(view([{ operation: 'throughput', kind: 'accessDenied' }]));
+            expect(within(notice).getAllByRole('listitem')).toHaveLength(1);
+            expect(notice).toHaveTextContent('Cost evidence access was denied.');
+            expect(notice).not.toHaveTextContent('Missing data is not zero cost.');
+            rerender(
+                view([
+                    { operation: 'throughput', kind: 'accessDenied' },
+                    { operation: 'throughput', kind: 'noData' },
+                ]),
+            );
+            expect(
+                within(notice)
+                    .getAllByRole('listitem')
+                    .map((item) => item.textContent),
+            ).toEqual([
+                expect.stringContaining('Cost evidence access was denied.'),
+                expect.stringContaining('Missing data is not zero cost.'),
+            ]);
+            expect(
+                errors.mock.calls.flat().filter((arg) => typeof arg === 'string' && arg.includes('same key')),
+            ).toEqual([]);
+        } finally {
+            errors.mockRestore();
+        }
+    });
+
     it('keeps cost coverage separate and names access/rate failures without hiding recommendations', () => {
         showCoverage(
             { available: true },

@@ -572,6 +572,9 @@ its activities matched valid charges. Runtime rows with missing activity IDs sta
 join as unmatched evidence, so a partially identified execution cannot publish a partial charge as full RU.
 Missing matches do not become zero RU. A missing raw table or failed
 enrichment records partial coverage but does not suppress structural findings, change thresholds or severity.
+Successful charge queries with missing shape rows, mismatched execution counts or incomplete/invalid activity
+matches also report one `crossPartitionRu` partial-failure diagnostic per container read. Fully matched shapes
+retain their observed RU, including zero; empty structural observations do not create an enrichment failure.
 The same observed cost evidence survives DX-007 superseding DX-002; it is not recoverable capacity or money.
 
 DX-016 optionally observes only live-validated `Read`, `Query` and `QueryPlan` operations, with an exact

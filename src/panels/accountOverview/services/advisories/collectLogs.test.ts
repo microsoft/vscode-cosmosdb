@@ -62,6 +62,33 @@ function client(fail?: (query: string) => unknown): LogsQueryExecutor {
 }
 
 describe('Log Analytics collection coverage', () => {
+    it('marks incomplete charge matches as partial coverage while retaining structural evidence', async () => {
+        const base = client();
+        const queryResource = vi.fn<LogsQueryExecutor['queryResource']>(async (...args) =>
+            args[1].includes('totalQueryRu')
+                ? success(
+                      ['QueryText', 'executions', 'matchedExecutions', 'totalQueryRu'],
+                      [['SELECT 1', 100, 99, 990]],
+                  )
+                : base.queryResource(...args),
+        );
+        const report = vi.fn();
+        const result = await collectTier2Logs({ queryResource }, resource, targets, inventory, report);
+        expect(result.crossPartition[0].shapes).toEqual([
+            { text: 'SELECT 1', executions: 100, avgFanout: 2, maxFanout: 2 },
+        ]);
+        expect(result.ingestion).toHaveLength(1);
+        expect(result.sharedThroughput).toHaveLength(1);
+        expect(result.logSource).toMatchObject({
+            available: false,
+            reason: 'noData',
+            failures: [{ operation: 'crossPartitionRu', kind: 'partialFailure', reason: 'noData' }],
+        });
+        expect(report).toHaveBeenCalledExactlyOnceWith(
+            expect.objectContaining({ operation: 'crossPartitionRu', kind: 'partialFailure' }),
+        );
+    });
+
     it('uses one aligned aggregate source for ingestion, shared-pool and consistency evidence, with raw-only fan-out enrichment', async () => {
         const queryResource = vi.fn<LogsQueryExecutor['queryResource']>(async (_id, query) => {
             if (query.endsWith('| take 0')) {

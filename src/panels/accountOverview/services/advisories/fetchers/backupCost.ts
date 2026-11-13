@@ -179,8 +179,10 @@ async function getStorageSnapshot(
     referenceRegion: string,
     now: number,
 ): Promise<{ timestamp: number; bytes: number }> {
-    const identity = (row: (typeof rows)[number]) => JSON.stringify([row.databaseId, row.containerId]);
-    const expected = new Set(rows.map(identity));
+    // Azure Monitor folds dimension values to lowercase, independently of ARM resource-name casing.
+    const identity = (databaseId: string, containerId: string) =>
+        JSON.stringify([databaseId.toLowerCase(), containerId.toLowerCase()]);
+    const expected = new Set(rows.map((row) => identity(row.databaseId, row.containerId)));
     if (!referenceRegion || rows.length === 0) {
         throw new CostEvidenceError('noData');
     }
@@ -211,11 +213,14 @@ async function getStorageSnapshot(
                     const metadata = new Map(
                         series.metadatavalues?.map((value) => [value.name?.value?.toLowerCase(), value.value]),
                     );
+                    const databaseId = metadata.get('databasename');
+                    const containerId = metadata.get('collectionname');
                     if (
                         metadata.size !== series.metadatavalues?.length ||
                         metadata.size !== 3 ||
-                        metadata.get('databasename') !== row.databaseId ||
-                        metadata.get('collectionname') !== row.containerId ||
+                        !databaseId ||
+                        !containerId ||
+                        identity(databaseId, containerId) !== identity(row.databaseId, row.containerId) ||
                         metadata.get('region')?.toLowerCase() !== referenceRegion.toLowerCase()
                     ) {
                         throw new CostEvidenceError('invalidData');
@@ -229,7 +234,7 @@ async function getStorageSnapshot(
                             throw new CostEvidenceError('invalidData');
                         }
                         const snapshot = snapshots.get(timestamp) ?? new Map<string, number>();
-                        const key = identity(row);
+                        const key = identity(databaseId, containerId);
                         if (snapshot.has(key)) {
                             duplicates.add(timestamp);
                         }

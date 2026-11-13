@@ -129,6 +129,54 @@ describe('paid continuous-backup retail scenario', () => {
         },
     );
 
+    it.each([
+        { databaseId: 'orders', containerId: 'items' },
+        { databaseId: 'ORDERS', containerId: 'ITEMS' },
+    ])('accepts metric dimension values with different casing from inventory: %j', async (observed) => {
+        const { read, list } = setup();
+        list.mockResolvedValue(
+            metric([
+                {
+                    ...storageSeries('items'),
+                    metadatavalues: [
+                        ...dims(observed.databaseId, observed.containerId),
+                        { name: { value: 'Region' }, value: 'East US' },
+                    ],
+                },
+            ]),
+        );
+        await expect(read({}, [{ databaseId: 'Orders', containerId: 'Items' }])).resolves.toMatchObject({
+            storageBytes: 1_000_000_000,
+            logicalContainers: 1,
+            monthlyAmount: 0.4,
+        });
+    });
+
+    it.each([
+        { databaseId: 'DB', containerId: 'items' },
+        { databaseId: 'db', containerId: 'ITEMS' },
+    ])('rejects case-folded inventory collisions before reading metrics: %j', async (duplicate) => {
+        const { read, list, fetchMock } = setup();
+        await expect(read({}, [rows[0], duplicate])).rejects.toMatchObject({ kind: 'invalidData' });
+        expect(list).not.toHaveBeenCalled();
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('does not count differently cased copies of the same metric identity twice', async () => {
+        const { read, list, fetchMock } = setup();
+        list.mockResolvedValue(
+            metric([
+                storageSeries('items'),
+                {
+                    ...storageSeries('items'),
+                    metadatavalues: [...dims('DB', 'ITEMS'), { name: { value: 'Region' }, value: 'East US' }],
+                },
+            ]),
+        );
+        await expect(read({}, [rows[0]])).rejects.toMatchObject({ kind: 'noData' });
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
     it.each([false, true])('classifies malformed retail JSON as invalid evidence (later page=%s)', async (later) => {
         const { read, fetchMock } = setup();
         if (later) {

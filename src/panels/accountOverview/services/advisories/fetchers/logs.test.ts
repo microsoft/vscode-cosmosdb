@@ -11,6 +11,8 @@ import {
     type LogsTable,
 } from '@azure/monitor-query-logs';
 import { describe, expect, it, vi } from 'vitest';
+import { crossPartitionQueryDetector } from '../detectors/CrossPartitionQueryDetector';
+import { shardKeyMisalignmentDetector } from '../detectors/ShardKeyMisalignmentDetector';
 import {
     classifyLogsError,
     cleanQueryText,
@@ -56,6 +58,60 @@ function executorByQuery(map: { match: string; table: LogsTable }[]): LogsQueryE
         },
     };
 }
+
+describe('complete fan-out observations', () => {
+    it('classifies all 400 shapes instead of suppressing findings with the 200-shape cap', async () => {
+        const rows = Array.from({ length: 400 }, (_, index) => [`SELECT p${index}`, 30, 4, 4]);
+        const queryResource = vi.fn<LogsQueryExecutor['queryResource']>(async (_id, query) => {
+            const limit = query.match(/\| top (\d+) by executions desc/);
+            return success(
+                table(
+                    ['QueryText', 'executions', 'avgFanout', 'maxFanout'],
+                    limit ? rows.slice(0, Number(limit[1])) : rows,
+                ),
+            );
+        });
+        const input = await fetchCrossPartitionShapes({ queryResource }, RESOURCE, 'db', 'items', SPAN);
+        const crossPartition = crossPartitionQueryDetector.evaluate(input, {
+            minQueries: 50,
+            fanoutThreshold: 1.5,
+            medPct: 10,
+        });
+        const shardKey = shardKeyMisalignmentDetector.evaluate(input, { structuralPct: 60, minPartitions: 2 }, 1.5);
+        for (const advisory of [crossPartition, shardKey]) {
+            expect(advisory?.evidence).toMatchObject({
+                totalQueries: 12_000,
+                crossPartitionPct: 100,
+                crossQueriesPerSecond: 12_000 / 86_400,
+            });
+        }
+        expect(input.shapes).toHaveLength(400);
+        expect(queryResource).toHaveBeenCalledOnce();
+    });
+
+    it('includes less frequent single-partition shapes in the fan-out denominator', async () => {
+        const rows = [
+            ...Array.from({ length: 200 }, (_, index) => [`SELECT fanout${index}`, 60, 4, 4]),
+            ...Array.from({ length: 400 }, (_, index) => [`SELECT single${index}`, 59, 1, 1]),
+        ];
+        const queryResource = vi.fn<LogsQueryExecutor['queryResource']>(async (_id, query) => {
+            const limit = query.match(/\| top (\d+) by executions desc/);
+            return success(
+                table(
+                    ['QueryText', 'executions', 'avgFanout', 'maxFanout'],
+                    limit ? rows.slice(0, Number(limit[1])) : rows,
+                ),
+            );
+        });
+        const input = await fetchCrossPartitionShapes({ queryResource }, RESOURCE, 'db', 'items', SPAN);
+        expect(
+            crossPartitionQueryDetector.evaluate(input, { minQueries: 50, fanoutThreshold: 1.5, medPct: 10 })?.evidence,
+        ).toMatchObject({ totalQueries: 35_600, crossPartitionPct: (100 * 12_000) / 35_600 });
+        expect(
+            shardKeyMisalignmentDetector.evaluate(input, { structuralPct: 60, minPartitions: 2 }, 1.5),
+        ).toBeUndefined();
+    });
+});
 
 describe('tableToRecords', () => {
     it('maps each row into a column → cell record', () => {

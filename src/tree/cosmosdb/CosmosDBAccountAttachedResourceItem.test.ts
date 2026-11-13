@@ -14,6 +14,8 @@ import { type CosmosDBAttachedAccountModel } from '../workspace-view/cosmosdb/Co
 import { type AccountInfo } from './AccountInfo';
 import { CosmosDBAccountAttachedResourceItem } from './CosmosDBAccountAttachedResourceItem';
 
+const mocks = vi.hoisted(() => ({ withClaimsChallengeHandling: vi.fn() }));
+
 vi.mock('@microsoft/vscode-azext-utils', () => ({ createGenericElement: vi.fn() }));
 vi.mock('../../cosmosdb/CosmosDBCredential', () => ({ getCosmosDBEntraIdCredential: vi.fn() }));
 vi.mock('../../cosmosdb/utils/azureSessionHelper', () => ({ getSignedInPrincipalIdForAccountEndpoint: vi.fn() }));
@@ -21,7 +23,7 @@ vi.mock('../../cosmosdb/utils/rbacUtils', () => ({
     isRbacException: () => false,
     showRbacPermissionError: vi.fn(),
 }));
-vi.mock('../../cosmosdb/withClaimsChallengeHandling', () => ({ withClaimsChallengeHandling: vi.fn() }));
+vi.mock('../../cosmosdb/withClaimsChallengeHandling', () => mocks);
 vi.mock('../../extensionVariables', () => ({
     ext: {
         settingsKeys: { connectionTimeout: 'cosmosDB.connectionTimeout' },
@@ -51,8 +53,8 @@ class TestAccountResourceItem extends CosmosDBAccountAttachedResourceItem {
         super({ ...account, isEmulator }, CoreExperience);
     }
 
-    public override getDatabases(info: AccountInfo, client: CosmosClient) {
-        return super.getDatabases(info, client);
+    public override getDatabases(info: AccountInfo) {
+        return super.getDatabases(info);
     }
 
     protected async getChildrenImpl() {
@@ -70,6 +72,9 @@ describe('Attached account connection errors', () => {
             key: Buffer.from('test-key').toString('base64'),
             connectionPolicy: { enableEndpointDiscovery: false },
         });
+        mocks.withClaimsChallengeHandling.mockImplementation(
+            async (_info: AccountInfo, callback: (cosmosClient: CosmosClient) => Promise<unknown>) => callback(client),
+        );
         vi.spyOn(vscode.window, 'showErrorMessage').mockResolvedValue(undefined);
         vi.spyOn(vscode.commands, 'executeCommand').mockResolvedValue(undefined);
     });
@@ -102,7 +107,7 @@ describe('Attached account connection errors', () => {
         const error = new RestError('certificate validation failed', { code });
         failRead(error);
 
-        await expect(new TestAccountResourceItem().getDatabases(accountInfo, client)).rejects.toBe(error);
+        await expect(new TestAccountResourceItem().getDatabases(accountInfo)).rejects.toBe(error);
 
         expect(vscode.window.showErrorMessage).toHaveBeenCalledExactlyOnceWith(
             "Unable to verify a TLS certificate while connecting to the Cosmos DB emulator. Trust the emulator's certificate and, if using a proxy, its certificate authority in the environment where VS Code's extension host runs.",
@@ -119,7 +124,7 @@ describe('Attached account connection errors', () => {
     ])('does not misclassify unrelated errors: %s', async (error) => {
         failRead(error);
 
-        await expect(new TestAccountResourceItem().getDatabases(accountInfo, client)).rejects.toBe(error);
+        await expect(new TestAccountResourceItem().getDatabases(accountInfo)).rejects.toBe(error);
         expect(vscode.window.showErrorMessage).not.toHaveBeenCalled();
         expect(ext.outputChannel.error).not.toHaveBeenCalled();
     });
@@ -129,7 +134,7 @@ describe('Attached account connection errors', () => {
         failRead(error);
 
         await expect(
-            new TestAccountResourceItem(false).getDatabases({ ...accountInfo, isEmulator: false }, client),
+            new TestAccountResourceItem(false).getDatabases({ ...accountInfo, isEmulator: false }),
         ).rejects.toBe(error);
         expect(vscode.window.showErrorMessage).not.toHaveBeenCalled();
     });
@@ -145,7 +150,7 @@ describe('Attached account connection errors', () => {
         vi.spyOn(client.databases, 'readAll').mockReturnValue(iterator);
         const settled = vi.fn();
 
-        const result = new TestAccountResourceItem(false).getDatabases({ ...accountInfo, isEmulator: false }, client);
+        const result = new TestAccountResourceItem(false).getDatabases({ ...accountInfo, isEmulator: false });
         void result.then(settled, settled);
         await vi.advanceTimersByTimeAsync(6000);
         expect(settled).not.toHaveBeenCalled();
@@ -166,7 +171,7 @@ describe('Attached account connection errors', () => {
         });
         vi.spyOn(client.databases, 'readAll').mockReturnValue(iterator);
 
-        const result = new TestAccountResourceItem(false).getDatabases({ ...accountInfo, isEmulator: false }, client);
+        const result = new TestAccountResourceItem(false).getDatabases({ ...accountInfo, isEmulator: false });
         const settled = vi.fn();
         void result.then(settled, settled);
         await vi.advanceTimersByTimeAsync(9000);
@@ -182,14 +187,20 @@ describe('Attached account connection errors', () => {
         vi.spyOn(client.databases, 'readAll').mockReturnValue(iterator);
         const settled = vi.fn();
 
-        const result = new TestAccountResourceItem(false).getDatabases({ ...accountInfo, isEmulator: false }, client);
+        const result = new TestAccountResourceItem(false).getDatabases({ ...accountInfo, isEmulator: false });
         void result.then(settled, settled);
         await vi.advanceTimersByTimeAsync(29_999);
         expect(settled).not.toHaveBeenCalled();
+        const signal = vi.mocked(client.databases.readAll).mock.calls[0][0]?.abortSignal;
+        expect(signal?.aborted).toBe(false);
 
         await vi.advanceTimersByTimeAsync(1);
         await expect(result).rejects.toThrow('Connection timed out.');
         await expect(result).rejects.toBeInstanceOf(TimeoutError);
+        expect(signal?.aborted).toBe(true);
+        expect(mocks.withClaimsChallengeHandling).toHaveBeenCalledWith(expect.anything(), expect.any(Function), {
+            abortSignal: signal,
+        });
         expect(ext.outputChannel.error).toHaveBeenCalledExactlyOnceWith(expect.any(TimeoutError));
         expect(vscode.window.showErrorMessage).toHaveBeenCalledExactlyOnceWith(
             'Connection timed out. Please verify the connection string and that the host is reachable.',
@@ -205,12 +216,13 @@ describe('Attached account connection errors', () => {
         vi.spyOn(iterator, 'fetchAll').mockReturnValue(new Promise(() => {}));
         vi.spyOn(client.databases, 'readAll').mockReturnValue(iterator);
 
-        const result = new TestAccountResourceItem().getDatabases(accountInfo, client);
+        const result = new TestAccountResourceItem().getDatabases(accountInfo);
         const settled = vi.fn();
         void result.then(settled, settled);
         await vi.advanceTimersByTimeAsync(1000);
 
         await expect(result).rejects.toThrow('Unable to reach emulator.');
+        expect(vi.mocked(client.databases.readAll).mock.calls[0][0]?.abortSignal?.aborted).toBe(true);
         expect(ext.outputChannel.error).toHaveBeenCalledExactlyOnceWith(expect.any(TimeoutError));
         expect(vscode.window.showErrorMessage).not.toHaveBeenCalled();
         expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
@@ -224,7 +236,7 @@ describe('Attached account connection errors', () => {
         vi.spyOn(iterator, 'fetchAll').mockReturnValue(new Promise(() => {}));
         vi.spyOn(client.databases, 'readAll').mockReturnValue(iterator);
 
-        const result = new TestAccountResourceItem(false).getDatabases({ ...accountInfo, isEmulator: false }, client);
+        const result = new TestAccountResourceItem(false).getDatabases({ ...accountInfo, isEmulator: false });
         const settled = vi.fn();
         void result.then(settled, settled);
         await vi.advanceTimersByTimeAsync(1000);
@@ -244,7 +256,7 @@ describe('Attached account connection errors', () => {
         vi.spyOn(iterator, 'fetchAll').mockReturnValue(new Promise(() => {}));
         vi.spyOn(client.databases, 'readAll').mockReturnValue(iterator);
 
-        const result = new TestAccountResourceItem(false).getDatabases({ ...accountInfo, isEmulator: false }, client);
+        const result = new TestAccountResourceItem(false).getDatabases({ ...accountInfo, isEmulator: false });
         const settled = vi.fn();
         void result.then(settled, settled);
         await vi.advanceTimersByTimeAsync(1000);
@@ -259,7 +271,7 @@ describe('Attached account connection errors', () => {
         failRead(error);
 
         await expect(
-            new TestAccountResourceItem(false).getDatabases({ ...accountInfo, isEmulator: false }, client),
+            new TestAccountResourceItem(false).getDatabases({ ...accountInfo, isEmulator: false }),
         ).rejects.toBe(error);
 
         expect(vscode.window.showErrorMessage).not.toHaveBeenCalled();
@@ -274,7 +286,7 @@ describe('Attached account connection errors', () => {
         vi.spyOn(client.databases, 'readAll').mockReturnValue(iterator);
         const settled = vi.fn();
 
-        const result = new TestAccountResourceItem(false).getDatabases({ ...accountInfo, isEmulator: false }, client);
+        const result = new TestAccountResourceItem(false).getDatabases({ ...accountInfo, isEmulator: false });
         void result.then(settled, settled);
         await vi.advanceTimersByTimeAsync(seconds * 1000 - 1);
         expect(settled).not.toHaveBeenCalled();

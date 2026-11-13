@@ -53,25 +53,41 @@ export function latestBytes(series: StoragePartitionSeries): number | undefined 
  * delta — is robust to a single noisy endpoint. Pure.
  */
 export function storageGrowthSlopeBytesPerDay(samples: readonly PartitionStorageSample[]): number | undefined {
+    return fitStorageGrowth(samples)?.slopeBytesPerDay;
+}
+
+/** Fits the trend with an arithmetic roundoff estimate, so inclusive thresholds survive cancellation. */
+export function fitStorageGrowth(
+    samples: readonly PartitionStorageSample[],
+): { slopeBytesPerDay: number; roundoffBytesPerDay: number } | undefined {
     const clean = samples.filter((s) => Number.isFinite(s.timestamp) && Number.isFinite(s.bytes));
     if (clean.length < DIAGNOSTIC_POLICY.storageGrowth.minSamples) {
         return undefined;
     }
-    const xsDays = clean.map((s) => s.timestamp / MS_PER_DAY);
+    const xsDays = clean.map((s) => (s.timestamp - clean[0].timestamp) / MS_PER_DAY);
     const ys = clean.map((s) => s.bytes);
     const meanX = mean(xsDays);
     const meanY = mean(ys);
     let numerator = 0;
     let denominator = 0;
+    let weightedMagnitude = 0;
     for (let i = 0; i < clean.length; i++) {
         const dx = xsDays[i] - meanX;
         numerator += dx * (ys[i] - meanY);
         denominator += dx * dx;
+        weightedMagnitude += Math.abs(dx) * (Math.abs(ys[i]) + Math.abs(meanY));
     }
     if (denominator === 0) {
         return undefined;
     }
-    return numerator / denominator;
+    // Scale summation roundoff by the original byte magnitudes, not the much smaller centered differences.
+    // This is numerical precision, not a tolerance on the growth policy or on measurement noise.
+    const accumulatedEpsilon = clean.length * Number.EPSILON;
+    const relativeRoundoff = accumulatedEpsilon / (1 - accumulatedEpsilon);
+    return {
+        slopeBytesPerDay: numerator / denominator,
+        roundoffBytesPerDay: (relativeRoundoff * weightedMagnitude) / denominator,
+    };
 }
 
 /**

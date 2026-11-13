@@ -3175,7 +3175,7 @@ describe('tabbed Account Overview', () => {
             ],
         });
         render(<AccountOverview />, { wrapper: Wrapper });
-        const card = await screen.findByRole('button', { name: /^Idle containers/ });
+        const card = await screen.findByRole('button', { name: /^Idle provisioned offers/ });
         await user.click(card);
         const close = screen.getByRole('button', { name: 'Close' });
         close.focus();
@@ -3221,7 +3221,7 @@ describe('tabbed Account Overview', () => {
                 ],
             });
             render(<AccountOverview />, { wrapper: Wrapper });
-            await user.click(await screen.findByRole('button', { name: /^Idle containers/ }));
+            await user.click(await screen.findByRole('button', { name: /^Idle provisioned offers/ }));
             expect(screen.getByRole('dialog')).toBeVisible();
             const calls = dataQueryCounts();
             navigate(target, 1);

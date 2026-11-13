@@ -5,16 +5,21 @@
 
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
-import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
-import { capacityMaterialitySeverity, clampRationale, hasMinimumKnownResourceAge } from '../core/helpers';
+import {
+    capacityMaterialitySeverity,
+    clampRationale,
+    hasMinimumKnownResourceAge,
+    offerScope,
+    utilizationBand,
+} from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
-import { type AutoscaleUtilizationInput, type DerivedAdvisory } from '../core/types';
+import { type AutoscaleUtilizationInput, type DerivedAdvisory, type ProvisioningEvaluation } from '../core/types';
 
-// Platform minimum RU/s floor a right-size recommendation never drops below — a container's minimum manual
-// throughput is 400 RU/s:
+// Analytical minimum autoscale maximum, distinct from the 400 RU/s manual minimum.
+// Resource-specific minima and service increments still require validation:
 // https://learn.microsoft.com/azure/cosmos-db/set-throughput
-const OVERPROVISIONING_MIN_RU = 400;
+const AUTOSCALE_MIN_MAX_RU = 1_000;
 
 // DX-004/011: autoscale bills between 10% and 100% of the configured max (`0.1*Tmax ≤ T ≤ Tmax`), so an idle
 // or over-sized autoscale container only recovers its idle floor, never the full max:
@@ -34,47 +39,50 @@ function evaluateAutoscaleMaxOverProvisioned(
     input: AutoscaleUtilizationInput,
     bandPercent: number,
     scopeProvisionedRu?: number,
-): DerivedAdvisory | undefined {
+): ProvisioningEvaluation {
     if (
+        !Number.isFinite(input.sampleCount) ||
         input.sampleCount < DIAGNOSTIC_POLICY.autoscaleUtilization.minSamples ||
         input.configuredMaxRu === undefined ||
+        !Number.isFinite(input.configuredMaxRu) ||
         input.configuredMaxRu <= 0 ||
+        !Number.isFinite(input.peakPercent) ||
+        input.peakPercent < 0 ||
         !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.autoscaleUtilization.minResourceAgeDays)
     ) {
-        return undefined;
+        return { band: 'insufficient_data' };
     }
     const peak = input.peakPercent;
     // Peak at/above the saturation guard, or at/above the moderate band, means the max is genuinely needed.
     if (peak >= DIAGNOSTIC_POLICY.overProvisioning.peakGuardPercent || peak >= bandPercent) {
-        return undefined;
+        return { band: 'ok', recommendedRu: input.configuredMaxRu, recoverableRu: 0 };
     }
     const max = input.configuredMaxRu;
     const peakConsumed = (peak / 100) * max;
     const recommended = Math.min(
         max,
         Math.max(
-            OVERPROVISIONING_MIN_RU,
+            AUTOSCALE_MIN_MAX_RU,
             Math.ceil(peakConsumed * DIAGNOSTIC_POLICY.overProvisioning.headroomMultiplier),
             Math.ceil(peakConsumed),
         ),
     );
-    const floor = (ru: number): number => Math.max(OVERPROVISIONING_MIN_RU, AUTOSCALE_IDLE_FRACTION * ru);
-    const wastedExact = Math.max(0, floor(max) - floor(recommended));
+    const wastedExact = Math.max(0, AUTOSCALE_IDLE_FRACTION * max - AUTOSCALE_IDLE_FRACTION * recommended);
     const wastedRu = Math.round(wastedExact);
     const severity = capacityMaterialitySeverity(wastedExact, scopeProvisionedRu);
-    const scope = containerKey(input.databaseId, input.containerId);
+    const scope = offerScope(input);
     const peakPct = Math.round(peak);
     const recommend = Math.round(recommended);
-    return {
+    const advisory: DerivedAdvisory = {
         id: `AutoscaleMaxOverProvisioned:${scope}`,
         rule: 'AutoscaleMaxOverProvisioned',
         severity,
         title: l10n.t('Autoscale max may be set too high'),
         rationale: clampRationale(
             l10n.t(
-                'Autoscale on "{container}" never provisioned more than `{peak}%` of its `{max} RU/s` max over the window, below the `{band}%` band.',
+                'Autoscale offer "{container}" never provisioned more than `{peak}%` of its `{max} RU/s` max over the window, below the `{band}%` band.',
                 {
-                    container: escapeAdvisoryText(input.containerId),
+                    container: escapeAdvisoryText(input.containerId ?? input.databaseId),
                     peak: peakPct,
                     max: Math.round(max),
                     band: Math.round(bandPercent),
@@ -86,23 +94,52 @@ function evaluateAutoscaleMaxOverProvisioned(
                     { wasted: wastedRu },
                 ),
         ),
+        evidence: {
+            configuredMaxRu: max,
+            recommendedMaxRu: recommended,
+            recoverableIdleFloorRu: wastedExact,
+            peakPercent: peak,
+        },
+        actionEligibility: wastedExact > 0 ? 'requiresValidation' : 'blocked',
         suggestedAction:
-            l10n.t('Lower the autoscale max on "{container}" toward `~{recommended} RU/s`.', {
-                container: escapeAdvisoryText(input.containerId),
-                recommended: recommend,
-            }) +
-            ' ' +
-            l10n.t('The idle floor will track real demand while the ceiling still covers the observed peak.'),
+            wastedExact > 0
+                ? l10n.t(
+                      'Review lowering the autoscale max on "{container}" toward the analytical target `~{recommended} RU/s`.',
+                      {
+                          container: escapeAdvisoryText(input.containerId ?? input.databaseId),
+                          recommended: recommend,
+                      },
+                  ) +
+                  ' ' +
+                  l10n.t(
+                      'Validate service increments, resource-specific minimum throughput, storage and future demand before changing the maximum.',
+                  )
+                : l10n.t(
+                      'No maximum reduction is available under this model. Review workload placement; do not lower below the service minimum.',
+                  ),
         thresholdReference: l10n.t('Threshold: peak AutoscaledRU < `{band}%` of the configured max', {
             band: Math.round(bandPercent),
         }),
         scope,
     };
+    return {
+        band: utilizationBand(peak, bandPercent),
+        recommendedRu: recommended,
+        recoverableRu: wastedExact,
+        advisory,
+    };
 }
 
 export class AutoscaleMaxOverProvisionedDetector extends Detector {
     readonly rule = 'AutoscaleMaxOverProvisioned' as const;
-    evaluate = evaluateAutoscaleMaxOverProvisioned;
+    evaluateResult = evaluateAutoscaleMaxOverProvisioned;
+    evaluate = (
+        input: AutoscaleUtilizationInput,
+        bandPercent: number,
+        scopeProvisionedRu?: number,
+    ): DerivedAdvisory | undefined => {
+        return this.evaluateResult(input, bandPercent, scopeProvisionedRu).advisory;
+    };
     run(ctx: DetectorContext): DerivedAdvisory[] {
         const out: DerivedAdvisory[] = [];
         for (const util of ctx.inputs.autoscaleUtilizations ?? []) {

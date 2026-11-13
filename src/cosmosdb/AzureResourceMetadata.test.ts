@@ -4,14 +4,19 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
+import { createHttpHeaders } from '@azure/core-rest-pipeline';
+import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import { vi } from 'vitest';
+import { createCosmosDBManagementClient } from '../utils/azureClients';
+import { armTestSubscription, createArmTestClient, createArmTestContext } from './armTestUtils';
 import { AzureResourceMetadata } from './AzureResourceMetadata';
 import { SERVERLESS_CAPABILITY_NAME } from './cosmosdb-shared-constants';
 
-// These are only needed so the module under test can be imported; the getters under test never call them.
 vi.mock('@microsoft/vscode-azext-utils', () => ({
-    callWithTelemetryAndErrorHandling: vi.fn(),
+    callWithTelemetryAndErrorHandling: vi.fn(
+        async (_event: string, action: (context: IActionContext) => Promise<unknown>) => action(createArmTestContext()),
+    ),
 }));
 vi.mock('../utils/azureClients', () => ({
     createCosmosDBManagementClient: vi.fn(),
@@ -35,6 +40,43 @@ class TestableAzureResourceMetadata extends AzureResourceMetadata {
 }
 
 describe('AzureResourceMetadata', () => {
+    describe('account snapshot', () => {
+        it.each([
+            [true, true],
+            [false, false],
+            [undefined, undefined],
+            [null, undefined],
+            ['false', undefined],
+        ])('preserves the unmodeled change-feed flag %j as %j', async (value, expected) => {
+            const client = createArmTestClient();
+            vi.mocked(createCosmosDBManagementClient).mockResolvedValue(client);
+            const send = vi.spyOn(client.pipeline, 'sendRequest').mockImplementation(async (_http, request) => ({
+                request,
+                status: 200,
+                headers: createHttpHeaders(),
+                bodyAsText: JSON.stringify({
+                    properties: {
+                        documentEndpoint: 'https://account.documents.azure.com',
+                        enableAllVersionsAndDeletesChangeFeed: value,
+                    },
+                }),
+            }));
+            const result = await AzureResourceMetadata.create({
+                id: 'account-id',
+                name: 'account',
+                resourceGroup: 'rg',
+                subscription: armTestSubscription,
+                azureResourceType: { type: 'microsoft.documentdb/databaseaccounts' },
+                raw: {},
+            });
+            expect(result?.databaseAccount).toMatchObject({
+                enableAllVersionsAndDeletesChangeFeed: expected,
+                documentEndpoint: 'https://account.documents.azure.com',
+            });
+            expect(send).toHaveBeenCalledOnce();
+        });
+    });
+
     describe('documentEndpoint', () => {
         it('returns the document endpoint when present', () => {
             const metadata = new TestableAzureResourceMetadata({

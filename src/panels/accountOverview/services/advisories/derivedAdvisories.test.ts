@@ -334,7 +334,7 @@ describe('evaluateAutoscaleCandidate', () => {
 
     it('includes the CODA-style recommended autoscale max when provisioned RU is known', () => {
         const advisory = evaluateAutoscaleCandidate(64, 8, dutyCycle, true, 4_000, 'db/orders', 'orders');
-        expect(advisory?.suggestedAction).toContain((4_000).toLocaleString());
+        expect(advisory?.suggestedAction).toContain('max ≈ 4000 RU/s');
     });
 });
 
@@ -355,7 +355,7 @@ describe('evaluateIndexingCostRisk', () => {
         expect(advisory?.rationale).toContain('50%');
     });
 
-    it('does not fire when user paths are excluded', () => {
+    it('retains high-ratio findings when user paths are already excluded', () => {
         expect(
             evaluateIndexingCostRisk(
                 {
@@ -367,7 +367,7 @@ describe('evaluateIndexingCostRisk', () => {
                 },
                 0.3,
             ),
-        ).toBeUndefined();
+        ).toMatchObject({ severity: 'Low', evidence: { userExcludedPathCount: 2 } });
     });
 
     it('does not fire below the ratio, or with missing/zero data usage', () => {
@@ -491,6 +491,141 @@ describe('evaluateStorageGrowthRisk', () => {
     it('ignores flat/noisy (< 0.1 GiB/day) partitions', () => {
         // 45 GiB but essentially flat → never projected to reach the wall in a meaningful horizon.
         expect(evaluateStorageGrowthRisk(container([storageSeries('0', [45, 45, 45, 45])]), 180)).toBeUndefined();
+    });
+
+    it.each([
+        { rate: 0.1, fires: true },
+        { rate: 0.1 - 1e-10, fires: false },
+        { rate: 0.1 + 1e-10, fires: true },
+    ])('preserves the inclusive growth floor at $rate GiB/day', ({ rate, fires }) => {
+        const growthFinding = expect.objectContaining({ rule: 'StorageGrowthRisk', severity: 'High' });
+        for (const origin of [0, Date.UTC(2026, 0, 1)]) {
+            for (const days of [Array.from({ length: 10 }, (_, index) => index), [0, 1.25, 3, 7, 9]]) {
+                const partition = {
+                    partitionId: '0',
+                    samples: days.map((day) => ({
+                        timestamp: origin + day * DAY,
+                        bytes: (49.9 - (9 - day) * rate) * GIB,
+                    })),
+                };
+                const advisory = evaluateStorageGrowthRisk(container([partition]), 180);
+                expect(advisory).toEqual(fires ? growthFinding : undefined);
+            }
+        }
+    });
+
+    it.each([
+        { current: 32, severity: 'Low', lowerSeverity: undefined },
+        { current: 41, severity: 'Medium', lowerSeverity: 'Low' },
+        { current: 47, severity: 'High', lowerSeverity: 'Medium' },
+    ])('preserves inclusive horizon/severity boundaries at $current GiB', ({ current, severity, lowerSeverity }) => {
+        for (const origin of [0, Date.UTC(2026, 0, 1)]) {
+            for (const offset of [-1e-6, 0, 1e-6]) {
+                const partition = {
+                    partitionId: '0',
+                    samples: Array.from({ length: 24 }, (_, i) => ({
+                        timestamp: origin + i * (DAY / 24),
+                        bytes: (current + offset - ((23 - i) / 24) * 0.1) * GIB,
+                    })),
+                };
+                expect(evaluateStorageGrowthRisk(container([partition]), 180)?.severity).toBe(
+                    offset < 0 ? lowerSeverity : severity,
+                );
+            }
+        }
+    });
+
+    it('uses the same inclusive comparison for a custom horizon', () => {
+        const samples = Array.from({ length: 24 }, (_, i) => ({
+            timestamp: Date.UTC(2026, 0, 1) + i * (DAY / 24),
+            bytes: (45.5 - ((23 - i) / 24) * 0.1) * GIB,
+        }));
+        const input = container([{ partitionId: '0', samples }]);
+        expect(evaluateStorageGrowthRisk(input, 45)?.severity).toBe('Medium');
+        expect(evaluateStorageGrowthRisk(input, 45 - 1e-6)).toBeUndefined();
+    });
+
+    it.each([
+        { samples: [] },
+        { samples: [{ timestamp: 0, bytes: 40 * GIB }] },
+        {
+            samples: [
+                { timestamp: 0, bytes: 40 * GIB },
+                { timestamp: 0, bytes: 41 * GIB },
+            ],
+        },
+        {
+            samples: [
+                { timestamp: NaN, bytes: 40 * GIB },
+                { timestamp: DAY, bytes: NaN },
+            ],
+        },
+    ])('reports missing material history instead of a stable trend: %j', ({ samples }) => {
+        const detector = new StorageGrowthRiskDetector();
+        const result = detector.evaluateResult(container([{ partitionId: '0', samples }]), 180);
+        expect(result).toEqual({ rootCause: 'insufficient_data' });
+    });
+
+    it('does not call the whole container stable while a material partition has no trend', () => {
+        const result = new StorageGrowthRiskDetector().evaluateResult(
+            container([
+                storageSeries('known', [40, 40]),
+                { partitionId: 'unknown', samples: [{ timestamp: 0, bytes: 45 * GIB }] },
+            ]),
+            180,
+        );
+        expect(result).toEqual({ rootCause: 'insufficient_data' });
+    });
+
+    it.each([{ gib: [0] }, { gib: [0, 0] }, { gib: [2, 0] }])(
+        'classifies an observed zero-byte partition as too small ($gib GiB history)',
+        ({ gib }) => {
+            const result = new StorageGrowthRiskDetector().evaluateResult(container([storageSeries('0', gib)]), 180);
+            expect(result).toEqual({ rootCause: 'too_small' });
+        },
+    );
+
+    it('classifies multiple observed zero-byte partitions as too small', () => {
+        const result = new StorageGrowthRiskDetector().evaluateResult(
+            container([storageSeries('0', [0]), storageSeries('1', [0])]),
+            180,
+        );
+        expect(result).toEqual({ rootCause: 'too_small' });
+    });
+
+    it('reports an empty partition list as insufficient data', () => {
+        const result = new StorageGrowthRiskDetector().evaluateResult(container([]), 180);
+        expect(result).toEqual({ rootCause: 'insufficient_data' });
+    });
+
+    it('does not let observed zero bytes hide another partition without history', () => {
+        const result = new StorageGrowthRiskDetector().evaluateResult(
+            container([storageSeries('zero', [0]), { partitionId: 'unknown', samples: [] }]),
+            180,
+        );
+        expect(result).toEqual({ rootCause: 'insufficient_data' });
+    });
+
+    it('retains stable and too-small results when their required evidence is available', () => {
+        const detector = new StorageGrowthRiskDetector();
+        expect(detector.evaluateResult(container([storageSeries('flat', [40, 40])]), 180).rootCause).toBe('stable');
+        expect(detector.evaluateResult(container([storageSeries('shrinking', [41, 40])]), 180).rootCause).toBe(
+            'stable',
+        );
+        expect(detector.evaluateResult(container([storageSeries('tiny', [0.5])]), 180).rootCause).toBe('too_small');
+    });
+
+    it('preserves real findings even if another partition has insufficient history', () => {
+        const detector = new StorageGrowthRiskDetector();
+        const unknown = { partitionId: 'unknown', samples: [{ timestamp: 0, bytes: 40 * GIB }] };
+        expect(detector.evaluateResult(container([unknown, storageSeries('full', [50])]), 180)).toMatchObject({
+            rootCause: 'at_or_over_limit',
+            advisory: { severity: 'High' },
+        });
+        expect(detector.evaluateResult(container([unknown, storageSeries('growing', [48, 49])]), 180)).toMatchObject({
+            rootCause: 'rapid_growth',
+            advisory: { severity: 'High' },
+        });
     });
 
     it('reports the soonest-to-fill partition across the container', () => {
@@ -675,8 +810,10 @@ describe('evaluateExpensiveConsistency', () => {
         expect(advisory?.severity).toBe('Low');
     });
 
-    it('does not fire on a single region (no cross-region cost)', () => {
-        expect(evaluateExpensiveConsistency(config({ consistencyLevel: 'Strong', regionCount: 1 }))).toBeUndefined();
+    it('fires Medium for Strong local quorum reads in a known single region', () => {
+        expect(evaluateExpensiveConsistency(config({ consistencyLevel: 'Strong', regionCount: 1 }))).toMatchObject({
+            severity: 'Medium',
+        });
     });
 
     it('does not fire on the Session default', () => {
@@ -732,6 +869,30 @@ describe('evaluateMultiRegionWrites', () => {
         const advisory = evaluateMultiRegionWrites(config({ accountName: 'orders-dev', writeRegionCount: 2 }));
         expect(advisory?.severity).toBe('Medium');
     });
+
+    it.each([
+        { accountName: 'orders-dev', rootCause: 'nonprod_multi_region_writes', removableExtraRegionRu: 14000 },
+        { accountName: 'orders-prod', rootCause: 'legitimate_ha', removableExtraRegionRu: null },
+    ])(
+        'quantifies regional footprint without assuming HA regions are removable ($accountName)',
+        ({ accountName, rootCause, removableExtraRegionRu }) => {
+            const result = new MultiRegionWriteAntipatternDetector().evaluateResult(
+                config({ accountName, regionCount: 3, writeRegionCount: 3, isServerless: false }),
+                7000,
+            );
+            const observations = {
+                regionalCapacityQuantified: true,
+                configuredPerRegionRu: 7000,
+                globalRegionalFootprintRu: 21000,
+                removableExtraRegionRu,
+            };
+            expect(result.rootCause).toBe(rootCause);
+            expect(result.observations).toEqual(observations);
+            expect(result).toMatchObject({
+                advisory: removableExtraRegionRu === null ? undefined : { severity: 'Medium', evidence: observations },
+            });
+        },
+    );
 });
 
 describe('computeDerivedAdvisories with accountConfig', () => {
@@ -1063,6 +1224,7 @@ describe('computeDerivedAdvisories Tier-2 wiring', () => {
                     {
                         databaseId: 'db',
                         containerId: 'orders',
+                        evaluationWindowSeconds: 1000,
                         shapes: [
                             { text: 'SELECT * FROM c WHERE c.email=@e', executions: 850, avgFanout: 2, maxFanout: 2 },
                             { text: 'SELECT * FROM c WHERE c.pk=@p', executions: 150, avgFanout: 1, maxFanout: 1 },
@@ -1087,6 +1249,7 @@ describe('computeDerivedAdvisories Tier-2 wiring', () => {
                     {
                         databaseId: 'db',
                         containerId: 'orders',
+                        evaluationWindowSeconds: 1000,
                         shapes: [
                             { text: 'SELECT * FROM c WHERE c.email=@e', executions: 150, avgFanout: 2, maxFanout: 2 },
                             { text: 'SELECT * FROM c WHERE c.pk=@p', executions: 850, avgFanout: 1, maxFanout: 1 },
@@ -1097,7 +1260,7 @@ describe('computeDerivedAdvisories Tier-2 wiring', () => {
             DEFAULT_ADVISORY_THRESHOLDS,
         ).filter((a) => a.scope === 'db/orders');
         expect(rules).toHaveLength(1);
-        expect(rules[0]).toMatchObject({ rule: 'CrossPartitionQuery', severity: 'Medium' });
+        expect(rules[0]).toMatchObject({ rule: 'CrossPartitionQuery', severity: 'Low' });
     });
 
     it('marks manual right-sizing as superseded when the same container is idle or better suited for autoscale', () => {

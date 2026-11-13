@@ -9,7 +9,12 @@ import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
-import { type DerivedAdvisory, type DerivedAdvisorySeverity, type PartitionMergeInput } from '../core/types';
+import {
+    type AdvisoryEvaluation,
+    type DerivedAdvisory,
+    type DerivedAdvisorySeverity,
+    type PartitionMergeInput,
+} from '../core/types';
 import { GIB } from './storageMath';
 
 // DX-009: each physical partition serves up to 10,000 RU/s and stores up to 50 GiB. Both are Azure platform
@@ -34,24 +39,52 @@ function neededPartitions(provisionedRu: number, storageBytes: number): number {
  * Severity is Medium when actual ≥ 2× needed (the slice is very thin), else Low. Merge is a platform operation.
  * Pure.
  */
-function evaluatePartitionMergeCandidate(input: PartitionMergeInput): DerivedAdvisory | undefined {
+function evaluatePartitionMergeCandidate(input: PartitionMergeInput): AdvisoryEvaluation<'PartitionMergeCandidate'> {
     const actual = input.actualPartitions;
     // 0 ⇒ no partition reading (insufficient data); 1 ⇒ single partition can never be merged.
-    if (actual <= 1) {
-        return undefined;
+    if (
+        !Number.isInteger(actual) ||
+        actual < 1 ||
+        input.provisionedRu === undefined ||
+        !Number.isFinite(input.provisionedRu) ||
+        input.provisionedRu < 0 ||
+        input.dataUsageBytes === undefined ||
+        !Number.isFinite(input.dataUsageBytes) ||
+        input.dataUsageBytes < 0
+    ) {
+        return { rootCause: 'insufficient_data' };
     }
-    const provisionedRu = input.provisionedRu ?? 0;
-    const storageBytes = input.dataUsageBytes ?? 0;
+    if (actual === 1) {
+        return { rootCause: 'single_partition' };
+    }
+    const provisionedRu = input.provisionedRu;
+    const storageBytes = input.dataUsageBytes;
     const needed = neededPartitions(provisionedRu, storageBytes);
     if (actual <= needed) {
-        return undefined;
+        return { rootCause: 'right_sized' };
     }
     const severity: DerivedAdvisorySeverity =
         actual >= DIAGNOSTIC_POLICY.partitionMerge.mediumExcessRatio * needed ? 'Medium' : 'Low';
     const scope = containerKey(input.databaseId, input.containerId);
     const ruSlice = provisionedRu > 0 ? Math.round(provisionedRu / actual) : 0;
     const gib = Math.round((storageBytes / GIB) * 10) / 10;
-    return {
+    const policy = input.backupPolicy;
+    const backupType = policy?.type?.toLowerCase();
+    const blocked = backupType === 'continuous' || policy?.fullFidelityChangeFeedEnabled === true;
+    const migration = policy?.migrationState;
+    const settledPeriodic =
+        backupType === 'periodic' &&
+        (migration === undefined ||
+            (migration.status?.toLowerCase() === 'completed' && migration.targetType?.toLowerCase() === 'periodic'));
+    const eligibility =
+        backupType === 'continuous'
+            ? 'blocked_pitr'
+            : policy?.fullFidelityChangeFeedEnabled === true
+              ? 'blocked_full_fidelity'
+              : settledPeriodic
+                ? 'requires_platform_validation'
+                : 'unknown';
+    const advisory: DerivedAdvisory = {
         id: `PartitionMergeCandidate:${scope}`,
         rule: 'PartitionMergeCandidate',
         severity,
@@ -77,19 +110,45 @@ function evaluatePartitionMergeCandidate(input: PartitionMergeInput): DerivedAdv
                     'This usually follows scaling RU/s down (or deleting data) after a high-throughput or large period.',
                 ),
         ),
-        suggestedAction: l10n.t(
-            'Merge the physical partitions (Azure Portal or CLI) to consolidate the RU/s back onto fewer partitions.',
-        ),
+        evidence: {
+            actualPartitions: actual,
+            neededPartitions: needed,
+            provisionedRu,
+            dataUsageBytes: storageBytes,
+            backupType: backupType ?? 'unknown',
+            mergeEligibility: eligibility,
+        },
+        actionEligibility: blocked ? 'blocked' : settledPeriodic ? 'requiresValidation' : 'unknown',
+        suggestedAction: blocked
+            ? l10n.t(
+                  'Partition merge is blocked by continuous backup or conflicting all-versions-and-deletes metadata. Continuous backup cannot be reverted to periodic backup. Do not disable protection to enable a merge.',
+              ) +
+              (policy?.fullFidelityChangeFeedEnabled === true
+                  ? ' ' +
+                    l10n.t(
+                        'All-versions-and-deletes change feed requires continuous backup; enablement does not establish active consumer usage. Resolve inconsistent or missing backup metadata without weakening protection.',
+                    )
+                  : '')
+            : settledPeriodic
+              ? l10n.t(
+                    'Use the Azure Portal merge eligibility checker and verify current platform, SDK and connector restrictions. Periodic backup alone does not establish eligibility. Only after those checks should a merge be considered.',
+                )
+              : l10n.t(
+                    'Merge eligibility is unknown because backup policy is missing or migration metadata is present and unsettled. Verify the account state; merge instructions are withheld.',
+                ),
         thresholdReference: l10n.t(
             'Threshold: physical partitions > max(ceil(RU/`10,000`), ceil(storage/`50 GiB`), `1`)',
         ),
         scope,
     };
+    return { rootCause: 'over_partitioned', advisory, observations: { mergeEligibility: eligibility } };
 }
 
 export class PartitionMergeCandidateDetector extends Detector {
     readonly rule = 'PartitionMergeCandidate' as const;
-    evaluate = evaluatePartitionMergeCandidate;
+    evaluateResult = evaluatePartitionMergeCandidate;
+    evaluate = (...args: Parameters<typeof evaluatePartitionMergeCandidate>) =>
+        evaluatePartitionMergeCandidate(...args).advisory;
     run(ctx: DetectorContext): DerivedAdvisory[] {
         const out: DerivedAdvisory[] = [];
         for (const merge of ctx.inputs.partitionMerges ?? []) {

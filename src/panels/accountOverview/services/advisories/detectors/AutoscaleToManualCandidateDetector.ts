@@ -5,11 +5,10 @@
 
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
-import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
-import { clampRationale, hasMinimumKnownResourceAge } from '../core/helpers';
+import { clampRationale, hasMinimumKnownResourceAge, offerScope } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
-import { type AutoscaleUtilizationInput, type DerivedAdvisory } from '../core/types';
+import { type AdvisoryEvaluation, type AutoscaleUtilizationInput, type DerivedAdvisory } from '../core/types';
 
 /**
  * AutoscaleToManualCandidate (CODA DX-013): an *autoscale* container whose load is **steady-high** — average
@@ -22,31 +21,31 @@ function evaluateAutoscaleToManualCandidate(
     input: AutoscaleUtilizationInput,
     avgFloorPercent: number,
     peakToAvgCeiling: number,
-): DerivedAdvisory | undefined {
+): AdvisoryEvaluation<'AutoscaleToManualCandidate'> {
     if (
         input.sampleCount < DIAGNOSTIC_POLICY.autoscaleUtilization.minSamples ||
         input.avgPercent <= 0 ||
         !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.autoscaleUtilization.minResourceAgeDays)
     ) {
-        return undefined;
+        return { rootCause: 'insufficient_data' };
     }
     const peakToAvg = input.peakPercent / input.avgPercent;
     if (input.avgPercent < avgFloorPercent || peakToAvg > peakToAvgCeiling) {
-        return undefined;
+        return { rootCause: 'well_matched' };
     }
-    const scope = containerKey(input.databaseId, input.containerId);
+    const scope = offerScope(input);
     const avg = Math.round(input.avgPercent);
     const peak = Math.round(input.peakPercent);
     const ratio = Math.round(peakToAvg * 10) / 10;
-    return {
+    const advisory: DerivedAdvisory = {
         id: `AutoscaleToManualCandidate:${scope}`,
         rule: 'AutoscaleToManualCandidate',
         severity: 'Medium',
-        title: l10n.t('Autoscale container looks steady: manual may be cheaper'),
+        title: l10n.t('Autoscale offer looks steady: manual may be cheaper'),
         rationale: clampRationale(
             l10n.t(
                 'Autoscale on "{container}" averaged `{avg}%` of its max with a peak of `{peak}%`, a `{ratio}×` peak-to-average.',
-                { container: escapeAdvisoryText(input.containerId), avg, peak, ratio },
+                { container: escapeAdvisoryText(input.containerId ?? input.databaseId), avg, peak, ratio },
             ) +
                 ' ' +
                 l10n.t('The load is steady and high with little spikiness.') +
@@ -57,7 +56,7 @@ function evaluateAutoscaleToManualCandidate(
         ),
         suggestedAction: l10n.t(
             'Consider converting "{container}" to manual throughput at a fixed RU/s near the sustained level to drop the autoscale premium.',
-            { container: escapeAdvisoryText(input.containerId) },
+            { container: escapeAdvisoryText(input.containerId ?? input.databaseId) },
         ),
         thresholdReference: l10n.t('Threshold: average ≥ `{avg}%` of max and peak/average ≤ `{ratio}×`', {
             avg: Math.round(avgFloorPercent),
@@ -65,11 +64,14 @@ function evaluateAutoscaleToManualCandidate(
         }),
         scope,
     };
+    return { rootCause: 'steady_autoscale', advisory };
 }
 
 export class AutoscaleToManualCandidateDetector extends Detector {
     readonly rule = 'AutoscaleToManualCandidate' as const;
-    evaluate = evaluateAutoscaleToManualCandidate;
+    evaluateResult = evaluateAutoscaleToManualCandidate;
+    evaluate = (...args: Parameters<typeof evaluateAutoscaleToManualCandidate>) =>
+        evaluateAutoscaleToManualCandidate(...args).advisory;
     run(ctx: DetectorContext): DerivedAdvisory[] {
         const out: DerivedAdvisory[] = [];
         for (const util of ctx.inputs.autoscaleUtilizations ?? []) {

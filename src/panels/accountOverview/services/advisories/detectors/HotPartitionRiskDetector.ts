@@ -5,11 +5,15 @@
 
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
-import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
-import { clampRationale, hasMinimumKnownResourceAge } from '../core/helpers';
+import { clampRationale, hasMinimumKnownResourceAge, offerScope } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
-import { type DerivedAdvisory, type DerivedAdvisorySeverity, type PartitionSaturationInput } from '../core/types';
+import {
+    type AdvisoryEvaluation,
+    type DerivedAdvisory,
+    type DerivedAdvisorySeverity,
+    type PartitionSaturationInput,
+} from '../core/types';
 
 /**
  * HotPartitionRisk (DX-006): the busiest physical partition is **saturated** (p99 at or above the saturation
@@ -24,16 +28,26 @@ function evaluateHotPartitionRisk(
     saturationPercent: number,
     headroomPercent: number,
     throttleThresholdPercent: number,
-): DerivedAdvisory | undefined {
+): AdvisoryEvaluation<'HotPartitionRisk'> {
     if (
         !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.partitionSaturation.minResourceAgeDays) ||
-        input.partitionCount < DIAGNOSTIC_POLICY.partitionSaturation.minHotPartitions ||
-        input.maxP99 < saturationPercent ||
-        input.minP99 >= headroomPercent
+        input.partitionCount === 0 ||
+        !Number.isFinite(input.maxP99) ||
+        !Number.isFinite(input.minP99)
     ) {
-        return undefined;
+        return { rootCause: 'insufficient_data' };
     }
-    const scope = containerKey(input.databaseId, input.containerId);
+    if (input.partitionCount < DIAGNOSTIC_POLICY.partitionSaturation.minHotPartitions) {
+        return { rootCause: 'single_partition' };
+    }
+    if (input.maxP99 < saturationPercent) {
+        return { rootCause: 'not_saturated' };
+    }
+    if (input.minP99 >= headroomPercent) {
+        return { rootCause: 'uniform_saturation' };
+    }
+    const scope = offerScope(input);
+    const name = input.containerId ?? input.databaseId;
     const busiest = Math.round(input.maxP99);
     const coolest = Math.round(input.minP99);
     const saturation = Math.round(saturationPercent);
@@ -47,16 +61,16 @@ function evaluateHotPartitionRisk(
               'It is not throttling yet, but the pinned partition cannot borrow spare capacity from the other partitions as load grows.',
           );
 
-    return {
+    const advisory: DerivedAdvisory = {
         id: `HotPartitionRisk:${scope}`,
         rule: 'HotPartitionRisk',
         severity,
-        title: l10n.t('Hot physical partition in {container}', { container: input.containerId }),
+        title: l10n.t('Hot physical partition in {container}', { container: name }),
         rationale: clampRationale(
             l10n.t(
                 'In "{container}", the busiest of `{count} physical partitions` ran at `{busiest}%` p99 utilization.',
                 {
-                    container: escapeAdvisoryText(input.containerId),
+                    container: escapeAdvisoryText(name),
                     count: input.partitionCount,
                     busiest,
                 },
@@ -72,26 +86,32 @@ function evaluateHotPartitionRisk(
                 impact,
         ),
         suggestedAction:
-            l10n.t(
-                'Redesign the partition key for higher cardinality so traffic spreads across partitions. Re-keying an existing container is migration-class.',
-            ) +
-            ' ' +
-            l10n.t(
-                'Per-partition or per-region autoscale can soften the cost of feeding the hot partition while you redesign.',
-            ) +
-            ' ' +
-            l10n.t('It does not remove the throttling on a single hot key.'),
+            input.containerId === undefined
+                ? l10n.t(
+                      'Review the shared database offer and member workloads for partition skew. Identify the affected containers before changing a partition key or isolating throughput.',
+                  )
+                : l10n.t(
+                      'Redesign the partition key for higher cardinality so traffic spreads across partitions. Re-keying an existing container is migration-class.',
+                  ) +
+                  ' ' +
+                  l10n.t(
+                      'Per-partition or per-region autoscale can soften the cost of feeding the hot partition while you redesign.',
+                  ) +
+                  ' ' +
+                  l10n.t('It does not remove the throttling on a single hot key.'),
         thresholdReference: l10n.t('Threshold: busiest partition p99 ≥ `{saturation}%` while another < `{headroom}%`', {
             saturation,
             headroom,
         }),
         scope,
     };
+    return { rootCause: 'hot_partition', advisory };
 }
 
 export class HotPartitionRiskDetector extends Detector {
     readonly rule = 'HotPartitionRisk' as const;
-    evaluate = evaluateHotPartitionRisk;
+    evaluateResult = evaluateHotPartitionRisk;
+    evaluate = (...args: Parameters<typeof evaluateHotPartitionRisk>) => evaluateHotPartitionRisk(...args).advisory;
     run(ctx: DetectorContext): DerivedAdvisory[] {
         const t = ctx.thresholds;
         const out: DerivedAdvisory[] = [];

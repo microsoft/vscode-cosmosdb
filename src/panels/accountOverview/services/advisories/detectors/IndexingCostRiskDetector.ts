@@ -8,52 +8,64 @@ import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
-import { type DerivedAdvisory, type IndexingUsageInput } from '../core/types';
+import { DIAGNOSTIC_POLICY } from '../core/thresholds';
+import { type AdvisoryEvaluation, type DerivedAdvisory, type IndexingUsageInput } from '../core/types';
 
 /**
- * IndexingCostRisk (best-effort): index storage is a large fraction of data
- * storage AND the container has no user exclusions. Pure.
+ * IndexingCostRisk (DX-024): index storage is a large fraction of data storage.
+ * Exclusions are evidence, not a suppression gate or proof of unused indexes. Pure.
  */
-function evaluateIndexingCostRisk(input: IndexingUsageInput, ratioThreshold: number): DerivedAdvisory | undefined {
+function evaluateIndexingCostRisk(
+    input: IndexingUsageInput,
+    ratioThreshold: number,
+): AdvisoryEvaluation<'IndexingCostRisk'> {
     const { indexUsageBytes, dataUsageBytes, userExcludedPathCount } = input;
+    if (input.indexingMode?.toLowerCase() === 'none') {
+        return { rootCause: 'indexing_disabled' };
+    }
     if (
-        userExcludedPathCount > 0 ||
         dataUsageBytes === undefined ||
+        !Number.isFinite(dataUsageBytes) ||
         dataUsageBytes <= 0 ||
         indexUsageBytes === undefined ||
+        !Number.isFinite(indexUsageBytes) ||
         indexUsageBytes < 0
     ) {
-        return undefined;
+        return { rootCause: 'insufficient_data' };
     }
     const ratio = indexUsageBytes / dataUsageBytes;
     if (ratio <= ratioThreshold) {
-        return undefined;
+        return { rootCause: 'normal_ratio', observations: { indexDataRatio: ratio, userExcludedPathCount } };
     }
     const scope = containerKey(input.databaseId, input.containerId);
     const percent = Math.round(ratio * 100);
     const threshold = Math.round(ratioThreshold * 100);
-    return {
+    const advisory: DerivedAdvisory = {
         id: `IndexingCostRisk:${scope}`,
         rule: 'IndexingCostRisk',
-        severity: 'Low',
+        severity: ratio > DIAGNOSTIC_POLICY.indexing.mediumRatio ? 'Medium' : 'Low',
         title: l10n.t('High indexing overhead in {container}', { container: input.containerId }),
         rationale: clampRationale(
             l10n.t(
-                'Index storage in "{container}" is `{percent}%` of its data size, above the `{threshold}%` threshold, and the container has no user exclusions in its indexing policy. Indexing every property inflates storage and the RU cost of every write.',
+                'Index storage in "{container}" is `{percent}%` of its data size, above the `{threshold}%` threshold. This is a storage-footprint warning, not proof of unused indexes or measured write-RU savings.',
                 { container: escapeAdvisoryText(input.containerId), percent, threshold },
             ),
         ),
         suggestedAction: l10n.t(
-            'Exclude paths that are never used in filters from the indexing policy to cut write RU charges and index storage.',
+            'Review actual filter and sort requirements before changing indexes. Composite, spatial and vector indexes can legitimately be large; do not exclude paths solely because this ratio is high.',
         ),
+        evidence: { indexUsageBytes, dataUsageBytes, indexDataRatio: ratio, userExcludedPathCount },
+        actionEligibility: 'requiresValidation',
         thresholdReference: l10n.t('Threshold: index/data storage > `{threshold}%`', { threshold }),
         scope,
     };
+    return { rootCause: 'high_index_ratio', advisory, observations: { indexDataRatio: ratio, userExcludedPathCount } };
 }
 
 export class IndexingCostRiskDetector extends Detector {
     readonly rule = 'IndexingCostRisk' as const;
-    evaluate = evaluateIndexingCostRisk;
+    evaluateResult = evaluateIndexingCostRisk;
+    evaluate = (...args: Parameters<typeof evaluateIndexingCostRisk>) => evaluateIndexingCostRisk(...args).advisory;
     run(ctx: DetectorContext): DerivedAdvisory[] {
         const out: DerivedAdvisory[] = [];
         for (const indexing of ctx.inputs.indexing) {

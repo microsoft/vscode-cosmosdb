@@ -446,13 +446,18 @@ async function queryPartitionSplitSeries(
             ? throughputOfferFilter(databaseId, containerId)
             : containerFilter(databaseId, containerId);
     const filter = `${scope} and ${dimension} eq '*'`;
-    const response = await readMetrics(client, resourceUri, {
-        metricnames: metricName,
-        aggregation: 'Maximum',
-        timespan,
-        interval,
-        filter,
-    }, [databaseId, containerId ?? '']);
+    const response = await readMetrics(
+        client,
+        resourceUri,
+        {
+            metricnames: metricName,
+            aggregation: 'Maximum',
+            timespan,
+            interval,
+            filter,
+        },
+        [databaseId, containerId ?? ''],
+    );
 
     const dimensionKey = dimension.toLowerCase();
     const byPartition = new Map<string, Map<number, number>>();

@@ -16,8 +16,11 @@ import {
     type DerivedAdvisoriesResult,
 } from '../../../accountOverview/services/advisories';
 import { DEFAULT_ADVISORY_THRESHOLDS } from '../../../accountOverview/services/advisories/core/thresholds';
+import {
+    classifyLogsFailure,
+    type LogsDiagnostic,
+} from '../../../accountOverview/services/advisories/fetchers/logsDiagnostics';
 import { DETECTORS } from '../../../accountOverview/services/advisories/registry';
-import { classifyLogsFailure, type LogsDiagnostic } from '../../../accountOverview/services/advisories/fetchers/logsDiagnostics';
 import {
     readRequest,
     recordReadFailure,

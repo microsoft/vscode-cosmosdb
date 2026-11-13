@@ -171,13 +171,18 @@ export async function querySeries(
 ): Promise<Map<number, number>> {
     const buckets = new Map<number, number>();
     for (const scopedFilter of metricFilters(filter)) {
-        const response = await readMetrics(client, resourceUri, {
-            metricnames: metricName,
-            aggregation,
-            timespan,
-            interval,
-            filter: scopedFilter,
-        }, sensitiveValues);
+        const response = await readMetrics(
+            client,
+            resourceUri,
+            {
+                metricnames: metricName,
+                aggregation,
+                timespan,
+                interval,
+                filter: scopedFilter,
+            },
+            sensitiveValues,
+        );
         for (const metric of response.value ?? []) {
             if (metric.errorCode && metric.errorCode !== 'Success') {
                 throw new Error(metric.errorMessage ?? metric.errorCode);
@@ -262,7 +267,8 @@ export async function queryThrottlingWindows(
     filter: MetricFilter,
     sensitiveValues: readonly string[] = [],
 ): Promise<Set<number>> {
-    return (await queryThrottlingSummary(client, resourceUri, timespan, interval, bucketMs, filter, sensitiveValues)).timestamps;
+    return (await queryThrottlingSummary(client, resourceUri, timespan, interval, bucketMs, filter, sensitiveValues))
+        .timestamps;
 }
 
 /** Keeps missing request observations distinct from observed counts, including zero traffic. */
@@ -297,13 +303,18 @@ async function queryRequestBuckets(
 ): Promise<Map<number, { total: number; throttled: number }>> {
     const totals = new Map<number, { total: number; throttled: number }>();
     for (const scopedFilter of metricFilters(filter)) {
-        const response = await readMetrics(client, resourceUri, {
-            metricnames: 'TotalRequests',
-            aggregation: 'Count',
-            timespan,
-            interval,
-            filter: scopedFilter ? `${scopedFilter} and StatusCode eq '*'` : `StatusCode eq '*'`,
-        }, sensitiveValues);
+        const response = await readMetrics(
+            client,
+            resourceUri,
+            {
+                metricnames: 'TotalRequests',
+                aggregation: 'Count',
+                timespan,
+                interval,
+                filter: scopedFilter ? `${scopedFilter} and StatusCode eq '*'` : `StatusCode eq '*'`,
+            },
+            sensitiveValues,
+        );
         for (const metric of response.value ?? []) {
             if (metric.errorCode && metric.errorCode !== 'Success') {
                 throw new Error(metric.errorMessage ?? metric.errorCode);

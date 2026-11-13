@@ -317,7 +317,11 @@ export function createLogsDiagnostic<TOperation extends string>(
         operation,
         reason: classified.reason,
         kind:
-            operation === 'client' ? 'clientUnavailable' : options.partialFailure ? 'partialFailure' : classified.kind,
+            operation === 'client'
+                ? 'clientUnavailable'
+                : options.partialFailure && classified.kind !== 'authentication'
+                  ? 'partialFailure'
+                  : classified.kind,
         ...(fields.statusCode === undefined ? {} : { statusCode: fields.statusCode }),
         codes,
         messages: messages.length ? messages : ['No server error message was provided.'],

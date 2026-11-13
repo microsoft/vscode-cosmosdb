@@ -66,6 +66,25 @@ describe('account advisory acquisition', () => {
         );
     });
 
+    it.each([[401, 'authentication'], [403, 'accessDenied']] as const)(
+        'passes the known Logs client HTTP %s cause into partial coverage',
+        async (statusCode, kind) => {
+            const input = metadata();
+            input.getLogsQueryClient.mockRejectedValueOnce(Object.assign(new Error('Client acquisition failed.'), { statusCode }));
+            vi.mocked(collectDerivedAdvisories).mockResolvedValueOnce({
+                advisories: [],
+                metricSource: { available: true, failures: [] },
+                logSource: { available: false, reason: 'rbac', failures: [{ operation: 'client', kind, reason: 'rbac' }] },
+            });
+            const result = await getDerivedAdvisoriesForAccount(input);
+            expect(collectDerivedAdvisories).toHaveBeenCalledWith(expect.objectContaining({
+                logsClient: undefined,
+                logsClientFailure: { kind, reason: 'rbac' },
+            }));
+            expect(result.logSource).toMatchObject({ reason: 'rbac', failures: [{ operation: 'client', kind, reason: 'rbac' }] });
+            expect(result.diagnostics).toContainEqual({ source: 'logs', kind, reason: 'rbac' });
+        },
+    );
     it('logs skipped metric checks without inventing request errors or exposing resource names', async () => {
         const metricSource = {
             available: false,

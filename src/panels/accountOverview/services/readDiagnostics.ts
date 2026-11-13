@@ -19,6 +19,7 @@ import { type UnavailableReason } from './shared';
 
 interface ReadContext {
     failures: ReadFailure[];
+    pendingReads: Set<Promise<unknown>>;
     emitted: Set<string>;
     reportedErrors: WeakSet<object>;
     sensitiveValues: readonly string[];
@@ -37,6 +38,7 @@ export async function withReadDiagnostics<T extends object>(
 ): Promise<T & ReadDiagnosticsResult> {
     const context: ReadContext = {
         failures: [],
+        pendingReads: new Set(),
         emitted: new Set(),
         reportedErrors: new WeakSet(),
         sensitiveValues,
@@ -53,6 +55,11 @@ export async function withReadDiagnostics<T extends object>(
                 throw new Error(`Account Overview read failed (${source}: ${classifyLogsFailure(error).kind}).`);
             }
             result = fallback(classifyLogsFailure(error).reason);
+        } finally {
+            // A fail-fast caller may finish before sibling requests have reported their diagnostics.
+            while (context.pendingReads.size > 0) {
+                await Promise.allSettled(context.pendingReads);
+            }
         }
         return context.failures.length ? { ...result, diagnostics: context.failures } : result;
     });
@@ -156,11 +163,19 @@ export async function readRequest<T>(
     work: () => Promise<T>,
     sensitiveValues: readonly string[] = [],
 ): Promise<T> {
+    const context = readContext.getStore();
+    let pending: Promise<T> | undefined;
     try {
-        return await work();
+        pending = work();
+        context?.pendingReads.add(pending);
+        return await pending;
     } catch (error) {
         reportReadFailure(source, operation, error, sensitiveValues);
         throw error;
+    } finally {
+        if (pending) {
+            context?.pendingReads.delete(pending);
+        }
     }
 }
 

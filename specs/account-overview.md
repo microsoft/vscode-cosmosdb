@@ -526,21 +526,21 @@ It is not normalized RU divided by the configured max. The Serverless-candidate 
 `TotalRequestUnits` Total collisions per timestamp, divides each bucket by 3,600 seconds, then takes peak/mean
 over observed hourly buckets. Missing buckets do not become zero samples in either calculation.
 
-| Evidence                            | Window / grain                                 | Live collector targets                                    |
-| ----------------------------------- | ---------------------------------------------- | --------------------------------------------------------- |
-| Manual normalized RU                | 30 days / 1 hour                               | Dedicated manual and shared manual database offers        |
-| Idle consumed RU, Total             | 30 days / 5 minutes                            | Dedicated and shared database offers, manual/autoscale    |
-| Partition p99 + request-rate totals | 7 days / 1 hour                                | Dedicated and shared database offers                      |
-| Partition storage for growth        | 30 days / 1 hour                               | Dedicated containers                                      |
-| Partition storage for skew          | 7 days / 1 hour                                | Dedicated containers                                      |
-| Index/data storage                  | Latest populated samples, 6 hours / 5 minutes  | All inventory containers, including shared and Serverless |
-| Partition count and DataUsage peaks | 6 hours / 5 minutes                            | Dedicated containers, explicit database/container queries |
-| AutoscaledRU                        | 30 days / 1 hour                               | Dedicated and shared database autoscale offers            |
-| Consumed-RU shape                   | 30 days / 1 hour                               | Non-Serverless account, no database filter                |
-| Serverless request-rate totals      | 7 days / 1 hour                                | Serverless containers                                     |
-| Log query fan-out evidence          | Last 24 hours, raw event aggregation           | Dedicated and Serverless containers                       |
-| Log ingestion evidence              | 24 hours, five-minute aggregates or raw events | Dedicated containers                                      |
-| Log shared-pool evidence            | Same selected request-log source/window        | Shared-throughput database offers                         |
+| Evidence                            | Window / grain                                | Live collector targets                                    |
+| ----------------------------------- | --------------------------------------------- | --------------------------------------------------------- |
+| Manual normalized RU                | 30 days / 1 hour                              | Dedicated manual and shared manual database offers        |
+| Idle consumed RU, Total             | 30 days / 5 minutes                           | Dedicated and shared database offers, manual/autoscale    |
+| Partition p99 + request-rate totals | 7 days / 1 hour                               | Dedicated and shared database offers                      |
+| Partition storage for growth        | 30 days / 1 hour                              | Dedicated containers                                      |
+| Partition storage for skew          | 7 days / 1 hour                               | Dedicated containers                                      |
+| Index/data storage                  | Latest populated samples, 6 hours / 5 minutes | All inventory containers, including shared and Serverless |
+| Partition count and DataUsage peaks | 6 hours / 5 minutes                           | Dedicated containers, explicit database/container queries |
+| AutoscaledRU                        | 30 days / 1 hour                              | Dedicated and shared database autoscale offers            |
+| Consumed-RU shape                   | 30 days / 1 hour                              | Non-Serverless account, no database filter                |
+| Serverless request-rate totals      | 7 days / 1 hour                               | Serverless containers                                     |
+| Log query fan-out evidence          | Last 24 hours, raw event aggregation          | Dedicated and Serverless containers                       |
+| Log ingestion evidence              | Last 24 hours, raw event aggregation          | Dedicated containers                                      |
+| Log shared-pool evidence            | Last 24 hours, raw event aggregation          | Shared-throughput database offers                         |
 
 Per-container idle/merge queries MUST target known containers, not discover them through wildcard metric series or a larger `top`.
 Shared-offer throughput utilization/saturation queries select the database offer's empty `CollectionName` dimension,

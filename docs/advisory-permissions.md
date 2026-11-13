@@ -209,6 +209,9 @@ Mixed log failures retain sign-in guidance unless another failure independently 
 missing tables alone do not turn expired sign-in into a permission problem.
 Successful reads and advisory findings remain available.
 
+Metric RPC responses wait for outstanding instrumented requests before serializing diagnostic categories,
+even when a service returns early after a failed read. Concurrent RPC invocations keep their waits and diagnostics isolated.
+
 Read-failure and partial-coverage notices are collapsed by default. Their titles and informational/warning styling
 remain visible; expand a notice to review skipped checks, failure details and permission guidance.
 **Show Output** and guidance links remain available while details are collapsed.

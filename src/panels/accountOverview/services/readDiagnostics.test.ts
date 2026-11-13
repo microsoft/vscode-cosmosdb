@@ -9,6 +9,7 @@ import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { MonitorClient, type EventData } from '@azure/arm-monitor';
 import { createHttpHeaders } from '@azure/core-rest-pipeline';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fetchMetricSeries } from '../metrics/hostFetchers';
 import { getAccountHealth } from './accountHealth';
 import {
     getAccountRequestStatusCounts,
@@ -40,6 +41,105 @@ beforeEach(() => {
 });
 
 describe('Account Overview read diagnostics', () => {
+    it.each(['ServerSideLatencyDirect', 'ServerSideLatencyGateway'])(
+        'serializes late sibling failures after %s fails first',
+        async (firstMetric) => {
+            vi.useFakeTimers();
+            try {
+                const client = new MonitorClient(credential, 'private-sub');
+                const list = vi.spyOn(client.metrics, 'list').mockImplementation(async (_uri, options) => {
+                    const first = options?.metricnames === firstMetric;
+                    await new Promise<void>((resolve) => setTimeout(resolve, first ? 10 : 50));
+                    throw first ? Object.assign(new Error('Service unavailable.'), { statusCode: 503 }) : denied();
+                });
+                const warn = vi.fn();
+                let returned = false;
+                const response = withReadDiagnostics('metrics', [accountId], warn, () =>
+                    fetchMetricSeries('serverLatency', client, accountId, {}, '1H'),
+                ).then((result) => {
+                    returned = true;
+                    return JSON.stringify(result);
+                });
+
+                await vi.advanceTimersByTimeAsync(10);
+                expect(list).toHaveBeenCalledTimes(2);
+                expect(returned).toBe(false);
+                expect(warn).toHaveBeenCalledOnce();
+                await vi.advanceTimersByTimeAsync(40);
+
+                const wire = JSON.parse(await response);
+                expect(wire).toMatchObject({ available: false, reason: 'error', points: [] });
+                expect(wire.diagnostics).toEqual([
+                    { source: 'metrics', kind: 'transient', reason: 'noData' },
+                    { source: 'metrics', kind: 'accessDenied', reason: 'rbac' },
+                ]);
+                expect(warn).toHaveBeenCalledTimes(2);
+                expect(warn).toHaveBeenCalledWith(expect.stringContaining('HTTP 403'));
+                expect(JSON.stringify(wire.diagnostics)).not.toMatch(/private-|Insufficient|AuthorizationFailed/);
+                expect(warn.mock.calls.flat().join('\n')).not.toMatch(/PRIVATE_TOKEN|private-sub|private-account/);
+                expect(vi.getTimerCount()).toBe(0);
+            } finally {
+                await vi.runAllTimersAsync();
+                vi.useRealTimers();
+            }
+        },
+    );
+
+    it('includes late indexing failures before serializing a fallback', async () => {
+        vi.useFakeTimers();
+        try {
+            const client = new MonitorClient(credential, 'private-sub');
+            vi.spyOn(client.metrics, 'list').mockImplementation(async (_uri, options) => {
+                const first = options?.metricnames === 'IndexUsage';
+                await new Promise<void>((resolve) => setTimeout(resolve, first ? 10 : 50));
+                throw first ? Object.assign(new Error('Service unavailable.'), { statusCode: 503 }) : denied();
+            });
+            const warn = vi.fn();
+            let returned = false;
+            const response = withReadDiagnostics(
+                'metrics',
+                [accountId],
+                warn,
+                () => getContainerIndexingUsage(client, accountId, 'private-db', 'private-container'),
+                () => ({}),
+            ).then((result) => {
+                returned = true;
+                return JSON.stringify(result);
+            });
+
+            await vi.advanceTimersByTimeAsync(10);
+            expect(returned).toBe(false);
+            const independent = await withReadDiagnostics('account', [], vi.fn(), async () => ({ available: true }));
+            expect(independent).toEqual({ available: true });
+            await vi.advanceTimersByTimeAsync(40);
+
+            expect(JSON.parse(await response)).toEqual({
+                diagnostics: [
+                    { source: 'metrics', kind: 'transient', reason: 'noData' },
+                    { source: 'metrics', kind: 'accessDenied', reason: 'rbac' },
+                ],
+            });
+            expect(warn).toHaveBeenCalledTimes(2);
+            expect(vi.getTimerCount()).toBe(0);
+        } finally {
+            await vi.runAllTimersAsync();
+            vi.useRealTimers();
+        }
+    });
+
+    it('preserves sanitized RPC errors for synchronously throwing requests', async () => {
+        const warn = vi.fn();
+        await expect(
+            withReadDiagnostics('account', [accountId], warn, () =>
+                readRequest<never>('account', 'getAccount', () => {
+                    throw denied();
+                }),
+            ),
+        ).rejects.toThrow('Account Overview read failed (account: accessDenied).');
+        expect(warn).toHaveBeenCalledOnce();
+        expect(warn.mock.calls.flat().join('\n')).not.toMatch(/PRIVATE_TOKEN|private-sub|private-account/);
+    });
+
     it.each([
         [
             'dedicated idle',

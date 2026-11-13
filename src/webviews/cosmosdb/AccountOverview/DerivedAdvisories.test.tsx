@@ -178,6 +178,18 @@ describe('log coverage guidance', () => {
 });
 
 describe('metric coverage and actionable findings', () => {
+    it('does not blame only the cloud for unsupported account APIs', () => {
+        showCoverage(
+            { available: true },
+            { costSource: { available: false, failures: [{ operation: 'backup', kind: 'unsupported' }] } },
+        );
+        expect(
+            screen.getByText(
+                'Continuous backup: Cost estimates are not supported for this account API or Azure cloud.',
+            ),
+        ).toBeInTheDocument();
+    });
+
     it('reconciles multiple cost failures for one operation independently on refresh', () => {
         const errors = vi.spyOn(console, 'error');
         const view = (failures: NonNullable<DerivedAdvisoriesResult['costSource']>['failures']) => (
@@ -271,63 +283,76 @@ describe('metric coverage and actionable findings', () => {
         );
     });
 
-    it('exposes billing provenance in keyboard-accessible resource details even when all other copy is shared', async () => {
-        const user = userEvent.setup();
-        showCoverage(
-            { available: true },
-            {
-                advisories: [
-                    {
-                        id: 'idle',
-                        rule: 'IdleContainer',
-                        severity: 'Low',
-                        title: 'Idle',
-                        scope: 'db/items',
-                        rationale: 'Shared observation.',
-                        suggestedAction: 'Review.',
-                        thresholdReference: 'Policy.',
-                        costEstimate: {
-                            basis: 'customerAmortizedBill',
-                            currency: 'EUR',
-                            monthlyAmount: 116.8,
-                            recoverableRu: 2000,
-                            regionalFootprint: { regionCount: 2, recoverableRuPerRegion: 1000 },
-                            rate: {
-                                source: 'customerAmortizedBill',
-                                scope: 'account',
+    it.each([1, 1.5] as const)(
+        'exposes billing multiplier %s in keyboard-accessible resource details',
+        async (multiplier) => {
+            const user = userEvent.setup();
+            showCoverage(
+                { available: true },
+                {
+                    advisories: [
+                        {
+                            id: 'idle',
+                            rule: 'IdleContainer',
+                            severity: 'Low',
+                            title: 'Idle',
+                            scope: 'db/items',
+                            rationale: 'Shared observation.',
+                            suggestedAction: 'Review.',
+                            thresholdReference: 'Policy.',
+                            costEstimate: {
+                                basis: 'customerAmortizedBill',
                                 currency: 'EUR',
-                                cost: 8,
-                                usage100RuHours: 1000,
-                                meters: ['100 RU/s'],
-                                observationStart: '2026-10-12T00:00:00.000Z',
-                                observationEnd: '2026-11-11T00:00:00.000Z',
-                                perRuMonth: 0.0584,
+                                monthlyAmount: 116.8 * multiplier,
+                                recoverableRu: 2000,
+                                billingConversion: {
+                                    throughputMode: multiplier === 1.5 ? 'autoscale' : 'manual',
+                                    multiRegionWritesEnabled: false,
+                                    quantityMultiplier: multiplier,
+                                    billedEquivalentRu: 2000 * multiplier,
+                                },
+                                regionalFootprint: { regionCount: 2, recoverableRuPerRegion: 1000 },
+                                rate: {
+                                    source: 'customerAmortizedBill',
+                                    scope: 'account',
+                                    currency: 'EUR',
+                                    cost: 8,
+                                    usage100RuHours: 1000,
+                                    meters: ['100 RU/s'],
+                                    observationStart: '2026-10-12T00:00:00.000Z',
+                                    observationEnd: '2026-11-11T00:00:00.000Z',
+                                    perRuMonth: 0.0584,
+                                },
                             },
                         },
-                    },
-                ],
-            },
-        );
-        const trigger = screen.getByRole('button', { name: /^Idle provisioned offers\./ });
-        trigger.focus();
-        await user.keyboard('{Enter}');
-        const dialog = screen.getByRole('dialog', { name: 'Idle provisioned offers' });
-        const resource = within(dialog).getByRole('button', { name: 'db/items' });
-        expect(resource).toHaveTextContent('db/items');
-        expect(resource).toHaveAccessibleName('db/items');
-        resource.focus();
-        await user.keyboard('{Enter}');
-        const detail = within(dialog).getByRole('region', { name: 'db/items' });
-        expect(detail).toHaveTextContent('Estimated capacity savings: 116.80 EUR per month');
-        expect(detail).toHaveTextContent('Model: 2,000.00 recoverable RU/s');
-        expect(detail).toHaveTextContent('Regional footprint: 1,000.00 RU/s per region across 2 regions.');
-        expect(detail).toHaveTextContent('not a guaranteed bill reduction');
-        expect(detail).toHaveTextContent('Estimates can overlap and must not be added together.');
-        expect(detail).toHaveTextContent('Contributing meters: 100 RU/s');
-        expect(detail).toHaveTextContent('2026-10-12T00:00:00.000Z');
-        await user.keyboard('{Escape}');
-        expect(trigger).toHaveFocus();
-    });
+                    ],
+                },
+            );
+            const trigger = screen.getByRole('button', { name: /^Idle provisioned offers\./ });
+            trigger.focus();
+            await user.keyboard('{Enter}');
+            const dialog = screen.getByRole('dialog', { name: 'Idle provisioned offers' });
+            const resource = within(dialog).getByRole('button', { name: 'db/items' });
+            expect(resource).toHaveTextContent('db/items');
+            expect(resource).toHaveAccessibleName('db/items');
+            resource.focus();
+            await user.keyboard('{Enter}');
+            const detail = within(dialog).getByRole('region', { name: 'db/items' });
+            expect(detail).toHaveTextContent(
+                `Estimated capacity savings: ${multiplier === 1.5 ? '175.20' : '116.80'} EUR per month`,
+            );
+            expect(detail).toHaveTextContent(
+                `Model: 2,000.00 regional RU/s at a ${multiplier} billing multiplier: ${multiplier === 1.5 ? '3,000.00' : '2,000.00'} billed-equivalent RU/s`,
+            );
+            expect(detail).toHaveTextContent('Regional footprint: 1,000.00 RU/s per region across 2 regions.');
+            expect(detail).toHaveTextContent('not a guaranteed bill reduction');
+            expect(detail).toHaveTextContent('Estimates can overlap and must not be added together.');
+            expect(detail).toHaveTextContent('Contributing meters: 100 RU/s');
+            expect(detail).toHaveTextContent('2026-10-12T00:00:00.000Z');
+            await user.keyboard('{Escape}');
+            expect(trigger).toHaveFocus();
+        },
+    );
 
     it('labels backup as a separate retail scenario and does not render a tiny positive estimate as zero', async () => {
         const user = userEvent.setup();

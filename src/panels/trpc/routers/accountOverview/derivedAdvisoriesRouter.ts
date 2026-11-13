@@ -153,6 +153,7 @@ export async function getDerivedAdvisoriesForAccount(
             advisoryThresholds,
             accountConfig,
             costContext: {
+                multiRegionWritesEnabled: account.enableMultipleWriteLocations,
                 subscriptionId: metadata.subscription.subscriptionId,
                 resourceManagerEndpoint: metadata.subscription.environment.resourceManagerEndpointUrl,
                 locationNames: (account.locations ?? account.readLocations ?? []).map(

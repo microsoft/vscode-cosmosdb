@@ -218,7 +218,7 @@ export interface ThroughputRate {
     meters: string[];
     observationStart: string;
     observationEnd: string;
-    /** Account-blended currency cost per regional RU/s for a 730-hour month. */
+    /** Account-blended currency cost per billed-equivalent regional RU/s for a 730-hour month. */
     perRuMonth: number;
 }
 
@@ -236,8 +236,14 @@ export type AdvisoryCostEstimate = {
 } & (
     | {
           basis: 'customerAmortizedBill';
-          /** Total recoverable regional RU/s, matching the billed-usage rate's unit. */
+          /** Total physical recoverable regional RU/s, before the billing-quantity conversion. */
           recoverableRu: number;
+          billingConversion: {
+              throughputMode: 'manual' | 'autoscale';
+              multiRegionWritesEnabled: boolean | null;
+              quantityMultiplier: 1 | 1.5;
+              billedEquivalentRu: number;
+          };
           /** Null when recoverable capacity already sums removable extra regions. */
           regionalFootprint: { regionCount: number; recoverableRuPerRegion: number } | null;
           rate: ThroughputRate;

@@ -639,6 +639,13 @@ the qualitative recovery-policy review is retained even when this enrichment fai
 
 Optional cost coverage has its own categorized notice, independent of metric/log detector coverage.
 A billing HTTP 204 No Content response means unavailable data; an empty HTTP 200 response remains invalid evidence.
+Physical regional capacity is converted to billed-equivalent RU/s before applying the observed meter rate.
+Single-write autoscale uses a 1.5 quantity multiplier; manual offers and multi-write autoscale use 1.
+Unknown idle-offer mode or unknown autoscale write configuration withholds the affected estimate, not the finding.
+Physical capacity, offer mode, known write configuration, multiplier and billed-equivalent capacity remain provenance.
+See [autoscale billing quantities](https://learn.microsoft.com/en-us/azure/cosmos-db/autoscale-faq#how-does-autoscale-show-up-on-my-bill).
+Denied inventory retains `backup/accessDenied` rather than becoming missing storage data.
+Unsupported-cost guidance covers both account API restrictions and cloud restrictions.
 Authentication, access denial, rate limiting, timeouts, service/query errors, invalid/incomplete evidence,
 unsupported clouds and no usable data stay distinguishable without forwarding raw service errors or billing
 rows. Missing access or data means no monetary figure, never fabricated zero. No billing query runs without

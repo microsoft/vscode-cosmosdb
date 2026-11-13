@@ -887,6 +887,13 @@ billable savings or permission to remove regions. Extra-region capacity is only 
 finding; legitimate HA has no removable extra-region capacity. Autoscale, serverless and incomplete inventories are
 not quantified. MongoDB metadata support in this pure configuration evaluation does not introduce a MongoDB provider.
 
+`npm run coda:check` independently compares the tracked branch HEAD and pin, reports exact ahead/behind counts including
+rewound/divergent/unrelated histories, and exits nonzero for mismatch or unverifiable source access. It never repins.
+The package-feed workflow defines a separate advisory job without build dependencies or `continue-on-error`;
+that hosted job is currently disabled. The local command remains available.
+Private read credentials are withheld from every PR; owner-managed push/manual credentials and optional branch-rule
+configuration are required separately. Freshness equality is not a conformance result.
+
 **Adoption limits:** native collection and computation remain separate; there is no CODA MCP/Python dependency.
 Aggregate request-log support, complete per-rule/per-scope evaluation outcomes, other upstream enrichment and approved
 public contract distribution remain separate work. Private upstream files are not vendored into tracked source.

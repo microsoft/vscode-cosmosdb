@@ -15,9 +15,9 @@ import {
 import { createAzureSubscriptionClient, type AzExtSubscriptionClientType } from '@microsoft/vscode-azext-azureutils';
 import { type IActionContext, type ISubscriptionContext } from '@microsoft/vscode-azext-utils';
 import { armTestSubscription, createArmTestContext } from '../cosmosdb/armTestUtils';
-import { readCostArmJson } from '../panels/accountOverview/services/advisories/fetchers/costManagement';
-import { enrichAdvisoryCosts } from '../panels/accountOverview/services/advisories/costEstimates';
 import { type DerivedAdvisory } from '../panels/accountOverview/services/advisories/core/types';
+import { enrichAdvisoryCosts } from '../panels/accountOverview/services/advisories/costEstimates';
+import { readCostArmJson } from '../panels/accountOverview/services/advisories/fetchers/costManagement';
 import {
     COSMOSDB_ARM_API_VERSION,
     createCosmosDBManagementClient,

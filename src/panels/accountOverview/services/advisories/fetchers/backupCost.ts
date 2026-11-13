@@ -91,7 +91,11 @@ const priceSchema = z.object({
 });
 
 /** Unauthenticated reads only: no ARM pipeline/tokens and no redirects or pagination outside the fixed endpoint. */
-async function getBackupPrices(regions: readonly string[], now: number, abortSignal?: AbortSignal): Promise<BackupPrice[]> {
+async function getBackupPrices(
+    regions: readonly string[],
+    now: number,
+    abortSignal?: AbortSignal,
+): Promise<BackupPrice[]> {
     const initial = new URL(RETAIL_URL);
     initial.searchParams.set('$filter', `serviceName eq 'Azure Cosmos DB' and productName eq '${PITR_PRODUCT}'`);
     initial.searchParams.set('currencyCode', CURRENCY);
@@ -326,8 +330,19 @@ export async function getBackupCostEstimate(
     }
     const regions = await resolveRegions(cosmosClient, context);
     const referenceRegion = regions[0].monitorName;
-    const snapshot = await getStorageSnapshot(monitorClient, accountId, rows, referenceRegion, now, context.abortSignal);
-    const prices = await getBackupPrices(regions.map((region) => region.retailName), now, context.abortSignal);
+    const snapshot = await getStorageSnapshot(
+        monitorClient,
+        accountId,
+        rows,
+        referenceRegion,
+        now,
+        context.abortSignal,
+    );
+    const prices = await getBackupPrices(
+        regions.map((region) => region.retailName),
+        now,
+        context.abortSignal,
+    );
     const monthlyAmount = (snapshot.bytes / 1_000_000_000) * prices.reduce((sum, price) => sum + price.perGbMonth, 0);
     if (!Number.isFinite(monthlyAmount) || monthlyAmount < 0) {
         throw new CostEvidenceError('invalidData');

@@ -283,6 +283,29 @@ describe('probeCdbLogs', () => {
         });
     });
 
+    it('preserves sign-in guidance for partial SDK authentication errors without accepting partial rows', async () => {
+        const queryResource = vi.fn().mockResolvedValue({
+            status: LogsQueryResultStatus.PartialFailure,
+            partialTables: [table(['document'], [['PRIVATE_DOCUMENT']])],
+            partialError: { code: 'PartialError', details: [{ code: 'ExpiredAuthenticationToken' }] },
+        });
+        const onDiagnostic = vi.fn();
+        await expect(probeCdbLogs({ queryResource }, RESOURCE, SPAN, { onDiagnostic })).resolves.toEqual({
+            available: false,
+            reason: 'rbac',
+        });
+        expect(queryResource).toHaveBeenCalledOnce();
+        expect(onDiagnostic).toHaveBeenCalledExactlyOnceWith(
+            expect.objectContaining({
+                operation: 'probeDataPlane',
+                reason: 'rbac',
+                kind: 'authentication',
+                codes: ['PartialError', 'ExpiredAuthenticationToken'],
+            }),
+        );
+        expect(JSON.stringify(onDiagnostic.mock.calls)).not.toContain('PRIVATE_DOCUMENT');
+    });
+
     it('defaults to the data-plane schema and reports a partial error even with rows', async () => {
         const queryResource = vi.fn().mockResolvedValue({
             status: 'PartialFailure',

@@ -21,10 +21,6 @@ import {
     DialogTrigger,
     Link,
     makeStyles,
-    MessageBar,
-    MessageBarActions,
-    MessageBarBody,
-    MessageBarTitle,
     Text,
     tokens,
     typographyStyles,
@@ -33,6 +29,7 @@ import {
 import { ChevronRight16Regular, Dismiss16Regular, Sparkle16Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { getVisibleAdvisories } from '../../../panels/accountOverview/services/advisories/core/helpers';
 import {
     type DerivedAdvisory,
     type DerivedAdvisoryRule,
@@ -42,6 +39,7 @@ import {
 } from '../../api/types';
 import { ThemedTooltip as Tooltip } from '../../common/ThemedTooltip';
 import { AdvisoryText } from './AdvisoryText';
+import { CollapsibleNotice } from './CollapsibleNotice';
 import { DIAGNOSTIC_SETTINGS_URL, EmptyState, useDashboardActions } from './DashboardChrome';
 
 const SEVERITY_TONE: Record<DerivedAdvisorySeverity, BadgeProps['color']> = {
@@ -62,12 +60,6 @@ const useStyles = makeStyles({
         display: 'flex',
         flexDirection: 'column',
         gap: tokens.spacingVerticalM,
-        // Fill the height the card hands down (the card grows to match the main column) and clip, so the list below
-        // owns the scroll. When the card is not height-constrained (e.g. the rail wraps under the main column on a
-        // narrow viewport), this simply grows to the content height and nothing scrolls.
-        flexGrow: 1,
-        minHeight: 0,
-        overflow: 'hidden',
     },
     provenanceRow: {
         display: 'flex',
@@ -87,18 +79,9 @@ const useStyles = makeStyles({
         // A focusable badge so keyboard/screen-reader users can reach the "why" tooltip (focusableBadge pattern).
         cursor: 'default',
     },
-    notice: {
-        marginBottom: tokens.spacingVerticalS,
-    },
-    noticeActions: {
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        rowGap: tokens.spacingVerticalS,
-    },
-    scrollBody: {
-        flexGrow: 1,
-        minHeight: 0,
-        overflowY: 'auto',
+    body: {
+        display: 'flex',
+        flexDirection: 'column',
     },
     list: {
         display: 'flex',
@@ -464,12 +447,22 @@ function groupAdvisories(advisories: readonly DerivedAdvisory[]): AdvisoryGroup[
  * skipped. Each reason has a different fix, so the notice names it and, where actionable, links to guidance. The
  * Tier-1 advisories still render above/below — this notice explains that some log-based checks did not run.
  */
-function logCoverageNotice(reason: UnavailableReason | undefined): {
+function logCoverageNotice(source: DerivedAdvisoriesResult['logSource']): {
     body: string;
     linkLabel?: string;
     linkUrl?: string;
 } {
-    switch (reason) {
+    if (
+        source?.failures?.some((failure) => failure.kind === 'authentication') &&
+        !source.failures.some((failure) => failure.reason === 'rbac' && failure.kind !== 'authentication')
+    ) {
+        return {
+            body: l10n.t(
+                'Sign-in required. Check your Azure sign-in, tenant and credentials; assigning a role alone may not resolve this failure.',
+            ),
+        };
+    }
+    switch (source?.reason) {
         case 'logAnalyticsDisabled':
             return {
                 body:
@@ -764,9 +757,7 @@ export const DerivedAdvisories = ({
     // Collapse the flat advisory list (worst case: tens of thousands of container-scoped findings) into one group per
     // detector. Memoized on the raw list + dismissals so a card re-render never re-buckets the whole account.
     const groups = useMemo(() => {
-        const visible = (result?.advisories ?? []).filter(
-            (advisory) => !advisory.supersededBy && !dismissedIds.has(advisory.id),
-        );
+        const visible = getVisibleAdvisories(result?.advisories ?? [], dismissedIds);
         return groupAdvisories(visible);
     }, [result?.advisories, dismissedIds]);
     const visibleCount = groups.reduce((total, group) => total + group.advisories.length, 0);
@@ -780,6 +771,12 @@ export const DerivedAdvisories = ({
     const partialCoverage = !!result?.available && !!logSource && logSource.available === false;
     const coverageReason = logSource?.reason;
     const metricPartialCoverage = !!result?.available && result.metricSource?.available === false;
+    const metricCoverageIntent =
+        result?.metricSource?.failures.some(
+            (failure) => failure.reason !== 'noData' && failure.reason !== 'unsupported',
+        ) || result?.diagnostics?.some((failure) => failure.source !== 'logs')
+            ? 'warning'
+            : 'info';
 
     useEffect(() => {
         if (partialCoverage) {
@@ -827,7 +824,7 @@ export const DerivedAdvisories = ({
                     className={styles.coveragePill}
                     tabIndex={0}
                     appearance="tint"
-                    color="warning"
+                    color={partialCoverage || metricCoverageIntent === 'warning' ? 'warning' : 'informative'}
                     aria-label={coverageLabel}
                 >
                     <span aria-hidden="true">{coverageLabel}</span>
@@ -878,9 +875,11 @@ export const DerivedAdvisories = ({
                 {provenance}
                 {coverageBadge}
             </div>
-            <div className={styles.scrollBody}>
+            <div className={styles.body}>
                 {partialCoverage && <PartialCoverageNotice source={logSource} />}
-                {metricPartialCoverage && <MetricCoverageNotice source={result?.metricSource} />}
+                {metricPartialCoverage && (
+                    <MetricCoverageNotice source={result?.metricSource} intent={metricCoverageIntent} />
+                )}
                 {result?.available && result.costSource?.available === false && (
                     <CostCoverageNotice source={result.costSource} />
                 )}
@@ -996,7 +995,6 @@ const CostEstimateDetails = ({ estimate }: { estimate: NonNullable<DerivedAdviso
 };
 
 const CostCoverageNotice = ({ source }: { source: NonNullable<DerivedAdvisoriesResult['costSource']> }) => {
-    const styles = useStyles();
     const title = l10n.t('Some cost estimates are unavailable');
     const reasons: Record<NonNullable<DerivedAdvisoriesResult['costSource']>['failures'][number]['kind'], string> = {
         notConfigured: l10n.t('Billing context was not available for this analysis.'),
@@ -1015,35 +1013,29 @@ const CostCoverageNotice = ({ source }: { source: NonNullable<DerivedAdvisoriesR
         unsupported: l10n.t('Cost estimates are not supported for this account API or Azure cloud.'),
     };
     return (
-        <MessageBar
-            className={styles.notice}
-            intent="warning"
-            layout="multiline"
-            politeness="polite"
-            icon={{ 'aria-hidden': true }}
-            aria-label={title}
-        >
-            <MessageBarBody>
-                <MessageBarTitle>{title}</MessageBarTitle>
-                <div>
-                    {l10n.t('Capacity and configuration recommendations remain valid without monetary estimates.')}
-                </div>
-                <ul>
-                    {source.failures.map((failure) => (
-                        <li key={`${failure.operation}-${failure.kind}`}>
-                            {failure.operation === 'throughput'
-                                ? l10n.t('Throughput: {reason}', { reason: reasons[failure.kind] })
-                                : l10n.t('Continuous backup: {reason}', { reason: reasons[failure.kind] })}
-                        </li>
-                    ))}
-                </ul>
-            </MessageBarBody>
-        </MessageBar>
+        <CollapsibleNotice title={title} intent="warning" actions={null}>
+            <div>{l10n.t('Capacity and configuration recommendations remain valid without monetary estimates.')}</div>
+            <ul>
+                {source.failures.map((failure) => (
+                    <li key={`${failure.operation}-${failure.kind}`}>
+                        {failure.operation === 'throughput'
+                            ? l10n.t('Throughput: {reason}', { reason: reasons[failure.kind] })
+                            : l10n.t('Continuous backup: {reason}', { reason: reasons[failure.kind] })}
+                    </li>
+                ))}
+            </ul>
+        </CollapsibleNotice>
     );
 };
 
-const MetricCoverageNotice = ({ source }: { source: DerivedAdvisoriesResult['metricSource'] }) => {
-    const styles = useStyles();
+const MetricCoverageNotice = ({
+    source,
+    intent,
+}: {
+    source: DerivedAdvisoriesResult['metricSource'];
+    intent: 'info' | 'warning';
+}) => {
+    const { showOutput } = useDashboardActions();
     const reasons: Record<UnavailableReason, string> = {
         noData: l10n.t('Metric data unavailable or incomplete'),
         rbac: l10n.t('Access denied'),
@@ -1052,29 +1044,33 @@ const MetricCoverageNotice = ({ source }: { source: DerivedAdvisoriesResult['met
     };
     const failures = new Map((source?.failures ?? []).map((failure) => [`${failure.rule}:${failure.reason}`, failure]));
     return (
-        <MessageBar
-            className={styles.notice}
-            intent="warning"
-            layout="multiline"
-            politeness="polite"
-            icon={{ 'aria-hidden': true }}
+        <CollapsibleNotice
+            title={l10n.t('Incomplete workload analysis')}
+            intent={intent}
+            actions={
+                <Button size="small" onClick={showOutput}>
+                    {l10n.t('Show Output')}
+                </Button>
+            }
         >
-            <MessageBarBody>
-                <MessageBarTitle>{l10n.t('Incomplete workload analysis')}</MessageBarTitle>
-                <div>
-                    {l10n.t(
-                        'Some workload checks could not run. Missing or failed metric queries are not treated as zero usage.',
-                    ) +
-                        ' ' +
-                        l10n.t('Configuration checks and successful analyses still contribute recommendations.')}
-                </div>
-                <ul>
-                    {[...failures].map(([key, failure]) => (
-                        <li key={key}>{`${ruleMeta(failure.rule).name}: ${reasons[failure.reason]}`}</li>
-                    ))}
-                </ul>
-            </MessageBarBody>
-        </MessageBar>
+            <div>
+                {l10n.t(
+                    'Some workload checks could not run. Missing or failed metric queries are not treated as zero usage.',
+                ) +
+                    ' ' +
+                    l10n.t('Configuration checks and successful analyses still contribute recommendations.')}
+            </div>
+            <ul>
+                {[...failures].map(([key, failure]) => (
+                    <li key={key}>{`${ruleMeta(failure.rule).name}: ${reasons[failure.reason]}`}</li>
+                ))}
+            </ul>
+            <div>
+                {l10n.t(
+                    'The Output channel lists skipped checks and any request errors. Missing metric observations do not by themselves indicate insufficient permissions.',
+                )}
+            </div>
+        </CollapsibleNotice>
     );
 };
 
@@ -1083,9 +1079,8 @@ const MetricCoverageNotice = ({ source }: { source: DerivedAdvisoriesResult['met
  * Names the failure category and links to guidance where actionable.
  */
 const PartialCoverageNotice = ({ source }: { source: DerivedAdvisoriesResult['logSource'] }) => {
-    const styles = useStyles();
     const { openUrl, showOutput } = useDashboardActions();
-    const { body, linkLabel, linkUrl } = logCoverageNotice(source?.reason);
+    const { body, linkLabel, linkUrl } = logCoverageNotice(source);
     const operations = {
         probeDataPlane: l10n.t('DataPlaneRequests availability'),
         probeDataPlane5M: l10n.t('DataPlaneRequests5M availability'),
@@ -1101,6 +1096,7 @@ const PartialCoverageNotice = ({ source }: { source: DerivedAdvisoriesResult['lo
     };
     const kinds = {
         accessDenied: l10n.t('Access denied'),
+        authentication: l10n.t('Sign-in required'),
         missingTable: l10n.t('Required table unavailable'),
         queryError: l10n.t('Query error'),
         partialFailure: l10n.t('Incomplete query result'),
@@ -1109,41 +1105,35 @@ const PartialCoverageNotice = ({ source }: { source: DerivedAdvisoriesResult['lo
         clientUnavailable: l10n.t('Client unavailable'),
     };
     return (
-        <MessageBar
-            className={styles.notice}
+        <CollapsibleNotice
+            title={l10n.t('Partial coverage')}
             intent="warning"
-            layout="multiline"
-            politeness="polite"
-            icon={{ 'aria-hidden': true }}
-        >
-            <MessageBarBody>
-                <MessageBarTitle>{l10n.t('Partial coverage')}</MessageBarTitle>
-                <div>{body}</div>
-                {!!source?.failures?.length && (
-                    <ul>
-                        {source.failures.map((failure) => (
-                            <li key={`${failure.operation}-${failure.kind}`}>
-                                {`${operations[failure.operation]}: ${kinds[failure.kind]}`}
-                            </li>
-                        ))}
-                    </ul>
-                )}
-                <div>
-                    {l10n.t(
-                        'See the extension Output channel for the HTTP status, service error details, and request ID.',
+            actions={
+                <>
+                    <Button size="small" onClick={showOutput}>
+                        {l10n.t('Show Output')}
+                    </Button>
+                    {linkLabel && linkUrl && (
+                        <Link as="button" onClick={() => openUrl(linkUrl)}>
+                            {linkLabel}
+                        </Link>
                     )}
-                </div>
-            </MessageBarBody>
-            <MessageBarActions className={styles.noticeActions}>
-                <Button size="small" onClick={showOutput}>
-                    {l10n.t('Show Output')}
-                </Button>
-                {linkLabel && linkUrl && (
-                    <Link as="button" onClick={() => openUrl(linkUrl)}>
-                        {linkLabel}
-                    </Link>
-                )}
-            </MessageBarActions>
-        </MessageBar>
+                </>
+            }
+        >
+            <div>{body}</div>
+            {!!source?.failures?.length && (
+                <ul>
+                    {source.failures.map((failure) => (
+                        <li key={`${failure.operation}-${failure.kind}-${failure.reason}`}>
+                            {`${operations[failure.operation]}: ${kinds[failure.kind]}`}
+                        </li>
+                    ))}
+                </ul>
+            )}
+            <div>
+                {l10n.t('See the extension Output channel for the HTTP status, service error details, and request ID.')}
+            </div>
+        </CollapsibleNotice>
     );
 };

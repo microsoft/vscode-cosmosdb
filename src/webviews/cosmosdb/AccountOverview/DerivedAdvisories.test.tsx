@@ -13,6 +13,7 @@ import {
     cardClassNames,
     FluentProvider,
     messageBarClassNames,
+    tokens,
     webLightTheme,
 } from '@fluentui/react-components';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -29,22 +30,128 @@ function showCoverage(source: DerivedAdvisoriesResult['logSource'], overrides: P
     const openUrl = vi.fn();
     const showOutput = vi.fn();
     const onDismiss = vi.fn();
-    render(
+    const view = (logSource: DerivedAdvisoriesResult['logSource']) => (
         <FluentProvider theme={webLightTheme}>
             <DashboardActionsProvider value={{ openUrl, showOutput, reportEvent: vi.fn() }}>
                 <DerivedAdvisories
-                    result={{ available: true, generatedAt: 0, advisories: [], logSource: source, ...overrides }}
+                    result={{ available: true, generatedAt: 0, advisories: [], logSource, ...overrides }}
                     loading={false}
                     dismissedIds={new Set()}
                     onDismiss={onDismiss}
                 />
             </DashboardActionsProvider>
-        </FluentProvider>,
+        </FluentProvider>
     );
-    return { openUrl, showOutput, onDismiss };
+    const { rerender } = render(view(source));
+    return {
+        openUrl,
+        showOutput,
+        onDismiss,
+        rerenderCoverage: (logSource: DerivedAdvisoriesResult['logSource']) => rerender(view(logSource)),
+    };
+}
+
+function expandNotice(title: string) {
+    const notice = screen.getByRole('group', { name: title });
+    fireEvent.click(within(notice).getByRole('button', { name: title }));
+    return notice;
 }
 
 describe('log coverage guidance', () => {
+    it.each([
+        {
+            name: 'a missing table',
+            kind: 'missingTable',
+            reason: 'logAnalyticsDisabled',
+            label: 'Required table unavailable',
+        },
+        { name: 'a temporary failure', kind: 'transient', reason: 'noData', label: 'Temporary service failure' },
+        { name: 'a query failure', kind: 'queryError', reason: 'noData', label: 'Query error' },
+    ] as const)('prioritizes sign-in guidance when authentication is mixed with $name', ({ kind, reason, label }) => {
+        const failures: NonNullable<DerivedAdvisoriesResult['logSource']>['failures'] = [
+            { operation: 'probeDataPlane5M', kind, reason },
+            { operation: 'probeDataPlane', kind: 'authentication', reason: 'rbac' },
+        ];
+        const { rerenderCoverage } = showCoverage({
+            available: false,
+            reason: 'rbac',
+            failures,
+        });
+        const notice = expandNotice('Partial coverage');
+        expect(within(notice).getByText(/Sign-in required\. Check your Azure sign-in/)).toBeVisible();
+        expect(within(notice).getByText(`DataPlaneRequests5M availability: ${label}`)).toBeVisible();
+        expect(within(notice).getByText('DataPlaneRequests availability: Sign-in required')).toBeVisible();
+        expect(
+            within(notice).queryByRole('button', { name: 'Learn about Log Analytics access' }),
+        ).not.toBeInTheDocument();
+        rerenderCoverage({ available: false, reason: 'rbac', failures: [...failures].reverse() });
+        expect(within(notice).getByText(/Sign-in required\. Check your Azure sign-in/)).toBeVisible();
+        expect(
+            within(notice).queryByRole('button', { name: 'Learn about Log Analytics access' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it.each(['accessDenied', 'partialFailure'] as const)(
+        'retains permission guidance for authentication mixed with an independent %s requiring authorization',
+        (kind) => {
+            const failures: NonNullable<DerivedAdvisoriesResult['logSource']>['failures'] = [
+                { operation: 'probeDataPlane', kind: 'authentication', reason: 'rbac' },
+                { operation: 'crossPartitionRu', kind, reason: 'rbac' },
+            ];
+            const { rerenderCoverage } = showCoverage({ available: false, reason: 'rbac', failures });
+            const notice = expandNotice('Partial coverage');
+            const guidance = within(notice).getByRole('button', { name: 'Learn about Log Analytics access' });
+            expect(guidance).toHaveTextContent('Learn about Log Analytics access');
+            expect(guidance).toHaveAccessibleName('Learn about Log Analytics access');
+            expect(within(notice).getByText('DataPlaneRequests availability: Sign-in required')).toBeVisible();
+            expect(within(notice).queryByText(/Sign-in required\. Check your Azure sign-in/)).not.toBeInTheDocument();
+            rerenderCoverage({ available: false, reason: 'rbac', failures: [...failures].reverse() });
+            expect(within(notice).getByRole('button', { name: 'Learn about Log Analytics access' })).toBeVisible();
+        },
+    );
+
+    it('reconciles partial failures with distinct reasons independently on refresh', () => {
+        const errors = vi.spyOn(console, 'error');
+        const failures: NonNullable<DerivedAdvisoriesResult['logSource']>['failures'] = [
+            { operation: 'crossPartitionRu', kind: 'partialFailure', reason: 'noData' },
+            { operation: 'crossPartitionRu', kind: 'partialFailure', reason: 'rbac' },
+        ];
+        try {
+            const { rerenderCoverage } = showCoverage({ available: false, reason: 'rbac', failures });
+            const notice = expandNotice('Partial coverage');
+            const [missing, denied] = within(notice).getAllByRole('listitem');
+            rerenderCoverage({ available: false, reason: 'rbac', failures: [failures[1], failures[0]] });
+            const reordered = within(notice).getAllByRole('listitem');
+            expect(reordered).toHaveLength(2);
+            expect(reordered[0]).toBe(denied);
+            expect(reordered[1]).toBe(missing);
+            rerenderCoverage({ available: false, reason: 'noData', failures: [failures[0]] });
+            const remaining = within(notice).getAllByRole('listitem');
+            expect(remaining).toHaveLength(1);
+            expect(remaining[0]).toBe(missing);
+            expect(
+                errors.mock.calls.flat().filter((arg) => typeof arg === 'string' && arg.includes('same key')),
+            ).toEqual([]);
+        } finally {
+            errors.mockRestore();
+        }
+    });
+
+    it('explains expired log authentication without suggesting that a role grant will fix it', () => {
+        showCoverage({
+            available: false,
+            reason: 'rbac',
+            failures: [{ operation: 'probeDataPlane5M', kind: 'authentication', reason: 'rbac' }],
+        });
+        const notice = expandNotice('Partial coverage');
+        expect(within(notice).getByText(/Sign-in required\. Check your Azure sign-in/)).toBeVisible();
+        expect(within(notice).getByText('DataPlaneRequests5M availability: Sign-in required')).toBeVisible();
+        expect(within(notice).queryByText(/Some log-based checks were denied access/)).not.toBeInTheDocument();
+        expect(
+            within(notice).queryByRole('button', { name: 'Learn about Log Analytics access' }),
+        ).not.toBeInTheDocument();
+    });
+
     it('names the failed check and explains resource/workspace access instead of assuming one missing role', () => {
         const { openUrl } = showCoverage({
             available: false,
@@ -56,6 +163,13 @@ describe('log coverage guidance', () => {
         expect(notice).toHaveClass(messageBarClassNames.root);
         expect(notice).not.toHaveAttribute('tabindex');
         expect(notice.querySelector(`.${messageBarClassNames.icon}`)).toHaveAttribute('aria-hidden', 'true');
+        const toggle = within(notice).getByRole('button', { name: 'Partial coverage' });
+        expect(toggle).toHaveTextContent('Partial coverage');
+        expect(toggle).toHaveAccessibleName('Partial coverage');
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        expect(within(notice).queryByRole('list')).not.toBeInTheDocument();
+        expandNotice('Partial coverage');
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
         expect(screen.getByText('DataPlaneRequests availability: Access denied')).toBeDefined();
         expect(
             screen.getByText(
@@ -77,6 +191,7 @@ describe('log coverage guidance', () => {
             reason: 'logAnalyticsDisabled',
             failures: [{ operation: 'probeQueryRuntime', kind: 'missingTable', reason: 'logAnalyticsDisabled' }],
         });
+        expandNotice('Partial coverage');
         expect(
             screen.getByText(
                 'Some required CDB log tables could not be queried. ' +
@@ -95,6 +210,7 @@ describe('log coverage guidance', () => {
             reason: 'noData',
             failures: [{ operation: 'crossPartition', kind: 'queryError', reason: 'noData' }],
         });
+        expandNotice('Partial coverage');
         expect(screen.getByText('Query fan-out: Query error')).toBeDefined();
         expect(
             screen.getByText(
@@ -171,6 +287,11 @@ describe('log coverage guidance', () => {
         expect(coverage).toHaveAccessibleName('Partial coverage');
         expect(coverage).toHaveAccessibleDescription('Some analyzers could not run, so coverage is partial.');
         await user.tab();
+        const toggle = screen.getByRole('button', { name: 'Partial coverage' });
+        expect(toggle).toHaveFocus();
+        await user.keyboard('{Enter}');
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
+        await user.tab();
         expect(button).toHaveFocus();
         await user.keyboard('{Enter}');
         expect(showOutput).toHaveBeenCalledTimes(1);
@@ -178,16 +299,22 @@ describe('log coverage guidance', () => {
 });
 
 describe('metric coverage and actionable findings', () => {
-    it('does not blame only the cloud for unsupported account APIs', () => {
+    it('does not blame only the cloud for unsupported account APIs', async () => {
+        const user = userEvent.setup();
         showCoverage(
             { available: true },
             { costSource: { available: false, failures: [{ operation: 'backup', kind: 'unsupported' }] } },
         );
+        const toggle = screen.getByRole('button', { name: 'Some cost estimates are unavailable' });
+        expect(toggle).toHaveTextContent('Some cost estimates are unavailable');
+        expect(toggle).toHaveAccessibleName('Some cost estimates are unavailable');
+        toggle.focus();
+        await user.keyboard('{Enter}');
         expect(
             screen.getByText(
                 'Continuous backup: Cost estimates are not supported for this account API or Azure cloud.',
             ),
-        ).toBeInTheDocument();
+        ).toBeVisible();
     });
 
     it('reconciles multiple cost failures for one operation independently on refresh', () => {
@@ -217,6 +344,7 @@ describe('metric coverage and actionable findings', () => {
                 ]),
             );
             const notice = screen.getByRole('group', { name: 'Some cost estimates are unavailable' });
+            fireEvent.click(within(notice).getByRole('button', { name: 'Some cost estimates are unavailable' }));
             expect(within(notice).getAllByRole('listitem')).toHaveLength(2);
             rerender(view([{ operation: 'throughput', kind: 'accessDenied' }]));
             expect(within(notice).getAllByRole('listitem')).toHaveLength(1);
@@ -244,7 +372,8 @@ describe('metric coverage and actionable findings', () => {
         }
     });
 
-    it('keeps cost coverage separate and names access/rate failures without hiding recommendations', () => {
+    it('keeps cost coverage collapsed and separate without hiding recommendations or losing keyboard access', async () => {
+        const user = userEvent.setup();
         showCoverage(
             { available: true },
             {
@@ -270,6 +399,15 @@ describe('metric coverage and actionable findings', () => {
             },
         );
         const notice = screen.getByRole('group', { name: 'Some cost estimates are unavailable' });
+        const toggle = within(notice).getByRole('button', { name: 'Some cost estimates are unavailable' });
+        expect(toggle).toHaveTextContent('Some cost estimates are unavailable');
+        expect(toggle).toHaveAccessibleName('Some cost estimates are unavailable');
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        expect(within(notice).queryByRole('list')).not.toBeInTheDocument();
+        toggle.focus();
+        await user.keyboard('{Enter}');
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
+        expect(within(notice).getByRole('list')).toBeVisible();
         expect(notice).toHaveTextContent(
             'Capacity and configuration recommendations remain valid without monetary estimates.',
         );
@@ -437,6 +575,159 @@ describe('metric coverage and actionable findings', () => {
         expect(dialog).toHaveTextContent('Review requirements.');
     });
 
+    it.each([false, true])('keeps notices in normal page flow with findings=%s', (withFindings) => {
+        showCoverage(
+            { available: true },
+            {
+                metricSource: { available: false, failures: [{ rule: 'IndexingCostRisk', reason: 'noData' }] },
+                advisories: withFindings
+                    ? [
+                          {
+                              id: 'idle',
+                              rule: 'IdleContainer',
+                              severity: 'Low',
+                              title: 'Idle container',
+                              rationale: 'Almost no traffic was observed.',
+                              suggestedAction: 'Remove unused provisioned capacity.',
+                              thresholdReference: 'Peak consumption at most 50 RU.',
+                              scope: 'db/a',
+                          },
+                      ]
+                    : [],
+            },
+        );
+        const section = screen.getByLabelText('Recommendations');
+        expect(getComputedStyle(section).overflow).not.toBe('hidden');
+        const content = withFindings
+            ? within(section).getByRole('button', { name: /^Idle provisioned offers\./ })
+            : within(section).getByText('No advisories from the checks that completed.');
+        expect(content).toBeVisible();
+        const notice = screen.getByRole('group', { name: 'Incomplete workload analysis' });
+        const toggle = within(notice).getByRole('button', { name: 'Incomplete workload analysis' });
+        expect(toggle).toHaveTextContent('Incomplete workload analysis');
+        expect(toggle).toHaveAccessibleName('Incomplete workload analysis');
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        expect(within(notice).queryByRole('list')).not.toBeInTheDocument();
+        expandNotice('Incomplete workload analysis');
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
+        let element: HTMLElement | null = within(section).getByRole('button', { name: 'Show Output' });
+        while (element && section.contains(element)) {
+            const style = getComputedStyle(element);
+            expect(['auto', 'scroll']).not.toContain(style.overflowY || style.overflow);
+            element = element.parentElement;
+        }
+        expect(within(section).getByText('Indexing cost risk: Metric data unavailable or incomplete')).toBeVisible();
+        fireEvent.click(toggle);
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        expect(within(notice).queryByRole('list')).not.toBeInTheDocument();
+        expect(content).toBeVisible();
+    });
+
+    it.each(['noData', 'unsupported'] as const)(
+        'uses an informational background for %s without read errors',
+        (reason) => {
+            showCoverage(
+                { available: true },
+                { metricSource: { available: false, failures: [{ rule: 'IdleContainer', reason }] } },
+            );
+            const notice = screen.getByRole('group', { name: 'Incomplete workload analysis' });
+            expect(notice).toHaveStyle({ backgroundColor: tokens.colorNeutralBackground3 });
+            expect(notice.querySelector(`.${messageBarClassNames.icon}`)).toHaveAttribute('aria-hidden', 'true');
+            expect(within(notice).getByRole('button', { name: 'Show Output' })).toHaveAccessibleName('Show Output');
+        },
+    );
+
+    it.each(['metrics', 'inventory', 'account', 'activityLog'] as const)(
+        'retains a warning background for a %s request error classified as noData',
+        (source) => {
+            showCoverage(
+                { available: true },
+                {
+                    metricSource: { available: false, failures: [{ rule: 'IdleContainer', reason: 'noData' }] },
+                    diagnostics: [{ source, kind: 'transient', reason: 'noData' }],
+                },
+            );
+            expect(screen.getByRole('group', { name: 'Incomplete workload analysis' })).toHaveStyle({
+                backgroundColor: tokens.colorStatusWarningBackground1,
+            });
+        },
+    );
+
+    it.each(['accessDenied', 'authentication'] as const)('retains a warning background for %s', (kind) => {
+        showCoverage(
+            { available: true },
+            {
+                metricSource: { available: false, failures: [{ rule: 'IdleContainer', reason: 'rbac' }] },
+                diagnostics: [{ source: 'metrics', kind, reason: 'rbac' }],
+            },
+        );
+        expect(screen.getByRole('group', { name: 'Incomplete workload analysis' })).toHaveStyle({
+            backgroundColor: tokens.colorStatusWarningBackground1,
+        });
+    });
+
+    it('retains a warning when empty data and denied checks are mixed', () => {
+        showCoverage(
+            { available: true },
+            {
+                metricSource: {
+                    available: false,
+                    failures: [
+                        { rule: 'IdleContainer', reason: 'noData' },
+                        { rule: 'HotPartitionRisk', reason: 'rbac' },
+                    ],
+                },
+            },
+        );
+        expect(screen.getByRole('group', { name: 'Incomplete workload analysis' })).toHaveStyle({
+            backgroundColor: tokens.colorStatusWarningBackground1,
+        });
+    });
+
+    it('keeps empty metric data informational independently of Log Analytics failures', () => {
+        showCoverage(
+            { available: false, reason: 'rbac' },
+            {
+                metricSource: { available: false, failures: [{ rule: 'IdleContainer', reason: 'noData' }] },
+                diagnostics: [{ source: 'logs', kind: 'accessDenied', reason: 'rbac' }],
+            },
+        );
+        expect(screen.getByRole('group', { name: 'Incomplete workload analysis' })).toHaveStyle({
+            backgroundColor: tokens.colorNeutralBackground3,
+        });
+        expect(screen.getByRole('group', { name: 'Partial coverage' })).toHaveStyle({
+            backgroundColor: tokens.colorStatusWarningBackground1,
+        });
+    });
+
+    it('opens Output for incomplete metric analysis even when no request diagnostic was returned', async () => {
+        const user = userEvent.setup();
+        const { showOutput } = showCoverage(
+            { available: true },
+            {
+                metricSource: {
+                    available: false,
+                    failures: [
+                        { rule: 'SustainedThrottlingInRegion', reason: 'noData' },
+                        { rule: 'HotPartitionRisk', reason: 'noData' },
+                    ],
+                },
+            },
+        );
+        const notice = expandNotice('Incomplete workload analysis');
+        expect(
+            within(notice).getByText('Sustained throttling: Metric data unavailable or incomplete'),
+        ).toBeInTheDocument();
+        expect(within(notice).getByText('Hot partitions: Metric data unavailable or incomplete')).toBeInTheDocument();
+        const button = within(notice).getByRole('button', { name: 'Show Output' });
+        expect(button).toHaveTextContent('Show Output');
+        expect(button).toHaveAccessibleName('Show Output');
+        button.focus();
+        await user.keyboard('{Enter}');
+        expect(showOutput).toHaveBeenCalledOnce();
+        expect(screen.queryByText(/Access denied/)).not.toBeInTheDocument();
+    });
+
     it('announces incomplete metric checks without claiming a clean result or blaming Log Analytics', () => {
         showCoverage(
             { available: true },
@@ -454,6 +745,7 @@ describe('metric coverage and actionable findings', () => {
         expect(notice).toHaveClass(messageBarClassNames.root);
         expect(notice).not.toHaveAttribute('tabindex');
         expect(notice.querySelector(`.${messageBarClassNames.icon}`)).toHaveAttribute('aria-hidden', 'true');
+        expandNotice('Incomplete workload analysis');
         expect(within(notice).getByText('Incomplete workload analysis')).toBeInTheDocument();
         expect(
             screen.getByText(
@@ -538,6 +830,9 @@ describe('metric coverage and actionable findings', () => {
             screen.getByRole('button', { name: `Dismiss advisory for db/${removed}` }).focus();
             await user.keyboard(key);
             const dialog = screen.getByRole('dialog');
+            const listStyle = getComputedStyle(within(dialog).getByRole('list'));
+            expect(listStyle.overflowY).toBe('auto');
+            expect(Number.parseFloat(listStyle.maxHeight)).toBeCloseTo(window.innerHeight * 0.6);
             expect(within(dialog).queryByRole('button', { name: `Dismiss advisory for db/${removed}` })).toBeNull();
             expect(within(dialog).getByRole('button', { name: `Dismiss advisory for db/${next}` })).toHaveFocus();
             expect(within(dialog).getAllByRole('listitem')).toHaveLength(2);

@@ -8,9 +8,7 @@ import { classifyLogsFailure, createLogsDiagnostic, LogsFetchError } from './log
 
 describe('classifyLogsFailure', () => {
     it.each([
-        { statusCode: 401 },
         { response: { status: '403' } },
-        { response: { statusCode: 401 } },
         { details: { error: { code: 'InsufficientAccessError' } } },
         { innererror: { code: 'AuthorizationFailedError' } },
         { innerError: { details: [{ code: 'Forbidden' }] } },
@@ -18,6 +16,14 @@ describe('classifyLogsFailure', () => {
         { response: { parsedBody: { error: { code: 'AccessDenied' } } } },
     ])('classifies nested SDK access failures: %j', (error) => {
         expect(classifyLogsFailure(error)).toEqual({ reason: 'rbac', kind: 'accessDenied' });
+    });
+
+    it.each([
+        { statusCode: 401 },
+        { response: { statusCode: '401' } },
+        { details: { error: { code: 'ExpiredAuthenticationToken' } } },
+    ])('distinguishes authentication failures: %j', (error) => {
+        expect(classifyLogsFailure(error)).toEqual({ reason: 'rbac', kind: 'authentication' });
     });
 
     it.each([
@@ -209,6 +215,18 @@ describe('createLogsDiagnostic', () => {
         ).toEqual(['Unexpected server condition for <redacted>.']);
         expect(createLogsDiagnostic('Unfamiliar failure.', 'client').messages).toEqual(['Unfamiliar failure.']);
     });
+
+    it.each([{ statusCode: 401 }, { code: 'PartialError', details: [{ code: 'ExpiredAuthenticationToken' }] }])(
+        'preserves sign-in classification for partially successful queries: %j',
+        (error) => {
+            const diagnostic = createLogsDiagnostic(error, 'ingestionBurst', { partialFailure: true });
+            expect(diagnostic).toMatchObject({ reason: 'rbac', kind: 'authentication' });
+            expect(classifyLogsFailure(new LogsFetchError(diagnostic))).toEqual({
+                reason: 'rbac',
+                kind: 'authentication',
+            });
+        },
+    );
 
     it('marks partial failures independently of the availability reason', () => {
         const diagnostic = createLogsDiagnostic({ code: 'InsufficientAccessError' }, 'ingestionBurst', {

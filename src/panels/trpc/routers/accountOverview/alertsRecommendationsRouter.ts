@@ -19,8 +19,10 @@ import {
     type RecommendationsResult,
     type UnavailableReason,
 } from '../../../accountOverview/services';
+import { reportUnavailableClient } from '../../../accountOverview/services/readDiagnostics';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';
+import { readAccountData } from './readData';
 
 // ─── Zone: Alerts + Advisor recommendations (right rail) ────────────────────────
 //
@@ -32,22 +34,36 @@ export const alertsRecommendationsProcedures = {
     getActiveAlertSummary: accountOverviewProcedure.query(
         async ({ ctx }: { ctx: AccountOverviewRouterContext }): Promise<ActiveAlertSummary> => {
             const { metadata } = ctx;
-            const experience = tryGetExperience(metadata.databaseAccount as DatabaseAccountGetResults);
-            if (experience && experience.api !== API.Core) {
-                return {
+            return readAccountData<ActiveAlertSummary>(
+                metadata,
+                'alertCounts',
+                async () => {
+                    const experience = tryGetExperience(metadata.databaseAccount as DatabaseAccountGetResults);
+                    if (experience && experience.api !== API.Core) {
+                        return {
+                            available: false,
+                            reason: 'unsupported',
+                            totalCount: 0,
+                            criticalCount: 0,
+                            warningCount: 0,
+                            generatedAt: Date.now(),
+                        };
+                    }
+                    return getActiveAlertSummary(
+                        await metadata.getClient(),
+                        metadata.subscription.subscriptionId,
+                        metadata.accountId,
+                        metadata.subscription.environment.resourceManagerEndpointUrl,
+                    );
+                },
+                (reason) => ({
                     available: false,
-                    reason: 'unsupported',
+                    reason,
                     totalCount: 0,
                     criticalCount: 0,
                     warningCount: 0,
                     generatedAt: Date.now(),
-                };
-            }
-            return getActiveAlertSummary(
-                await metadata.getClient(),
-                metadata.subscription.subscriptionId,
-                metadata.accountId,
-                metadata.subscription.environment.resourceManagerEndpointUrl,
+                }),
             );
         },
     ),
@@ -78,24 +94,32 @@ export const alertsRecommendationsProcedures = {
                     generatedAt: Date.now(),
                 });
 
-                const experience = tryGetExperience(metadata.databaseAccount as DatabaseAccountGetResults);
-                if (experience && experience.api !== API.Core) {
-                    return unavailable('unsupported');
-                }
+                return readAccountData<AlertsResult>(
+                    metadata,
+                    'alerts',
+                    async () => {
+                        const experience = tryGetExperience(metadata.databaseAccount as DatabaseAccountGetResults);
+                        if (experience && experience.api !== API.Core) {
+                            return unavailable('unsupported');
+                        }
 
-                const client = await metadata.getAlertsClient();
-                if (!client) {
-                    return unavailable('noData');
-                }
+                        const client = await metadata.getAlertsClient();
+                        if (!client) {
+                            reportUnavailableClient('alerts');
+                            return unavailable('noData');
+                        }
 
-                return getAlerts(
-                    client,
-                    metadata.subscription.subscriptionId,
-                    metadata.accountId,
-                    input.timeRange,
-                    input.monitorCondition,
-                    metadata.subscription.environment.portalUrl,
-                    metadata.subscription.tenantId,
+                        return getAlerts(
+                            client,
+                            metadata.subscription.subscriptionId,
+                            metadata.accountId,
+                            input.timeRange,
+                            input.monitorCondition,
+                            metadata.subscription.environment.portalUrl,
+                            metadata.subscription.tenantId,
+                        );
+                    },
+                    unavailable,
                 );
             },
         ),
@@ -118,23 +142,31 @@ export const alertsRecommendationsProcedures = {
                 generatedAt: Date.now(),
             });
 
-            const experience = tryGetExperience(metadata.databaseAccount as DatabaseAccountGetResults);
-            if (experience && experience.api !== API.Core) {
-                return unavailable('unsupported');
-            }
+            return readAccountData<RecommendationsResult>(
+                metadata,
+                'advisor',
+                async () => {
+                    const experience = tryGetExperience(metadata.databaseAccount as DatabaseAccountGetResults);
+                    if (experience && experience.api !== API.Core) {
+                        return unavailable('unsupported');
+                    }
 
-            const client = await metadata.getAdvisorClient();
-            if (!client) {
-                return unavailable('noData');
-            }
+                    const client = await metadata.getAdvisorClient();
+                    if (!client) {
+                        reportUnavailableClient('advisor');
+                        return unavailable('noData');
+                    }
 
-            return getRecommendations(
-                client,
-                metadata.subscription.subscriptionId,
-                metadata.accountId,
-                undefined,
-                metadata.subscription.environment.portalUrl,
-                metadata.subscription.tenantId,
+                    return getRecommendations(
+                        client,
+                        metadata.subscription.subscriptionId,
+                        metadata.accountId,
+                        undefined,
+                        metadata.subscription.environment.portalUrl,
+                        metadata.subscription.tenantId,
+                    );
+                },
+                unavailable,
             );
         },
     ),

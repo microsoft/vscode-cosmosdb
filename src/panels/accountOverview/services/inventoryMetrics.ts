@@ -5,9 +5,11 @@
 
 import { type MonitorClient } from '@azure/arm-monitor';
 import { RestError } from '@azure/core-rest-pipeline';
+import { type ReadDiagnosticsResult } from '../accessRequirements';
 import { getMetricApplicability, type MetricUnavailableReason } from '../metrics/contracts';
 import { storageObservation, type StorageMeasurement } from '../metrics/storage';
 import { HEALTH_POLICY, OVERVIEW_DEFAULTS } from './healthPolicy';
+import { readMetrics } from './readDiagnostics';
 import {
     classifyUnavailable,
     firstValue,
@@ -68,7 +70,7 @@ export interface ContainerMetrics {
     health?: HealthState;
 }
 
-export interface InventoryMetricsResult {
+export interface InventoryMetricsResult extends ReadDiagnosticsResult {
     /** False when a primary storage/RU query failed or Azure Monitor returned no container series. */
     available: boolean;
     /** When `available` is false, why: `noData` | `unsupported` | `rbac`. */
@@ -253,7 +255,7 @@ async function querySplitSeries(
     timespan: string,
     interval: string,
 ): Promise<Map<string, Map<number, number>>> {
-    const response = await client.metrics.list(resourceUri, {
+    const response = await readMetrics(client, resourceUri, {
         metricnames: metricName,
         aggregation: 'Maximum',
         timespan,
@@ -321,7 +323,7 @@ async function queryThrottlingByContainer(
     interval: string,
     bucketMs: number,
 ): Promise<Map<string, boolean>> {
-    const response = await client.metrics.list(resourceUri, {
+    const response = await readMetrics(client, resourceUri, {
         metricnames: 'TotalRequests',
         aggregation: 'Count',
         timespan,

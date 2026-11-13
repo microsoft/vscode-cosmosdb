@@ -299,16 +299,22 @@ describe('log coverage guidance', () => {
 });
 
 describe('metric coverage and actionable findings', () => {
-    it('does not blame only the cloud for unsupported account APIs', () => {
+    it('does not blame only the cloud for unsupported account APIs', async () => {
+        const user = userEvent.setup();
         showCoverage(
             { available: true },
             { costSource: { available: false, failures: [{ operation: 'backup', kind: 'unsupported' }] } },
         );
+        const toggle = screen.getByRole('button', { name: 'Some cost estimates are unavailable' });
+        expect(toggle).toHaveTextContent('Some cost estimates are unavailable');
+        expect(toggle).toHaveAccessibleName('Some cost estimates are unavailable');
+        toggle.focus();
+        await user.keyboard('{Enter}');
         expect(
             screen.getByText(
                 'Continuous backup: Cost estimates are not supported for this account API or Azure cloud.',
             ),
-        ).toBeInTheDocument();
+        ).toBeVisible();
     });
 
     it('reconciles multiple cost failures for one operation independently on refresh', () => {

@@ -143,6 +143,14 @@ describe('collectDerivedAdvisories parity wiring', () => {
                 throughputInventoryComplete,
             });
             vi.mocked(computeDerivedAdvisories).mockReturnValue([]);
+            vi.mocked(getRuTrends).mockResolvedValue({
+                available: false,
+                reason: 'noData',
+                points: [],
+                provisionedPercent: 100,
+                timeRange: '7D',
+                generatedAt: 0,
+            });
             await collectDerivedAdvisories(params({ logsClient: undefined }));
             const inputs = vi.mocked(computeDerivedAdvisories).mock.calls[0][0];
             expect(inputs.scopeProvisionedRuTotal).toBe(throughputInventoryComplete ? 6000 : undefined);

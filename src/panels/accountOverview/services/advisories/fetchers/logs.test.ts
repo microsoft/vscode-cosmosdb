@@ -172,7 +172,7 @@ describe('classifyLogsError', () => {
 });
 
 describe('probeCdbLogs', () => {
-    it.each(['CDBDataPlaneRequests', 'CDBQueryRuntimeStatistics'] as const)(
+    it.each(['CDBDataPlaneRequests', 'CDBDataPlaneRequests5M', 'CDBQueryRuntimeStatistics'] as const)(
         'probes only the schema of %s using the normalized Cosmos ARM resource ID',
         async (tableName) => {
             const queryResource = vi.fn().mockResolvedValue(success(table(['x'], [])));
@@ -401,6 +401,12 @@ describe('fetchUncontrolledIngestion', () => {
             throttledRequests: 75_000,
             burstFactor: 6,
             dominantUserAgent: 'spark-connector',
+            requestLogEvidence: {
+                sourceTable: 'CDBDataPlaneRequests',
+                sourceResolution: 'perRequest',
+                observationStart: SPAN.startTime.toISOString(),
+                observationEnd: SPAN.endTime.toISOString(),
+            },
         });
     });
 
@@ -444,6 +450,67 @@ describe('fetchSharedThroughputTraffic', () => {
             { containerId: 'hot', requests: 10_000, throttledRequests: 500, ruConsumed: 900_000 },
             { containerId: 'cold', requests: 1_000, throttledRequests: 300, ruConsumed: 50_000 },
         ]);
+    });
+});
+
+describe('diagnostic destination selection', () => {
+    it('selects one account-wide copy per table before aggregating any workload logs', async () => {
+        const queryResource = vi.fn<LogsQueryExecutor['queryResource']>().mockResolvedValue(success(table([], [])));
+        const executor = { queryResource };
+        await Promise.all([
+            fetchCrossPartitionShapes(executor, RESOURCE, 'db', 'orders', SPAN),
+            fetchUncontrolledIngestion(executor, RESOURCE, 'db', 'orders', SPAN),
+            fetchSharedThroughputTraffic(executor, RESOURCE, 'db', 4000, SPAN),
+        ]);
+        expect(queryResource).toHaveBeenCalledTimes(5);
+        const bounds =
+            '| where TimeGenerated >= datetime(2024-01-01T00:00:00.000Z) ' +
+            'and TimeGenerated < datetime(2024-01-02T00:00:00.000Z) ';
+        for (const [resourceId, query, timespan] of queryResource.mock.calls) {
+            const source = query.startsWith('CDBQueryRuntimeStatistics')
+                ? 'CDBQueryRuntimeStatistics'
+                : 'CDBDataPlaneRequests';
+            const prefix =
+                `${source} ${bounds}` +
+                `| where TenantId == toscalar(${source} ${bounds}` +
+                '| summarize destinationRows = count() by TenantId ' +
+                '| sort by destinationRows desc, TenantId asc | take 1 | project TenantId) ';
+            expect(query.startsWith(prefix)).toBe(true);
+            expect(query.slice(prefix.length)).toMatch(/^\| where DatabaseName == 'db'/);
+            expect(resourceId).toBe(RESOURCE.slice(1));
+            expect(timespan).toBe(SPAN);
+        }
+    });
+
+    it('uses the same destination ranking across containers and the caller-provided absolute window', async () => {
+        const queryResource = vi.fn<LogsQueryExecutor['queryResource']>().mockResolvedValue(success(table([], [])));
+        const timespan = {
+            startTime: new Date('2026-11-10T09:17:23.456Z'),
+            endTime: new Date('2026-11-11T09:17:23.456Z'),
+        };
+        for (const [databaseId, containerId] of [
+            ['db-a', 'orders'],
+            ['db-b', 'items'],
+        ]) {
+            await fetchCrossPartitionShapes({ queryResource }, RESOURCE, databaseId, containerId, timespan);
+            await fetchUncontrolledIngestion({ queryResource }, RESOURCE, databaseId, containerId, timespan);
+            await fetchSharedThroughputTraffic({ queryResource }, RESOURCE, databaseId, 4000, timespan);
+        }
+        expect(queryResource).toHaveBeenCalledTimes(10);
+        const selectors = new Map<string, Set<string>>();
+        for (const [, query, span] of queryResource.mock.calls) {
+            const [source] = query.split(' ');
+            const selector = query.slice(0, query.indexOf('| where DatabaseName'));
+            const existing = selectors.get(source) ?? new Set<string>();
+            existing.add(selector);
+            selectors.set(source, existing);
+            expect(span).toBe(timespan);
+            expect(selector.match(/TimeGenerated >= datetime\(2026-11-10T09:17:23\.456Z\)/g)).toHaveLength(2);
+            expect(selector.match(/TimeGenerated < datetime\(2026-11-11T09:17:23\.456Z\)/g)).toHaveLength(2);
+            expect(selector).not.toMatch(/db-a|db-b|orders|items|OperationName|CollectionName/);
+        }
+        expect([...selectors.keys()].sort()).toEqual(['CDBDataPlaneRequests', 'CDBQueryRuntimeStatistics']);
+        expect([...selectors.values()].map((values) => values.size)).toEqual([1, 1]);
     });
 });
 

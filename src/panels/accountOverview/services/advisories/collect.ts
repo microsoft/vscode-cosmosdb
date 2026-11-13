@@ -25,6 +25,7 @@ import { DIAGNOSTIC_POLICY } from './core/thresholds';
 import {
     type AccountConfigInput,
     type CrossPartitionInput,
+    type ConsistencyReadRuInput,
     type DerivedAdvisory,
     type DerivedAdvisoryRule,
     type DerivedAdvisoryThresholds,
@@ -39,13 +40,17 @@ import {
     type SharedThroughputInput,
     type UncontrolledIngestionInput,
 } from './core/types';
+import { expensiveConsistencyDetector } from './detectors/ExpensiveConsistencyDetector';
 import { computeDerivedAdvisories } from './engine';
 import {
+    fetchConsistencyReadRu,
     fetchCrossPartitionShapes,
     fetchSharedThroughputTraffic,
     fetchUncontrolledIngestion,
     logWindow,
     probeCdbLogs,
+    requestLogWindow,
+    selectDataPlaneSource,
     type LogsQueryExecutor,
 } from './fetchers/logs';
 import { type LogsDiagnostic, type LogsDiagnosticReporter } from './fetchers/logsDiagnostics';
@@ -129,6 +134,7 @@ interface Tier2Logs {
     crossPartition: CrossPartitionInput[];
     ingestion: UncontrolledIngestionInput[];
     sharedThroughput: SharedThroughputInput[];
+    consistencyReadRu?: ConsistencyReadRuInput;
     logSource: LogsSourceStatus;
 }
 
@@ -635,6 +641,8 @@ export async function collectDerivedAdvisories(
         params.onLogsDiagnostic,
         dedicatedTargets,
         rows.filter((row) => row.offerLevel === 'database'),
+        effectiveAccountConfig !== undefined &&
+            expensiveConsistencyDetector.evaluate(effectiveAccountConfig) !== undefined,
     );
 
     const advisories = computeDerivedAdvisories(
@@ -689,6 +697,7 @@ export async function collectDerivedAdvisories(
                     ? scopeProvisionedRuTotal
                     : undefined,
             accountConfig: effectiveAccountConfig,
+            consistencyReadRu: logs.consistencyReadRu,
             crossPartition: logs.crossPartition,
             ingestion: logs.ingestion,
             sharedThroughput: logs.sharedThroughput,
@@ -722,6 +731,7 @@ export async function collectTier2Logs(
     onDiagnostic?: LogsDiagnosticReporter,
     ingestionTargets: readonly { databaseId: string; containerId: string }[] = scanTargets,
     sharedMembers: readonly { databaseId: string; containerId: string }[] = [],
+    includeConsistencyReadRu = false,
 ): Promise<Tier2Logs> {
     const empty = { crossPartition: [], ingestion: [], sharedThroughput: [] };
     const failures: NonNullable<LogsSourceStatus['failures']> = [];
@@ -755,11 +765,13 @@ export async function collectTier2Logs(
         return { ...empty, logSource: coverage() };
     }
 
-    const timespan = logWindow();
-    const [dataPlane, queryRuntime] = await Promise.all([
-        probeCdbLogs(logsClient, accountId, timespan, { onDiagnostic: report, table: 'CDBDataPlaneRequests' }),
+    const now = Date.now();
+    const timespan = logWindow(now);
+    const [dataPlaneSource, queryRuntime] = await Promise.all([
+        selectDataPlaneSource(logsClient, accountId, timespan, report),
         probeCdbLogs(logsClient, accountId, timespan, { onDiagnostic: report, table: 'CDBQueryRuntimeStatistics' }),
     ]);
+    const dataPlaneTimespan = dataPlaneSource ? requestLogWindow(dataPlaneSource, now) : timespan;
 
     const sharedDatabases = new Map<string, number>();
     for (const row of rows) {
@@ -771,22 +783,45 @@ export async function collectTier2Logs(
         }
     }
 
-    const [crossPartitionResults, ingestionResults, sharedResults] = await Promise.all([
+    const [crossPartitionResults, ingestionResults, sharedResults, consistencyReadRu] = await Promise.all([
         mapInBatches(queryRuntime.available ? scanTargets : [], (row) =>
-            fetchCrossPartitionShapes(logsClient, accountId, row.databaseId, row.containerId, timespan, report).catch(
-                () => undefined,
-            ),
+            fetchCrossPartitionShapes(
+                logsClient,
+                accountId,
+                row.databaseId,
+                row.containerId,
+                timespan,
+                report,
+                true,
+            ).catch(() => undefined),
         ),
-        mapInBatches(dataPlane.available ? ingestionTargets : [], (row) =>
-            fetchUncontrolledIngestion(logsClient, accountId, row.databaseId, row.containerId, timespan, report).catch(
-                () => undefined,
-            ),
+        mapInBatches(dataPlaneSource ? ingestionTargets : [], (row) =>
+            fetchUncontrolledIngestion(
+                logsClient,
+                accountId,
+                row.databaseId,
+                row.containerId,
+                dataPlaneTimespan,
+                report,
+                dataPlaneSource,
+            ).catch(() => undefined),
         ),
-        mapInBatches(dataPlane.available ? [...sharedDatabases] : [], ([databaseId, sharedRu]) =>
-            fetchSharedThroughputTraffic(logsClient, accountId, databaseId, sharedRu, timespan, report).catch(
-                () => undefined,
-            ),
+        mapInBatches(dataPlaneSource ? [...sharedDatabases] : [], ([databaseId, sharedRu]) =>
+            fetchSharedThroughputTraffic(
+                logsClient,
+                accountId,
+                databaseId,
+                sharedRu,
+                dataPlaneTimespan,
+                report,
+                dataPlaneSource,
+            ).catch(() => undefined),
         ),
+        includeConsistencyReadRu && dataPlaneSource
+            ? fetchConsistencyReadRu(logsClient, accountId, dataPlaneTimespan, report, dataPlaneSource).catch(
+                  () => undefined,
+              )
+            : undefined,
     ]);
 
     return {
@@ -800,6 +835,7 @@ export async function collectTier2Logs(
                     .filter((member) => member.databaseId === result.databaseId)
                     .map((member) => member.containerId),
             })),
+        consistencyReadRu,
         logSource: coverage(),
     };
 }

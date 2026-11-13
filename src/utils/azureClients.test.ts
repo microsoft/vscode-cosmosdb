@@ -268,19 +268,21 @@ describe('modular ARM client factories', () => {
             vi.spyOn(run.client.pipeline, 'sendRequest').mockImplementation((_http, request) =>
                 send({ sendRequest: run.sendRequest }, request),
             );
-            const advisories: DerivedAdvisory[] = ['IdleContainer', 'PaidContinuousBackup'].map((rule) => ({
-                id: rule,
-                rule: rule === 'IdleContainer' ? 'IdleContainer' : 'PaidContinuousBackup',
-                severity: 'Low',
-                title: rule,
-                rationale: 'Original rationale',
-                suggestedAction: 'Original action',
-                thresholdReference: 'Original threshold',
-                evidence:
-                    rule === 'IdleContainer'
-                        ? { recoverableRu: 1000, throughputMode: 'manual' }
-                        : { recoverableRu: 1000 },
-            }));
+            const advisories: DerivedAdvisory[] = ['IdleContainer', 'PaidContinuousBackup'].map<DerivedAdvisory>(
+                (rule) => ({
+                    id: rule,
+                    rule: rule === 'IdleContainer' ? 'IdleContainer' : 'PaidContinuousBackup',
+                    severity: 'Low',
+                    title: rule,
+                    rationale: 'Original rationale',
+                    suggestedAction: 'Original action',
+                    thresholdReference: 'Original threshold',
+                    evidence:
+                        rule === 'IdleContainer'
+                            ? { recoverableRu: 1000, throughputMode: 'manual' }
+                            : { recoverableRu: 1000 },
+                }),
+            );
             const before = structuredClone(advisories);
             const monitor = new MonitorClient({ getToken: async () => null }, 'sub-1');
             const list = vi.spyOn(monitor.metrics, 'list');

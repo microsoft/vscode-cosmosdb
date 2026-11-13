@@ -675,6 +675,8 @@ All optional cost reads share a 20-second cancellable deadline, including SDK re
 retail-price pagination. A server retry delay longer than the remaining budget cancels enrichment rather than
 retrying early or blocking qualitative findings. Completed independent estimates remain available; unfinished
 operations report timeout coverage.
+Cleanup aborts the owned signal before removing the timer, including early failed waves, so outstanding siblings cannot
+outlive enrichment. It does not abort the caller's controller.
 Authentication, access denial, rate limiting, timeouts, service/query errors, invalid/incomplete evidence,
 unsupported clouds and no usable data stay distinguishable without forwarding raw service errors or billing
 rows. Missing access or data means no monetary figure, never fabricated zero. No billing query runs without

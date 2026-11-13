@@ -7,6 +7,7 @@ import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { MonitorClient } from '@azure/arm-monitor';
 import { createHttpHeaders } from '@azure/core-rest-pipeline';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { type InventoryContainerRow } from '../inventory';
 import { type DerivedAdvisory, type DerivedAdvisoryRule } from './core/types';
 import { enrichAdvisoryCosts, recoverableCapacity } from './costEstimates';
 import { type CostContext } from './fetchers/costManagement';
@@ -54,6 +55,8 @@ function setup(currency = 'EUR') {
     }));
     return {
         send,
+        cosmosClient,
+        monitorClient,
         enrich: (advisories: DerivedAdvisory[], costContext: CostContext | undefined = context) =>
             enrichAdvisoryCosts({
                 advisories,
@@ -70,6 +73,71 @@ function setup(currency = 'EUR') {
 afterEach(() => vi.restoreAllMocks());
 
 describe('optional financial enrichment', () => {
+    it('aborts pending storage siblings when one request fails before the deadline', async () => {
+        vi.useFakeTimers();
+        const caller = new AbortController();
+        try {
+            const { cosmosClient, monitorClient, send } = setup();
+            send.mockImplementation(async (_http, request) => ({
+                request,
+                status: 200,
+                headers: createHttpHeaders(),
+                bodyAsText: JSON.stringify({ value: [{ name: 'eastus', displayName: 'East US' }] }),
+            }));
+            const cancelled = vi.fn();
+            const list = vi.spyOn(monitorClient.metrics, 'list').mockImplementation(async (_id, options) => {
+                const signal = options?.abortSignal;
+                if (!signal) {
+                    throw new Error('Expected the shared enrichment cancellation signal.');
+                }
+                if (options?.filter?.includes("DatabaseName eq 'first'")) {
+                    throw Object.assign(new Error('Storage access denied.'), { statusCode: 403 });
+                }
+                return new Promise((_resolve, reject) => {
+                    signal.addEventListener(
+                        'abort',
+                        () => {
+                            cancelled();
+                            reject(Object.assign(new Error('Storage request aborted.'), { name: 'AbortError' }));
+                        },
+                        { once: true },
+                    );
+                });
+            });
+            const finding = advisory('PaidContinuousBackup');
+            const result = await enrichAdvisoryCosts({
+                advisories: [finding],
+                cosmosClient,
+                monitorClient,
+                context: { ...context, abortSignal: caller.signal },
+                accountId:
+                    '/subscriptions/sub/resourceGroups/rg/providers/Microsoft.DocumentDB/databaseAccounts/account',
+                inventoryRows: ['first', 'second'].map<InventoryContainerRow>((databaseId) => ({
+                    databaseId,
+                    containerId: 'items',
+                    throughputMode: 'dedicated',
+                    partitionKeyPaths: [],
+                    indexingMode: 'consistent',
+                    excludedPathCount: 0,
+                    userExcludedPathCount: 0,
+                    compositeIndexCount: 0,
+                    health: 'Healthy',
+                })),
+                now,
+            });
+            expect(result).toEqual({ available: false, failures: [{ operation: 'backup', kind: 'accessDenied' }] });
+            expect(list).toHaveBeenCalledTimes(2);
+            expect(list.mock.calls.every(([, options]) => options?.abortSignal?.aborted)).toBe(true);
+            expect(cancelled).toHaveBeenCalledOnce();
+            expect(caller.signal.aborted).toBe(false);
+            expect(finding.costEstimate).toBeUndefined();
+            expect(vi.getTimerCount()).toBe(0);
+        } finally {
+            caller.abort();
+            vi.useRealTimers();
+        }
+    });
+
     it.each([
         ['IdleContainer', true, 1],
         ['IdleContainer', false, 1.5],

@@ -165,6 +165,107 @@ describe('collectDerivedAdvisories parity wiring', () => {
         },
     );
 
+    it.each([
+        { name: 'all manual', complete: true, sharedAutoscale: false, dedicatedAutoscale: false, capacity: 7000 },
+        {
+            name: 'shared autoscale',
+            complete: true,
+            sharedAutoscale: true,
+            dedicatedAutoscale: false,
+            capacity: undefined,
+        },
+        {
+            name: 'dedicated autoscale',
+            complete: true,
+            sharedAutoscale: false,
+            dedicatedAutoscale: true,
+            capacity: undefined,
+        },
+        { name: 'incomplete', complete: false, sharedAutoscale: false, dedicatedAutoscale: false, capacity: undefined },
+    ])(
+        'quantifies regional capacity only for complete all-manual offers ($name)',
+        async ({ complete, sharedAutoscale, dedicatedAutoscale, capacity }) => {
+            const engine = await vi.importActual<typeof EngineModule>('./engine');
+            vi.mocked(computeDerivedAdvisories).mockImplementation(engine.computeDerivedAdvisories);
+            const offers: InventoryModule.InventoryThroughputOffer[] = [
+                {
+                    databaseId: 'db',
+                    offerLevel: 'database',
+                    throughputMode: sharedAutoscale ? 'autoscale' : 'shared',
+                    offerThroughputMode: sharedAutoscale ? 'autoscale' : 'manual',
+                    throughputRU: 6000,
+                },
+                {
+                    databaseId: 'db',
+                    containerId: 'dedicated',
+                    offerLevel: 'container',
+                    throughputMode: dedicatedAutoscale ? 'autoscale' : 'dedicated',
+                    offerThroughputMode: dedicatedAutoscale ? 'autoscale' : 'manual',
+                    throughputRU: 1000,
+                },
+            ];
+            const rows = offers.flatMap((offer) =>
+                (offer.containerId === undefined
+                    ? ['shared-a', 'shared-b']
+                    : [offer.containerId]
+                ).map<InventoryModule.InventoryContainerRow>((containerId) => ({
+                    ...offer,
+                    containerId,
+                    resourceCreatedAt: '2020-01-01T00:00:00Z',
+                    partitionKeyPaths: [],
+                    indexingMode: 'none',
+                    excludedPathCount: 0,
+                    userExcludedPathCount: 0,
+                    compositeIndexCount: 0,
+                    health: 'Healthy',
+                })),
+            );
+            vi.mocked(getSqlInventoryDetails).mockResolvedValue({
+                databases: ['db'],
+                rows,
+                offers,
+                throughputInventoryComplete: complete,
+            });
+            vi.mocked(getRuTrends).mockResolvedValue({
+                available: false,
+                reason: 'noData',
+                points: [],
+                provisionedPercent: 100,
+                timeRange: '7D',
+                generatedAt: 0,
+            });
+
+            const result = await collectDerivedAdvisories(
+                params({
+                    logsClient: undefined,
+                    accountConfig: {
+                        accountName: 'orders-dev',
+                        regionCount: 3,
+                        multiRegionWritesEnabled: true,
+                        writeRegionCount: 3,
+                        api: API.Core,
+                    },
+                }),
+            );
+
+            const inputs = vi.mocked(computeDerivedAdvisories).mock.calls[0][0];
+            expect(inputs.scopeProvisionedRuTotal).toBe(complete ? 7000 : undefined);
+            expect(inputs.manualRegionalCapacityRu).toBe(capacity);
+            const finding = result.advisories.find((item) => item.rule === 'MultiRegionWriteAntipattern');
+            expect(finding).toMatchObject({ severity: 'Medium' });
+            expect(finding?.evidence).toEqual(
+                capacity === undefined
+                    ? undefined
+                    : {
+                          regionalCapacityQuantified: true,
+                          configuredPerRegionRu: 7000,
+                          globalRegionalFootprintRu: 21000,
+                          removableExtraRegionRu: 14000,
+                      },
+            );
+        },
+    );
+
     it.each(['none', 'NoNe', 'NONE'])(
         'skips DX-024 metric acquisition and coverage failures for %s indexing',
         async (indexingMode) => {

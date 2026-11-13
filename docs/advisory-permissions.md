@@ -204,6 +204,8 @@ Account Overview shows a shared **Some account data could not be loaded** warnin
 It identifies failed sources and provides **Show Output** and **Learn more about Azure roles** actions.
 Authorization failures include permission identifiers, example read-only roles and assignment-scope guidance.
 Authentication failures instead ask users to check Azure sign-in, tenant and credentials.
+Mixed log failures retain sign-in guidance unless another failure independently requires authorization guidance;
+missing tables alone do not turn expired sign-in into a permission problem.
 Successful reads and advisory findings remain available.
 
 Read-failure and partial-coverage notices are collapsed by default. Their titles and informational/warning styling

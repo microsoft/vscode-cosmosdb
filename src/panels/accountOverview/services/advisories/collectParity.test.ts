@@ -124,6 +124,34 @@ function params(overrides: Partial<Parameters<typeof collectDerivedAdvisories>[0
 }
 
 describe('collectDerivedAdvisories parity wiring', () => {
+    it.each([true, false])(
+        'uses the account capacity baseline only for complete throughput inventory (complete=%s)',
+        async (throughputInventoryComplete) => {
+            vi.mocked(getSqlInventoryDetails).mockResolvedValue({
+                databases: ['db'],
+                rows: [],
+                offers: [
+                    {
+                        databaseId: 'db',
+                        offerLevel: 'database',
+                        throughputMode: 'shared',
+                        offerThroughputMode: 'manual',
+                        throughputRU: 6000,
+                        resourceCreatedAt: '2020-01-01T00:00:00Z',
+                    },
+                ],
+                throughputInventoryComplete,
+            });
+            vi.mocked(computeDerivedAdvisories).mockReturnValue([]);
+            await collectDerivedAdvisories(params({ logsClient: undefined }));
+            const inputs = vi.mocked(computeDerivedAdvisories).mock.calls[0][0];
+            expect(inputs.scopeProvisionedRuTotal).toBe(throughputInventoryComplete ? 6000 : undefined);
+            if (!throughputInventoryComplete) {
+                expect(inputs.manualProvisionedRuTotal).toBeUndefined();
+            }
+        },
+    );
+
     it.each([
         { paths: [], indexUsageBytes: 50, dataUsageBytes: 100, fires: true },
         { paths: ['/_etag/?'], indexUsageBytes: 50, dataUsageBytes: 100, fires: true },

@@ -577,6 +577,35 @@ describe('evaluateStorageGrowthRisk', () => {
         expect(result).toEqual({ rootCause: 'insufficient_data' });
     });
 
+    it.each([{ gib: [0] }, { gib: [0, 0] }, { gib: [2, 0] }])(
+        'classifies an observed zero-byte partition as too small ($gib GiB history)',
+        ({ gib }) => {
+            const result = new StorageGrowthRiskDetector().evaluateResult(container([storageSeries('0', gib)]), 180);
+            expect(result).toEqual({ rootCause: 'too_small' });
+        },
+    );
+
+    it('classifies multiple observed zero-byte partitions as too small', () => {
+        const result = new StorageGrowthRiskDetector().evaluateResult(
+            container([storageSeries('0', [0]), storageSeries('1', [0])]),
+            180,
+        );
+        expect(result).toEqual({ rootCause: 'too_small' });
+    });
+
+    it('reports an empty partition list as insufficient data', () => {
+        const result = new StorageGrowthRiskDetector().evaluateResult(container([]), 180);
+        expect(result).toEqual({ rootCause: 'insufficient_data' });
+    });
+
+    it('does not let observed zero bytes hide another partition without history', () => {
+        const result = new StorageGrowthRiskDetector().evaluateResult(
+            container([storageSeries('zero', [0]), { partitionId: 'unknown', samples: [] }]),
+            180,
+        );
+        expect(result).toEqual({ rootCause: 'insufficient_data' });
+    });
+
     it('retains stable and too-small results when their required evidence is available', () => {
         const detector = new StorageGrowthRiskDetector();
         expect(detector.evaluateResult(container([storageSeries('flat', [40, 40])]), 180).rootCause).toBe('stable');

@@ -668,6 +668,9 @@ Horizon and 30/90-day severity comparisons use the fitted slope's arithmetic rou
 minimum-slope gate. Presentation rounding must not decide eligibility or severity. A material partition without
 two distinct finite observations produces `insufficient_data`, not `stable`, when no other partition establishes
 a finding; already-at-limit and qualifying-growth findings remain available despite another partition's missing history.
+A valid latest observation of zero bytes is evidence below the materiality floor and produces `too_small` when
+all partitions are observed and immaterial. An empty partition list or a partition without usable history remains
+`insufficient_data` when no other partition establishes a finding.
 
 **Index exclusions:** ignore only exact root strings `/_etag/?` and `/"_etag"/?` when counting exclusions.
 Nested `_etag`, differently cased, other paths and unknown path entries are not implicitly system exclusions.

@@ -212,23 +212,63 @@ describe('weighted five-minute request logs', () => {
         expect(report).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ operation: 'ingestionSummary' }));
     });
 
-    it('keeps an empty source and a zero-write window distinct from invalid aggregates', async () => {
+    it('keeps an empty source distinct from invalid aggregates', async () => {
         const empty: LogsQueryExecutor = { queryResource: async () => success() };
         await expect(
             fetchUncontrolledIngestion(empty, RESOURCE, 'db', 'items', SPAN, undefined, 'CDBDataPlaneRequests5M'),
         ).resolves.toBeUndefined();
+    });
+
+    it.each([
+        { name: 'read-only', totalRu: 100, requests: 20, average: Number.NaN },
+        { name: 'empty', totalRu: 0, requests: 0, average: Number.NaN },
+        { name: 'JSON NaN', totalRu: 100, requests: 20, average: 'NaN' },
+        { name: 'null average', totalRu: 100, requests: 20, average: null },
+    ])('keeps a zero-write window distinct from invalid aggregates ($name)', async ({ totalRu, requests, average }) => {
+        const report = vi.fn();
         const executor: LogsQueryExecutor = {
             queryResource: async (_id, query) =>
                 query.includes('totalRu =')
-                    ? success(['totalRu', 'writeRu', 'reqs', 'throttles', 'invalidRows'], [[100, 0, 20, 0, 0]])
+                    ? success(
+                          ['totalRu', 'writeRu', 'reqs', 'throttles', 'invalidRows'],
+                          [[totalRu, 0, requests, 0, 0]],
+                      )
                     : query.includes('peak =')
-                      ? success(['peak', 'avg', 'invalidRows'], [[null, null, 0]])
+                      ? success(['peak', 'avg', 'invalidRows'], [[null, average, 0]])
                       : success(),
         };
         await expect(
-            fetchUncontrolledIngestion(executor, RESOURCE, 'db', 'items', SPAN, undefined, 'CDBDataPlaneRequests5M'),
-        ).resolves.toMatchObject({ burstFactor: 0, writeRu: 0 });
+            fetchUncontrolledIngestion(executor, RESOURCE, 'db', 'items', SPAN, report, 'CDBDataPlaneRequests5M'),
+        ).resolves.toMatchObject({ burstFactor: 0, writeRu: 0, totalRu, totalRequests: requests });
+        expect(report).not.toHaveBeenCalled();
     });
+
+    it.each([
+        { peak: 100, average: Number.NaN, invalidRows: 0 },
+        { peak: 100, average: 'NaN', invalidRows: 0 },
+        { peak: null, average: Number.POSITIVE_INFINITY, invalidRows: 0 },
+        { peak: null, average: Number.NaN, invalidRows: 1 },
+        { peak: null, average: 'NaN', invalidRows: 1 },
+        { peak: null, average: Number.NaN, invalidRows: null },
+        { peak: null, average: 'invalid', invalidRows: 0 },
+    ])(
+        'rejects invalid burst evidence without treating it as an empty window: %j',
+        async ({ peak, average, invalidRows }) => {
+            const report = vi.fn();
+            const executor: LogsQueryExecutor = {
+                queryResource: async (_id, query) =>
+                    query.includes('totalRu =')
+                        ? success(['totalRu', 'writeRu', 'reqs', 'throttles', 'invalidRows'], [[100, 0, 20, 0, 0]])
+                        : query.includes('peak =')
+                          ? success(['peak', 'avg', 'invalidRows'], [[peak, average, invalidRows]])
+                          : success(),
+            };
+            await expect(
+                fetchUncontrolledIngestion(executor, RESOURCE, 'db', 'items', SPAN, report, 'CDBDataPlaneRequests5M'),
+            ).rejects.toMatchObject({ name: 'LogsFetchError', reason: 'noData' });
+            expect(report).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ operation: 'ingestionBurst' }));
+        },
+    );
 
     it.each(['startTime', 'endTime'] as const)('rejects partial %s buckets before querying', async (boundary) => {
         const queryResource = vi.fn();

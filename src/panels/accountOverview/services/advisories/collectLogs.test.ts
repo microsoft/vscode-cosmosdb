@@ -62,6 +62,53 @@ function client(fail?: (query: string) => unknown): LogsQueryExecutor {
 }
 
 describe('Log Analytics collection coverage', () => {
+    it.each([
+        {
+            name: 'empty structural observations',
+            shapeRows: [],
+            shapes: [],
+            coverage: { available: true },
+            rawReads: 0,
+            reports: 0,
+        },
+        {
+            name: 'nonempty structural observations',
+            shapeRows: [['SELECT 1', 100, 2, 2]],
+            shapes: [{ text: 'SELECT 1', executions: 100, avgFanout: 2, maxFanout: 2 }],
+            coverage: {
+                available: false,
+                reason: 'logAnalyticsDisabled',
+                failures: [{ operation: 'crossPartitionRu', kind: 'missingTable', reason: 'logAnalyticsDisabled' }],
+            },
+            rawReads: 1,
+            reports: 1,
+        },
+    ])('queries missing raw logs only for observed query shapes ($name)', async (scenario) => {
+        const queryResource = vi.fn<LogsQueryExecutor['queryResource']>(async (_id, query) => {
+            if (/\bCDBDataPlaneRequests\b/.test(query)) {
+                throw Object.assign(new Error("Failed to resolve table named 'CDBDataPlaneRequests'"), {
+                    code: 'SemanticError',
+                });
+            }
+            if (query.endsWith('| take 1 | summarize n = count()')) {
+                return success(['n'], [[1]]);
+            }
+            if (query.includes('by CorrelatedActivityId')) {
+                return success(['QueryText', 'executions', 'avgFanout', 'maxFanout'], scenario.shapeRows);
+            }
+            return success();
+        });
+        const report = vi.fn();
+        const result = await collectTier2Logs({ queryResource }, resource, targets, [], report, [], []);
+        expect(result.logSource).toEqual(scenario.coverage);
+        expect(result.crossPartition.flatMap((input) => input.shapes)).toEqual(scenario.shapes);
+        expect(report).toHaveBeenCalledTimes(scenario.reports);
+        expect(queryResource.mock.calls.filter((call) => /\bCDBDataPlaneRequests\b/.test(call[1]))).toHaveLength(
+            scenario.rawReads,
+        );
+        expect(queryResource.mock.calls.filter((call) => call[1].startsWith('CDBDataPlaneRequests '))).toEqual([]);
+    });
+
     it('marks incomplete charge matches as partial coverage while retaining structural evidence', async () => {
         const base = client();
         const queryResource = vi.fn<LogsQueryExecutor['queryResource']>(async (...args) =>

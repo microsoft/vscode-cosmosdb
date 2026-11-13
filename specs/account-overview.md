@@ -638,6 +638,7 @@ dates remain inspectable provenance. Discounts, restore charges and future stora
 the qualitative recovery-policy review is retained even when this enrichment fails.
 
 Optional cost coverage has its own categorized notice, independent of metric/log detector coverage.
+A billing HTTP 204 No Content response means unavailable data; an empty HTTP 200 response remains invalid evidence.
 Authentication, access denial, rate limiting, timeouts, service/query errors, invalid/incomplete evidence,
 unsupported clouds and no usable data stay distinguishable without forwarding raw service errors or billing
 rows. Missing access or data means no monetary figure, never fabricated zero. No billing query runs without

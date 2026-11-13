@@ -74,6 +74,9 @@ export async function readCostArmJson(
     if (response.status < 200 || response.status >= 300) {
         throw new RestError('Optional cost evidence request failed.', { statusCode: response.status });
     }
+    if (response.status === 204) {
+        throw new CostEvidenceError('noData');
+    }
     try {
         return JSON.parse(response.bodyAsText ?? 'null') as unknown;
     } catch (error) {

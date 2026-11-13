@@ -613,6 +613,8 @@ can prevent realization. There is no monetary rollup because actions can overlap
 Paid continuous-backup findings use a **separate USD retail-price scenario**, not the customer-bill rate.
 Only the public Azure cloud is supported for this source. Every configured account region must resolve
 unambiguously through subscription location metadata, and ARM container inventory must have completed.
+Accepted region aliases resolve separately to the canonical retail key and the Monitor display name.
+Storage filters, dimension validation and provenance use the resolved display name, not the caller's alias.
 `DataUsageV2` (`Total`, bytes, five-minute grain, last 24 hours) is read per known logical container in one
 reference region. The newest complete common timestamp must contain every inventory container exactly once,
 with correct resource/region dimensions, finite nonnegative bytes, age at most six hours and future skew at

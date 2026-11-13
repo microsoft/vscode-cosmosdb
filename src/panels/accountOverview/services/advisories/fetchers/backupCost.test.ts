@@ -107,6 +107,49 @@ afterEach(() => {
 });
 
 describe('paid continuous-backup retail scenario', () => {
+    it.each(['eastus', 'EASTUS', 'East US'])(
+        'uses the resolved Monitor display name for the accepted alias %s',
+        async (alias) => {
+            const { read, list } = setup();
+            list.mockImplementation(async (_id, options) =>
+                metric(
+                    options?.filter?.includes("Region eq 'East US'")
+                        ? rows
+                              .filter((row) => options.filter?.includes(`CollectionName eq '${row.containerId}'`))
+                              .map((row) => storageSeries(row.containerId))
+                        : [],
+                ),
+            );
+            expect(await read({ locationNames: [alias, 'westus'] })).toMatchObject({
+                storageBytes: 2_000_000_000,
+                referenceRegion: 'East US',
+                monthlyAmount: 0.8,
+            });
+            expect(list.mock.calls[0][1]?.filter).toContain("Region eq 'East US'");
+        },
+    );
+
+    it.each([false, true])('classifies malformed retail JSON as invalid evidence (later page=%s)', async (later) => {
+        const { read, fetchMock } = setup();
+        if (later) {
+            fetchMock.mockResolvedValueOnce(
+                new Response(
+                    JSON.stringify(page([retailItem('eastus')], 'https://prices.azure.com/api/retail/prices?$skip=1')),
+                ),
+            );
+        }
+        fetchMock.mockResolvedValueOnce(new Response('{"Items":'));
+        await expect(read()).rejects.toMatchObject({ kind: 'invalidData' });
+        expect(fetchMock).toHaveBeenCalledTimes(later ? 2 : 1);
+    });
+
+    it('does not reclassify a retail transport failure as invalid JSON', async () => {
+        const { read, fetchMock } = setup();
+        const failure = new TypeError('Transport failed');
+        fetchMock.mockRejectedValueOnce(failure);
+        await expect(read()).rejects.toBe(failure);
+    });
+
     it('counts one complete decimal-GB snapshot once, with exact current prices for every resolved region', async () => {
         const { read, list, send, fetchMock } = setup();
         const result = await read();

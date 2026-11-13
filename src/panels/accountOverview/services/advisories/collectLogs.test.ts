@@ -23,17 +23,20 @@ function success(columns: string[] = [], rows: LogsTable['rows'] = []): LogsQuer
     };
 }
 
-function client(fail?: (query: string) => unknown): LogsQueryExecutor {
+function client(fail?: (query: string) => unknown, hasData = (_query: string) => true): LogsQueryExecutor {
     return {
         queryResource: vi.fn(async (_id, query) => {
             const error = fail?.(query);
             if (error) {
                 throw Object.assign(new Error('Simulated Log Analytics failure'), error);
             }
-            if (query === 'CDBDataPlaneRequests5M | take 0') {
+            if (query.startsWith('CDBDataPlaneRequests5M ') && query.endsWith('| take 1 | summarize n = count()')) {
                 throw Object.assign(new Error('Failed to resolve table CDBDataPlaneRequests5M'), {
                     code: 'SemanticError',
                 });
+            }
+            if (query.endsWith('| take 1 | summarize n = count()')) {
+                return success(['n'], [[hasData(query) ? 1 : 0]]);
             }
             if (query.includes('totalQueryRu')) {
                 return success(
@@ -136,10 +139,45 @@ describe('Log Analytics collection coverage', () => {
         );
     });
 
+    it('uses only two presence probes when both analysis-window sources are empty, regardless of container count', async () => {
+        const queryResource = vi.fn<LogsQueryExecutor['queryResource']>(async (_id, query) =>
+            query.endsWith('| take 1 | summarize n = count()') ? success(['n'], [[0]]) : success(),
+        );
+        const containers = Array.from({ length: 5 }, (_, index) => ({
+            databaseId: 'db',
+            containerId: `container${index}`,
+        }));
+        const report = vi.fn();
+        const result = await collectTier2Logs(
+            { queryResource },
+            resource,
+            containers,
+            inventory,
+            report,
+            containers,
+            containers,
+            true,
+        );
+        expect(queryResource).toHaveBeenCalledTimes(2);
+        expect(result).toMatchObject({
+            crossPartition: [],
+            ingestion: [],
+            sharedThroughput: [],
+            consistencyReadRu: {
+                status: 'noObservations',
+                readRequests: 0,
+                readRu: 0,
+                sourceTable: 'CDBDataPlaneRequests5M',
+            },
+            logSource: { available: true },
+        });
+        expect(report).not.toHaveBeenCalled();
+    });
+
     it('uses one aligned aggregate source for ingestion, shared-pool and consistency evidence, with raw-only fan-out enrichment', async () => {
         const queryResource = vi.fn<LogsQueryExecutor['queryResource']>(async (_id, query) => {
-            if (query.endsWith('| take 0')) {
-                return success();
+            if (query.endsWith('| take 1 | summarize n = count()')) {
+                return success(['n'], [[1]]);
             }
             if (query.includes('totalQueryRu')) {
                 return success(
@@ -187,7 +225,8 @@ describe('Log Analytics collection coverage', () => {
             readRu: 100,
         });
         const aggregateCalls = queryResource.mock.calls.filter(
-            (call) => call[1].startsWith('CDBDataPlaneRequests5M ') && !call[1].endsWith('| take 0'),
+            (call) =>
+                call[1].startsWith('CDBDataPlaneRequests5M ') && !call[1].endsWith('| take 1 | summarize n = count()'),
         );
         expect(aggregateCalls).toHaveLength(5);
         for (const [, query, span] of aggregateCalls) {
@@ -196,6 +235,119 @@ describe('Log Analytics collection coverage', () => {
             expect(span.endTime.getTime() - span.startTime.getTime()).toBe(86_400_000);
             expect(query).not.toMatch(/union|CDBDataPlaneRequests /);
         }
+    });
+
+    it.each(['CDBDataPlaneRequests5M', 'CDBDataPlaneRequests'] as const)(
+        'preserves query-runtime checks independently of an empty %s source',
+        async (source) => {
+            const queryResource = vi.fn<LogsQueryExecutor['queryResource']>(async (_id, query) => {
+                if (query.endsWith('| take 1 | summarize n = count()')) {
+                    if (source === 'CDBDataPlaneRequests' && query.startsWith('CDBDataPlaneRequests5M ')) {
+                        throw Object.assign(new Error('Failed to resolve table CDBDataPlaneRequests5M'), {
+                            code: 'SemanticError',
+                        });
+                    }
+                    return success(
+                        ['n'],
+                        [
+                            [
+                                query.startsWith('CDBQueryRuntimeStatistics ') ||
+                                (source === 'CDBDataPlaneRequests5M' && query.startsWith('CDBDataPlaneRequests '))
+                                    ? 1
+                                    : 0,
+                            ],
+                        ],
+                    );
+                }
+                expect(query).toMatch(/^CDBQueryRuntimeStatistics /);
+                if (query.includes('totalQueryRu')) {
+                    return success(
+                        ['QueryText', 'executions', 'matchedExecutions', 'totalQueryRu'],
+                        [['SELECT 1', 100_000, 100_000, 2_000_000]],
+                    );
+                }
+                return success(
+                    ['QueryText', 'executions', 'avgFanout', 'maxFanout'],
+                    [['SELECT 1', 100_000, 100, 100]],
+                );
+            });
+            const report = vi.fn();
+            const result = await collectTier2Logs(
+                { queryResource },
+                resource,
+                targets,
+                inventory,
+                report,
+                targets,
+                targets,
+                true,
+            );
+            expect(queryResource).toHaveBeenCalledTimes(4);
+            expect(result.crossPartition).toHaveLength(1);
+            expect(result.crossPartition[0].shapes).toEqual([
+                {
+                    text: 'SELECT 1',
+                    executions: 100_000,
+                    avgFanout: 100,
+                    maxFanout: 100,
+                    ...(source === 'CDBDataPlaneRequests5M' ? { avgRu: 20 } : {}),
+                },
+            ]);
+            expect(queryResource.mock.calls.filter((call) => call[1].includes('totalQueryRu'))).toHaveLength(
+                source === 'CDBDataPlaneRequests5M' ? 1 : 0,
+            );
+            expect(
+                queryResource.mock.calls.filter(
+                    (call) =>
+                        call[1].startsWith('CDBDataPlaneRequests ') &&
+                        call[1].endsWith('| take 1 | summarize n = count()'),
+                ),
+            ).toHaveLength(source === 'CDBDataPlaneRequests5M' ? 0 : 1);
+            expect(result.ingestion).toEqual([]);
+            expect(result.sharedThroughput).toEqual([]);
+            expect(result.consistencyReadRu).toMatchObject({ sourceTable: source, status: 'noObservations' });
+            expect(result.logSource).toEqual({ available: true });
+            expect(report).not.toHaveBeenCalled();
+            const findings = computeDerivedAdvisories(
+                {
+                    weeklyRuPercents: [],
+                    hasManualThroughput: false,
+                    partitions: [],
+                    storage: [],
+                    indexing: [],
+                    crossPartition: result.crossPartition,
+                    consistencyReadRu: result.consistencyReadRu,
+                    accountConfig: {
+                        accountName: 'prod',
+                        consistencyLevel: 'Strong',
+                        regionCount: 2,
+                        multiRegionWritesEnabled: false,
+                        writeRegionCount: 1,
+                        api: API.Core,
+                    },
+                },
+                DEFAULT_ADVISORY_THRESHOLDS,
+            );
+            expect(findings).toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining({ rule: 'CrossPartitionQuery' }),
+                    expect.objectContaining({
+                        rule: 'ExpensiveConsistency',
+                        evidence: expect.objectContaining({ readRuStatus: 'noObservations' }),
+                    }),
+                ]),
+            );
+        },
+    );
+
+    it('skips empty query-runtime checks without suppressing independent raw request checks', async () => {
+        const executor = client(undefined, (query) => !query.startsWith('CDBQueryRuntimeStatistics '));
+        const result = await collectTier2Logs(executor, resource, targets, inventory);
+        expect(executor.queryResource).toHaveBeenCalledTimes(7);
+        expect(result.crossPartition).toEqual([]);
+        expect(result.ingestion).toHaveLength(1);
+        expect(result.sharedThroughput).toHaveLength(1);
+        expect(result.logSource).toEqual({ available: true });
     });
 
     it('retains structural and config findings when optional query/read RU fails, and reports both failures', async () => {
@@ -293,7 +445,7 @@ describe('Log Analytics collection coverage', () => {
     });
 
     it('keeps successful empty tables distinct from failures', async () => {
-        const executor: LogsQueryExecutor = { queryResource: async () => success() };
+        const executor: LogsQueryExecutor = { queryResource: async () => success(['n'], [[0]]) };
         const report = vi.fn();
         const result = await collectTier2Logs(executor, resource, targets, inventory, report);
         expect(result.logSource).toEqual({ available: true });

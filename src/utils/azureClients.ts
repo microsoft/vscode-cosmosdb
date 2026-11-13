@@ -49,7 +49,7 @@ const DOCUMENT_DB_PROVIDER_PATH = '/providers/microsoft.documentdb/';
  */
 export const PRESERVE_API_VERSION_HEADER = 'x-vscode-cosmosdb-preserve-api-version';
 
-function pinCosmosDBApiVersion(client: CosmosDBManagementClient): CosmosDBManagementClient {
+function configureCosmosDBPipeline(client: CosmosDBManagementClient): CosmosDBManagementClient {
     client.pipeline.addPolicy({
         name: 'PinCosmosDBApiVersionPolicy',
         async sendRequest(request, next) {
@@ -69,6 +69,49 @@ function pinCosmosDBApiVersion(client: CosmosDBManagementClient): CosmosDBManage
             return next(request);
         },
     });
+    // Normalize responses inside the existing retry policy; its attempt limits and cancellation stay unchanged.
+    client.pipeline.addPolicy(
+        {
+            name: 'CostManagementRetryAfterPolicy',
+            async sendRequest(request, next) {
+                const response = await next(request);
+                if (
+                    response.status === 429 &&
+                    new URL(request.url).pathname.toLowerCase().includes('/providers/microsoft.costmanagement/')
+                ) {
+                    const numericDelay = (header: string, multiplier: number) => {
+                        const value = response.headers.get(header)?.trim();
+                        return value ? Number(value) * multiplier : Number.NaN;
+                    };
+                    // Node.js timers overflow beyond this bound and otherwise turn long delays into immediate retries.
+                    const validDelay = (delay: number) =>
+                        Number.isFinite(delay) && delay >= 0 && delay <= 2_147_483_647;
+                    const costDelays = ['qpu', 'entity', 'tenant', 'clienttype']
+                        .map((scope) =>
+                            numericDelay(`x-ms-ratelimit-microsoft.costmanagement-${scope}-retry-after`, 1000),
+                        )
+                        .filter(validDelay);
+                    if (costDelays.length > 0) {
+                        const retryAfter = numericDelay('retry-after', 1000);
+                        const standardDelays = [
+                            numericDelay('retry-after-ms', 1),
+                            numericDelay('x-ms-retry-after-ms', 1),
+                            retryAfter,
+                            Number.isNaN(retryAfter)
+                                ? Math.max(0, Date.parse(response.headers.get('retry-after') ?? '') - Date.now())
+                                : Number.NaN,
+                        ].filter(validDelay);
+                        response.headers.set(
+                            'retry-after-ms',
+                            String(Math.ceil(Math.max(...costDelays, ...standardDelays))),
+                        );
+                    }
+                }
+                return response;
+            },
+        },
+        { afterPhase: 'Retry' },
+    );
     return client;
 }
 
@@ -89,7 +132,7 @@ export async function createCosmosDBManagementClient(
             super(credential, subscription.subscriptionId, options);
         }
     }
-    return pinCosmosDBApiVersion(createAzureSubscriptionClient([context, subContext], SubscriptionClient));
+    return configureCosmosDBPipeline(createAzureSubscriptionClient([context, subContext], SubscriptionClient));
 }
 
 export async function createFeatureClient(

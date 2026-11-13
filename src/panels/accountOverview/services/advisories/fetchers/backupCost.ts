@@ -8,7 +8,7 @@ import { type MonitorClient } from '@azure/arm-monitor';
 import { RestError } from '@azure/core-rest-pipeline';
 import { z } from 'zod';
 import { type InventoryContainerRow } from '../../inventory';
-import { containerFilter, DAY, escapeODataLiteral, HOUR, MINUTE, parseMonitorTimestamp } from '../../shared';
+import { DAY, escapeODataLiteral, HOUR, MINUTE, parseMonitorTimestamp } from '../../shared';
 import { type AdvisoryCostEstimate, type BackupPrice } from '../core/types';
 import { CostEvidenceError, readCostArmJson, type CostContext } from './costManagement';
 
@@ -16,6 +16,9 @@ const RETAIL_URL = 'https://prices.azure.com/api/retail/prices';
 const PITR_PRODUCT = 'Azure Cosmos DB - PITR';
 const PITR_METER = 'Cont 30D Bckp Continuous Backup';
 const CURRENCY = 'USD';
+const MAX_STORAGE_SERIES_PER_REQUEST = 20;
+const MAX_STORAGE_FILTER_LENGTH = 4096;
+const STORAGE_REQUEST_BATCH_SIZE = 5;
 
 const locationsSchema = z.object({
     nextLink: z.string().nullable().optional(),
@@ -88,7 +91,11 @@ const priceSchema = z.object({
 });
 
 /** Unauthenticated reads only: no ARM pipeline/tokens and no redirects or pagination outside the fixed endpoint. */
-async function getBackupPrices(regions: readonly string[], now: number): Promise<BackupPrice[]> {
+async function getBackupPrices(
+    regions: readonly string[],
+    now: number,
+    abortSignal?: AbortSignal,
+): Promise<BackupPrice[]> {
     const initial = new URL(RETAIL_URL);
     initial.searchParams.set('$filter', `serviceName eq 'Azure Cosmos DB' and productName eq '${PITR_PRODUCT}'`);
     initial.searchParams.set('currencyCode', CURRENCY);
@@ -109,7 +116,12 @@ async function getBackupPrices(regions: readonly string[], now: number): Promise
             throw new CostEvidenceError('invalidData');
         }
         seen.add(url);
-        const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(15_000) });
+        abortSignal?.throwIfAborted();
+        const timeout = AbortSignal.timeout(15_000);
+        const response = await fetch(url, {
+            redirect: 'error',
+            signal: abortSignal ? AbortSignal.any([abortSignal, timeout]) : timeout,
+        });
         if (!response.ok) {
             throw new RestError('Optional backup price request failed.', { statusCode: response.status });
         }
@@ -178,6 +190,7 @@ async function getStorageSnapshot(
     rows: readonly Pick<InventoryContainerRow, 'databaseId' | 'containerId'>[],
     referenceRegion: string,
     now: number,
+    abortSignal?: AbortSignal,
 ): Promise<{ timestamp: number; bytes: number }> {
     // Azure Monitor folds dimension values to lowercase, independently of ARM resource-name casing.
     const identity = (databaseId: string, containerId: string) =>
@@ -189,17 +202,55 @@ async function getStorageSnapshot(
     if (expected.size !== rows.length || rows.some((row) => !row.databaseId || !row.containerId)) {
         throw new CostEvidenceError('invalidData');
     }
+    if (rows.some((row) => row.databaseId === '*' || row.containerId === '*')) {
+        throw new CostEvidenceError('unsupported');
+    }
+    // Monitor permits OR only within one dimension; grouping by database avoids cross-product identities.
+    const databases = new Map<string, { databaseId: string; containerIds: string[] }>();
+    for (const row of rows) {
+        const key = row.databaseId.toLowerCase();
+        const database = databases.get(key) ?? { databaseId: row.databaseId, containerIds: [] };
+        database.containerIds.push(row.containerId);
+        databases.set(key, database);
+    }
+    const requests: { filter: string; expected: Set<string> }[] = [];
+    for (const { databaseId, containerIds } of databases.values()) {
+        for (let start = 0; start < containerIds.length;) {
+            const batch: string[] = [];
+            let filter = '';
+            while (start < containerIds.length && batch.length < MAX_STORAGE_SERIES_PER_REQUEST) {
+                const collections = [...batch, containerIds[start]]
+                    .map((containerId) => `CollectionName eq '${escapeODataLiteral(containerId)}'`)
+                    .join(' or ');
+                const nextFilter =
+                    `DatabaseName eq '${escapeODataLiteral(databaseId)}' and (${collections}) ` +
+                    `and Region eq '${escapeODataLiteral(referenceRegion)}'`;
+                if (new URLSearchParams({ $filter: nextFilter }).toString().length > MAX_STORAGE_FILTER_LENGTH) {
+                    if (batch.length === 0) {
+                        throw new CostEvidenceError('unsupported');
+                    }
+                    break;
+                }
+                batch.push(containerIds[start++]);
+                filter = nextFilter;
+            }
+            requests.push({ filter, expected: new Set(batch.map((containerId) => identity(databaseId, containerId))) });
+        }
+    }
     const snapshots = new Map<number, Map<string, number>>();
     const duplicates = new Set<number>();
-    for (let offset = 0; offset < rows.length; offset += 5) {
+    for (let start = 0; start < requests.length; start += STORAGE_REQUEST_BATCH_SIZE) {
+        abortSignal?.throwIfAborted();
         await Promise.all(
-            rows.slice(offset, offset + 5).map(async (row) => {
+            requests.slice(start, start + STORAGE_REQUEST_BATCH_SIZE).map(async (request) => {
                 const response = await client.metrics.list(accountId, {
                     metricnames: 'DataUsageV2',
                     aggregation: 'Total',
                     timespan: `${new Date(now - DAY).toISOString()}/${new Date(now).toISOString()}`,
                     interval: 'PT5M',
-                    filter: `${containerFilter(row.databaseId, row.containerId)} and Region eq '${escapeODataLiteral(referenceRegion)}'`,
+                    filter: request.filter,
+                    top: request.expected.size,
+                    ...(abortSignal && { abortSignal }),
                 });
                 if (
                     response.value?.length !== 1 ||
@@ -220,11 +271,12 @@ async function getStorageSnapshot(
                         metadata.size !== 3 ||
                         !databaseId ||
                         !containerId ||
-                        identity(databaseId, containerId) !== identity(row.databaseId, row.containerId) ||
+                        !request.expected.has(identity(databaseId, containerId)) ||
                         metadata.get('region')?.toLowerCase() !== referenceRegion.toLowerCase()
                     ) {
                         throw new CostEvidenceError('invalidData');
                     }
+                    const key = identity(databaseId, containerId);
                     for (const point of series.data ?? []) {
                         if (point.total === undefined || point.total === null) {
                             continue;
@@ -234,7 +286,6 @@ async function getStorageSnapshot(
                             throw new CostEvidenceError('invalidData');
                         }
                         const snapshot = snapshots.get(timestamp) ?? new Map<string, number>();
-                        const key = identity(databaseId, containerId);
                         if (snapshot.has(key)) {
                             duplicates.add(timestamp);
                         }
@@ -270,6 +321,7 @@ export async function getBackupCostEstimate(
     rows: readonly Pick<InventoryContainerRow, 'databaseId' | 'containerId'>[] | undefined,
     now: number,
 ): Promise<AdvisoryCostEstimate> {
+    context.abortSignal?.throwIfAborted();
     if (new URL(context.resourceManagerEndpoint).origin !== 'https://management.azure.com') {
         throw new CostEvidenceError('unsupported');
     }
@@ -278,10 +330,18 @@ export async function getBackupCostEstimate(
     }
     const regions = await resolveRegions(cosmosClient, context);
     const referenceRegion = regions[0].monitorName;
-    const snapshot = await getStorageSnapshot(monitorClient, accountId, rows, referenceRegion, now);
+    const snapshot = await getStorageSnapshot(
+        monitorClient,
+        accountId,
+        rows,
+        referenceRegion,
+        now,
+        context.abortSignal,
+    );
     const prices = await getBackupPrices(
         regions.map((region) => region.retailName),
         now,
+        context.abortSignal,
     );
     const monthlyAmount = (snapshot.bytes / 1_000_000_000) * prices.reduce((sum, price) => sum + price.perGbMonth, 0);
     if (!Number.isFinite(monthlyAmount) || monthlyAmount < 0) {

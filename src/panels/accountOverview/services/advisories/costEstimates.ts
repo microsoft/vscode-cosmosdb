@@ -61,6 +61,7 @@ export async function enrichAdvisoryCosts(params: CostEnrichmentParams): Promise
             context: params.context && { ...params.context, abortSignal },
         });
     } finally {
+        deadline.abort();
         clearTimeout(timer);
     }
 }

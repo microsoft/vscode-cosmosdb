@@ -1568,7 +1568,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         await waitFor(() => expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledOnce());
     });
 
-    it.each(['read', 'document', 'arrays'] as const)(
+    it.each(['read', 'document', 'arrays', 'attributes'] as const)(
         'opens the offending container and tab and focuses its %s input from Review',
         async (kind) => {
             const saved = restored(4);
@@ -1579,6 +1579,8 @@ describe('data modeler saved-work choice and revisiting steps', () => {
                 container.reads.push({ id: 'empty-read', pattern: '', query: '', qps: 10 });
             } else if (kind === 'document') {
                 container.document.avgSizeKb = container.document.maxSizeKb + 1;
+            } else if (kind === 'attributes') {
+                container.document.attributeCount = container.properties.length + 1;
             } else {
                 container.arrays = { hasArrays: true, avgItems: 5, maxItems: 2, updatePattern: 'none' };
             }
@@ -1588,7 +1590,9 @@ describe('data modeler saved-work choice and revisiting steps', () => {
                     ? 'Description for read 2'
                     : kind === 'document'
                       ? 'Average document size'
-                      : 'Average items per array';
+                      : kind === 'attributes'
+                        ? 'Total attributes per document'
+                        : 'Average items per array';
             client.dataModeling.loadState.query.mockResolvedValue(saved);
             render(<DataModelingWizard />);
             await continueExisting();
@@ -1610,10 +1614,63 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             await userEvent.click(screen.getByRole('button', { name: 'Fix' }));
             const target = screen.getByRole(kind === 'read' ? 'textbox' : 'spinbutton', { name: label });
             await waitFor(() => expect(target).toHaveFocus());
-            fireEvent.change(target, { target: { value: kind === 'read' ? 'Get a device by id' : '1' } });
+            fireEvent.change(target, {
+                target: {
+                    value:
+                        kind === 'read'
+                            ? 'Get a device by id'
+                            : kind === 'attributes'
+                              ? String(container.properties.length)
+                              : '1',
+                },
+            });
             await userEvent.click(await getStepControl('Review'));
             expect(screen.queryByRole('button', { name: 'Fix' })).not.toBeInTheDocument();
             expect(screen.getByRole('button', { name: 'Get Recommendation' })).toBeEnabled();
+        },
+    );
+
+    it.each([
+        { label: 'Average document size', value: '-1', correction: '1' },
+        { label: 'Maximum document size', value: '2049', correction: '4' },
+        { label: 'Total attributes per document', value: '10001', correction: '3' },
+        { label: 'Average items per array', value: '100001', correction: '10' },
+        { label: 'Maximum items per array', value: '1.5', correction: '100' },
+    ])(
+        'persists invalid $label edits and offers a Review Fix without losing the input',
+        async ({ label, value, correction }) => {
+            const saved = restored(2);
+            saved.recommendation = { status: 'idle' };
+            saved.wizard.dataModel.containers[0].arrays.hasArrays = true;
+            client.dataModeling.loadState.query.mockResolvedValue(saved);
+            render(<DataModelingWizard />);
+            await continueExisting();
+            const input = screen.getByRole('spinbutton', { name: label });
+            fireEvent.change(input, { target: { value } });
+            expect(input).toHaveValue(Number(value));
+            expect(input).toHaveAttribute('aria-invalid', 'true');
+            expect(within(screen.getByRole('tabpanel', { name: 'Data' })).getByRole('alert')).toBeVisible();
+            expect(ModelingAdvisorSnapshotSchema.parse(lastSave()).wizard.dataModel).toEqual(
+                lastSave().wizard.dataModel,
+            );
+
+            await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+            await answerConfirmation('Configure queries and scale?', false);
+            const fix = screen.getByRole('button', { name: 'Fix' });
+            expect(fix).toHaveTextContent('Fix');
+            expect(fix).toHaveAccessibleName('Fix');
+            expect(fix).toHaveAccessibleDescription(/^Orders:/);
+            expect(screen.getByRole('button', { name: 'Get Recommendation' })).toBeDisabled();
+            await userEvent.click(fix);
+            const target = screen.getByRole('spinbutton', { name: label });
+            await waitFor(() => expect(target).toHaveFocus());
+            expect(target).toHaveValue(Number(value));
+            fireEvent.change(target, { target: { value: correction } });
+            expect(within(screen.getByRole('tabpanel', { name: 'Data' })).queryByRole('alert')).not.toBeInTheDocument();
+            await userEvent.click(await getStepControl('Review'));
+            expect(screen.queryByRole('button', { name: 'Fix' })).not.toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'Get Recommendation' })).toBeEnabled();
+            expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
         },
     );
 

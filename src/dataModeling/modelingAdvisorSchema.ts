@@ -3,39 +3,25 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as l10n from '@vscode/l10n';
 import { z } from 'zod';
 import { type WizardState } from '../webviews/cosmosdb/DataModeling/dataModel';
-import {
-    hasReadEvidence,
-    MAX_CONTAINERS,
-    MAX_DOCUMENT_SIZE_KB,
-    type ContainerModel,
-} from '../webviews/cosmosdb/DataModeling/models';
+import { hasReadEvidence, MAX_CONTAINERS, type ContainerModel } from '../webviews/cosmosdb/DataModeling/models';
 import {
     assessContainerThroughput,
-    getArrayItemsOrderMessage,
+    getDataFieldErrors,
     getReadEvidenceMessage,
     getThroughputIssueMessage,
-    MAX_ARRAY_ITEMS,
-    MAX_ATTRIBUTE_COUNT,
     MAX_OPERATIONS_PER_SEC,
 } from '../webviews/cosmosdb/DataModeling/workloadLimits';
 import { SuccessfulDeploymentSchema } from './deploymentModel';
 import { PartitionKeyRecommendationSchema } from './recommendationSchema';
 
 const PropertyRoleSchema = z.enum(['key', 'filter', 'payload']);
-// Projects saved before the 2 MB item limit was enforced may contain larger estimates.
-// Cap them at the limit instead of failing to load the whole project.
-const DocumentSizeKbSchema = z
-    .number()
-    .nonnegative()
-    .transform((size) => Math.min(size, MAX_DOCUMENT_SIZE_KB));
-// Projects saved before workload limits were enforced may contain negative, fractional, or huge counts.
+// Projects saved before workload limits were enforced may contain negative, fractional, or huge operation rates.
 // Bring them into the accepted range instead of failing to load the whole project.
-const countSchema = (max: number, allowFraction = false) =>
-    z.number().transform((value) => Math.min(Math.max(allowFraction ? value : Math.round(value), 0), max));
-const OperationsPerSecSchema = countSchema(MAX_OPERATIONS_PER_SEC);
+const OperationsPerSecSchema = z
+    .number()
+    .transform((value) => Math.min(Math.max(Math.round(value), 0), MAX_OPERATIONS_PER_SEC));
 const ContainerModelSchema: z.ZodType<ContainerModel> = z.object({
     id: z.string().min(1),
     entity: z.string(),
@@ -52,14 +38,14 @@ const ContainerModelSchema: z.ZodType<ContainerModel> = z.object({
         }),
     ),
     document: z.object({
-        attributeCount: countSchema(MAX_ATTRIBUTE_COUNT),
-        avgSizeKb: DocumentSizeKbSchema,
-        maxSizeKb: DocumentSizeKbSchema,
+        attributeCount: z.number(),
+        avgSizeKb: z.number(),
+        maxSizeKb: z.number(),
     }),
     arrays: z.object({
         hasArrays: z.boolean(),
-        avgItems: countSchema(MAX_ARRAY_ITEMS, true),
-        maxItems: countSchema(MAX_ARRAY_ITEMS),
+        avgItems: z.number(),
+        maxItems: z.number(),
         updatePattern: z.enum(['none', 'append', 'patch', 'replace']),
     }),
     reads: z.array(
@@ -143,19 +129,20 @@ const StoredWizardStateSchema: z.ZodType<WizardState> = z
 
 export const WizardStateSchema: z.ZodType<WizardState> = StoredWizardStateSchema.superRefine((state, ctx) => {
     for (const [index, container] of state.dataModel.containers.entries()) {
-        if (container.document.avgSizeKb > container.document.maxSizeKb) {
-            ctx.addIssue({
-                code: 'custom',
-                message: l10n.t('Average document size cannot exceed maximum document size.'),
-                path: ['dataModel', 'containers', index, 'document', 'avgSizeKb'],
-            });
-        }
-        if (container.arrays.hasArrays && container.arrays.avgItems > container.arrays.maxItems) {
-            ctx.addIssue({
-                code: 'custom',
-                message: getArrayItemsOrderMessage(),
-                path: ['dataModel', 'containers', index, 'arrays', 'avgItems'],
-            });
+        for (const [field, message] of Object.entries(getDataFieldErrors(container))) {
+            if (message) {
+                ctx.addIssue({
+                    code: 'custom',
+                    message,
+                    path: [
+                        'dataModel',
+                        'containers',
+                        index,
+                        field === 'avgItems' || field === 'maxItems' ? 'arrays' : 'document',
+                        field,
+                    ],
+                });
+            }
         }
         for (const issue of assessContainerThroughput(container)) {
             if (issue.severity === 'error') {
@@ -180,7 +167,7 @@ export const WizardStateSchema: z.ZodType<WizardState> = StoredWizardStateSchema
 
 export const ModelingAdvisorSnapshotSchema = z
     .object({
-        // Keep older inconsistent estimates editable; recommendation requests enforce their ordering.
+        // Preserve invalid Data-tab estimates in drafts; recommendation requests enforce their limits and ordering.
         wizard: StoredWizardStateSchema,
         recommendation: z.object({
             status: z.enum(['idle', 'waiting', 'stopped', 'received', 'error']),

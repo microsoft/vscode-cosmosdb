@@ -138,7 +138,7 @@ describe('data modeler account scope', () => {
             });
             vi.spyOn(vscode.workspace.fs, 'readFile').mockImplementation(async () => {
                 if (failure === 'filesystem') throw vscode.FileSystemError.NoPermissions();
-                return Buffer.from(failure === 'json' ? '{broken' : '{"version":99}');
+                return Buffer.from(failure === 'json' ? '{broken' : '{"version":1,"name":"Invalid","state":{}}');
             });
             vi.spyOn(vscode.workspace.fs, 'delete').mockImplementation(async () => {
                 vi.mocked(vscode.workspace.fs.stat).mockRejectedValue(vscode.FileSystemError.FileNotFound());

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { getSqlInventory, getSqlInventoryDetails } from './inventory';
 
 function notFound(): Error & { statusCode: number; code: string } {
@@ -93,6 +93,87 @@ function inventoryClient(): CosmosDBManagementClient {
 }
 
 describe('getSqlInventoryDetails', () => {
+    it.each(['db-empty', 'db-shared'])(
+        'marks a successful database response without throughput incomplete, including %s',
+        async (databaseId) => {
+            const client = inventoryClient();
+            const read = client.sqlResources.getSqlDatabaseThroughput.bind(client.sqlResources);
+            vi.spyOn(client.sqlResources, 'getSqlDatabaseThroughput').mockImplementation((...args) =>
+                args[2] === databaseId ? Promise.resolve({ resource: {} }) : read(...args),
+            );
+            const result = await getSqlInventoryDetails(client, 'rg', 'acct', false);
+            expect(result.throughputInventoryComplete).toBe(false);
+            expect(result.offers.filter((offer) => offer.databaseId === databaseId)).toEqual([]);
+            expect(result.offers).toContainEqual(
+                expect.objectContaining({ databaseId: 'db-dedicated', containerId: 'dedicated-c', throughputRU: 600 }),
+            );
+            expect(result.databases).toContain(databaseId);
+        },
+    );
+
+    it('does not invent throughput for an unresolved provisioned container', async () => {
+        const client = inventoryClient();
+        const read = client.sqlResources.getSqlContainerThroughput.bind(client.sqlResources);
+        vi.spyOn(client.sqlResources, 'getSqlContainerThroughput').mockImplementation((...args) =>
+            args[2] === 'db-dedicated' ? Promise.reject(notFound()) : read(...args),
+        );
+        const result = await getSqlInventoryDetails(client, 'rg', 'acct', false);
+        expect(result.throughputInventoryComplete).toBe(false);
+        expect(result.offers.filter((offer) => offer.databaseId === 'db-dedicated')).toEqual([]);
+        expect(result.rows.find((row) => row.containerId === 'dedicated-c')).toMatchObject({
+            throughputMode: 'unknown',
+            throughputRU: undefined,
+            offerLevel: 'none',
+            offerThroughputMode: 'unknown',
+        });
+    });
+
+    it.each([{}, { resource: {} }, { resource: { autoscaleSettings: {} } }])(
+        'does not inherit a shared offer after a successful incomplete container response %j',
+        async (response) => {
+            const client = inventoryClient();
+            const read = client.sqlResources.getSqlContainerThroughput.bind(client.sqlResources);
+            vi.spyOn(client.sqlResources, 'getSqlContainerThroughput').mockImplementation((...args) =>
+                args[2] === 'db-shared' ? Promise.resolve(response) : read(...args),
+            );
+            const result = await getSqlInventoryDetails(client, 'rg', 'acct', false);
+            expect(result.throughputInventoryComplete).toBe(false);
+            expect(result.rows.find((row) => row.containerId === 'shared-c')).toMatchObject({
+                throughputMode: 'dedicated',
+                throughputRU: undefined,
+                offerLevel: 'container',
+                offerThroughputMode: 'manual',
+            });
+            expect(result.offers.filter((offer) => offer.databaseId === 'db-shared')).toEqual([
+                expect.objectContaining({ offerLevel: 'database', throughputRU: 1000 }),
+            ]);
+        },
+    );
+
+    it('inherits known shared throughput only when the container offer is absent (404)', async () => {
+        const client = inventoryClient();
+        const read = vi.spyOn(client.sqlResources, 'getSqlContainerThroughput');
+        const result = await getSqlInventoryDetails(client, 'rg', 'acct', false);
+        expect(read).toHaveBeenCalledWith('rg', 'acct', 'db-shared', 'shared-c');
+        expect(result.throughputInventoryComplete).toBe(true);
+        expect(result.rows.find((row) => row.containerId === 'shared-c')).toMatchObject({
+            throughputMode: 'shared',
+            throughputRU: 1000,
+            offerLevel: 'database',
+            offerThroughputMode: 'manual',
+        });
+    });
+
+    it.each([401, 403, 429, 500])(
+        'propagates a container-offer HTTP %s instead of inheriting shared throughput',
+        async (statusCode) => {
+            const client = inventoryClient();
+            const error = Object.assign(new Error('Container offer failed'), { statusCode });
+            vi.spyOn(client.sqlResources, 'getSqlContainerThroughput').mockRejectedValue(error);
+            await expect(getSqlInventoryDetails(client, 'rg', 'acct', false)).rejects.toBe(error);
+        },
+    );
+
     it('exposes authoritative offers without double-counting inherited shared children', async () => {
         const inventory = await getSqlInventoryDetails(inventoryClient(), 'rg', 'acct', false);
         expect(inventory.throughputInventoryComplete).toBe(true);

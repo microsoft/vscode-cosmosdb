@@ -273,7 +273,8 @@ describe('optional logical-query RU enrichment', () => {
                 [['{"query":"SELECT  p1"}', 100, 100, 1234]],
             ),
         );
-        const result = await fetchCrossPartitionShapes(client, RESOURCE, 'db', 'items', SPAN, undefined, true);
+        const report = vi.fn();
+        const result = await fetchCrossPartitionShapes(client, RESOURCE, 'db', 'items', SPAN, report, true);
         expect(result.shapes).toEqual([
             { text: 'SELECT p1', executions: 100, avgFanout: 4, maxFanout: 4, avgRu: 12.34 },
         ]);
@@ -285,7 +286,83 @@ describe('optional logical-query RU enrichment', () => {
         expect(query.match(/sort by destinationRows desc, TenantId asc/g)).toHaveLength(2);
         expect(query.match(/TimeGenerated >= datetime\(2026-11-10T09:15:00.000Z\)/g)).toHaveLength(4);
         expect(query).not.toContain('CDBDataPlaneRequests5M');
+        expect(report).not.toHaveBeenCalled();
     });
+
+    it.each([[100, 99, 1234], [99, 99, 1234], [101, 101, 1234], [100, 0, 0], undefined])(
+        'reports incomplete RU coverage for missing or mismatched charge rows: %j',
+        async (values) => {
+            const report = vi.fn();
+            const result = await fetchCrossPartitionShapes(
+                executor(
+                    success(
+                        ['QueryText', 'executions', 'matchedExecutions', 'totalQueryRu'],
+                        values ? [['{"query":"SELECT  p1"}', ...values]] : [],
+                    ),
+                ),
+                RESOURCE,
+                'db',
+                'items',
+                SPAN,
+                report,
+                true,
+            );
+            expect(result.shapes).toEqual([{ text: 'SELECT p1', executions: 100, avgFanout: 4, maxFanout: 4 }]);
+            expect(report).toHaveBeenCalledExactlyOnceWith(
+                expect.objectContaining({ operation: 'crossPartitionRu', kind: 'partialFailure', reason: 'noData' }),
+            );
+        },
+    );
+
+    it('reports once for multiple incomplete shapes without discarding fully matched charges', async () => {
+        const report = vi.fn();
+        const queryResource = vi.fn<LogsQueryExecutor['queryResource']>(async (_id, query) =>
+            query.includes('totalQueryRu')
+                ? success(
+                      ['QueryText', 'executions', 'matchedExecutions', 'totalQueryRu'],
+                      [
+                          ['complete', 100, 100, 0],
+                          ['incomplete', 100, 99, 1234],
+                      ],
+                  )
+                : success(
+                      ['QueryText', 'executions', 'avgFanout', 'maxFanout'],
+                      ['complete', 'incomplete', 'missing'].map((text) => [text, 100, 4, 4]),
+                  ),
+        );
+        const result = await fetchCrossPartitionShapes({ queryResource }, RESOURCE, 'db', 'items', SPAN, report, true);
+        expect(result.shapes).toEqual([
+            { text: 'complete', executions: 100, avgFanout: 4, maxFanout: 4, avgRu: 0 },
+            { text: 'incomplete', executions: 100, avgFanout: 4, maxFanout: 4 },
+            { text: 'missing', executions: 100, avgFanout: 4, maxFanout: 4 },
+        ]);
+        expect(report).toHaveBeenCalledExactlyOnceWith(
+            expect.objectContaining({ operation: 'crossPartitionRu', kind: 'partialFailure' }),
+        );
+        expect(JSON.stringify(report.mock.calls)).not.toMatch(/SELECT|items|complete",|db"/);
+    });
+
+    it.each([false, true])(
+        'does not report missing charges without observed executions (enrichment=%s)',
+        async (include) => {
+            const report = vi.fn();
+            const queryResource = vi
+                .fn<LogsQueryExecutor['queryResource']>()
+                .mockResolvedValue(success(['QueryText', 'executions', 'avgFanout', 'maxFanout']));
+            const result = await fetchCrossPartitionShapes(
+                { queryResource },
+                RESOURCE,
+                'db',
+                'items',
+                SPAN,
+                report,
+                include,
+            );
+            expect(result.shapes).toEqual([]);
+            expect(queryResource).toHaveBeenCalledOnce();
+            expect(report).not.toHaveBeenCalled();
+        },
+    );
 
     it.each([
         [100, 99, 1234],

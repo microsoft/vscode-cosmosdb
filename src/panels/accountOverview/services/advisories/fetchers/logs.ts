@@ -411,19 +411,30 @@ export async function fetchCrossPartitionShapes(
             );
             const chargesByText = new Map(charges.map((row) => [row.QueryText, row]));
             const nonemptyRows = rows.filter((row) => str(row.QueryText).length > 0);
+            let incompleteMatches = false;
             for (const [index, shape] of shapes.entries()) {
+                if (shape.executions === 0) {
+                    continue;
+                }
                 const charge = chargesByText.get(nonemptyRows[index].QueryText);
-                if (
-                    charge &&
-                    shape.executions > 0 &&
-                    charge.executions === shape.executions &&
-                    charge.matchedExecutions === shape.executions
-                ) {
+                if (charge && charge.executions === shape.executions && charge.matchedExecutions === shape.executions) {
                     const avgRu = num(charge.totalQueryRu) / shape.executions;
                     if (Number.isFinite(avgRu)) {
                         shape.avgRu = avgRu;
+                        continue;
                     }
                 }
+                incompleteMatches = true;
+            }
+            if (incompleteMatches) {
+                reportDiagnostic(
+                    createLogsDiagnostic(
+                        new Error('Query request-charge enrichment has missing or incomplete execution matches.'),
+                        'crossPartitionRu',
+                        { partialFailure: true },
+                    ),
+                    onDiagnostic,
+                );
             }
         } catch (error) {
             if (!(error instanceof LogsFetchError)) {

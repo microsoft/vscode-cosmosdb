@@ -456,15 +456,16 @@ describe('DataModelerProjectService', () => {
         expect(await service.loadState()).toEqual(state);
     });
 
-    it('loads projects saved before the 2 MB document limit by capping oversized size estimates', async () => {
+    it.each([
+        { avgSizeKb: 49999, maxSizeKb: 2049 },
+        { avgSizeKb: -1, maxSizeKb: -2 },
+    ])('preserves invalid document sizes $avgSizeKb / $maxSizeKb through loading and saving', async (sizes) => {
         const state = snapshot();
-        const legacy = structuredClone(state);
-        legacy.wizard.dataModel.containers[0].document = { attributeCount: 3, avgSizeKb: 49999, maxSizeKb: 2049 };
+        state.wizard.dataModel.containers[0].document = { attributeCount: 3, ...sizes };
         files.set(
             service.projectUri.toString(),
-            Buffer.from(JSON.stringify({ version: 1, name: 'Data Modeler', state: legacy })),
+            Buffer.from(JSON.stringify({ version: 1, name: 'Data Modeler', state })),
         );
-        state.wizard.dataModel.containers[0].document = { attributeCount: 3, avgSizeKb: 2048, maxSizeKb: 2048 };
         const loaded = await service.loadState();
         expect(loaded).toEqual(state);
         await service.saveState(loaded!);

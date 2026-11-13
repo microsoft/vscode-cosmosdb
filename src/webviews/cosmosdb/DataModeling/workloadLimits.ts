@@ -14,7 +14,7 @@
  */
 
 import * as l10n from '@vscode/l10n';
-import { type ContainerModel } from './models';
+import { type ContainerModel, MAX_DOCUMENT_SIZE_KB } from './models';
 
 /** Service limit: maximum provisioned throughput a single physical partition can serve. */
 export const MAX_RU_PER_PHYSICAL_PARTITION = 10_000;
@@ -75,6 +75,54 @@ export function getCountErrorMessage(error: CountError, max: number): string {
 
 export function getArrayItemsOrderMessage(): string {
     return l10n.t('Average items per array cannot exceed maximum items per array.');
+}
+
+export function getAttributeCountError(container: Pick<ContainerModel, 'document' | 'properties'>): string | undefined {
+    const invalid = validateCount(container.document.attributeCount, MAX_ATTRIBUTE_COUNT);
+    if (invalid) {
+        return getCountErrorMessage(invalid, MAX_ATTRIBUTE_COUNT);
+    }
+    return container.document.attributeCount === container.properties.length
+        ? undefined
+        : l10n.t('Total attributes per document must match the {count} attributes in the schema properties table.', {
+              count: container.properties.length.toLocaleString(),
+          });
+}
+
+export type DataNumberField = keyof ContainerModel['document'] | 'avgItems' | 'maxItems';
+
+export function getDocumentSizeError(size: number): string | undefined {
+    if (!Number.isFinite(size)) {
+        return getCountErrorMessage('invalid', MAX_DOCUMENT_SIZE_KB);
+    }
+    if (size < 0) {
+        return l10n.t('Document size cannot be negative.');
+    }
+    return size > MAX_DOCUMENT_SIZE_KB ? l10n.t('Document size cannot exceed 2 MB (2048 KB).') : undefined;
+}
+
+export function getDataFieldErrors(
+    container: Pick<ContainerModel, 'document' | 'properties' | 'arrays'>,
+): Partial<Record<DataNumberField, string>> {
+    const { document, arrays } = container;
+    const errors: Partial<Record<DataNumberField, string>> = {
+        attributeCount: getAttributeCountError(container),
+        avgSizeKb: getDocumentSizeError(document.avgSizeKb),
+        maxSizeKb: getDocumentSizeError(document.maxSizeKb),
+    };
+    if (!errors.avgSizeKb && !errors.maxSizeKb && document.avgSizeKb > document.maxSizeKb) {
+        errors.avgSizeKb = l10n.t('Average document size cannot exceed maximum document size.');
+    }
+    if (arrays.hasArrays) {
+        for (const field of ['avgItems', 'maxItems'] as const) {
+            const invalid = validateCount(arrays[field], MAX_ARRAY_ITEMS, field === 'avgItems');
+            if (invalid) errors[field] = getCountErrorMessage(invalid, MAX_ARRAY_ITEMS);
+        }
+        if (!errors.avgItems && !errors.maxItems && arrays.avgItems > arrays.maxItems) {
+            errors.avgItems = getArrayItemsOrderMessage();
+        }
+    }
+    return errors;
 }
 
 /** Parse a number input's raw text; an empty field counts as zero. */

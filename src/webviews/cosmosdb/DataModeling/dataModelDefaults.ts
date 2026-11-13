@@ -917,7 +917,7 @@ export const DATA_MODEL_DEFAULTS: Record<ScenarioId, DataModelDefaults> = {
                     { name: 'createdAt', type: 'string (ISO)', role: 'filter', pkCandidate: false },
                     { name: 'data', type: 'object', role: 'payload', pkCandidate: false },
                 ],
-                document: { attributeCount: 6, avgSizeKb: 2, maxSizeKb: 8 },
+                document: { attributeCount: 4, avgSizeKb: 2, maxSizeKb: 8 },
                 arrays: { hasArrays: false, avgItems: 10, maxItems: 100, updatePattern: 'none' },
                 reads: [{ query: 'SELECT * FROM c WHERE c.id = @id', pattern: l10n.t('Get an item by id'), qps: 200 }],
                 writes: { insertsPerSec: 40, updatesPerSec: 25, deletesPerSec: 5 },

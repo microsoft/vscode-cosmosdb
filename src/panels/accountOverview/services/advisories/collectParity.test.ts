@@ -138,6 +138,20 @@ function params(overrides: Partial<Parameters<typeof collectDerivedAdvisories>[0
 
 describe('collectDerivedAdvisories parity wiring', () => {
     it.each([true, false])(
+        'reports reservation inventory failure only for provisioned accounts (serverless=%s)',
+        async (isServerless) => {
+            vi.mocked(getSqlInventoryDetails).mockRejectedValue({ statusCode: 403 });
+            vi.mocked(computeDerivedAdvisories).mockReturnValue([]);
+            const result = await collectDerivedAdvisories(params({ isServerless, logsClient: undefined }));
+            const failures = result.metricSource.failures.filter(
+                (failure) => failure.rule === 'ReservedCapacityCandidate',
+            );
+            expect(failures).toEqual(isServerless ? [] : [{ rule: 'ReservedCapacityCandidate', reason: 'rbac' }]);
+            expect(vi.mocked(computeDerivedAdvisories).mock.calls[0][0].scopeProvisionedRuTotal).toBeUndefined();
+        },
+    );
+
+    it.each([true, false])(
         'uses the account capacity baseline only for complete throughput inventory (complete=%s)',
         async (throughputInventoryComplete) => {
             vi.mocked(getSqlInventoryDetails).mockResolvedValue({

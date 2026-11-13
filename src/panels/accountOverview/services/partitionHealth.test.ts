@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
     DEFAULT_PARTITION_THRESHOLDS,
     deriveRuSaturationTiles,
@@ -15,6 +15,51 @@ import {
 import { iso, mockClient, pdims } from './testFixtures';
 
 const GIB = 1024 ** 3;
+
+it('isolates shared-offer partition saturation from named dedicated containers', async () => {
+    const client = mockClient({
+        NormalizedRUConsumption: {
+            value: [
+                {
+                    timeseries: [
+                        {
+                            metadatavalues: [{ name: { value: 'PhysicalPartitionId' }, value: '0' }],
+                            data: [{ timeStamp: '2026-01-01T00:00:00.000Z', maximum: 95 }],
+                        },
+                        {
+                            metadatavalues: [{ name: { value: 'PhysicalPartitionId' }, value: '1' }],
+                            data: [{ timeStamp: '2026-01-01T00:00:00.000Z', maximum: 30 }],
+                        },
+                    ],
+                },
+            ],
+        },
+    });
+    const list = vi.spyOn(client.metrics, 'list');
+    const result = await getPartitionHealth(
+        client,
+        'resource',
+        'ru',
+        '7D',
+        'db',
+        undefined,
+        DEFAULT_PARTITION_THRESHOLDS,
+    );
+    expect(result).toMatchObject({
+        available: true,
+        databaseId: 'db',
+        containerId: undefined,
+        maxSaturationPercent: 95,
+        minSaturationPercent: 30,
+        partitionCount: 2,
+    });
+    expect(list).toHaveBeenCalledWith(
+        'resource',
+        expect.objectContaining({
+            filter: "CollectionName eq '' and DatabaseName eq 'db' and PhysicalPartitionId eq '*'",
+        }),
+    );
+});
 
 describe('levelFromExcess', () => {
     it('is level 5 for a hot partition regardless of excess', () => {

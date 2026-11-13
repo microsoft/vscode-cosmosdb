@@ -124,6 +124,40 @@ function params(overrides: Partial<Parameters<typeof collectDerivedAdvisories>[0
 }
 
 describe('collectDerivedAdvisories parity wiring', () => {
+    it.each([true, false])(
+        'uses the account capacity baseline only for complete throughput inventory (complete=%s)',
+        async (throughputInventoryComplete) => {
+            vi.mocked(getSqlInventoryDetails).mockResolvedValue({
+                databases: ['db'],
+                rows: [],
+                offers: [
+                    {
+                        databaseId: 'db',
+                        offerLevel: 'database',
+                        throughputMode: 'shared',
+                        offerThroughputMode: 'manual',
+                        throughputRU: 6000,
+                        resourceCreatedAt: '2020-01-01T00:00:00Z',
+                    },
+                ],
+                throughputInventoryComplete,
+            });
+            vi.mocked(computeDerivedAdvisories).mockReturnValue([]);
+            vi.mocked(getRuTrends).mockResolvedValue({
+                available: false,
+                reason: 'noData',
+                points: [],
+                provisionedPercent: 100,
+                timeRange: '7D',
+                generatedAt: 0,
+            });
+            await collectDerivedAdvisories(params({ logsClient: undefined }));
+            const inputs = vi.mocked(computeDerivedAdvisories).mock.calls[0][0];
+            expect(inputs.scopeProvisionedRuTotal).toBe(throughputInventoryComplete ? 6000 : undefined);
+            expect(inputs.manualProvisionedRuTotal === undefined || throughputInventoryComplete).toBe(true);
+        },
+    );
+
     it.each([
         { paths: [], indexUsageBytes: 50, dataUsageBytes: 100, fires: true },
         { paths: ['/_etag/?'], indexUsageBytes: 50, dataUsageBytes: 100, fires: true },
@@ -252,6 +286,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
                 rows,
                 offers: rows,
                 databases: [...new Set(rows.map((row) => row.databaseId))],
+                throughputInventoryComplete: true,
             });
             vi.mocked(getRuTrends).mockResolvedValue({
                 available: false,
@@ -410,6 +445,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
             rows,
             offers: rows,
             databases: [...new Set(rows.map((row) => row.databaseId))],
+            throughputInventoryComplete: true,
         });
         vi.mocked(getRuTrends).mockResolvedValue({
             available: true,
@@ -451,6 +487,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
     it('uses dedicated offers for container checks, includes serverless throttling, and counts scope RU once per offer', async () => {
         vi.mocked(getSqlInventoryDetails).mockResolvedValue({
             databases: ['db-shared', 'db-manual', 'db-auto', 'db-sls'],
+            throughputInventoryComplete: true,
             rows: [
                 {
                     databaseId: 'db-shared',
@@ -662,6 +699,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
     it('records failures instead of downgrading missing metrics to zero', async () => {
         vi.mocked(getSqlInventoryDetails).mockResolvedValue({
             databases: ['db'],
+            throughputInventoryComplete: true,
             rows: [
                 {
                     databaseId: 'db',

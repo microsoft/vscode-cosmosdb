@@ -6,6 +6,10 @@ This document covers read-only access to the **Advisories** tab for Azure Cosmos
 extension-generated advisories, Azure Advisor recommendations, Azure Monitor alerts and alert counts.
 It maps the extension's current API calls to Azure permissions and explains which role guidance the UI can provide.
 The current implementation reports source-specific read failures in the UI and in sanitized local Output.
+Known Log Analytics client-acquisition authentication/access failures retain their cause in partial coverage.
+Failure summaries distinguish source, category and reason, so incomplete data cannot hide permission guidance.
+Scoped metric diagnostics mask database/container identities, including all known members of a shared offer,
+within the current invocation only.
 
 ## Practical role guidance
 

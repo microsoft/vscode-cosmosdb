@@ -79,7 +79,7 @@ function failureDescription(failure: ReadFailure): string {
 
 export const ReadFailureNotice = ({ failures }: { failures: readonly ReadFailure[] }) => {
     const { showOutput, openUrl } = useDashboardActions();
-    const unique = new Map(failures.map((failure) => [`${failure.source}:${failure.kind}`, failure]));
+    const unique = new Map(failures.map((failure) => [`${failure.source}:${failure.kind}:${failure.reason}`, failure]));
     if (unique.size === 0) {
         return null;
     }

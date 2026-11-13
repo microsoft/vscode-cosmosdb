@@ -28,6 +28,7 @@ import {
     type AccountRequestMetricsInput,
     type CrossPartitionInput,
     type ConsistencyReadRuInput,
+    type CostSourceStatus,
     type DerivedAdvisory,
     type DerivedAdvisoryRule,
     type DerivedAdvisoryThresholds,
@@ -42,8 +43,10 @@ import {
     type SharedThroughputInput,
     type UncontrolledIngestionInput,
 } from './core/types';
+import { enrichAdvisoryCosts } from './costEstimates';
 import { expensiveConsistencyDetector } from './detectors/ExpensiveConsistencyDetector';
 import { computeDerivedAdvisories } from './engine';
+import { type CostContext } from './fetchers/costManagement';
 import {
     fetchConsistencyReadRu,
     fetchCrossPartitionShapes,
@@ -124,6 +127,8 @@ export interface CollectDerivedAdvisoriesParams {
     logsClient?: LogsQueryExecutor;
     /** Sanitized Log Analytics failures for the local Output channel, not telemetry. */
     onLogsDiagnostic?: LogsDiagnosticReporter;
+    /** Existing ARM cloud/subscription context for optional read-only financial enrichment. */
+    costContext?: CostContext;
 }
 
 /** What {@link collectDerivedAdvisories} returns: the fired advisories plus the Tier-2 (Log Analytics) coverage status. */
@@ -131,6 +136,7 @@ export interface CollectedDerivedAdvisories {
     advisories: DerivedAdvisory[];
     logSource: LogsSourceStatus;
     metricSource: MetricSourceStatus;
+    costSource?: CostSourceStatus;
 }
 
 /** The Tier-2 inputs gathered from Log Analytics plus the coverage status the card surfaces. */
@@ -738,10 +744,21 @@ export async function collectDerivedAdvisories(
         advisoryThresholds,
     );
 
+    const costSource = await enrichAdvisoryCosts({
+        advisories,
+        cosmosClient,
+        monitorClient,
+        context: params.costContext,
+        accountId,
+        inventoryRows: inventory.value?.rows,
+        inventoryFailureReason: inventory.reason,
+        now,
+    });
     return {
         advisories,
         logSource: logs.logSource,
         metricSource: { available: metricFailures.length === 0, failures: metricFailures },
+        ...(costSource && { costSource }),
     };
 }
 

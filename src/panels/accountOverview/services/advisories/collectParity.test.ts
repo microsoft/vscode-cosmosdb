@@ -57,6 +57,7 @@ vi.mock('./fetchers/metrics', () => ({
 
 import { CosmosDBManagementClient, type ThroughputSettingsGetResults } from '@azure/arm-cosmosdb';
 import { MonitorClient, type Response as MetricsResponse } from '@azure/arm-monitor';
+import { createHttpHeaders } from '@azure/core-rest-pipeline';
 import { getSqlInventoryDetails } from '../inventory';
 import { getPartitionHealth, getPartitionStorageSeries } from '../partitionHealth';
 import { getRuTrends, getThrottleRate } from '../ruTrends';
@@ -137,6 +138,35 @@ function params(overrides: Partial<Parameters<typeof collectDerivedAdvisories>[0
 }
 
 describe('collectDerivedAdvisories parity wiring', () => {
+    it('preserves denied inventory as backup cost access denial', async () => {
+        const engine = await vi.importActual<typeof EngineModule>('./engine');
+        vi.mocked(computeDerivedAdvisories).mockImplementation(engine.computeDerivedAdvisories);
+        vi.mocked(getSqlInventoryDetails).mockRejectedValue({ statusCode: 403 });
+        const defaults = params();
+        const result = await collectDerivedAdvisories(
+            params({
+                logsClient: undefined,
+                accountConfig: {
+                    ...defaults.accountConfig,
+                    accountName: 'acct-dev',
+                    backupPolicy: { type: 'Continuous', continuousTier: 'Continuous30Days' },
+                },
+                costContext: {
+                    subscriptionId: 'sub',
+                    resourceManagerEndpoint: 'https://management.azure.com',
+                    locationNames: ['East US'],
+                },
+            }),
+        );
+        const backup = result.advisories.find((finding) => finding.rule === 'PaidContinuousBackup');
+        expect(backup).toBeDefined();
+        expect(backup?.costEstimate).toBeUndefined();
+        expect(result.costSource).toEqual({
+            available: false,
+            failures: [{ operation: 'backup', kind: 'accessDenied' }],
+        });
+    });
+
     it.each([true, false])(
         'reports reservation inventory failure only for provisioned accounts (serverless=%s)',
         async (isServerless) => {
@@ -283,6 +313,109 @@ describe('collectDerivedAdvisories parity wiring', () => {
                           removableExtraRegionRu: 14000,
                       },
             );
+        },
+    );
+
+    it.each([
+        { status: 200, autoscale: false },
+        { status: 403, autoscale: false },
+        { status: 200, autoscale: true },
+        { status: 403, autoscale: true },
+    ])(
+        'preserves production supersession and capacity findings with billing HTTP $status, autoscale=$autoscale',
+        async ({ status, autoscale }) => {
+            const engine = await vi.importActual<typeof EngineModule>('./engine');
+            vi.mocked(computeDerivedAdvisories).mockImplementation(engine.computeDerivedAdvisories);
+            const row = {
+                databaseId: 'db',
+                containerId: 'items',
+                throughputMode: autoscale ? ('autoscale' as const) : ('dedicated' as const),
+                throughputRU: autoscale ? 10000 : 1000,
+                offerLevel: 'container' as const,
+                offerThroughputMode: autoscale ? ('autoscale' as const) : ('manual' as const),
+                resourceCreatedAt: '2020-01-01T00:00:00Z',
+                partitionKeyPaths: [],
+                indexingMode: 'none',
+                excludedPathCount: 0,
+                userExcludedPathCount: 0,
+                compositeIndexCount: 0,
+                health: 'Healthy' as const,
+            };
+            vi.mocked(getSqlInventoryDetails).mockResolvedValue({
+                rows: [row],
+                offers: [row],
+                databases: ['db'],
+                throughputInventoryComplete: true,
+            });
+            vi.mocked(getRuTrends).mockResolvedValue({
+                available: true,
+                points: Array.from({ length: 720 }, (_, timestamp) => ({ timestamp, ruPercent: 5, throttled: false })),
+                peakPercent: 5,
+                provisionedPercent: 100,
+                timeRange: '7D',
+                generatedAt: 0,
+            });
+            vi.mocked(getContainerIdlePeak).mockResolvedValue(0);
+            vi.mocked(getPartitionHealth).mockRejectedValue(new Error('unavailable'));
+            vi.mocked(getPartitionStorageSeries).mockRejectedValue(new Error('unavailable'));
+            vi.mocked(getThrottleRate).mockResolvedValue({ ratePercent: 0, totalRequests: 1000 });
+            const cosmosClient = new CosmosDBManagementClient({ getToken: async () => null }, 'sub');
+            vi.spyOn(cosmosClient.databaseAccounts, 'get').mockResolvedValue({
+                systemData: { createdAt: new Date('2020-01-01T00:00:00Z') },
+            });
+            const send = vi.spyOn(cosmosClient.pipeline, 'sendRequest').mockImplementation(async (_http, request) => ({
+                request,
+                status,
+                headers: createHttpHeaders(),
+                bodyAsText: JSON.stringify({
+                    properties: {
+                        columns: [
+                            { name: 'Cost', type: 'Number' },
+                            { name: 'UsageQuantity', type: 'Number' },
+                            { name: 'MeterCategory', type: 'String' },
+                            { name: 'Meter', type: 'String' },
+                            { name: 'Currency', type: 'String' },
+                        ],
+                        rows: [[8, 1000, 'Azure Cosmos DB', '100 RU/s', 'EUR']],
+                    },
+                }),
+            }));
+            const result = await collectDerivedAdvisories(
+                params({
+                    cosmosClient,
+                    logsClient: undefined,
+                    costContext: {
+                        multiRegionWritesEnabled: false,
+                        subscriptionId: 'sub',
+                        resourceManagerEndpoint: 'https://management.azure.com',
+                        locationNames: ['East US', 'West US'],
+                    },
+                }),
+            );
+            const idle = result.advisories.find((finding) => finding.rule === 'IdleContainer');
+            const sizing = result.advisories.find((finding) => finding.rule === 'OverProvisioning');
+            expect(idle?.evidence).toMatchObject({
+                provisionedRu: autoscale ? 10000 : 1000,
+                recoverableRu: 1000,
+                peakRuPerBucket: 0,
+                throughputMode: autoscale ? 'autoscale' : 'manual',
+            });
+            expect(sizing?.supersededBy).toBe(autoscale ? undefined : 'IdleContainer');
+            expect(sizing?.costEstimate).toBeUndefined();
+            const estimated = expect.objectContaining({
+                basis: 'customerAmortizedBill',
+                currency: 'EUR',
+                monthlyAmount: expect.closeTo(autoscale ? 175.2 : 116.8, 8),
+                recoverableRu: 2000,
+                regionalFootprint: { regionCount: 2, recoverableRuPerRegion: 1000 },
+            });
+            expect(idle?.costEstimate).toEqual(status === 200 ? estimated : undefined);
+            expect(result.costSource).toEqual(
+                status === 200
+                    ? { available: true, failures: [] }
+                    : { available: false, failures: [{ operation: 'throughput', kind: 'accessDenied' }] },
+            );
+            expect(send).toHaveBeenCalledOnce();
         },
     );
 
@@ -886,7 +1019,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
             const idleAdvisories = result.advisories.filter((item) => item.rule === 'IdleContainer');
             const idleFinding = expect.objectContaining({
                 scope: 'db0/c0',
-                evidence: { peakRuPerBucket: 0, provisionedRu: 1000, recoverableRu: 1000 },
+                evidence: { peakRuPerBucket: 0, provisionedRu: 1000, recoverableRu: 1000, throughputMode: 'manual' },
             });
             expect.soft(idleAdvisories).toEqual(scenario === 'missing idle' ? [idleFinding] : []);
             expect.soft(inputs.idleContainers).toHaveLength(idleRows.length);

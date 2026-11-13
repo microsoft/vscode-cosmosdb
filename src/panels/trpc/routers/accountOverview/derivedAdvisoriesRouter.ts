@@ -11,6 +11,7 @@ import {
     collectDerivedAdvisories,
     computeDerivedAdvisories,
     configurationFailures,
+    classifyPaidContinuousBackup,
     type AccountConfigInput,
     type DerivedAdvisoriesResult,
 } from '../../../accountOverview/services/advisories';
@@ -109,6 +110,17 @@ export async function getDerivedAdvisoriesForAccount(
             ],
         },
         logSource: { available: false, reason },
+        ...(classifyPaidContinuousBackup(accountConfig).rootCause === 'nonprod_paid_continuous_backup' && {
+            costSource: {
+                available: false,
+                failures: [
+                    {
+                        operation: 'backup',
+                        kind: reason === 'unsupported' ? 'unsupported' : reason === 'rbac' ? 'accessDenied' : 'noData',
+                    },
+                ],
+            },
+        }),
         generatedAt: Date.now(),
     });
 
@@ -140,6 +152,14 @@ export async function getDerivedAdvisoriesForAccount(
             isServerless: metadata.isServerless,
             advisoryThresholds,
             accountConfig,
+            costContext: {
+                multiRegionWritesEnabled: account.enableMultipleWriteLocations,
+                subscriptionId: metadata.subscription.subscriptionId,
+                resourceManagerEndpoint: metadata.subscription.environment.resourceManagerEndpointUrl,
+                locationNames: (account.locations ?? account.readLocations ?? []).map(
+                    (location) => location.locationName ?? '',
+                ),
+            },
         });
         return { available: true, ...collected, generatedAt: Date.now() };
     } catch (error) {

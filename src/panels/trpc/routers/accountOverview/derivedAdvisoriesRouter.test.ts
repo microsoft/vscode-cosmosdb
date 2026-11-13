@@ -53,6 +53,18 @@ function metadata(account: DatabaseAccountGetResults = {}) {
 beforeEach(() => vi.clearAllMocks());
 
 describe('account advisory acquisition', () => {
+    it.each([true, false, undefined])('preserves raw write configuration %s for billing conversion', async (writes) => {
+        vi.mocked(collectDerivedAdvisories).mockResolvedValueOnce({
+            advisories: [],
+            logSource: { available: true },
+            metricSource: { available: true, failures: [] },
+        });
+        await getDerivedAdvisoriesForAccount(metadata({ enableMultipleWriteLocations: writes }));
+        expect(collectDerivedAdvisories).toHaveBeenCalledWith(
+            expect.objectContaining({ costContext: expect.objectContaining({ multiRegionWritesEnabled: writes }) }),
+        );
+    });
+
     it.each([
         [true, { type: 'Periodic' }, 'blocked'],
         [false, { type: 'Periodic' }, 'requiresValidation'],
@@ -98,6 +110,10 @@ describe('account advisory acquisition', () => {
             'PaidContinuousBackup',
             'PerRegionAutoscaleCandidate',
         ]);
+        expect(result.costSource).toEqual({
+            available: false,
+            failures: [{ operation: 'backup', kind: 'accessDenied' }],
+        });
         expect(result.metricSource?.failures.map((failure) => failure.rule)).not.toContain('PaidContinuousBackup');
         expect(result.metricSource?.failures.map((failure) => failure.rule)).not.toContain(
             'PerRegionAutoscaleCandidate',
@@ -125,6 +141,31 @@ describe('account advisory acquisition', () => {
                     perRegionPerPartitionAutoscaleEnabled: false,
                     backupPolicy: expect.objectContaining({ type: 'Continuous', continuousTier: 'Continuous35Days' }),
                 }),
+                costContext: {
+                    subscriptionId: 'sub',
+                    resourceManagerEndpoint: 'https://management.azure.com',
+                    locationNames: ['westus', 'eastus'],
+                },
+            }),
+        );
+    });
+
+    it('does not silently omit an unknown configured region from backup pricing context', async () => {
+        vi.mocked(collectDerivedAdvisories).mockResolvedValueOnce({
+            advisories: [],
+            logSource: { available: true },
+            metricSource: { available: true, failures: [] },
+        });
+        const input = metadata({ locations: [{ locationName: 'East US' }, {}] });
+        input.subscription.environment.resourceManagerEndpointUrl = 'https://management.usgovcloudapi.net';
+        await getDerivedAdvisoriesForAccount(input);
+        expect(collectDerivedAdvisories).toHaveBeenCalledWith(
+            expect.objectContaining({
+                costContext: {
+                    subscriptionId: 'sub',
+                    resourceManagerEndpoint: 'https://management.usgovcloudapi.net',
+                    locationNames: ['East US', ''],
+                },
             }),
         );
     });

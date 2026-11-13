@@ -7,7 +7,7 @@ import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { type MonitorClient } from '@azure/arm-monitor';
 import { type InventoryContainerRow } from '../inventory';
 import { type UnavailableReason } from '../shared';
-import { type CostSourceStatus, type DerivedAdvisory } from './core/types';
+import { type AdvisoryCostEstimate, type CostSourceStatus, type DerivedAdvisory } from './core/types';
 import { getBackupCostEstimate } from './fetchers/backupCost';
 import { classifyCostFailure, CostEvidenceError, getThroughputRate, type CostContext } from './fetchers/costManagement';
 
@@ -99,7 +99,10 @@ export async function enrichAdvisoryCosts(params: {
                             multiRegionWritesEnabled: writes ?? null,
                             quantityMultiplier,
                             billedEquivalentRu: regionalRu * quantityMultiplier,
-                        },
+                        } satisfies Extract<
+                            AdvisoryCostEstimate,
+                            { basis: 'customerAmortizedBill' }
+                        >['billingConversion'],
                     };
                 })
                 .filter((item) => item !== undefined);

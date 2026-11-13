@@ -30,19 +30,25 @@ function showCoverage(source: DerivedAdvisoriesResult['logSource'], overrides: P
     const openUrl = vi.fn();
     const showOutput = vi.fn();
     const onDismiss = vi.fn();
-    render(
+    const view = (logSource: DerivedAdvisoriesResult['logSource']) => (
         <FluentProvider theme={webLightTheme}>
             <DashboardActionsProvider value={{ openUrl, showOutput, reportEvent: vi.fn() }}>
                 <DerivedAdvisories
-                    result={{ available: true, generatedAt: 0, advisories: [], logSource: source, ...overrides }}
+                    result={{ available: true, generatedAt: 0, advisories: [], logSource, ...overrides }}
                     loading={false}
                     dismissedIds={new Set()}
                     onDismiss={onDismiss}
                 />
             </DashboardActionsProvider>
-        </FluentProvider>,
+        </FluentProvider>
     );
-    return { openUrl, showOutput, onDismiss };
+    const { rerender } = render(view(source));
+    return {
+        openUrl,
+        showOutput,
+        onDismiss,
+        rerenderCoverage: (logSource: DerivedAdvisoriesResult['logSource']) => rerender(view(logSource)),
+    };
 }
 
 function expandNotice(title: string) {
@@ -52,6 +58,85 @@ function expandNotice(title: string) {
 }
 
 describe('log coverage guidance', () => {
+    it.each([
+        {
+            name: 'a missing table',
+            kind: 'missingTable',
+            reason: 'logAnalyticsDisabled',
+            label: 'Required table unavailable',
+        },
+        { name: 'a temporary failure', kind: 'transient', reason: 'noData', label: 'Temporary service failure' },
+        { name: 'a query failure', kind: 'queryError', reason: 'noData', label: 'Query error' },
+    ] as const)('prioritizes sign-in guidance when authentication is mixed with $name', ({ kind, reason, label }) => {
+        const failures: NonNullable<DerivedAdvisoriesResult['logSource']>['failures'] = [
+            { operation: 'probeDataPlane5M', kind, reason },
+            { operation: 'probeDataPlane', kind: 'authentication', reason: 'rbac' },
+        ];
+        const { rerenderCoverage } = showCoverage({
+            available: false,
+            reason: 'rbac',
+            failures,
+        });
+        const notice = expandNotice('Partial coverage');
+        expect(within(notice).getByText(/Sign-in required\. Check your Azure sign-in/)).toBeVisible();
+        expect(within(notice).getByText(`DataPlaneRequests5M availability: ${label}`)).toBeVisible();
+        expect(within(notice).getByText('DataPlaneRequests availability: Sign-in required')).toBeVisible();
+        expect(
+            within(notice).queryByRole('button', { name: 'Learn about Log Analytics access' }),
+        ).not.toBeInTheDocument();
+        rerenderCoverage({ available: false, reason: 'rbac', failures: [...failures].reverse() });
+        expect(within(notice).getByText(/Sign-in required\. Check your Azure sign-in/)).toBeVisible();
+        expect(
+            within(notice).queryByRole('button', { name: 'Learn about Log Analytics access' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it.each(['accessDenied', 'partialFailure'] as const)(
+        'retains permission guidance for authentication mixed with an independent %s requiring authorization',
+        (kind) => {
+            const failures: NonNullable<DerivedAdvisoriesResult['logSource']>['failures'] = [
+                { operation: 'probeDataPlane', kind: 'authentication', reason: 'rbac' },
+                { operation: 'crossPartitionRu', kind, reason: 'rbac' },
+            ];
+            const { rerenderCoverage } = showCoverage({ available: false, reason: 'rbac', failures });
+            const notice = expandNotice('Partial coverage');
+            const guidance = within(notice).getByRole('button', { name: 'Learn about Log Analytics access' });
+            expect(guidance).toHaveTextContent('Learn about Log Analytics access');
+            expect(guidance).toHaveAccessibleName('Learn about Log Analytics access');
+            expect(within(notice).getByText('DataPlaneRequests availability: Sign-in required')).toBeVisible();
+            expect(within(notice).queryByText(/Sign-in required\. Check your Azure sign-in/)).not.toBeInTheDocument();
+            rerenderCoverage({ available: false, reason: 'rbac', failures: [...failures].reverse() });
+            expect(within(notice).getByRole('button', { name: 'Learn about Log Analytics access' })).toBeVisible();
+        },
+    );
+
+    it('reconciles partial failures with distinct reasons independently on refresh', () => {
+        const errors = vi.spyOn(console, 'error');
+        const failures: NonNullable<DerivedAdvisoriesResult['logSource']>['failures'] = [
+            { operation: 'crossPartitionRu', kind: 'partialFailure', reason: 'noData' },
+            { operation: 'crossPartitionRu', kind: 'partialFailure', reason: 'rbac' },
+        ];
+        try {
+            const { rerenderCoverage } = showCoverage({ available: false, reason: 'rbac', failures });
+            const notice = expandNotice('Partial coverage');
+            const [missing, denied] = within(notice).getAllByRole('listitem');
+            rerenderCoverage({ available: false, reason: 'rbac', failures: [failures[1], failures[0]] });
+            const reordered = within(notice).getAllByRole('listitem');
+            expect(reordered).toHaveLength(2);
+            expect(reordered[0]).toBe(denied);
+            expect(reordered[1]).toBe(missing);
+            rerenderCoverage({ available: false, reason: 'noData', failures: [failures[0]] });
+            const remaining = within(notice).getAllByRole('listitem');
+            expect(remaining).toHaveLength(1);
+            expect(remaining[0]).toBe(missing);
+            expect(
+                errors.mock.calls.flat().filter((arg) => typeof arg === 'string' && arg.includes('same key')),
+            ).toEqual([]);
+        } finally {
+            errors.mockRestore();
+        }
+    });
+
     it('explains expired log authentication without suggesting that a role grant will fix it', () => {
         showCoverage({
             available: false,

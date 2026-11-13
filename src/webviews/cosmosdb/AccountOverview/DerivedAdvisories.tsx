@@ -452,7 +452,10 @@ function logCoverageNotice(source: DerivedAdvisoriesResult['logSource']): {
     linkLabel?: string;
     linkUrl?: string;
 } {
-    if (source?.failures?.length && source.failures.every((failure) => failure.kind === 'authentication')) {
+    if (
+        source?.failures?.some((failure) => failure.kind === 'authentication') &&
+        !source.failures.some((failure) => failure.reason === 'rbac' && failure.kind !== 'authentication')
+    ) {
         return {
             body: l10n.t(
                 'Sign-in required. Check your Azure sign-in, tenant and credentials; assigning a role alone may not resolve this failure.',
@@ -1122,7 +1125,7 @@ const PartialCoverageNotice = ({ source }: { source: DerivedAdvisoriesResult['lo
             {!!source?.failures?.length && (
                 <ul>
                     {source.failures.map((failure) => (
-                        <li key={`${failure.operation}-${failure.kind}`}>
+                        <li key={`${failure.operation}-${failure.kind}-${failure.reason}`}>
                             {`${operations[failure.operation]}: ${kinds[failure.kind]}`}
                         </li>
                     ))}

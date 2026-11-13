@@ -18,6 +18,7 @@ const PITR_METER = 'Cont 30D Bckp Continuous Backup';
 const CURRENCY = 'USD';
 const MAX_STORAGE_SERIES_PER_REQUEST = 20;
 const MAX_STORAGE_FILTER_LENGTH = 4096;
+const STORAGE_REQUEST_BATCH_SIZE = 5;
 
 const locationsSchema = z.object({
     nextLink: z.string().nullable().optional(),
@@ -228,56 +229,60 @@ async function getStorageSnapshot(
     }
     const snapshots = new Map<number, Map<string, number>>();
     const duplicates = new Set<number>();
-    for (const request of requests) {
-        const response = await client.metrics.list(accountId, {
-            metricnames: 'DataUsageV2',
-            aggregation: 'Total',
-            timespan: `${new Date(now - DAY).toISOString()}/${new Date(now).toISOString()}`,
-            interval: 'PT5M',
-            filter: request.filter,
-            top: request.expected.size,
-        });
-        if (
-            response.value?.length !== 1 ||
-            response.value[0].name?.value !== 'DataUsageV2' ||
-            response.value[0].unit !== 'Bytes' ||
-            (response.value[0].errorCode && response.value[0].errorCode !== 'Success')
-        ) {
-            throw new CostEvidenceError('invalidData');
-        }
-        for (const series of response.value[0].timeseries ?? []) {
-            const metadata = new Map(
-                series.metadatavalues?.map((value) => [value.name?.value?.toLowerCase(), value.value]),
-            );
-            const databaseId = metadata.get('databasename');
-            const containerId = metadata.get('collectionname');
-            if (
-                metadata.size !== series.metadatavalues?.length ||
-                metadata.size !== 3 ||
-                !databaseId ||
-                !containerId ||
-                !request.expected.has(identity(databaseId, containerId)) ||
-                metadata.get('region')?.toLowerCase() !== referenceRegion.toLowerCase()
-            ) {
-                throw new CostEvidenceError('invalidData');
-            }
-            const key = identity(databaseId, containerId);
-            for (const point of series.data ?? []) {
-                if (point.total === undefined || point.total === null) {
-                    continue;
-                }
-                const timestamp = parseMonitorTimestamp(point.timeStamp);
-                if (timestamp === undefined || !Number.isFinite(point.total) || point.total < 0) {
+    for (let start = 0; start < requests.length; start += STORAGE_REQUEST_BATCH_SIZE) {
+        await Promise.all(
+            requests.slice(start, start + STORAGE_REQUEST_BATCH_SIZE).map(async (request) => {
+                const response = await client.metrics.list(accountId, {
+                    metricnames: 'DataUsageV2',
+                    aggregation: 'Total',
+                    timespan: `${new Date(now - DAY).toISOString()}/${new Date(now).toISOString()}`,
+                    interval: 'PT5M',
+                    filter: request.filter,
+                    top: request.expected.size,
+                });
+                if (
+                    response.value?.length !== 1 ||
+                    response.value[0].name?.value !== 'DataUsageV2' ||
+                    response.value[0].unit !== 'Bytes' ||
+                    (response.value[0].errorCode && response.value[0].errorCode !== 'Success')
+                ) {
                     throw new CostEvidenceError('invalidData');
                 }
-                const snapshot = snapshots.get(timestamp) ?? new Map<string, number>();
-                if (snapshot.has(key)) {
-                    duplicates.add(timestamp);
+                for (const series of response.value[0].timeseries ?? []) {
+                    const metadata = new Map(
+                        series.metadatavalues?.map((value) => [value.name?.value?.toLowerCase(), value.value]),
+                    );
+                    const databaseId = metadata.get('databasename');
+                    const containerId = metadata.get('collectionname');
+                    if (
+                        metadata.size !== series.metadatavalues?.length ||
+                        metadata.size !== 3 ||
+                        !databaseId ||
+                        !containerId ||
+                        !request.expected.has(identity(databaseId, containerId)) ||
+                        metadata.get('region')?.toLowerCase() !== referenceRegion.toLowerCase()
+                    ) {
+                        throw new CostEvidenceError('invalidData');
+                    }
+                    const key = identity(databaseId, containerId);
+                    for (const point of series.data ?? []) {
+                        if (point.total === undefined || point.total === null) {
+                            continue;
+                        }
+                        const timestamp = parseMonitorTimestamp(point.timeStamp);
+                        if (timestamp === undefined || !Number.isFinite(point.total) || point.total < 0) {
+                            throw new CostEvidenceError('invalidData');
+                        }
+                        const snapshot = snapshots.get(timestamp) ?? new Map<string, number>();
+                        if (snapshot.has(key)) {
+                            duplicates.add(timestamp);
+                        }
+                        snapshot.set(key, point.total);
+                        snapshots.set(timestamp, snapshot);
+                    }
                 }
-                snapshot.set(key, point.total);
-                snapshots.set(timestamp, snapshot);
-            }
-        }
+            }),
+        );
     }
     const timestamp = [...snapshots.keys()]
         .sort((a, b) => b - a)

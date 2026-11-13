@@ -644,6 +644,8 @@ series before limiting results, without introducing cross-product identities acr
 Wildcard identities or a single identity exceeding the filter budget are unsupported, not broad wildcard reads.
 Returned identities must belong to the requested batch; missing or truncated series never establish a partial
 account total or trigger pricing. Snapshot completeness is checked across all batches.
+Inventory-filtered requests run in waves of at most five concurrent reads, not serial round trips per database.
+A failed wave prevents subsequent waves and pricing; successful reads in that wave never establish a partial total.
 The newest complete common timestamp must contain every inventory container exactly once,
 with correct resource/region dimensions, finite nonnegative bytes, age at most six hours and future skew at
 most five minutes. Missing/duplicate series and partial inventories never become zero storage. Observed zero

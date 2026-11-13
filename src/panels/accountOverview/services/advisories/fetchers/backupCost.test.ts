@@ -536,6 +536,113 @@ describe('paid continuous-backup retail scenario', () => {
         }
     });
 
+    it('reads 25 databases in five concurrent waves instead of 25 serial round trips', async () => {
+        vi.useFakeTimers();
+        try {
+            vi.setSystemTime(now);
+            const { read, list } = setup();
+            const inventory = Array.from({ length: 25 }, (_, index) => ({
+                databaseId: `db${index}`,
+                containerId: 'items',
+            }));
+            const series = inventory.map((row) => storageSeries(row.containerId, 1_000_000_000, row.databaseId));
+            let active = 0;
+            let peak = 0;
+            const starts: number[] = [];
+            list.mockImplementation(async (_id, options) => {
+                active++;
+                peak = Math.max(peak, active);
+                starts.push(Date.now() - now);
+                await new Promise<void>((resolve) => setTimeout(resolve, 10));
+                active--;
+                return filteredStorage(series, options);
+            });
+            const pending = read({}, inventory);
+            await vi.runAllTimersAsync();
+            expect(await pending).toMatchObject({
+                storageBytes: 25_000_000_000,
+                logicalContainers: 25,
+                snapshotAt: timestamp.toISOString(),
+            });
+            expect(peak).toBe(5);
+            expect(active).toBe(0);
+            expect(starts).toEqual(Array.from({ length: 25 }, (_, index) => Math.floor(index / 5) * 10));
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('combines out-of-order waves only at a complete common timestamp', async () => {
+        vi.useFakeTimers();
+        try {
+            const { read, list } = setup();
+            const inventory = Array.from({ length: 7 }, (_, index) => ({
+                databaseId: `db${index}`,
+                containerId: 'items',
+            }));
+            const series = inventory.map((row, index) => ({
+                ...storageSeries(row.containerId, 1_000_000_000, row.databaseId),
+                data: [
+                    { timeStamp: timestamp, total: 1_000_000_000 },
+                    { timeStamp: new Date(now), total: index === 6 ? undefined : 99_000_000_000 },
+                ],
+            }));
+            let started = 0;
+            const completed: number[] = [];
+            list.mockImplementation(async (_id, options) => {
+                const index = started++;
+                await new Promise<void>((resolve) => setTimeout(resolve, (5 - (index % 5)) * 10));
+                completed.push(index);
+                return filteredStorage(series, options);
+            });
+            const pending = read({}, inventory);
+            await vi.runAllTimersAsync();
+            expect(await pending).toMatchObject({
+                storageBytes: 7_000_000_000,
+                logicalContainers: 7,
+                snapshotAt: timestamp.toISOString(),
+            });
+            expect(completed).toEqual([4, 3, 2, 1, 0, 6, 5]);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('does not start another wave or query prices when a concurrent request fails', async () => {
+        vi.useFakeTimers();
+        try {
+            const { read, list, fetchMock } = setup();
+            const inventory = Array.from({ length: 12 }, (_, index) => ({
+                databaseId: `db${index}`,
+                containerId: 'items',
+            }));
+            const series = inventory.map((row) => storageSeries(row.containerId, 1_000_000_000, row.databaseId));
+            const failure = new Error('Storage request failed.');
+            let started = 0;
+            let completed = 0;
+            list.mockImplementation(async (_id, options) => {
+                const index = started++;
+                await new Promise<void>((resolve) => setTimeout(resolve, index === 0 ? 1 : 10));
+                completed++;
+                if (index === 0) {
+                    throw failure;
+                }
+                return filteredStorage(series, options);
+            });
+            const pending = read({}, inventory).then(
+                () => undefined,
+                (error: unknown) => error,
+            );
+            await vi.runAllTimersAsync();
+            expect(await pending).toBe(failure);
+            expect(list).toHaveBeenCalledTimes(5);
+            expect(completed).toBe(5);
+            expect(fetchMock).not.toHaveBeenCalled();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it('bounds URL-encoded filters even when long escaped names fit in fewer than twenty terms', async () => {
         const { read, list } = setup();
         const inventory = Array.from({ length: 13 }, (_, index) => ({

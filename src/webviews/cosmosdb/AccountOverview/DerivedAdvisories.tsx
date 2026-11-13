@@ -941,6 +941,14 @@ const CostEstimateDetails = ({ estimate }: { estimate: NonNullable<DerivedAdviso
                     currency: estimate.currency,
                 })}
             </Text>
+            {estimate.regionalFootprint && (
+                <Text>
+                    {l10n.t('Regional footprint: {ru} RU/s per region across {regions} regions.', {
+                        ru: format(estimate.regionalFootprint.recoverableRuPerRegion),
+                        regions: estimate.regionalFootprint.regionCount.toLocaleString(),
+                    })}
+                </Text>
+            )}
             <Text>{l10n.t('Contributing meters: {meters}', { meters: estimate.rate.meters.join(', ') })}</Text>
         </>
     ) : (

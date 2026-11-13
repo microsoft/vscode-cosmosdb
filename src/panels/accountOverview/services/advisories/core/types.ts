@@ -218,6 +218,7 @@ export interface ThroughputRate {
     meters: string[];
     observationStart: string;
     observationEnd: string;
+    /** Account-blended currency cost per regional RU/s for a 730-hour month. */
     perRuMonth: number;
 }
 
@@ -233,7 +234,14 @@ export type AdvisoryCostEstimate = {
     monthlyAmount: number;
     currency: string;
 } & (
-    | { basis: 'customerAmortizedBill'; recoverableRu: number; rate: ThroughputRate }
+    | {
+          basis: 'customerAmortizedBill';
+          /** Total recoverable regional RU/s, matching the billed-usage rate's unit. */
+          recoverableRu: number;
+          /** Null when recoverable capacity already sums removable extra regions. */
+          regionalFootprint: { regionCount: number; recoverableRuPerRegion: number } | null;
+          rate: ThroughputRate;
+      }
     | {
           basis: 'azureRetailPrice';
           storageBytes: number;

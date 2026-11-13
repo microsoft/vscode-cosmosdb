@@ -365,7 +365,9 @@ describe('collectDerivedAdvisories parity wiring', () => {
             const estimated = expect.objectContaining({
                 basis: 'customerAmortizedBill',
                 currency: 'EUR',
-                monthlyAmount: expect.closeTo(58.4, 8),
+                monthlyAmount: expect.closeTo(116.8, 8),
+                recoverableRu: 2000,
+                regionalFootprint: { regionCount: 2, recoverableRuPerRegion: 1000 },
             });
             expect(idle?.costEstimate).toEqual(status === 200 ? estimated : undefined);
             expect(result.costSource).toEqual(

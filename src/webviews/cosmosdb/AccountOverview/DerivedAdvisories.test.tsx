@@ -235,8 +235,9 @@ describe('metric coverage and actionable findings', () => {
                         costEstimate: {
                             basis: 'customerAmortizedBill',
                             currency: 'EUR',
-                            monthlyAmount: 58.4,
-                            recoverableRu: 1000,
+                            monthlyAmount: 116.8,
+                            recoverableRu: 2000,
+                            regionalFootprint: { regionCount: 2, recoverableRuPerRegion: 1000 },
                             rate: {
                                 source: 'customerAmortizedBill',
                                 scope: 'account',
@@ -263,7 +264,9 @@ describe('metric coverage and actionable findings', () => {
         resource.focus();
         await user.keyboard('{Enter}');
         const detail = within(dialog).getByRole('region', { name: 'db/items' });
-        expect(detail).toHaveTextContent('Estimated capacity savings: 58.40 EUR per month');
+        expect(detail).toHaveTextContent('Estimated capacity savings: 116.80 EUR per month');
+        expect(detail).toHaveTextContent('Model: 2,000.00 recoverable RU/s');
+        expect(detail).toHaveTextContent('Regional footprint: 1,000.00 RU/s per region across 2 regions.');
         expect(detail).toHaveTextContent('not a guaranteed bill reduction');
         expect(detail).toHaveTextContent('Estimates can overlap and must not be added together.');
         expect(detail).toHaveTextContent('Contributing meters: 100 RU/s');

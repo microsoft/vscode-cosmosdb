@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { MonitorClient, type TimeSeriesElement } from '@azure/arm-monitor';
+import { MonitorClient, type Response as MetricsResponse, type TimeSeriesElement } from '@azure/arm-monitor';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getRuTrends, getThrottleRate } from './ruTrends';
 import { MINUTE } from './shared';
@@ -35,33 +35,39 @@ function setup(batchThrottles: number) {
         series('dedicated', 900000, '429'),
     ];
     const client = new MonitorClient({ getToken: async () => null }, 'sub');
-    const list = vi.spyOn(client.metrics, 'list').mockImplementation(async (_resource, options) => {
-        const filters = [
-            ...(options?.filter ?? '').matchAll(/(DatabaseName|CollectionName|StatusCode) eq '((?:''|[^'])*)'/g),
-        ];
-        const selected = (options?.metricnames === 'NormalizedRUConsumption' ? ru : requests).filter((entry) =>
-            filters.every(
-                ([, dimension, literal]) =>
-                    literal === '*' ||
-                    entry.metadatavalues?.some(
-                        (metadata) =>
-                            metadata.name?.value === dimension && metadata.value === literal.replace(/''/g, "'"),
-                    ),
-            ),
-        );
-        return {
-            timespan: '',
-            value: [
-                {
-                    id: 'metric',
-                    name: { value: options?.metricnames },
-                    type: 'Microsoft.Insights/metrics',
-                    unit: options?.metricnames === 'NormalizedRUConsumption' ? 'Percent' : 'Count',
-                    timeseries: selected,
-                },
-            ],
-        };
-    });
+    const list = vi
+        .spyOn(client.metrics, 'list')
+        .mockImplementation(async (_resource, options): Promise<MetricsResponse> => {
+            const metric = options?.metricnames;
+            if (metric !== 'NormalizedRUConsumption' && metric !== 'TotalRequests') {
+                throw new Error('Unexpected shared-offer metric request.');
+            }
+            const filters = [
+                ...(options?.filter ?? '').matchAll(/(DatabaseName|CollectionName|StatusCode) eq '((?:''|[^'])*)'/g),
+            ];
+            const selected = (metric === 'NormalizedRUConsumption' ? ru : requests).filter((entry) =>
+                filters.every(
+                    ([, dimension, literal]) =>
+                        literal === '*' ||
+                        entry.metadatavalues?.some(
+                            (metadata) =>
+                                metadata.name?.value === dimension && metadata.value === literal.replace(/''/g, "'"),
+                        ),
+                ),
+            );
+            return {
+                timespan: '',
+                value: [
+                    {
+                        id: 'metric',
+                        name: { value: metric },
+                        type: 'Microsoft.Insights/metrics',
+                        unit: metric === 'NormalizedRUConsumption' ? 'Percent' : 'Count',
+                        timeseries: selected,
+                    },
+                ],
+            };
+        });
     return { client, list };
 }
 

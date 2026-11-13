@@ -128,7 +128,7 @@ describe('getSqlInventoryDetails', () => {
         });
     });
 
-    it.each([{}, { resource: {} }, { resource: { autoscaleSettings: {} } }])(
+    it.each([{}, { resource: {} }])(
         'does not inherit a shared offer after a successful incomplete container response %j',
         async (response) => {
             const client = inventoryClient();

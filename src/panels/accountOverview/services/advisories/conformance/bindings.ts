@@ -73,7 +73,11 @@ async function evaluate(world: World, detector: string): Promise<void> {
             resourceAgeDays: world.age,
         };
         world.inputs.autoscaleUtilizations = [input];
-        world.result = autoscaleMaxOverProvisionedDetector.evaluateResult(input, threshold);
+        world.result = autoscaleMaxOverProvisionedDetector.evaluateResult(
+            input,
+            threshold,
+            world.inputs.scopeProvisionedRuTotal,
+        );
     } else if (detector === 'DX-020') {
         assert.ok(world.statuses, 'Missing status-count fixture.');
         world.inputs.accountRequests = { statusCounts: world.statuses };

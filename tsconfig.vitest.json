@@ -16,6 +16,7 @@
     "packages/*/src/**/*.tsx",
     "packages/*/src/**/*.test.ts",
     "vitest.config.ts",
+    "vitest.coda.config.ts",
     "vitest.setup.ts"
   ],
   "exclude": ["node_modules", ".vscode-test", "out", "dist", "test"]

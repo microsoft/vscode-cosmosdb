@@ -24,6 +24,7 @@
   "ignorePatterns": [
     ".azure-pipelines",
     ".config",
+    ".coda",
     ".cosmosdb-data/",
     ".github",
     ".vscode-test",

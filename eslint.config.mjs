@@ -16,6 +16,7 @@ export default defineConfig([
         ignores: [
             '.azure-pipelines',
             '.config',
+            '.coda',
             '.github',
             '.vscode-test',
             'coverage',

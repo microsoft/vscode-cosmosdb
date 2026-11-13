@@ -276,7 +276,10 @@ describe('modular ARM client factories', () => {
                 rationale: 'Original rationale',
                 suggestedAction: 'Original action',
                 thresholdReference: 'Original threshold',
-                evidence: { recoverableRu: 1000 },
+                evidence:
+                    rule === 'IdleContainer'
+                        ? { recoverableRu: 1000, throughputMode: 'manual' }
+                        : { recoverableRu: 1000 },
             }));
             const before = structuredClone(advisories);
             const monitor = new MonitorClient({ getToken: async () => null }, 'sub-1');

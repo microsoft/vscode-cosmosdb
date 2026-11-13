@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "phase": "preflight",
+  "sourceRevision": "d548c0ddb3e3a464fa34c1fdc39c2333506b42cc",
+  "schemaSha256": "837602bee5baca4cf026663627007c6e70df5896093f9cf31c0f804cb05d1065",
+  "workloadSha256": "fdab033da5cabe5813778bc8e147409532f878ef6599dcbb60e86782a3319a1a",
+  "project": {
+    "version": 1,
+    "name": "AdventureWorksEvaluation",
+    "sourceCode": "parent",
+    "customMetadata": {
+      "preserve": "adventureworks-evaluation"
+    },
+    "phases": {
+      "targetEnvironment": {
+        "type": "provision",
+        "accountName": "vally-adventureworks",
+        "databaseName": "adventureworks-eval",
+        "location": "eastus",
+        "verified": false
+      },
+      "discovery": {
+        "status": "not-started",
+        "preflightStatus": "complete",
+        "ddlParsing": {
+          "method": "model",
+          "decisionSource": "explicit"
+        },
+        "applicationAnalysis": {
+          "projectName": "AdventureWorks.Web",
+          "projectType": "ASP.NET Core MVC web application",
+          "language": "C#",
+          "databaseType": "Microsoft SQL Server",
+          "databaseAccess": "Entity Framework Core SQL Server provider",
+          "frameworks": [
+            "ASP.NET Core MVC 2.1",
+            "Entity Framework Core"
+          ],
+          "completedAt": "2026-11-07T11:13:51.000Z"
+        },
+        "preflightCompletedAt": "2026-11-07T11:18:20.000Z"
+      }
+    }
+  },
+  "consulted": [
+    "AdventureWorks.Web.csproj",
+    "Startup.cs",
+    "Models/sampledbContext.cs",
+    "Models/Address.cs",
+    "Models/BuildVersion.cs",
+    "Models/Customer.cs",
+    "Models/CustomerAddress.cs",
+    "Models/ErrorLog.cs",
+    "Models/Product.cs",
+    "Models/ProductCategory.cs",
+    "Models/ProductDescription.cs",
+    "Models/ProductModel.cs",
+    "Models/ProductModelProductDescription.cs",
+    "Models/SalesOrderDetail.cs",
+    "Models/SalesOrderHeader.cs",
+    "Controllers/CustomersController.cs",
+    "Controllers/ProductCategoriesController.cs",
+    "Controllers/ProductsController.cs",
+    "Controllers/HomeController.cs"
+  ],
+  "files": {
+    "phases/1-discovery/access-patterns/access-patterns.md": "7f185766ea30d84a0e6bbdb214082dba0dc3f506fd85892b76ebc6252d4af800",
+    "phases/1-discovery/preflight-manifest.json": "ece271ba2c66239b9d91e6843ff1f81c3ade404b340d2588afad10c112914e54",
+    "phases/1-discovery/preflight-summary.md": "c5837834577a32f310f9ed0bfb1fe244ab09b89fcd347c06f8d06bbe0bb6a0f8",
+    "phases/1-discovery/volumetrics/volumetrics.md": "44a8ec0057914cc53917129f9f8141094938224e66de0708dfe6a518ba5b8899"
+  }
+}

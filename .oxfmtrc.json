@@ -42,6 +42,8 @@
     ".azure-pipelines",
     ".config",
     ".cosmosdb-data",
+    ".vally",
+    "evals/cosmosdb-relational-migration/adventureworks/checkpoints",
     ".vscode-test",
     "bundle-analysis",
     "coverage",

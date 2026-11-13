@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "sourceSha256": "51ef1032804f5b78d2d97f3cc08c14c72a10a1630fd0724ddb93e4d6f6438ad1",
+  "blockingIssues": [],
+  "tables": [
+    "dbo.BuildVersion", "dbo.ErrorLog", "SalesLT.Address", "SalesLT.Customer", "SalesLT.CustomerAddress",
+    "SalesLT.Product", "SalesLT.ProductCategory", "SalesLT.ProductDescription", "SalesLT.ProductModel",
+    "SalesLT.ProductModelProductDescription", "SalesLT.SalesOrderDetail", "SalesLT.SalesOrderHeader"
+  ],
+  "patterns": [
+    {"id":"R001","kind":"read","tables":["SalesLT.Customer"],"tps":null,"operation":"List all customers without ordering or pagination","evidence":"code","sourcePaths":["Controllers/CustomersController.cs"]},
+    {"id":"R002","kind":"read","tables":["SalesLT.Customer"],"tps":null,"operation":"Find customer by ID for details, edit, delete, or existence","evidence":"code","sourcePaths":["Controllers/CustomersController.cs"]},
+    {"id":"R003","kind":"read","tables":["SalesLT.ProductCategory"],"tps":null,"operation":"List categories including parent without ordering or pagination","evidence":"code","sourcePaths":["Controllers/ProductCategoriesController.cs"]},
+    {"id":"R004","kind":"read","tables":["SalesLT.ProductCategory"],"tps":null,"operation":"Find category by ID, including parent on details and delete preview","evidence":"code","sourcePaths":["Controllers/ProductCategoriesController.cs"]},
+    {"id":"R005","kind":"read","tables":["SalesLT.ProductCategory"],"tps":null,"operation":"Populate unpaged parent category selection","evidence":"code","sourcePaths":["Controllers/ProductCategoriesController.cs"]},
+    {"id":"R006","kind":"read","tables":["SalesLT.Product","SalesLT.ProductCategory","SalesLT.ProductModel"],"tps":null,"operation":"List products including category and model without ordering or pagination","evidence":"code","sourcePaths":["Controllers/ProductsController.cs"]},
+    {"id":"R007","kind":"read","tables":["SalesLT.Product","SalesLT.ProductCategory","SalesLT.ProductModel"],"tps":null,"operation":"Find product by ID, including category and model on details and delete preview","evidence":"code","sourcePaths":["Controllers/ProductsController.cs"]},
+    {"id":"R008","kind":"read","tables":["SalesLT.ProductCategory","SalesLT.ProductModel"],"tps":null,"operation":"Populate unpaged product category and model selections","evidence":"code","sourcePaths":["Controllers/ProductsController.cs"]},
+    {"id":"W001","kind":"write","tables":["SalesLT.Customer"],"tps":null,"operation":"Create one customer","evidence":"code","sourcePaths":["Controllers/CustomersController.cs"]},
+    {"id":"W002","kind":"write","tables":["SalesLT.Customer"],"tps":null,"operation":"Update one customer","evidence":"code","sourcePaths":["Controllers/CustomersController.cs"]},
+    {"id":"W003","kind":"write","tables":["SalesLT.Customer"],"tps":null,"operation":"Delete one customer after lookup","evidence":"code","sourcePaths":["Controllers/CustomersController.cs"]},
+    {"id":"W004","kind":"write","tables":["SalesLT.ProductCategory"],"tps":null,"operation":"Create one product category","evidence":"code","sourcePaths":["Controllers/ProductCategoriesController.cs"]},
+    {"id":"W005","kind":"write","tables":["SalesLT.ProductCategory"],"tps":null,"operation":"Update one product category","evidence":"code","sourcePaths":["Controllers/ProductCategoriesController.cs"]},
+    {"id":"W006","kind":"write","tables":["SalesLT.ProductCategory"],"tps":null,"operation":"Delete one product category after lookup","evidence":"code","sourcePaths":["Controllers/ProductCategoriesController.cs"]},
+    {"id":"W007","kind":"write","tables":["SalesLT.Product"],"tps":null,"operation":"Create one product","evidence":"code","sourcePaths":["Controllers/ProductsController.cs"]},
+    {"id":"W008","kind":"write","tables":["SalesLT.Product"],"tps":null,"operation":"Update one product","evidence":"code","sourcePaths":["Controllers/ProductsController.cs"]},
+    {"id":"W009","kind":"write","tables":["SalesLT.Product"],"tps":null,"operation":"Delete one product after lookup","evidence":"code","sourcePaths":["Controllers/ProductsController.cs"]}
+  ],
+  "noObservedAccess": [
+    "dbo.BuildVersion", "dbo.ErrorLog", "SalesLT.Address", "SalesLT.CustomerAddress",
+    "SalesLT.ProductDescription", "SalesLT.ProductModelProductDescription",
+    "SalesLT.SalesOrderDetail", "SalesLT.SalesOrderHeader"
+  ],
+  "sdkCompatibility": {
+    "version": 1,
+    "matrixVersion": 1,
+    "matrixVerifiedAt": "2026-09-03",
+    "overallStatus": "supported",
+    "analyticalPhasesAllowed": true,
+    "codeMigrationAllowed": true,
+    "results": [
+      {
+        "language": "C#",
+        "normalizedLanguage": "c#",
+        "status": "supported",
+        "sdkFamily": "dotnet",
+        "sdkDisplayName": ".NET",
+        "package": "Microsoft.Azure.Cosmos",
+        "interoperability": false,
+        "documentation": "https://learn.microsoft.com/azure/cosmos-db/quickstart-dotnet"
+      }
+    ],
+    "officialSources": {
+      "sdkQuickstarts": "https://learn.microsoft.com/azure/cosmos-db/quickstart-dotnet",
+      "rustQuickstart": "https://learn.microsoft.com/azure/cosmos-db/quickstart-rust"
+    },
+    "onlineDocumentationRefreshRecommended": false
+  }
+}

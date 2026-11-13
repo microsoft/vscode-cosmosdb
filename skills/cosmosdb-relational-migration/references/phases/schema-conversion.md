@@ -122,6 +122,23 @@ domains while it is pending. A read-only snapshot or weaker guarantees must not 
 the only alternative to supplying every missing input or stopping.
 
 Record conditional designs and their clearance criteria in existing summaries.
+For a non-native preservation guarantee, distinguish the requirement from its selected
+implementation mechanism: name the storage/API primitive or algorithm, authoritative
+owner, publication/visibility boundary, and failure/recovery behavior. A proposed
+coordinator, comparator or content store is not by itself evidence of implementability.
+If comparison data, a supplier, a fencing primitive or another essential choice is
+unresolved, say which choice is open and what would establish a supported path.
+Keep that design decision explicit rather than claiming that only execution evidence
+is missing. Carry the condition into downstream implementation and verification work;
+do not silently add an unapproved service or change the required guarantees.
+
+These are conditional design notes, not a new veto on conversion completion. Continue
+unaffected mappings under the existing issue-classification rules, preserving known
+correctness failures as failures and unperformed checks as unperformed. Downstream
+planning must reassess the mechanism and required decisions using
+[Implementation Mechanisms](./code-migration.md#implementation-mechanisms), not mark
+them resolved solely because the conversion checkpoint is complete.
+
 Choose and document a supported recommendation within the authorized scope rather
 than withholding the model until every alternative or advisory concern is settled.
 Keep accepted partial results and continue after each decision. Publish a canonical

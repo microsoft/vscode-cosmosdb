@@ -74,6 +74,9 @@ test('defines a project boundary independent of the host workspace', () => {
     const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
     assert.match(skill, /default to the sole workspace folder\s+only when it is also the target project root/u);
     assert.match(skill, /directory containing its `\.cosmosdb-migration` folder/u);
+    assert.match(skill, /An explicit `workspace` and a selected existing migration are two constraints, not a\s+precedence order/u);
+    assert.match(skill, /Do not select either root, inspect either project, initialize another migration/u);
+    assert.match(skill, /If the host cannot ask, report the unresolved\s+scope and stop rather than choosing a root/u);
     assert.match(skill, /If multiple projects could match, ask the user to select one/u);
     assert.match(skill, /not the collection of open folders or a containing repository/u);
     assert.match(skill, /Scope search tools\s+explicitly and discard results outside it/u);
@@ -835,6 +838,26 @@ test('keeps operational handoff separate without hiding required implementation 
     assert.equal([...example.matchAll(/^  - Depends on:/gmu)].length, 3);
     assert.equal([...example.matchAll(/^  - Done when:/gmu)].length, 3);
     assert.equal([...example.matchAll(/^  - Evidence:/gmu)].length, 3);
+});
+
+test('requires acyclic evidence clearance across implementation and activation milestones', () => {
+    const reference = fs.readFileSync(path.join(skillRoot, 'references/phases/code-migration.md'), 'utf8');
+    assert.match(reference, /Check the combined dependency graph, not just\s+the explicit ID lists/u);
+    assert.match(reference, /Test-environment setup is a prerequisite for implementation verification/u);
+    assert.match(reference, /Activation must enumerate only its pre-activation blocker IDs/u);
+    assert.match(reference, /cannot require a blocker's clearance that includes observing or closing the rollback window/u);
+    assert.match(reference, /Do not fix a cycle by deleting\s+required evidence, weakening rollback guarantees/u);
+});
+
+test('distinguishes selected implementation mechanisms from unresolved service choices', () => {
+    const reference = fs.readFileSync(path.join(skillRoot, 'references/phases/code-migration.md'), 'utf8');
+    const conversion = fs.readFileSync(path.join(skillRoot, 'references/phases/schema-conversion.md'), 'utf8');
+    assert.match(reference, /naming a service does not/u);
+    assert.match(reference, /do not\s+reclassify that choice as only missing test evidence/u);
+    assert.match(reference, /a named future service without a selected\s+mechanism is not a resolved solution/u);
+    assert.match(reference, /milestone and evidence-producing task or external owner/u);
+    assert.match(conversion, /These are conditional design notes, not a new veto on conversion completion/u);
+    assert.match(conversion, /code-migration\.md#implementation-mechanisms/u);
 });
 
 test('resolves target intent before account discovery', () => {

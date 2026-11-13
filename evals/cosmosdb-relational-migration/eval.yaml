@@ -1,0 +1,302 @@
+name: cosmosdb-relational-migration-guidance
+description: Phase decisions and workflow boundaries, without running a migration.
+type: capability
+
+agent_environment:
+  skills:
+    - ../../skills/cosmosdb-relational-migration
+    - ../../skills/cosmosdb-best-practices
+
+defaults:
+  executor: copilot-sdk
+  model: gpt-6.1-terra
+  reasoning_effort: high
+  judge_model: gpt-6.1-sol
+  judge_reasoning_effort: high
+  runs: 1
+  timeout: 5m
+
+scoring:
+  threshold: 1
+
+stimuli:
+  - name: preflight-authoritative-ddl
+    tags: { category: guidance, phase: preflight, contract: supplied-ddl }
+    prompt: |
+      For a relational-to-Cosmos DB migration, my supplied SQL DDL has Orders(Id, Total),
+      but the ORM also has Discount. In autonomous preflight, should you add Discount
+      to the DDL? Explain the next steps only; do not run a phase or write files.
+    rubric:
+      - Preserve the supplied DDL unchanged, record the discrepancy with the ORM, and use the DDL as authoritative rather than silently inferring or adding Discount.
+    graders: &guidance
+      - type: completed
+      - type: skill-invocation
+        config: { required: [cosmosdb-relational-migration] }
+      - type: prompt
+        config: &judge
+          scoring: binary
+          threshold: 1
+          prompt: >-
+            Evaluate every rubric criterion. Accept semantically equivalent explanations
+            without requiring exact phrases. Reject substantive omissions, contradictions,
+            and incorrect advice. Keyword mentions alone do not satisfy a criterion.
+      - type: output-matches
+        config: { pattern: '\S' }
+      - type: diff-empty
+
+  - name: preflight-inferred-schema
+    tags: { category: guidance, phase: preflight, contract: inferred-ddl }
+    prompt: |
+      I want to migrate a relational app to Cosmos DB but have no DDL, only ORM models,
+      migrations and queries. I forbid external parser dependencies. Explain schema
+      acquisition and its limits; do not run a phase or write files.
+    rubric:
+      - Infer processable DDL from project evidence, recording provenance, conflicts and uncertainty rather than inventing missing constraints.
+      - Use model-only interpretation without Python, SQLGlot, or a custom parser script, and do not claim structural validation proves source-engine fidelity.
+    graders: *guidance
+
+  - name: preflight-workload-contradiction
+    tags: { category: guidance, phase: preflight, contract: workload-contradiction }
+    prompt: |
+      In a relational-to-Cosmos migration, an engineer supplied an estimate of 1,000
+      rows for dbo.BuildVersion, whose authoritative DDL has a unique TINYINT primary key.
+      How should preflight handle this mismatch? Explain only; do not write files,
+      run a phase, or silently change the supplied estimate.
+    rubric:
+      - Identify that a SQL Server TINYINT key has at most 256 distinct values and cannot uniquely identify 1,000 simultaneous rows.
+      - Preserve the supplied evidence, flag the inconsistency, and request a corrected or verified count or record the feasible count as unknown; do not invent a replacement count, change the DDL, or present the estimate as observed or feasible.
+    graders: *guidance
+
+  - name: parser-choice-and-failure
+    tags: { category: guidance, phase: preflight, contract: parser-consent }
+    prompt: |
+      Explain parser selection for the relational-to-Cosmos migration skill in three cases:
+      an interactive first run, an unattended default when SQLGlot cannot be installed,
+      and an explicit SQLGlot request when installation fails. Do not execute anything
+      or write files.
+    rubric:
+      - Interactive first use requires permission, disclosure of SQLGlot as an external MIT-licensed Python dependency with its upstream link, and a model-only alternative.
+      - An unattended-default installation failure warns and falls back to model-only with persisted fallback metadata; an explicit SQLGlot choice fails rather than silently downgrading.
+    graders: *guidance
+
+  - name: parser-first-use-consent
+    tags: { category: guidance, phase: preflight, contract: parser-consent, regression: parser-first-use }
+    prompt: |
+      I have selected authoritative SQL Server DDL for my relational-to-Cosmos DB
+      migration, but have not chosen a parser and have no saved parser decision.
+      Present the initial parser choice to me now, then end this turn so I can answer.
+      Do not merely describe what you would ask. You may read installed skill guidance,
+      but do not inspect or interpret source files, initialize a project, record a choice,
+      install anything, run a phase, or make external-service calls.
+    rubric:
+      - Present an actual choice to the user between SQLGlot, model-only interpretation and stopping; do not merely narrate a future permission request.
+      - Identify SQLGlot as an external MIT-licensed Python dependency, link to https://github.com/tobymao/sqlglot, mention possible local installation, and explain that model-only interpretation avoids installing or invoking an external parser.
+      - Stop for the user's answer without choosing or claiming approval, recording a parser decision, interpreting DDL, initializing migration state, installing dependencies or invoking a parser. A noninteractive host does not override this explicit stop request.
+    graders: *guidance
+
+  - name: discovery-unsupported-sdk
+    tags: { category: guidance, phase: discovery, contract: sdk-eligibility }
+    prompt: |
+      Our relational-to-Cosmos migration has an authoritative PHP application and the
+      bundled matrix reports no first-party SDK. Which phases are blocked, and is a
+      REST-only rewrite an acceptable fallback? Explain only; do not run tools other
+      than reading guidance or write files.
+    rubric:
+      - A valid unsupported SDK classification permits discovery, assessment, schema conversion, provisioning and code-migration planning; it blocks application code migration to an unsupported SDK.
+      - Do not recommend direct REST as an SDK replacement; propose a supported language or supported-language service boundary.
+      - SDK compatibility is discovery-owned, not a preflight readiness condition.
+    graders: *guidance
+
+  - name: assessment-domain-ownership
+    tags: { category: guidance, phase: assessment, contract: domain-ownership }
+    prompt: |
+      In my relational-to-Cosmos migration, Billing and Catalog share reporting joins
+      but have different owners and lifecycles. A legacy table owned by Billing has no
+      observed application access. Explain assessment boundaries and table ownership; do not run the phase
+      or write files.
+    rubric:
+      - Prioritize business ownership, lifecycle and consistency invariants over reporting joins; a domain is not a logical partition or final container design.
+      - Assign each non-excluded table to exactly one domain, retaining the legacy table with explicit mapping uncertainty rather than silently excluding it.
+      - Record cross-domain dependencies and defer final container and partition-key decisions beyond assessment. Accept equivalent wording without requiring the later phase's name; reject choosing a final container layout or partition key during assessment.
+    graders: *guidance
+
+  - name: conversion-domain-selection
+    tags: { category: guidance, phase: schema-conversion, contract: domain-selection }
+    prompt: |
+      In my relational-to-Cosmos migration every assessed domain has isMapped=false.
+      I requested schema conversion without include-unmapped-domains. Should you
+      convert them anyway? Explain the scope and completion requirements only,
+      without creating files.
+    rubric:
+      - Stop with an option to explicitly include unmapped domains; do not silently widen scope or declare an empty conversion complete.
+      - Completion requires domain models and summaries plus a validated canonical root model and supporting evidence, not merely a complete status flag.
+    graders: *guidance
+
+  - name: conversion-bounded-children
+    tags: { category: guidance, phase: schema-conversion, contract: peer-design }
+    prompt: |
+      For a relational-to-Cosmos migration, an Order has at most 12 tiny line items,
+      always read and updated with it. Explain whether to embed them and what source
+      semantics to preserve. Read relevant guidance, but do not execute migration
+      helpers or create files.
+    rubric:
+      - Recommend embedding the bounded co-read children while checking document size and growth limits.
+      - Preserve source identities and relevant relationship or transaction semantics rather than treating embedding alone as proof of correctness.
+    graders:
+      - type: completed
+      - type: skill-invocation
+        config: { required: [cosmosdb-relational-migration, cosmosdb-best-practices] }
+      - type: prompt
+        config: *judge
+      - type: output-matches
+        config: { pattern: '\S' }
+      - type: diff-empty
+
+  - name: provisioning-current-approval
+    tags: { category: guidance, phase: provisioning, contract: provisioning-approval }
+    prompt: |
+      My relational-to-Cosmos migration memory records deployment approval from yesterday.
+      Today's provisioning request omits allow-provisioning. May you deploy or seed, and
+      can generated Bicep prove provisioning complete? Explain only; do not write files,
+      access Azure, or run deployment commands.
+    rubric:
+      - Past approval is not current authorization; without allow-provisioning true for this invocation, do not mutate resources or data.
+      - Artifact generation alone does not establish a deployed or verified target and must not be reported as completed provisioning.
+    graders: *guidance
+
+  - name: code-migration-plan-only
+    tags: { category: guidance, phase: code-migration, contract: code-approval }
+    prompt: |
+      In a relational-to-Cosmos migration, saved checkpoint metadata describes an earlier
+      code execution. My current request says "update the migration plan." Does that
+      authorize application edits? Explain only; do not change files or run a phase.
+    rubric:
+      - Derive action from the current request and update only the plan and its migration metadata, not application code.
+      - Require an explicit current request to migrate, apply or execute the plan before application edits; old checkpoint metadata does not authorize them.
+    graders: *guidance
+
+  - name: code-migration-historical-completion
+    tags: { category: guidance, phase: code-migration, contract: historical-completion }
+    prompt: |
+      After a completed relational-to-Cosmos code migration I refactored application files.
+      For another code-migration iteration, must you rerun discovery to refresh old source
+      hashes? Explain historical completion versus current readiness, without running
+      helpers or changing files.
+    rubric:
+      - Historical code-migration completion is not invalidated by later application edits and has no ongoing code-migration freshness contract.
+      - Inspect the current application, SDK compatibility and accepted model for the new iteration without automatically restarting upstream analysis or rewriting old hashes to match.
+    graders: *guidance
+
+  - name: planning-readiness-order
+    tags: { category: guidance, phase: code-migration, contract: planning-readiness, regression: planning-quality }
+    prompt: |
+      Review this relational-to-Cosmos migration plan without writing files or executing it:
+      CM-03 finishes implementation verification only after ENV-001 is cleared.
+      ENV-001 requires production writer inventory and the frozen production generator state.
+      OP-01 collects that evidence, but depends on completed CM-03.
+      The plan also requires real SDK, fault-recovery and source-parity tests, and an
+      isolated test environment can be provisioned under a later approved invocation.
+      Is this an executable order? Explain the smallest repair while retaining the
+      necessary verification and production safeguards.
+    rubric:
+      - Identify the indirect CM-03 to ENV-001 to OP-01 to CM-03 cycle even though the explicit task IDs alone do not show it.
+      - Give implementation verification its own earlier isolated-environment prerequisites and required SDK/fault/source-parity evidence; keep actual production inventory and frozen generator state as separate later activation gates, not prerequisites for CM-03.
+      - Do not remove required tests, move unavailable implementation checks to operational handoff to claim completion, fabricate clearance, or authorize provisioning during this review.
+    graders: *guidance
+
+  - name: planning-activation-order
+    tags: { category: guidance, phase: code-migration, contract: planning-activation, regression: planning-quality }
+    prompt: |
+      Review this relational-to-Cosmos direct-switch plan. OP-05 activates production
+      traffic once all deferred production blockers are clear. OPS-001 clears only
+      after writer fencing, rollback rehearsal, and OP-06's completed live rollback
+      observation window. OP-06 depends on OP-05. All tasks are still pending.
+      Assess the ordering and propose a correction without deleting safety work,
+      weakening the zero-acknowledged-write-loss requirement, writing files or executing anything.
+      Give concrete replacement clearance identifiers, the task owning each clearance,
+      and the revised OP-05/OP-06 dependencies so the correction can be applied to the plan.
+    rubric:
+      - Identify that OP-05 indirectly waits for OP-06 through OPS-001 while OP-06 explicitly waits for OP-05; pending checkboxes do not resolve this cycle.
+      - Split pre-activation readiness and rehearsal from post-activation observation and window closure, with separate clearance identifiers and owning tasks; activation requires only explicitly identified pre-activation gates.
+      - Retain writer fencing, rollback rehearsal, post-activation observation and closure at their proper stages, without claiming future evidence exists or weakening the loss guarantee.
+    graders: *guidance
+
+  - name: planning-unselected-mechanism
+    tags: { category: guidance, phase: code-migration, contract: planning-mechanism, regression: planning-quality }
+    prompt: |
+      An accepted relational-to-Cosmos conversion says a future integrity service will
+      provide source-wide uniqueness with exact SQL collation and fenced publication.
+      No comparison implementation or weight-data supplier, backing store or atomic
+      fencing primitive has been selected. The code plan marks this design blocker
+      resolved: "implement the service; prove parity and failover later."
+      It also selects a supported framework upgrade with a known package/API path,
+      whose build has not yet run. Explain the correct dispositions and next steps.
+      Preserve the accepted model; do not write files, execute checks, silently select
+      a new service architecture, or treat conversion completion as proof of feasibility.
+    rubric:
+      - Keep the unspecified comparator and fencing/store mechanisms as unresolved design choices with concrete alternatives, required approval or evidence and affected-task clearance; naming a service plus future tests does not resolve them.
+      - Distinguish the known framework upgrade and other specified implementation work from an unselected mechanism; a missing build or runtime proof alone does not make an otherwise specified implementation choice unresolved, but the checks remain required.
+      - Preserve the accepted conditional model and its obligations; do not silently introduce an unapproved service, weaken source semantics, or claim implementation or verification occurred.
+    graders: *guidance
+
+  - name: validation-only-rerun
+    tags: { category: guidance, contract: validation-only }
+    prompt: |
+      For my relational-to-Cosmos migration I explicitly request "validate assessment
+      only" in autonomous mode. Existing evidence is stale. Should the inspector use
+      --regenerate, should you repair artifacts, or report incompleteness? May you
+      update migration memory as part of this request? Explain only; do not inspect
+      a real project or write files.
+    rubric:
+      - Explicit validation-only intent overrides autonomous regeneration, so omit --regenerate and report stale or incomplete evidence without regenerating or repairing artifacts.
+      - Do not update migration memory as a side effect of this read-only request.
+    graders: *guidance
+
+  - name: review-requires-approval
+    tags: { category: guidance, contract: review-approval }
+    prompt: |
+      I request "review assessment blockers and propose fixes for approval" for a
+      relational-to-Cosmos migration on a noninteractive host. Does autonomous fallback
+      authorize applying those fixes? Explain the boundary only; do not run a phase
+      or change files.
+    rubric:
+      - Review may inspect evidence and propose repairs, but must wait for explicit approval before writes or phase execution even on a noninteractive host.
+    graders: *guidance
+
+  - name: project-scope-conflict
+    tags: { category: guidance, contract: project-scope }
+    prompt: |
+      I resume a relational-to-Cosmos migration in project A but explicitly set workspace
+      to project B in a multi-project repository. The active terminal is in B. Which root
+      should you use? Explain only; do not inspect or initialize either project.
+    rubric:
+      - Stop and ask which project to use because the explicit workspace and selected migration conflict; neither the active terminal nor folder order resolves it.
+      - Do not initialize a second migration or broaden source analysis to sibling projects while scope is unresolved.
+    graders: *guidance
+
+  - name: memory-only-no-phase
+    tags: { category: guidance, contract: memory-only }
+    prompt: |
+      I ask only to remember an existing relational-to-Cosmos migration decision for this
+      application, which already has unrelated migration notes. Explain where the new
+      decision belongs, how to handle the existing notes, and whether you must initialize
+      project.json, run a phase, or load the peer skill. Do not actually save anything.
+    rubric:
+      - Existing knowledge belongs in project-local .cosmosdb-migration/memory.md, preserving unrelated notes rather than using user-profile memory.
+      - A memory-only request does not initialize project.json or run inspector, freshness, completion helpers or a migration phase; recording existing knowledge does not require the peer skill.
+    graders: *guidance
+
+  - name: unrelated-postgresql
+    tags: { category: activation, contract: non-activation }
+    prompt: Explain briefly how to create a PostgreSQL index on users(email). Do not write files.
+    rubric:
+      - Give valid PostgreSQL CREATE INDEX guidance without initiating a Cosmos DB migration or substituting Cosmos DB indexing policy.
+    graders:
+      - type: completed
+      - type: skill-invocation
+        config: { disallowed: [cosmosdb-relational-migration, cosmosdb-best-practices] }
+      - type: prompt
+        config: *judge
+      - type: output-matches
+        config: { pattern: '\S' }
+      - type: diff-empty

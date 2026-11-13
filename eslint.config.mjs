@@ -17,6 +17,7 @@ export default defineConfig([
             '.azure-pipelines',
             '.config',
             '.github',
+            '.vally',
             '.vscode-test',
             'coverage',
             'dist',

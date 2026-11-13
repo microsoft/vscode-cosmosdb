@@ -1025,7 +1025,7 @@ const CostCoverageNotice = ({ source }: { source: NonNullable<DerivedAdvisoriesR
                 </div>
                 <ul>
                     {source.failures.map((failure) => (
-                        <li key={failure.operation}>
+                        <li key={`${failure.operation}-${failure.kind}`}>
                             {failure.operation === 'throughput'
                                 ? l10n.t('Throughput: {reason}', { reason: reasons[failure.kind] })
                                 : l10n.t('Continuous backup: {reason}', { reason: reasons[failure.kind] })}

@@ -601,10 +601,17 @@ The native client reuses the authenticated ARM pipeline and configured cloud end
 SDK retries; it does not acquire credentials, add dependencies or change role assignments.
 
 The account's blended rate is `(amortizedCost / billed100RuHours) / 100 * 730`; the estimate is positive
-recoverable RU/s times that rate. Billed usage, not configured capacity times window duration, is the divisor.
+recoverable regional RU/s times that rate. Offer-level manual/idle and autoscale idle-floor capacity is
+multiplied by the number of distinct regions in the complete, nonempty ARM location list. Missing names or
+case/spacing-equivalent duplicate regions withhold offer-level estimates, not the qualitative findings.
+Already regionalized `removableExtraRegionRu` is not multiplied again. The estimate retains the per-region
+capacity and region count as provenance and displays them alongside the global recoverable capacity.
+Billed usage, not configured capacity times window duration, is the divisor.
+Azure bills configured throughput in each region; see
+[geo-replication billing](https://learn.microsoft.com/en-us/azure/cosmos-db/understand-your-bill#billing-examples-with-geo-replication).
 Currency, contributing meters, cost, billed usage, window and rate remain in structured provenance. Unlike
 CODA's optional subscription fallback, missing account attribution does **not** substitute a subscription-wide
-rate: mixed account modes, regions and discounts may be incompatible. No regional multiplier is invented.
+rate: mixed account modes, regions and discounts may be incompatible. Unknown regional footprints are not assumed to be one.
 Estimates do not alter findings, severity, thresholds or supersession. Superseded, blocked, unquantified,
 zero-capacity and unrelated findings receive no throughput estimate. The UI explicitly describes the rate as
 blended and savings as modeled, not a guaranteed invoice reduction; reservations, commitments and future demand

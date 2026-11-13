@@ -69,6 +69,91 @@ function setup() {
 afterEach(() => vi.restoreAllMocks());
 
 describe('optional financial enrichment', () => {
+    it.each([
+        { regions: ['East US'] },
+        { regions: ['East US', 'West US'] },
+        { regions: ['East US', 'West US', 'North Europe'] },
+    ])(
+        'includes every configured region when estimating offer-level recoverable capacity ($regions)',
+        async ({ regions }) => {
+            const { enrich, send } = setup();
+            const findings = [
+                advisory('OverProvisioning', { evidence: { recoverableRu: 1000 } }),
+                advisory('IdleContainer', { evidence: { recoverableRu: 1000 } }),
+                advisory('AutoscaleMaxOverProvisioned', { evidence: { recoverableIdleFloorRu: 1000 } }),
+                advisory('MultiRegionWriteAntipattern', {
+                    evidence: { regionalCapacityQuantified: true, removableExtraRegionRu: 2000 },
+                }),
+            ];
+            expect(await enrich(findings, { ...context, locationNames: regions })).toEqual({
+                available: true,
+                failures: [],
+            });
+            for (const finding of findings.slice(0, 3)) {
+                expect(finding.costEstimate).toMatchObject({
+                    monthlyAmount: expect.closeTo(58.4 * regions.length, 8),
+                    recoverableRu: 1000 * regions.length,
+                    regionalFootprint: { regionCount: regions.length, recoverableRuPerRegion: 1000 },
+                });
+            }
+            expect(findings[3].costEstimate).toMatchObject({
+                monthlyAmount: expect.closeTo(116.8, 8),
+                recoverableRu: 2000,
+                regionalFootprint: null,
+            });
+            expect(send).toHaveBeenCalledOnce();
+        },
+    );
+
+    it.each([
+        { regions: [] },
+        { regions: [''] },
+        { regions: ['   '] },
+        { regions: ['East US', 'EAST US'] },
+        { regions: ['East US', 'eastus'] },
+    ])('withholds offer-level estimates without a valid regional footprint ($regions)', async ({ regions }) => {
+        const { enrich, send } = setup();
+        const finding = advisory('IdleContainer', { evidence: { recoverableRu: 1000 } });
+        const before = structuredClone(finding);
+        expect(await enrich([finding], { ...context, locationNames: regions })).toEqual({
+            available: false,
+            failures: [{ operation: 'throughput', kind: 'noData' }],
+        });
+        expect(finding).toEqual(before);
+        expect(send).not.toHaveBeenCalled();
+    });
+
+    it('retains independently regionalized capacity when an offer footprint is unavailable', async () => {
+        const { enrich, send } = setup();
+        const findings = [
+            advisory('IdleContainer', { evidence: { recoverableRu: 1000 } }),
+            advisory('MultiRegionWriteAntipattern', {
+                evidence: { regionalCapacityQuantified: true, removableExtraRegionRu: 2000 },
+            }),
+        ];
+        expect(await enrich(findings, { ...context, locationNames: [] })).toEqual({
+            available: false,
+            failures: [{ operation: 'throughput', kind: 'noData' }],
+        });
+        expect(findings[0].costEstimate).toBeUndefined();
+        expect(findings[1].costEstimate).toMatchObject({
+            monthlyAmount: expect.closeTo(116.8, 8),
+            regionalFootprint: null,
+        });
+        expect(send).toHaveBeenCalledOnce();
+    });
+
+    it('rejects a regional capacity overflow before querying billing', async () => {
+        const { enrich, send } = setup();
+        const finding = advisory('IdleContainer', { evidence: { recoverableRu: Number.MAX_VALUE } });
+        expect(await enrich([finding], { ...context, locationNames: ['East US', 'West US'] })).toEqual({
+            available: false,
+            failures: [{ operation: 'throughput', kind: 'invalidData' }],
+        });
+        expect(finding.costEstimate).toBeUndefined();
+        expect(send).not.toHaveBeenCalled();
+    });
+
     it('queries billing once and enriches only eligible active capacity findings without changing decisions or copy', async () => {
         const { send, enrich } = setup();
         const findings = [
@@ -103,6 +188,7 @@ describe('optional financial enrichment', () => {
             basis: 'customerAmortizedBill',
             currency: 'EUR',
             recoverableRu: 400,
+            regionalFootprint: { regionCount: 1, recoverableRuPerRegion: 400 },
             rate: { source: 'customerAmortizedBill', scope: 'account', cost: 8, usage100RuHours: 1000 },
         });
     });

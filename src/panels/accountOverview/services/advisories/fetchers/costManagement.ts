@@ -17,6 +17,7 @@ import { type CostFailureKind, type ThroughputRate } from '../core/types';
 export interface CostContext {
     subscriptionId: string;
     resourceManagerEndpoint: string;
+    /** Complete configured ARM location list, not a caller-selected subset of regions. */
     locationNames: readonly string[];
 }
 

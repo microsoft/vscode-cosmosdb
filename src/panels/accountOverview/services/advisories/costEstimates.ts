@@ -59,23 +59,54 @@ export async function enrichAdvisoryCosts(params: {
         if (!context) {
             failures.push({ operation: 'throughput', kind: 'notConfigured' });
         } else {
-            try {
-                const rate = await getThroughputRate(cosmosClient, context, accountId, now);
-                const amounts = capacity.map(({ ru }) => ru * rate.perRuMonth);
-                if (amounts.some((amount) => !Number.isFinite(amount) || amount <= 0)) {
-                    throw new CostEvidenceError('invalidData');
+            const regions = context.locationNames.map((name) => name.replace(/\s+/g, '').toLowerCase());
+            const regionCount =
+                regions.length > 0 && regions.every(Boolean) && new Set(regions).size === regions.length
+                    ? regions.length
+                    : undefined;
+            const regionalCapacity = capacity
+                .map(({ advisory, ru }) => {
+                    if (advisory.rule === 'MultiRegionWriteAntipattern') {
+                        return { advisory, ru, regionalFootprint: null };
+                    }
+                    return regionCount === undefined
+                        ? undefined
+                        : {
+                              advisory,
+                              ru: ru * regionCount,
+                              regionalFootprint: { regionCount, recoverableRuPerRegion: ru },
+                          };
+                })
+                .filter((item) => item !== undefined);
+            if (regionalCapacity.length < capacity.length) {
+                failures.push({ operation: 'throughput', kind: 'noData' });
+            }
+            if (regionalCapacity.length > 0) {
+                try {
+                    if (regionalCapacity.some(({ ru }) => !Number.isFinite(ru))) {
+                        throw new CostEvidenceError('invalidData');
+                    }
+                    const rate = await getThroughputRate(cosmosClient, context, accountId, now);
+                    const amounts = regionalCapacity.map(({ ru }) => ru * rate.perRuMonth);
+                    if (amounts.some((amount) => !Number.isFinite(amount) || amount <= 0)) {
+                        throw new CostEvidenceError('invalidData');
+                    }
+                    for (const [index, { advisory, ru, regionalFootprint }] of regionalCapacity.entries()) {
+                        advisory.costEstimate = {
+                            basis: 'customerAmortizedBill',
+                            monthlyAmount: amounts[index],
+                            currency: rate.currency,
+                            recoverableRu: ru,
+                            regionalFootprint,
+                            rate,
+                        };
+                    }
+                } catch (error) {
+                    const kind = classifyCostFailure(error);
+                    if (!failures.some((failure) => failure.operation === 'throughput' && failure.kind === kind)) {
+                        failures.push({ operation: 'throughput', kind });
+                    }
                 }
-                for (const [index, { advisory, ru }] of capacity.entries()) {
-                    advisory.costEstimate = {
-                        basis: 'customerAmortizedBill',
-                        monthlyAmount: amounts[index],
-                        currency: rate.currency,
-                        recoverableRu: ru,
-                        rate,
-                    };
-                }
-            } catch (error) {
-                failures.push({ operation: 'throughput', kind: classifyCostFailure(error) });
             }
         }
     }

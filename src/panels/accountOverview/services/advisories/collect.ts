@@ -772,11 +772,6 @@ export async function collectTier2Logs(
         probeCdbLogs(logsClient, accountId, timespan, { onDiagnostic: report, table: 'CDBQueryRuntimeStatistics' }),
     ]);
     const dataPlaneTimespan = dataPlaneSource ? requestLogWindow(dataPlaneSource, now) : timespan;
-    const rawDataPlaneAvailable =
-        dataPlaneSource === 'CDBDataPlaneRequests' ||
-        (queryRuntime.available &&
-            scanTargets.length > 0 &&
-            (await probeCdbLogs(logsClient, accountId, timespan, { onDiagnostic: report })).available);
 
     const sharedDatabases = new Map<string, number>();
     for (const row of rows) {
@@ -797,7 +792,7 @@ export async function collectTier2Logs(
                 row.containerId,
                 timespan,
                 report,
-                rawDataPlaneAvailable,
+                true,
             ).catch(() => undefined),
         ),
         mapInBatches(dataPlaneSource ? ingestionTargets : [], (row) =>

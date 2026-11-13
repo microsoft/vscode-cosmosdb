@@ -538,13 +538,19 @@ export async function fetchUncontrolledIngestion(
             'ingestionBurst',
             [databaseId, containerId, db, coll],
             onDiagnostic,
-            (rows) =>
+            (rows) => {
+                for (const row of rows) {
+                    if (row.peak === null && (Number.isNaN(row.avg) || row.avg === 'NaN')) {
+                        row.avg = null;
+                    }
+                }
                 validateAggregates(
                     source,
                     rows,
                     [],
                     rows.every((row) => row.peak === null && row.avg === null) ? [] : ['peak', 'avg'],
-                ),
+                );
+            },
         ),
         executeLogsQuery(
             executor,

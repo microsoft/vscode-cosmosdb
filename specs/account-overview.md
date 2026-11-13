@@ -564,9 +564,12 @@ counts, invalid RU and misaligned source buckets invalidate the affected check, 
 partial coverage. Successful all-zero totals remain distinct from invalid aggregates.
 Burst evidence uses observed five-minute write buckets for aggregates and one-minute write buckets for raw
 events, without filling missing buckets with zero. Findings retain source table/resolution and absolute bounds.
+For a window without write buckets, Kusto's `NaN` average is normalized to null before validation and the burst
+factor is zero. Nonempty invalid burst measurements and invalid source-row counts remain failures.
 
-DX-002/007 keep their query-runtime-only structural decision. Raw data-plane logs optionally enrich query RU:
-each table selects one destination over the same absolute window; distinct logical-query/activity/shape tuples
+DX-002/007 keep their query-runtime-only structural decision. Raw data-plane logs optionally enrich query RU.
+Charge reads start only after nonempty structural observations, without a separate raw-table probe.
+Each table selects one destination over the same absolute window; distinct logical-query/activity/shape tuples
 join charges pre-aggregated by activity ID. Mean logical-query RU is exposed only when every execution and
 its activities matched valid charges. Runtime rows with missing activity IDs stay on the left side of the
 join as unmatched evidence, so a partially identified execution cannot publish a partial charge as full RU.

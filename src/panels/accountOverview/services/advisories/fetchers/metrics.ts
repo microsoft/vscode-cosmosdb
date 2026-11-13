@@ -277,13 +277,18 @@ export async function getAutoscaleUtilization(
     }
     const filter = `${throughputOfferFilter(databaseId, containerId)} and PhysicalPartitionId eq '*'`;
     const observation = DIAGNOSTIC_POLICY.autoscaleUtilization.observation;
-    const response = await readMetrics(client, resourceUri, {
-        metricnames: 'AutoscaledRU',
-        aggregation: 'Maximum',
-        timespan: advisoryTimespan(observation),
-        interval: observation.interval,
-        filter,
-    }, [databaseId, containerId ?? '']);
+    const response = await readMetrics(
+        client,
+        resourceUri,
+        {
+            metricnames: 'AutoscaledRU',
+            aggregation: 'Maximum',
+            timespan: advisoryTimespan(observation),
+            interval: observation.interval,
+            filter,
+        },
+        [databaseId, containerId ?? ''],
+    );
 
     // timestamp → summed AutoscaledRU across the container's physical partitions.
     const totals = new Map<number, number>();

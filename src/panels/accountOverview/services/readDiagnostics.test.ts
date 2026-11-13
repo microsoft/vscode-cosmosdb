@@ -21,8 +21,8 @@ import { __resetAdvisorCache, getActiveAlertSummary, getAlerts, getRecommendatio
 import { getInventoryResult } from './inventory';
 import { getPartitionStorageSeries } from './partitionHealth';
 import { readMetrics, readRequest, recordReadFailure, withReadDiagnostics } from './readDiagnostics';
-import { getRuTrends, getThrottleRate } from './ruTrends';
 import { getContainerCreatedAt } from './resourceAge';
+import { getRuTrends, getThrottleRate } from './ruTrends';
 import { pagedItems, mockClient, throwingClient } from './testFixtures';
 
 const accountId =
@@ -41,23 +41,54 @@ beforeEach(() => {
 
 describe('Account Overview read diagnostics', () => {
     it.each([
-        ['dedicated idle', (client: MonitorClient) => getContainerIdlePeak(client, accountId, 'private-db', 'private-container')],
-        ['shared idle', (client: MonitorClient) => getContainerIdlePeak(client, accountId, 'private-db', undefined, Date.now(), ['private-container'])],
-        ['autoscale', (client: MonitorClient) => getAutoscaleUtilization(client, accountId, 'private-db', 'private-container', 10000)],
-        ['indexing', (client: MonitorClient) => getContainerIndexingUsage(client, accountId, 'private-db', 'private-container')],
-        ['partition storage', (client: MonitorClient) => getPartitionStorageSeries(client, accountId, '7D', 'private-db', 'private-container')],
-        ['shared utilization', (client: MonitorClient) => getRuTrends(client, accountId, '7D', 'private-db', undefined, undefined, ['private-container'])],
-        ['shared request counts', (client: MonitorClient) => getThrottleRate(client, accountId, '7D', 'private-db', undefined, undefined, ['private-container'])],
+        [
+            'dedicated idle',
+            (client: MonitorClient) => getContainerIdlePeak(client, accountId, 'private-db', 'private-container'),
+        ],
+        [
+            'shared idle',
+            (client: MonitorClient) =>
+                getContainerIdlePeak(client, accountId, 'private-db', undefined, Date.now(), ['private-container']),
+        ],
+        [
+            'autoscale',
+            (client: MonitorClient) =>
+                getAutoscaleUtilization(client, accountId, 'private-db', 'private-container', 10000),
+        ],
+        [
+            'indexing',
+            (client: MonitorClient) => getContainerIndexingUsage(client, accountId, 'private-db', 'private-container'),
+        ],
+        [
+            'partition storage',
+            (client: MonitorClient) =>
+                getPartitionStorageSeries(client, accountId, '7D', 'private-db', 'private-container'),
+        ],
+        [
+            'shared utilization',
+            (client: MonitorClient) =>
+                getRuTrends(client, accountId, '7D', 'private-db', undefined, undefined, ['private-container']),
+        ],
+        [
+            'shared request counts',
+            (client: MonitorClient) =>
+                getThrottleRate(client, accountId, '7D', 'private-db', undefined, undefined, ['private-container']),
+        ],
     ] as const)('masks unquoted database/container names in %s request diagnostics', async (_label, read) => {
-        const client = throwingClient(Object.assign(
-            new Error('Insufficient access to private-db and private-container.'),
-            { statusCode: 403 },
-        ));
+        const client = throwingClient(
+            Object.assign(new Error('Insufficient access to private-db and private-container.'), { statusCode: 403 }),
+        );
         const warn = vi.fn();
-        await withReadDiagnostics('metrics', [accountId], warn, async () => {
-            await read(client);
-            return {};
-        }, () => ({}));
+        await withReadDiagnostics(
+            'metrics',
+            [accountId],
+            warn,
+            async () => {
+                await read(client);
+                return {};
+            },
+            () => ({}),
+        );
         const output = warn.mock.calls.flat().join('\n');
         expect(output).toContain('Insufficient access');
         expect(output).not.toMatch(/private-db|private-container/);
@@ -69,15 +100,26 @@ describe('Account Overview read diagnostics', () => {
         vi.spyOn(client.metrics, 'list').mockImplementation(async (_uri, options) => {
             await Promise.resolve();
             const name = options?.filter?.includes('first-db') ? 'first' : 'second';
-            throw Object.assign(new Error(`Insufficient access to ${name}-db, ${name}-one and ${name}-two.`), { statusCode: 403 });
+            throw Object.assign(new Error(`Insufficient access to ${name}-db, ${name}-one and ${name}-two.`), {
+                statusCode: 403,
+            });
         });
         const firstWarn = vi.fn();
         const secondWarn = vi.fn();
         const run = (name: string, warn: (line: string) => void) =>
-            withReadDiagnostics('metrics', [accountId], warn, async () => {
-                await getContainerIdlePeak(client, accountId, `${name}-db`, undefined, Date.now(), [`${name}-one`, `${name}-two`]);
-                return {};
-            }, () => ({}));
+            withReadDiagnostics(
+                'metrics',
+                [accountId],
+                warn,
+                async () => {
+                    await getContainerIdlePeak(client, accountId, `${name}-db`, undefined, Date.now(), [
+                        `${name}-one`,
+                        `${name}-two`,
+                    ]);
+                    return {};
+                },
+                () => ({}),
+            );
         await Promise.all([run('first', firstWarn), run('second', secondWarn)]);
         expect(firstWarn).toHaveBeenCalledOnce();
         expect(secondWarn).toHaveBeenCalledOnce();
@@ -85,21 +127,27 @@ describe('Account Overview read diagnostics', () => {
         expect(secondWarn.mock.calls.flat().join('\n')).not.toMatch(/second-(db|one|two)|first-/);
     });
 
-    it.each([['noData', 'rbac'], ['rbac', 'noData']] as const)(
-        'preserves partial-failure reasons in order %j',
-        async (first, second) => {
-            const result = await withReadDiagnostics('logs', [], vi.fn(), async () => {
-                for (const reason of [first, second, first]) {
-                    recordReadFailure('logs', { operation: 'crossPartitionRu', kind: 'partialFailure', reason, codes: [], messages: [] });
-                }
-                return {};
-            });
-            expect(result.diagnostics).toEqual([
-                { source: 'logs', kind: 'partialFailure', reason: first },
-                { source: 'logs', kind: 'partialFailure', reason: second },
-            ]);
-        },
-    );
+    it.each([
+        ['noData', 'rbac'],
+        ['rbac', 'noData'],
+    ] as const)('preserves partial-failure reasons in order %j', async (first, second) => {
+        const result = await withReadDiagnostics('logs', [], vi.fn(), async () => {
+            for (const reason of [first, second, first]) {
+                recordReadFailure('logs', {
+                    operation: 'crossPartitionRu',
+                    kind: 'partialFailure',
+                    reason,
+                    codes: [],
+                    messages: [],
+                });
+            }
+            return {};
+        });
+        expect(result.diagnostics).toEqual([
+            { source: 'logs', kind: 'partialFailure', reason: first },
+            { source: 'logs', kind: 'partialFailure', reason: second },
+        ]);
+    });
 
     it.each([
         ['request statuses', getAccountRequestStatusCounts],

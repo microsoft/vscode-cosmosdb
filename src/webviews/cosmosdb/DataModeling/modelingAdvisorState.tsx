@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ModelingAdvisorSnapshotSchema,
@@ -21,38 +22,45 @@ export function useModelingAdvisorPersistence({ load, save }: Persistence) {
     const [snapshot, setSnapshot] = useState(createInitialSnapshot);
     const [loadStatus, setLoadStatus] = useState<'loading' | 'ready'>('loading');
     const [loadFailed, setLoadFailed] = useState(false);
+    const [loadAttempt, setLoadAttempt] = useState(0);
     const [saveFailed, setSaveFailed] = useState(false);
     const lastSnapshot = useRef<ModelingAdvisorSnapshot>(snapshot);
     const saveSequence = useRef(0);
+    const canSave = useRef(false);
 
     useEffect(() => {
         let disposed = false;
+        canSave.current = false;
         setLoadStatus('loading');
         const hydrate = async () => {
-            let loaded: ModelingAdvisorSnapshot;
-            let failed = false;
             try {
                 const saved = await load();
-                loaded = saved === null ? createInitialSnapshot() : ModelingAdvisorSnapshotSchema.parse(saved);
+                const loaded = saved === null ? createInitialSnapshot() : ModelingAdvisorSnapshotSchema.parse(saved);
+                if (!disposed) {
+                    lastSnapshot.current = loaded;
+                    setSnapshot(loaded);
+                    canSave.current = true;
+                    setLoadFailed(false);
+                    setSaveFailed(false);
+                }
             } catch {
-                loaded = createInitialSnapshot();
-                failed = true;
-            }
-            if (!disposed) {
-                lastSnapshot.current = loaded;
-                setSnapshot(loaded);
-                setLoadFailed(failed);
-                setLoadStatus('ready');
+                if (!disposed) setLoadFailed(true);
+            } finally {
+                if (!disposed) setLoadStatus('ready');
             }
         };
         void hydrate();
         return () => {
             disposed = true;
+            canSave.current = false;
         };
-    }, [load]);
+    }, [load, loadAttempt]);
 
     const persist = useCallback(
         (next: ModelingAdvisorSnapshot) => {
+            if (!canSave.current) {
+                return Promise.reject(new Error(l10n.t('Retry loading the saved data model before saving changes.')));
+            }
             const sequence = ++saveSequence.current;
             return save(next).then(
                 () => {
@@ -72,12 +80,12 @@ export function useModelingAdvisorPersistence({ load, save }: Persistence) {
     );
 
     useEffect(() => {
-        if (loadStatus === 'ready' && snapshot !== lastSnapshot.current) {
+        if (loadStatus === 'ready' && !loadFailed && snapshot !== lastSnapshot.current) {
             lastSnapshot.current = snapshot;
             // persist surfaces the failure in the retry UI; the effect has no caller to reject to.
             void persist(snapshot).catch(() => undefined);
         }
-    }, [loadStatus, snapshot, persist]);
+    }, [loadStatus, loadFailed, snapshot, persist]);
 
     const flush = useCallback(
         (next: ModelingAdvisorSnapshot) => {
@@ -94,6 +102,10 @@ export function useModelingAdvisorPersistence({ load, save }: Persistence) {
         loadFailed,
         saveFailed,
         flush,
+        retryLoad: () => {
+            canSave.current = false;
+            setLoadAttempt((attempt) => attempt + 1);
+        },
         retrySave: () => {
             void persist(snapshot).catch(() => undefined);
         },

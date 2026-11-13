@@ -677,29 +677,6 @@ The collector skips DX-024 storage-metric requests for an explicitly disabled in
 without reporting missing metric coverage for that container. Missing or unrecognized modes do not establish disabled
 indexing; metric acquisition and missing/failed-evidence reporting remain unchanged for those containers.
 
-**Conformance:** `externalSpecifications.coda` in `package.json` pins the private source revision.
-`npm run test:coda` fetches/verifies an isolated Git-ignored checkout and executes its unmodified `.feature` files
-through Cucumber's Gherkin compiler and TypeScript bindings for all 24 rules. Bindings prepare synthetic inputs
-and call production evaluations plus the native registry. Metric/log-reader fixtures exercise partition summation,
-account RU folding, storage history, latest populated index/data samples, recent throttling and acquisition failures.
-Production results expose utilization bands, sizing observations, root causes and non-finding outcomes.
-Diagnostic evaluation types constrain root causes and observation shapes per rule; configuration coverage and
-configuration-only detectors share the same pure classifications while keeping applicability separate from missing inputs.
-Bindings do not reconstruct detector decisions from the absence of a recommendation. Acquisition-error vocabulary
-is normalized from actual native structured failures, not fabricated as a clean negative result.
-Every selected scenario must evaluate and assert; unknown bindings fail. The private local report inventories all
-scenarios, including those outside an explicitly selected subset. Original wording-sensitive guidance assertions
-are retained; cross-rule `supersededBy` is additional pipeline metadata, not part of an isolated detector verdict.
-Setup fidelity is checked independently of verdict assertions: the DX-008 Serverless exclusion receives otherwise
-quantifiable positive manual capacity, and DX-009 migration starts from a known Periodic policy. Missing retention
-tiers remain absent rather than literal strings; storage histories, query windows and configured-region normalization
-retain the original bindings' inputs.
-All 379 scenarios at the manifest pin pass, with zero unbound, skipped or unexecuted scenarios.
-DX-004 classifies successful empty consumption reads as idle, without converting acquisition failures to zero.
-DX-017 compares fitted growth against the inclusive 0.1 GiB/day floor using a roundoff estimate scaled by sample
-magnitudes and regression conditioning, not an arbitrary policy epsilon or rounded fixtures. Growth measurably below
-the floor remains stable. Synthetic conformance does not establish live collector acceptance.
-
 DX-008 regional capacity observations require a complete, positive all-manual offer inventory and known provisioned
 account/region count. They report configured per-region RU/s and the global regional footprint, not measured usage,
 billable savings or permission to remove regions. Extra-region capacity is only identified for the non-production

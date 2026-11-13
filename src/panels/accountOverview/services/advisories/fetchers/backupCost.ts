@@ -317,6 +317,7 @@ export async function getBackupCostEstimate(
     rows: readonly Pick<InventoryContainerRow, 'databaseId' | 'containerId'>[] | undefined,
     now: number,
 ): Promise<AdvisoryCostEstimate> {
+    context.abortSignal?.throwIfAborted();
     if (new URL(context.resourceManagerEndpoint).origin !== 'https://management.azure.com') {
         throw new CostEvidenceError('unsupported');
     }

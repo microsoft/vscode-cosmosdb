@@ -16,6 +16,8 @@ import { createAzureSubscriptionClient, type AzExtSubscriptionClientType } from 
 import { type IActionContext, type ISubscriptionContext } from '@microsoft/vscode-azext-utils';
 import { armTestSubscription, createArmTestContext } from '../cosmosdb/armTestUtils';
 import { readCostArmJson } from '../panels/accountOverview/services/advisories/fetchers/costManagement';
+import { enrichAdvisoryCosts } from '../panels/accountOverview/services/advisories/costEstimates';
+import { type DerivedAdvisory } from '../panels/accountOverview/services/advisories/core/types';
 import {
     COSMOSDB_ARM_API_VERSION,
     createCosmosDBManagementClient,
@@ -257,6 +259,54 @@ describe('modular ARM client factories', () => {
             controller.abort();
             await expect(response).rejects.toMatchObject({ name: 'AbortError' });
             await vi.advanceTimersByTimeAsync(10_000);
+            expect(run.sendRequest).toHaveBeenCalledOnce();
+        });
+
+        it('returns qualitative findings at the overall cost deadline without retrying an hours-long quota delay', async () => {
+            const run = await probe({ [qpu]: '3600' });
+            const send = run.client.pipeline.sendRequest.bind(run.client.pipeline);
+            vi.spyOn(run.client.pipeline, 'sendRequest').mockImplementation((_http, request) =>
+                send({ sendRequest: run.sendRequest }, request),
+            );
+            const advisories: DerivedAdvisory[] = ['IdleContainer', 'PaidContinuousBackup'].map((rule) => ({
+                id: rule,
+                rule: rule === 'IdleContainer' ? 'IdleContainer' : 'PaidContinuousBackup',
+                severity: 'Low',
+                title: rule,
+                rationale: 'Original rationale',
+                suggestedAction: 'Original action',
+                thresholdReference: 'Original threshold',
+                evidence: { recoverableRu: 1000 },
+            }));
+            const before = structuredClone(advisories);
+            const monitor = new MonitorClient({ getToken: async () => null }, 'sub-1');
+            const list = vi.spyOn(monitor.metrics, 'list');
+            const result = enrichAdvisoryCosts({
+                advisories,
+                cosmosClient: run.client,
+                monitorClient: monitor,
+                context: {
+                    subscriptionId: 'sub-1',
+                    resourceManagerEndpoint: 'https://management.azure.com',
+                    locationNames: ['East US'],
+                },
+                accountId: 'account',
+                inventoryRows: [],
+                now: Date.now(),
+            });
+            await vi.advanceTimersByTimeAsync(19_999);
+            expect(run.sendRequest).toHaveBeenCalledOnce();
+            await vi.advanceTimersByTimeAsync(1);
+            expect(await result).toEqual({
+                available: false,
+                failures: [
+                    { operation: 'throughput', kind: 'timeout' },
+                    { operation: 'backup', kind: 'timeout' },
+                ],
+            });
+            expect(advisories).toEqual(before);
+            expect(list).not.toHaveBeenCalled();
+            await vi.advanceTimersByTimeAsync(3_600_000);
             expect(run.sendRequest).toHaveBeenCalledOnce();
         });
 

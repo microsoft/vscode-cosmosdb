@@ -146,9 +146,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
             await collectDerivedAdvisories(params({ logsClient: undefined }));
             const inputs = vi.mocked(computeDerivedAdvisories).mock.calls[0][0];
             expect(inputs.scopeProvisionedRuTotal).toBe(throughputInventoryComplete ? 6000 : undefined);
-            if (!throughputInventoryComplete) {
-                expect(inputs.manualProvisionedRuTotal).toBeUndefined();
-            }
+            expect(inputs.manualProvisionedRuTotal === undefined || throughputInventoryComplete).toBe(true);
         },
     );
 

@@ -61,6 +61,9 @@ a compatible destination API; this Skill targets NoSQL only.
   as unused data. Source analysis, modeling, and provisioning remain available; code migration waits for a codebase.
 - `ddl-parser: model | sqlglot` applies **only to selected SQL/DDL**. Follow
   [DDL interpretation](./references/workflow/ddl-interpretation.md) before external parser use.
+  First-use permission requests and parser-choice explanations must disclose
+  [SQLGlot](https://github.com/tobymao/sqlglot) as an external MIT-licensed Python dependency,
+  mention possible local installation, and offer model-only interpretation.
   No-DDL evidence, including relational code inventory, needs neither Python nor SQLGlot.
   Supplied DDL stays authoritative: no fallback to inference, repair, supplementation, or replacement
   without approval. Parser fallback and installation approvals remain exactly as documented.

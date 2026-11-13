@@ -269,19 +269,22 @@ describe('modular ARM client factories', () => {
                 send({ sendRequest: run.sendRequest }, request),
             );
             const advisories: DerivedAdvisory[] = ['IdleContainer', 'PaidContinuousBackup'].map<DerivedAdvisory>(
-                (rule) => ({
-                    id: rule,
-                    rule: rule === 'IdleContainer' ? 'IdleContainer' : 'PaidContinuousBackup',
-                    severity: 'Low',
-                    title: rule,
-                    rationale: 'Original rationale',
-                    suggestedAction: 'Original action',
-                    thresholdReference: 'Original threshold',
-                    evidence:
-                        rule === 'IdleContainer'
-                            ? { recoverableRu: 1000, throughputMode: 'manual' }
-                            : { recoverableRu: 1000 },
-                }),
+                (rule) => {
+                    const evidence: NonNullable<DerivedAdvisory['evidence']> = { recoverableRu: 1000 };
+                    if (rule === 'IdleContainer') {
+                        evidence.throughputMode = 'manual';
+                    }
+                    return {
+                        id: rule,
+                        rule: rule === 'IdleContainer' ? 'IdleContainer' : 'PaidContinuousBackup',
+                        severity: 'Low',
+                        title: rule,
+                        rationale: 'Original rationale',
+                        suggestedAction: 'Original action',
+                        thresholdReference: 'Original threshold',
+                        evidence,
+                    };
+                },
             );
             const before = structuredClone(advisories);
             const monitor = new MonitorClient({ getToken: async () => null }, 'sub-1');

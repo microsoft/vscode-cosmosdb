@@ -1510,6 +1510,7 @@
   "Refresh your results": "Refresh your results",
   "Regenerate": "Regenerate",
   "Regenerating replaces your edits for this method with code for the selected database and containers.": "Regenerating replaces your edits for this method with code for the selected database and containers.",
+  "Regional footprint: {ru} RU/s per region across {regions} regions.": "Regional footprint: {ru} RU/s per region across {regions} regions.",
   "Regions: {regions}": "Regions: {regions}",
   "Registering Providers...": "Registering Providers...",
   "Reload original item from the database": "Reload original item from the database",

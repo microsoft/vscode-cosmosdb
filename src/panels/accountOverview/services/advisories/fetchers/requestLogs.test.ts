@@ -303,6 +303,43 @@ describe('optional logical-query RU enrichment', () => {
         expect(result.shapes[0].executions).toBe(100);
     });
 
+    it.each(['', null])(
+        'does not drop an unidentified activity (%j) from a partially charged execution',
+        async (id) => {
+            const activities = [
+                { id: 'known', charge: 10 },
+                { id, charge: undefined },
+            ];
+            const queryResource = vi.fn<LogsQueryExecutor['queryResource']>(async (_resourceId, query) => {
+                if (!query.includes('totalQueryRu')) {
+                    return success(['QueryText', 'executions', 'avgFanout', 'maxFanout'], [['SELECT p1', 1, 4, 4]]);
+                }
+                const left = query.split('| join kind=leftouter')[0];
+                const retained = left.includes('isnotempty(ActivityId)')
+                    ? activities.filter((activity) => activity.id)
+                    : activities;
+                const complete = retained.every((activity) => activity.charge !== undefined);
+                return success(
+                    ['QueryText', 'executions', 'matchedExecutions', 'totalQueryRu'],
+                    [['SELECT p1', 1, complete ? 1 : 0, complete ? 10 : 0]],
+                );
+            });
+            const result = await fetchCrossPartitionShapes(
+                { queryResource },
+                RESOURCE,
+                'db',
+                'items',
+                SPAN,
+                undefined,
+                true,
+            );
+            expect(result.shapes).toEqual([{ text: 'SELECT p1', executions: 1, avgFanout: 4, maxFanout: 4 }]);
+            const chargeQuery = queryResource.mock.calls[1][1];
+            expect(chargeQuery.split('| join kind=leftouter')[0]).not.toContain('isnotempty(ActivityId)');
+            expect(chargeQuery.split('| join kind=leftouter')[1]).toContain('| where isnotempty(ActivityId)');
+        },
+    );
+
     it.each([
         new Error('Request logs unavailable.'),
         success(['QueryText', 'executions', 'matchedExecutions', 'totalQueryRu'], [['shape', 100, 101, 2]]),

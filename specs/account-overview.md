@@ -568,7 +568,9 @@ events, without filling missing buckets with zero. Findings retain source table/
 DX-002/007 keep their query-runtime-only structural decision. Raw data-plane logs optionally enrich query RU:
 each table selects one destination over the same absolute window; distinct logical-query/activity/shape tuples
 join charges pre-aggregated by activity ID. Mean logical-query RU is exposed only when every execution and
-its activities matched valid charges. Missing matches do not become zero RU. A missing raw table or failed
+its activities matched valid charges. Runtime rows with missing activity IDs stay on the left side of the
+join as unmatched evidence, so a partially identified execution cannot publish a partial charge as full RU.
+Missing matches do not become zero RU. A missing raw table or failed
 enrichment records partial coverage but does not suppress structural findings, change thresholds or severity.
 The same observed cost evidence survives DX-007 superseding DX-002; it is not recoverable capacity or money.
 

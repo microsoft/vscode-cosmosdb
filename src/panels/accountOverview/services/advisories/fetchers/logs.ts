@@ -371,7 +371,7 @@ export async function fetchCrossPartitionShapes(
         const chargeKql =
             singleDestinationTable('CDBQueryRuntimeStatistics', timespan) +
             `| where DatabaseName == '${db}' and CollectionName == '${coll}' ` +
-            '| where isnotempty(ActivityId) and isnotempty(CorrelatedActivityId) ' +
+            '| where isnotempty(CorrelatedActivityId) ' +
             '| distinct ActivityId, CorrelatedActivityId, QueryText ' +
             '| join kind=leftouter (' +
             singleDestinationTable('CDBDataPlaneRequests', timespan) +

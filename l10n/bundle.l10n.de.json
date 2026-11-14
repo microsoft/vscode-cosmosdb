@@ -361,7 +361,7 @@
   "Checking all active alerts…": "Alle aktiven Warnungen werden überprüft...",
   "Checking resource group availability...": "Verfügbarkeit der Ressourcengruppe wird überprüft...",
   "Checkout, payments, subscription records": "Checkout, Zahlungen, Abonnementdatensätze",
-  "Choose {reset} to replace all model values and containers with the defaults for this workload and discard later progress and the existing recommendation. Choose {keep} to continue with your current model. Choose Cancel to stay on Workload without changes.": "Choose {reset} to replace all model values and containers with the defaults for this workload and discard later progress and the existing recommendation. Choose {keep} to continue with your current model. Choose Cancel to stay on Workload without changes.",
+  "Choose {reset} to replace all model values and containers with the defaults for this workload and discard later progress and the existing recommendation. Choose {keep} to continue with your current model. Choose Cancel to stay on Workload without changes.": "Wählen Sie {reset} aus, um alle Modellwerte und Container durch die Standardwerte für diese Workload zu ersetzen und den späteren Fortschritt und die vorhandene Empfehlung zu verwerfen. Wählen Sie {keep} aus, um mit Ihrem aktuellen Modell fortzufahren. Wählen Sie \"Abbrechen\" aus, um unverändert auf der Workload zu bleiben.",
   "Choose a database in this account, then create a container.": "Wählen Sie eine Datenbank in diesem Konto aus, und erstellen Sie dann einen Container.",
   "Choose containers to deploy": "Container für die Bereitstellung auswählen",
   "Choose database": "Datenbank auswählen",

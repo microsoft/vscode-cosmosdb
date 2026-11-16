@@ -259,6 +259,22 @@ code we own.
 
 ---
 
+## <a id="server-warmup"></a> `server.warmup` — browser-only source files
+
+The dev server pre-transforms webview source files and workspace-package dependencies to reduce the first-panel
+import waterfall. The warmup globs exclude `*.test.ts`, `*.test.tsx`, `*.spec.ts`, `*.spec.tsx`, `__tests__` and `__mocks__`
+in both source trees. These exclusions do not change production entry points or Vitest discovery.
+
+Warmup uses browser import analysis, not the Vitest environment: test mocks and the test-only `vscode` alias do not apply.
+For example, `deriveMigrationPhaseStates.test.ts` legitimately imports the host's `migrationStateSync.ts` to check the
+project-view contract. Warming that test as browser code follows the host import and fails on `node:fs/promises`.
+Keep test modules out of warmup rather than weakening `noExtensionImports` or removing valid filesystem code from the host.
+
+`src/webviewWarmup.test.ts` checks the resolved development configuration: the migration test and other test/mock modules
+must be excluded, while production webview and workspace-package modules remain selected.
+
+---
+
 ## Plugins
 
 ### <a id="plugin-no-extension-imports"></a> `noExtensionImports`

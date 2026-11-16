@@ -265,10 +265,18 @@ export default ({ mode }) => {
              * panel open via sequential HTTP waterfall.  After warmup those files are
              * served from Vite's in-memory module cache with near-zero latency.
              *
-             * `clientFiles` accepts fast-glob patterns relative to the project root.
+             * `clientFiles` accepts glob patterns relative to the project root.
+             * Exclude test-only modules, whose host imports are valid under Vitest but not in the browser.
+             * @see [docs/webview-build.md#server-warmup](./docs/webview-build.md#server-warmup)
              */
             warmup: {
-                clientFiles: ['src/webviews/**/*.{ts,tsx,scss}', 'packages/*/src/**/*.{ts,tsx}'],
+                clientFiles: [
+                    'src/webviews/**/*.{ts,tsx,scss}',
+                    'packages/*/src/**/*.{ts,tsx}',
+                    '!**/*.{test,spec}.{ts,tsx}',
+                    '!**/__tests__/**',
+                    '!**/__mocks__/**',
+                ],
             },
         },
     };

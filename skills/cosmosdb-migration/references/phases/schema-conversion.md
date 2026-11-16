@@ -188,8 +188,10 @@ Structural checks do not prove result completeness or version preservation.
 ### Operation-Level Semantic Review
 
 Before domain validation and canonical publication, reconcile model queries and operation
-sequences with source behavior. In the domain summary's Access Pattern Mappings section,
-record each pattern below; group only identical result/version requirements:
+sequences with source behavior using the
+[peer rule-selection procedure](../workflow/best-practices-integration.md#select-rules-by-meaning).
+In the domain summary's Access Pattern Mappings section, record each pattern below;
+group only identical result/version requirements:
 
 | Concern | Required evidence |
 | --- | --- |
@@ -198,17 +200,9 @@ record each pattern below; group only identical result/version requirements:
 | Version boundary | Token/ETag capture point and the version each mutation protects. |
 | Follow-up work | Reads, transformations, writes, retries, recovery, and their routing/capacity impact. |
 
-Trace a representative result through its consumers. Omitting required fields is a
-correctness failure, even for valid queries. Project only unnecessary fields away,
-or explicitly read them before use. Copies/merges require the complete preserved
-payload, including unknown properties where required, not just identities.
-
-For version-sensitive copy-and-delete, capture payload and ETag from the same source
-version. Delete only successfully copied items under that original precondition.
-Never replace the token with a later read's token to delete an uncopied update.
-On conflict, retain the source and reconcile/recopy under the recovery protocol.
-This does not fence writers or provide cross-partition atomicity; retain those
-separate implementation and clearance requirements.
+Trace a representative result through its consumers under the selected peer guidance,
+including follow-up reads and conflict/recovery paths. Check the final queries and
+operation descriptions against the recorded payload and version requirements.
 
 Without code, trace declared contracts and record unknown consumers/concurrency needs.
 Repair demonstrated query/consumer contradictions before completion; passing structural
@@ -370,26 +364,11 @@ co-location, and never emit standalone documents missing the shared key fields.
 
 Record the grouping rationale, alternatives, discriminator values, per-type key
 sources, and embed-versus-standalone decisions in the existing domain summary.
-Classify each selected grouping explicitly:
-
-| Grouping | Benefit and boundary to justify |
-| --- | --- |
-| Embedded in one document | Co-reads and single-item atomicity; bound size, growth, and update costs. |
-| Separate documents, same container/full key tuple | Targeted aggregate reads and eligible batches within operation/payload limits. |
-| Same container, different full key tuples | Shared throughput/policies, not transactions from a shared container or HPK prefix. |
-| Separate containers | Independent policies, scaling, or lifecycle outweigh shared-container operations. |
-
-Assess hottest-key aggregate storage and peak demand, not just container totals.
-Same-key items share logical-partition limits/contention. Type splits create different
-logical keys, not guaranteed physical balance or isolated throughput. Explain shared
-container allocation versus separate dedicated allocations for independent scaling;
-unknown distributions remain conditions, not proof of balance.
-
-Show example IDs and full key values. If source namespaces motivate a `docType` key
-component, compare losslessly type-scoped IDs under a shared business key, retaining
-original source keys. Explain collisions, compatibility, and application-migration
-tradeoffs; obtain approval for consequential identity changes. Never automatically
-prefix IDs or force co-location. Same-owner atomicity does not extend across owners/containers.
+Apply current peer grouping and identity guidance to useful related-entity subsets,
+not only the whole domain, before choosing co-location or separation. Record the
+selected layout and rejected alternatives with example IDs/full keys, actual read,
+transaction and capacity benefits, and source-key preservation. Consequential
+identity changes require approval; unsupported assumptions remain explicit.
 
 ## Naming Conventions
 
@@ -468,10 +447,8 @@ evidence and semantics; it adds no heuristic numeric validation gates or artifac
   projected workload, not target metrics; label estimates and missing evidence.
   Cite its pattern IDs, dominant reads/writes, rates, mutability, source uniqueness
   enforcement, transaction scope, skew, growth, and migration costs. Reuse shared
-  conclusions, not generic rationale instead of specific tradeoffs. Identity preservation
-  alone does not select `/id`; compare business keys without weakening uniqueness and
-  retain `/id` when best supported. Mutable keys need reviewed move/reconciliation,
-  not assumed in-place updates. Unknown rates/skew neither justify invented scores nor block design.
+  conclusions, not generic rationale instead of container-specific application of
+  the selected peer rules. Record unknown dimensions rather than inventing evidence.
 - Reject configurations that violate current service limits, required transaction
   scope, or the model's per-type key alignment before ranking. Apply the feasibility
   dispositions above; scores cannot compensate for blocking incompatibilities.
@@ -511,14 +488,8 @@ support the chosen policy.
 
 In the existing Indexing Policies section, record
 `Path/index | Pattern IDs | Server-side filter/sort or capability | Retain/exclude rationale`.
-Justify each included path/composite by actual target operations or documented service
-requirements. Point reads, projections, application-side checks, and ETag preconditions
-alone need no secondary index. Index `docType` when queried, not merely present.
-Never invent queries to justify unused indexes.
-
-Check final predicates/sorts. Without `ORDER BY`, composites may still optimize
-multi-property filters; weigh workload benefits against write/index overhead without
-claiming measurements. Recheck when queries become point reads or checks move client-side.
+Apply selected peer indexing guidance to the actual operation chain and final queries,
+not invented consumers. Recheck this evidence when access methods or predicates change.
 
 With indexing enabled, the validator rejects explicit root `id` entries such as
 `/id/?` in `includedPaths`, including quoted equivalents. Omit these redundant

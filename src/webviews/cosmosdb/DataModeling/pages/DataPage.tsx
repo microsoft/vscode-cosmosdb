@@ -51,6 +51,7 @@ import { useNativeConfirmation } from '../useNativeConfirmation';
 import { getRoleOptions } from '../wizardState';
 import {
     type DataNumberField,
+    getAttributeCountMismatch,
     getDataFieldErrors,
     MAX_ARRAY_ITEMS,
     MAX_ATTRIBUTE_COUNT,
@@ -459,6 +460,7 @@ export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPa
     }
 
     const errors = getDataFieldErrors(active);
+    const attributeCountError = errors.attributeCount ?? getAttributeCountMismatch(active);
     const attributeCountLabel = l10n.t('Total attributes per document');
     const averageItemsLabel = l10n.t('Average items per array');
     const maximumItemsLabel = l10n.t('Maximum items per array');
@@ -679,7 +681,7 @@ export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPa
                         className={styles.kvField}
                         orientation="horizontal"
                         label={attributeCountLabel}
-                        {...fieldValidation(errors.attributeCount)}
+                        {...fieldValidation(attributeCountError)}
                     >
                         <Input
                             className={styles.kvInput}

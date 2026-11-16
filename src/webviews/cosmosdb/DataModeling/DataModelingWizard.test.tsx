@@ -1568,6 +1568,28 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         await waitFor(() => expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledOnce());
     });
 
+    it('requests a recommendation with a mismatched attribute total listed as a non-blocking warning', async () => {
+        const saved = restored(3);
+        saved.recommendation = { status: 'idle' };
+        const container = saved.wizard.dataModel.containers[0];
+        container.document.attributeCount = 250;
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+
+        expect(screen.queryByText('Fix these issues before requesting a recommendation.')).not.toBeInTheDocument();
+        const warning = screen.getByText(
+            `Orders: Total attributes per document must match the ${container.properties.length} attributes in the schema properties table.`,
+        );
+        expect(warning.closest('[role="group"]')).toHaveAccessibleName(
+            'Review these issues. They will not block a recommendation.',
+        );
+        expect(screen.getByRole('button', { name: 'Fix' })).toHaveAccessibleDescription(warning.textContent);
+        await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
+        await waitFor(() => expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledOnce());
+        expect(lastSave().wizard.dataModel.containers[0].document.attributeCount).toBe(250);
+    });
+
     it.each(['read', 'document', 'arrays', 'attributes'] as const)(
         'opens the offending container and tab and focuses its %s input from Review',
         async (kind) => {
@@ -1596,7 +1618,11 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             client.dataModeling.loadState.query.mockResolvedValue(saved);
             render(<DataModelingWizard />);
             await continueExisting();
-            expect(screen.getByRole('button', { name: 'Get Recommendation' })).toBeDisabled();
+            // A total that differs from the schema properties table is listed with Fix but does not block requests.
+            expect(screen.getByRole('button', { name: 'Get Recommendation' })).toHaveProperty(
+                'disabled',
+                kind !== 'attributes',
+            );
 
             const fix = screen.getByRole('button', { name: 'Fix' });
             expect(fix).toHaveAccessibleDescription(/^DeviceTelemetry:/);

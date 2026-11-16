@@ -1547,6 +1547,7 @@
   "Review and copy or download the template, then deploy it with your Bicep tooling.": "Review and copy or download the template, then deploy it with your Bicep tooling.",
   "Review and Fix": "Review and Fix",
   "Review the partition key for a higher-cardinality choice so data spreads evenly.": "Review the partition key for a higher-cardinality choice so data spreads evenly.",
+  "Review these issues. They will not block a recommendation.": "Review these issues. They will not block a recommendation.",
   "Review your inputs": "Review your inputs",
   "Role": "Role",
   "Role for {name}: {role}": "Role for {name}: {role}",

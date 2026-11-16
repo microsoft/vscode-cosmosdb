@@ -57,6 +57,7 @@ import { getScenarioList } from './scenarios';
 import { SchemaImportTracker } from './schemaImports';
 import { useModelingPageVisible, useModelingTelemetryReporter, useModelingUsage } from './useModelingTelemetry';
 import { useNativeConfirmation } from './useNativeConfirmation';
+import { getAttributeCountMismatch } from './workloadLimits';
 
 /**
  * Root of the Data-Modeling (Partition Key Advisor) wizard.
@@ -105,6 +106,22 @@ function getWorkloadIssues(wizard: WizardState): ReviewValidationIssue[] {
                   path: issue.path.slice(3).map(String),
               };
           });
+}
+
+/** Issues that Review lists with Fix buttons but that do not block recommendation requests. */
+function getWorkloadWarnings(wizard: WizardState): ReviewValidationIssue[] {
+    return wizard.dataModel.containers.flatMap((container) => {
+        const message = getAttributeCountMismatch(container);
+        return message
+            ? [
+                  {
+                      message: container.entity ? `${container.entity}: ${message}` : message,
+                      containerId: container.id,
+                      path: ['document', 'attributeCount'],
+                  },
+              ]
+            : [];
+    });
 }
 
 // Separate from useStyles so the outer shell does not change the insertion order of the Wizard overrides.
@@ -773,6 +790,7 @@ const HydratedDataModelingWizard = ({
     }, [setState]);
 
     const workloadIssues = useMemo(() => getWorkloadIssues(state), [state]);
+    const workloadWarnings = useMemo(() => getWorkloadWarnings(state), [state]);
     const workloadErrors = useMemo(() => workloadIssues.map((issue) => issue.message), [workloadIssues]);
     const fixIssue = (issue: ReviewValidationIssue) => {
         // Older drafts infer reached steps from the current step; preserve access to Review when jumping back.
@@ -1413,6 +1431,7 @@ const HydratedDataModelingWizard = ({
                     >
                         <ReviewPage
                             validationErrors={workloadIssues}
+                            validationWarnings={workloadWarnings}
                             onFixIssue={fixIssue}
                             workloadLabel={scenarioLabel ?? l10n.t('Not selected')}
                             containers={state.dataModel.containers}

@@ -77,12 +77,20 @@ export function getArrayItemsOrderMessage(): string {
     return l10n.t('Average items per array cannot exceed maximum items per array.');
 }
 
-export function getAttributeCountError(container: Pick<ContainerModel, 'document' | 'properties'>): string | undefined {
+/** Blocking attribute-count limits; a mismatch with the schema properties table is reported separately. */
+export function getAttributeCountError(container: Pick<ContainerModel, 'document'>): string | undefined {
     const invalid = validateCount(container.document.attributeCount, MAX_ATTRIBUTE_COUNT);
-    if (invalid) {
-        return getCountErrorMessage(invalid, MAX_ATTRIBUTE_COUNT);
-    }
-    return container.document.attributeCount === container.properties.length
+    return invalid ? getCountErrorMessage(invalid, MAX_ATTRIBUTE_COUNT) : undefined;
+}
+
+/**
+ * Non-blocking: the total should match the schema properties table, but users with too many attributes to list can
+ * still request a recommendation using the total they entered.
+ */
+export function getAttributeCountMismatch(
+    container: Pick<ContainerModel, 'document' | 'properties'>,
+): string | undefined {
+    return getAttributeCountError(container) || container.document.attributeCount === container.properties.length
         ? undefined
         : l10n.t('Total attributes per document must match the {count} attributes in the schema properties table.', {
               count: container.properties.length.toLocaleString(),

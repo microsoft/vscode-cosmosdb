@@ -719,6 +719,7 @@ describe('DataPage count limits', () => {
     });
 
     it.each([2, 7])('keeps a manually entered total of %s editable and shows a mismatch until corrected', (count) => {
+        const message = 'Total attributes per document must match the 3 attributes in the schema properties table.';
         const onChange = vi.fn<(next: DataModel) => void>();
         const page = render(<DataPage model={arraysModel()} onChange={onChange} />);
         const input = screen.getByRole('spinbutton', { name: 'Total attributes per document' });
@@ -728,12 +729,8 @@ describe('DataPage count limits', () => {
         page.rerender(<DataPage model={next} onChange={onChange} />);
         expect(input).toHaveValue(count);
         expect(input).toHaveAttribute('aria-invalid', 'true');
-        expect(input).toHaveAccessibleDescription(
-            'Total attributes per document must match the 3 attributes in the schema properties table.',
-        );
-        expect(screen.getByRole('alert')).toHaveTextContent(
-            'Total attributes per document must match the 3 attributes in the schema properties table.',
-        );
+        expect(input).toHaveAccessibleDescription(message);
+        expect(screen.getByRole('alert')).toHaveTextContent(message);
 
         fireEvent.change(input, { target: { value: '3' } });
         page.rerender(<DataPage model={onChange.mock.lastCall![0]} onChange={onChange} />);

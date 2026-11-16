@@ -115,32 +115,14 @@ describe('wizard workload limit validation', () => {
         dataModel: { containers: [container], activeContainerId: container.id },
     });
 
-    it.each([0, 2, 4, 10_000])('rejects a mismatched attribute total of %s but preserves it in drafts', (count) => {
-        const first = createBlankContainer('First');
-        const second = createBlankContainer('Second');
-        second.document.attributeCount = count;
-        const wizard = {
-            step: 1,
-            dataModel: { containers: [first, second], activeContainerId: first.id },
-        };
-        const result = WizardStateSchema.safeParse(wizard);
-        expect(result.success).toBe(false);
-        expect(result.error?.issues).toEqual([
-            expect.objectContaining({
-                path: ['dataModel', 'containers', 1, 'document', 'attributeCount'],
-                message: 'Total attributes per document must match the 3 attributes in the schema properties table.',
-            }),
-        ]);
-        expect(ModelingAdvisorSnapshotSchema.parse({ wizard, recommendation: { status: 'idle' } }).wizard).toEqual(
-            wizard,
-        );
-
-        second.document.attributeCount = second.properties.length;
-        expect(WizardStateSchema.safeParse(wizard).success).toBe(true);
-        second.properties = [];
-        second.document.attributeCount = 0;
-        expect(WizardStateSchema.safeParse(wizard).success).toBe(true);
-    });
+    it.each([0, 2, 4, 10_000])(
+        'does not block requests when the attribute total of %s mismatches the table',
+        (count) => {
+            const container = createBlankContainer();
+            container.document.attributeCount = count;
+            expect(WizardStateSchema.safeParse(wizardFor(container)).success).toBe(true);
+        },
+    );
 
     it('preserves invalid Data-tab counts while still normalizing legacy operation rates', () => {
         const container = createBlankContainer();

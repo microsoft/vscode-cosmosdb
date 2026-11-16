@@ -9,6 +9,19 @@ tags: query, projection, performance, bandwidth
 
 Select only the fields you need rather than returning entire documents. Reduces both RU consumption and network bandwidth.
 
+### Preserve downstream inputs and source versions
+
+"Needed" covers the whole operation, not just display fields. Retain routing values and inputs used to derive later writes.
+Copies and full replacements need the complete application payload, including unknown properties that must survive;
+never write a summary DTO back as a full document. If an initial query returns only IDs, explicitly read the full items
+before copying or replacing them and account for those reads.
+
+For version-sensitive mutations, capture each item's `_etag` with the payload it protects; query-page metadata is not
+an item ETag. In copy-and-delete workflows, delete only successfully copied source versions using their original ETags.
+A newer read's ETag must not authorize deleting an update that was never copied. On a conflict, retain the source and
+reconcile or recopy under the recovery protocol. This does not fence other writers or make cross-partition work atomic.
+See [ETag concurrency](sdk-etag-concurrency.md).
+
 **Incorrect (selecting entire document):**
 
 ```csharp

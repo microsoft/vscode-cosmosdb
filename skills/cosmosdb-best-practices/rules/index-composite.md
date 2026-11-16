@@ -1,17 +1,34 @@
 ---
-title: Use Composite Indexes for ORDER BY
+title: Use Composite Indexes for Sorting and Filtering
 impact: HIGH
 impactDescription: enables sorted queries, reduces RU
-tags: index, composite, orderby, sorting
+tags: index, composite, orderby, sorting, filtering
 ---
 
-## Use Composite Indexes for ORDER BY
+## Use Composite Indexes for Sorting and Filtering
 
 Queries with `ORDER BY` on two or more properties require a matching composite index. Without it, Cosmos DB cannot execute that multi-property sort.
 
 The default indexing policy indexes every property but does **not** create composite indexes. A query that combines a `WHERE` equality filter with a single-property `ORDER BY` on a different field can succeed using those range indexes. A composite index is an optional optimization for this pattern, not a prerequisite for executing the query.
 
 To apply a composite index to a filter-plus-sort query, include the equality-filtered properties first in `ORDER BY`, followed by the sort property, and define a matching composite index. Those added properties are constant within the filtered results, so the rewrite preserves the requested ordering. Measure request charges to evaluate the benefit.
+
+### Filters without ORDER BY
+
+Composite indexes can also optimize multi-property filters without sorting:
+
+```sql
+SELECT c.id FROM c
+WHERE c.status = @status AND c.createdAt > @since
+```
+
+An optional composite on `(/status ASC, /createdAt ASC)` can reduce query cost compared with individual range indexes.
+Put equality paths first and the range path last; each composite optimizes at most one range filter, so multiple
+range filters may need separate composites. No `ORDER BY` rewrite is needed, and the composite is not required for
+this query's correctness. Retain range indexes needed by other predicates.
+
+Compare query RU/latency against added write RU and index size using representative data after index transformation
+finishes. Do not promise unmeasured savings: an index does not change partition routing or eliminate fan-out.
 
 > ⚠️ **CreateContainerIfNotExists warning:** Defining a composite index in `CreateContainerIfNotExists` (or `createIfNotExists`) only applies the indexing policy when the container is created for the first time. If the container already exists, Cosmos DB returns the existing container, silently ignores the indexing policy argument, and keeps the existing indexing policy unchanged. To update composite indexes on an existing container, read the container, update its `IndexingPolicy`, and replace the container resource using the SDK's container replace operation. Always read the container back and verify that the expected composite indexes are present.
 
@@ -273,7 +290,7 @@ await database.container('orders').replace(existing);
 ```
 
 Rules:
-- Composite paths must match the `ORDER BY` sequence; directions may match the index or be reversed on every path
+- For multi-property sorts, composite paths must match the `ORDER BY` sequence; directions may match or reverse every path
 - For equality-filtered sort optimizations, include the equality-filtered paths first in both `ORDER BY` and the composite index
 - Do not add a duplicate inverse-direction index; add distinct direction combinations only when queries require them
 - Maximum 8 paths per composite index

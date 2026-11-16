@@ -116,7 +116,7 @@ function conversionPaths(mapping, inventory) {
     const reference = mapping.inputs[0];
     const dataset = inventory.datasets.find(entry => entry.id === reference.dataset);
     const parent = dataset?.fields.find(field => field.id === reference.field);
-    if (!parent || !parent.nativeTypes.some(type => ['object', 'array'].includes(type))) throw new Error('Subtree conversions require an object or array source');
+    if (!parent || !parent.nativeTypes.some(type => ['object', 'document', 'array'].includes(type))) throw new Error('Subtree conversions require an object or array source');
     const paths = [];
     for (const conversion of mapping.conversions) {
         const field = dataset.fields.find(entry => entry.id === conversion.field);

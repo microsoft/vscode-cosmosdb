@@ -142,7 +142,7 @@ stimuli:
     rubric:
       - Recommend embedding the bounded co-read children while checking document size and growth limits.
       - Preserve source identities and relevant relationship or transaction semantics rather than treating embedding alone as proof of correctness.
-    graders:
+    graders: &design-guidance
       - type: completed
       - type: skill-invocation
         config: { required: [cosmosdb-migration, cosmosdb-best-practices] }
@@ -151,6 +151,118 @@ stimuli:
       - type: output-matches
         config: { pattern: '\S' }
       - type: diff-empty
+
+  - name: conversion-copy-results
+    tags:
+      { category: guidance, phase: schema-conversion, contract: operation-results, regression: conversion-semantics }
+    prompt: |
+      Review this document-source-to-Cosmos DB phase 3 candidate. R01 finds events
+      using SELECT c.id, c.ownerId FROM c WHERE c.ownerId = @ownerId.
+      W01 then copies each returned event to a new owner, deriving its new ID from
+      eventKind and occurredAt and retaining payload plus arbitrary additional
+      source properties. Events have those fields, but R01 returns only the two
+      projected fields. There is no intervening read. The model validator and
+      whole-document mapping examples pass. A separate display-only R02 needs
+      just id and ownerId and uses the same projection.
+      Should conversion complete with an implementation caveat? Explain the
+      smallest operation-level correction and where to record it. Read relevant
+      skill guidance, but do not write files, execute a phase, or access services.
+    rubric:
+      - Identify that R01 cannot supply the eventKind, occurredAt, payload and additional properties W01 requires; passing structural and isolated mapping checks does not make this operation sequence correct.
+      - Require repair before completing conversion by returning the complete required payload or recording an explicit full-item read before copying, including its routing and capacity impact; retain the valid display-only R02 projection rather than banning projections.
+      - Record the consumer/result and follow-up requirements in existing access-pattern summaries and model operations without introducing a new ledger or treating the demonstrated contradiction as merely unperformed runtime validation.
+    graders: *design-guidance
+
+  - name: conversion-source-version
+    tags: { category: guidance, phase: schema-conversion, contract: copied-version, regression: conversion-semantics }
+    prompt: |
+      Review a proposed Cosmos DB copy-and-delete sequence during schema conversion.
+      R01 reads a complete source item at ETag E1. W01 successfully copies that
+      version to another partition. Another writer changes the source to E2.
+      Cleanup reads the source again, obtains E2, then deletes using If-Match E2.
+      The plan says this is safe because it uses conditional deletion and that
+      an ETag on a separate workflow item fences every source writer. There is
+      no writer-participation protocol. What must change, and which unresolved
+      guarantees remain? Explain only using relevant skill guidance; do not write
+      files, run a migration, or access a database.
+    rubric:
+      - Explain that deleting with E2 can destroy an update that was not copied; capture payload and token from the same source version and retain E1 as the cleanup precondition for that successful copy.
+      - On a version conflict, preserve the changed source and reconcile or recopy under the selected recovery protocol; do not accept the latest ETag, blindly retry deletion, or treat a newer read as proof that its contents were copied.
+      - Distinguish item-version protection from cross-partition atomicity and writer fencing; an ETag on an unrelated item is insufficient, and the missing coordination mechanism remains an explicit design or execution-clearance condition.
+    graders: *design-guidance
+
+  - name: conversion-colocation-scope
+    tags: { category: guidance, phase: schema-conversion, contract: grouping-scope, regression: conversion-semantics }
+    prompt: |
+      During document-source migration, Profiles and Leases share an ownerId.
+      Each source collection can have the same native _id for that owner.
+      The candidate keeps those IDs as Cosmos id and puts both types in one
+      container with HPK [/ownerId, /docType]. The summary claims their shared
+      owner prefix permits a single transactional batch. They remain independently
+      updated documents, and operations involving two owners also exist.
+      Review the claimed benefit and compare alternatives while retaining original
+      source keys. Distinguish embedding, shared complete-key documents,
+      shared-container/different-key documents and separate containers, including
+      capacity sharing and per-owner scaling tradeoffs. No layout or identity
+      change is preapproved. Read relevant guidance and explain only; do not
+      change artifacts, deploy, or execute a phase.
+    rubric:
+      - Identify that [ownerId, profile] and [ownerId, lease] are different complete partition keys and cannot share a transactional batch merely because they share a container and leading prefix.
+      - Distinguish the four grouping choices and their actual workload, size, update, scaling and atomicity tradeoffs; acknowledge that the current design can still share throughput and policies.
+      - Compare losslessly type-scoped Cosmos IDs under a shared business key, retaining original source keys, with namespace separation through the partition tuple; require justification and approval for consequential changes rather than automatically rewriting IDs or forcing co-location.
+      - Do not claim that same-owner grouping makes cross-owner or cross-container operations atomic.
+    graders: *design-guidance
+
+  - name: conversion-index-justification
+    tags:
+      { category: guidance, phase: schema-conversion, contract: operation-indexes, regression: conversion-semantics }
+    prompt: |
+      Review a phase 3 Cosmos DB container partitioned by /id with consistent,
+      exclude-all-first indexing. Q01 frequently filters ownerId equality plus
+      score > @minimum, without ORDER BY. R02 uses ReadItem with known id and
+      partition key, checks leaseToken and destination in application code, then
+      performs ReplaceItem with the returned ETag. R03 projects payload for display.
+      Proposed included paths are /ownerId/?, /score/?, /leaseToken/?,
+      /destination/? and /payload/?. The author says all accessed properties need
+      indexes and composite indexes are never useful without ORDER BY.
+      Explain which paths have evidence, which do not, and how to assess the
+      composite claim. Show how to record these decisions and their operation
+      evidence in the existing phase summary. Read relevant guidance; do not
+      write files, run a phase, benchmark a database, or invent additional access patterns.
+    rubric:
+      - Retain index support for Q01's actual ownerId and score predicates, but identify that point-read application checks and a response-only projection do not justify indexes on leaseToken, destination or payload.
+      - Explain that the ETag precondition does not require indexing the system ETag and that index decisions must be linked to actual server-side operations or documented service requirements in the existing summary.
+      - Reject the blanket claim about ORDER BY; consider a composite for the equality-plus-range workload as a possible optimization, weighing write/index overhead without asserting it is required for correctness or claiming measured savings.
+    graders: *design-guidance
+
+  - name: conversion-workload-routing
+    tags:
+      {
+        category: guidance,
+        phase: schema-conversion,
+        contract: container-specific-routing,
+        regression: conversion-semantics,
+      }
+    prompt: |
+      Review partition-key reasoning for two containers in a document-source
+      migration. Aliases has stable globally unique source IDs, 90% known-ID
+      lookups and 10% reverse owner lookups; its ownerId changes during reassignment.
+      Events has stable globally unique source event IDs, an ownerId fixed for
+      each stored item, and all discovered queries retrieve an owner's events.
+      A supplied synthetic scenario has 10 million event creates and 20,000
+      owner-event queries per day. Native-ID uniqueness must not be weakened;
+      no deterministic ID-to-owner routing invariant has been established.
+      Both summaries choose /id with the identical explanation "preserves native
+      IDs and scales well." No skew or event-growth measurements are available.
+      Explain a separate comparison for each container and the evidence still
+      needed. You may retain either choice if justified. Read relevant guidance;
+      do not invent measurements, write files, run a phase or access services.
+    rubric:
+      - Justify stable-ID routing for Aliases using its known-ID workload and mutable ownerId; explain that owner reassignment under an owner-based partition key would require a move/reconciliation design, not an in-place key update.
+      - Compare Events identity-first routing and owner-oriented routing, considering the write-dominated synthetic scenario, grouped-query fan-out, key skew and growth; do not reject /id categorically or assume owner routing is automatically best.
+      - Explain how each candidate retains native uniqueness within Cosmos partition scope, leaving missing routing/enforcement evidence explicit rather than assuming preserving the id string establishes global uniqueness across owners.
+      - Use container-specific evidence and label supplied rates as synthetic and unmeasured dimensions as unknown; missing measurements may leave optimization conditional, but generic duplicated rationale does not establish a workload-specific comparison.
+    graders: *design-guidance
 
   - name: provisioning-current-approval
     tags: { category: guidance, phase: provisioning, contract: provisioning-approval }

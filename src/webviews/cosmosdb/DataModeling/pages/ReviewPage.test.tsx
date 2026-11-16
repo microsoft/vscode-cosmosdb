@@ -172,6 +172,34 @@ describe('ReviewPage', () => {
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
+    it('lists non-blocking warnings separately from blocking issues, each with a described Fix button', async () => {
+        const error = { message: 'Orders: Blocking issue.', path: [] };
+        const warning = { message: 'Users: Non-blocking issue.', path: [] };
+        const onFixIssue = vi.fn();
+        render(
+            <ReviewPage
+                workloadLabel="Other"
+                containers={[createBlankContainer('Orders')]}
+                validationErrors={[error]}
+                validationWarnings={[warning]}
+                onFixIssue={onFixIssue}
+                onEditWorkload={vi.fn()}
+                onEditContainer={vi.fn()}
+            />,
+        );
+        const alert = screen.getByRole('alert');
+        const status = screen.getByRole('group', {
+            name: 'Review these issues. They will not block a recommendation.',
+        });
+        expect(status).toHaveTextContent(/^Review these issues\. They will not block a recommendation\./);
+        expect(within(alert).queryByText(warning.message)).not.toBeInTheDocument();
+        const fix = within(status).getByRole('button', { name: 'Fix' });
+        expect(fix).toHaveAccessibleDescription(warning.message);
+        expect(within(alert).getByRole('button', { name: 'Fix' })).toHaveAccessibleDescription(error.message);
+        await userEvent.click(fix);
+        expect(onFixIssue).toHaveBeenLastCalledWith(warning);
+    });
+
     it('lists validation issues with individually described Fix buttons', async () => {
         const errors = ['Orders: First issue.', 'Users: Second issue.'];
         const issues = errors.map((message) => ({ message, path: [] }));

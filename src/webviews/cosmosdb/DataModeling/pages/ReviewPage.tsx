@@ -198,6 +198,8 @@ export interface ReviewPageProps {
     workloadLabel: string;
     containers: ContainerModel[];
     validationErrors?: ReviewValidationIssue[];
+    /** Issues listed with Fix buttons that do not block recommendation requests. */
+    validationWarnings?: ReviewValidationIssue[];
     onFixIssue?: (issue: ReviewValidationIssue) => void;
     onEditWorkload: () => void;
     onEditContainer: (containerId: string) => void;
@@ -301,6 +303,7 @@ export function ReviewPage({
     workloadLabel,
     containers,
     validationErrors = [],
+    validationWarnings = [],
     onFixIssue,
     onEditWorkload,
     onEditContainer,
@@ -320,6 +323,25 @@ export function ReviewPage({
         l10n.t('Hierarchical PK assessment'),
     ];
 
+    const issueList = (issues: ReviewValidationIssue[], kind: 'issue' | 'warning') => (
+        <ul className={styles.validationList}>
+            {issues.map((issue, index) => (
+                <li key={index} className={styles.validationItem}>
+                    <span id={`${rulesHeadingId}-${kind}-${index}`}>{issue.message}</span>
+                    {onFixIssue ? (
+                        <Button
+                            className={styles.validationFix}
+                            appearance="primary"
+                            aria-describedby={`${rulesHeadingId}-${kind}-${index}`}
+                            onClick={() => onFixIssue(issue)}
+                        >
+                            {l10n.t('Fix')}
+                        </Button>
+                    ) : null}
+                </li>
+            ))}
+        </ul>
+    );
     return (
         <div className={styles.page}>
             <div className={styles.intro}>
@@ -345,23 +367,18 @@ export function ReviewPage({
                         <MessageBarTitle>
                             {l10n.t('Fix these issues before requesting a recommendation.')}
                         </MessageBarTitle>
-                        <ul className={styles.validationList}>
-                            {validationErrors.map((issue, index) => (
-                                <li key={index} className={styles.validationItem}>
-                                    <span id={`${rulesHeadingId}-issue-${index}`}>{issue.message}</span>
-                                    {onFixIssue ? (
-                                        <Button
-                                            className={styles.validationFix}
-                                            appearance="primary"
-                                            aria-describedby={`${rulesHeadingId}-issue-${index}`}
-                                            onClick={() => onFixIssue(issue)}
-                                        >
-                                            {l10n.t('Fix')}
-                                        </Button>
-                                    ) : null}
-                                </li>
-                            ))}
-                        </ul>
+                        {issueList(validationErrors, 'issue')}
+                    </MessageBarBody>
+                </MessageBar>
+            ) : null}
+
+            {validationWarnings.length > 0 ? (
+                <MessageBar intent="warning" politeness="polite" layout="multiline">
+                    <MessageBarBody>
+                        <MessageBarTitle>
+                            {l10n.t('Review these issues. They will not block a recommendation.')}
+                        </MessageBarTitle>
+                        {issueList(validationWarnings, 'warning')}
                     </MessageBarBody>
                 </MessageBar>
             ) : null}

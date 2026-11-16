@@ -1,0 +1,65 @@
+name: cosmosdb-best-practices-index
+description: Operation-backed indexing regressions for the local upstream contribution.
+type: capability
+
+agent_environment:
+  skills:
+    - ../../../skills/cosmosdb-best-practices
+
+defaults:
+  executor: copilot-sdk
+  model: gpt-5.6-luna
+  judge_model: gpt-5.6-terra
+  runs: 1
+  timeout: 3m
+
+scoring:
+  threshold: 1
+
+stimuli:
+  # Index server-side operations.
+  - name: index-exclude-unused
+    tags: { category: index, rule: index-exclude-unused, regression: upstream-operation-review }
+    prompt: |
+      Cosmos DB Q1 filters customerId and status. R2 point-reads by known id/key,
+      checks lockToken in application code, then conditionally replaces with its
+      ETag. R3 projects notes for display. Review included paths for these fields,
+      distinguish server-side and client-side requirements, and record
+      operation-backed rationale. Do not invent extra queries or modify files.
+    rubric:
+      - Retain index support for Q1's customerId and status predicates, but do not justify lockToken or notes indexes from application checks or response-only projection.
+      - Explain that ETag preconditions do not require indexing the system ETag and that a point read by known id/key does not require these secondary indexes.
+      - Associate index decisions with the given operations or documented service requirements rather than inventing queries or treating every accessed field as an index requirement.
+    graders: &rule-graders
+      - type: completed
+      - type: skill-invocation
+        config: { required: [cosmosdb-best-practices], disallowed: [cosmosdb-migration] }
+      - type: prompt
+        config:
+          scoring: binary
+          threshold: 1
+          prompt: >-
+            Evaluate every rubric criterion for technical correctness. Accept semantically equivalent
+            explanations and concise actionable prose; do not require exact phrases or code unless
+            explicitly requested. Reject substantive omissions, contradictions, and incorrect advice.
+            Keyword mentions alone do not satisfy a criterion.
+      - type: output-matches
+        config: { pattern: '\S' }
+      - type: diff-empty
+
+  # Separate sorting and filtering requirements.
+  - name: index-composite
+    tags: { category: index, rule: index-composite, regression: upstream-operation-review }
+    prompt: |
+      Review Cosmos DB indexing for two queries: status equality plus
+      createdAt > @since with no sort, and a two-property ORDER BY createdAt DESC,
+      priority ASC. Contrast required versus optional composite indexes, path
+      ordering, filter-only handling of multiple range predicates, and how to
+      verify benefit. The container is partitioned by /customerId.
+      Do not change files or run a benchmark.
+    rubric:
+      - The two-property sort requires a composite matching createdAt then priority with the requested directions or their full inverse; single-property range indexes alone are insufficient.
+      - The equality-plus-range query can use individual range indexes, while an optional composite places status first and createdAt last; no ORDER BY rewrite is required for this filter-only optimization.
+      - Each filter-optimizing composite supports at most one range predicate, last after equality paths; multiple range predicates may benefit from separate composites rather than one composite claimed to optimize all ranges.
+      - Assess query RU/latency against write/index overhead with representative data after index transformation, without claiming measured savings or that composites alter partition routing or eliminate fan-out.
+    graders: *rule-graders

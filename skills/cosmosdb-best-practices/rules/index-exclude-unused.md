@@ -9,6 +9,13 @@ tags: index, exclusion, write-performance, optimization
 
 Exclude paths from indexing that you never query. Every indexed path adds write cost with no read benefit.
 
+Justify each included path or composite with an actual server-side filter, sort, or documented indexed capability.
+Record `Path/index | Query/operation | Reason`, and recheck when operations change. Point reads, response projections,
+fields checked in application code, and ETag preconditions alone do not require secondary indexes.
+For example, reading an item by ID/key and checking `status` before an If-Match replacement does not justify a
+`/status/?` index. Index a type discriminator when queries use it, not merely because documents contain it.
+Do not invent queries to justify unused indexes; include non-system partition-key paths when queries filter on them.
+
 **Incorrect (indexing everything):**
 
 ```csharp

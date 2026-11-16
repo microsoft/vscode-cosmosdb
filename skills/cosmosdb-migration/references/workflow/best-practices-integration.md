@@ -22,11 +22,22 @@ the peer Skill because they do not make target-design decisions.
 ## Select Rules by Meaning
 
 The model owns semantic rule selection. Read the current peer `SKILL.md` index once
-per phase, consider the decision and workload evidence, and load only the strongest
-matching rule bodies. Follow related-rule links when loaded content identifies another
-material concern. Reuse each loaded rule body across decisions and domains in that
-phase. Read current guidance when starting another phase or explicitly rerunning one;
-do not monitor peer files or restart completed phases because their guidance changed.
+per phase. Before each material target decision, identify its concerns and read the
+strongest matching rule bodies against source/workload evidence. Index descriptions,
+remembered advice, and structural validation are not substitutes for those reads.
+
+Choose guidance for the decision, not just the preferred outcome:
+- Separating related types still requires grouping, identity, transaction-scope and
+  capacity guidance; ruling out one whole-domain key does not rule out useful subsets.
+- Reads feeding writes, copies or cleanup require projection and concurrency guidance,
+  not just query syntax or serialization advice.
+- Index choices require guidance for actual access methods, filters, sorts and
+  relevant optional optimizations, even when no sorting is requested.
+
+Follow related-rule links for additional material concerns. Reuse each loaded body
+across decisions/domains in the phase; read newly relevant bodies when decisions change.
+Read current guidance for new phases or explicit reruns, but do not monitor peer files
+or restart completed phases merely because guidance changed.
 
 Use the decision requirements in the phase references as review concerns, not as a
 lexical matching specification. Rule titles, paths, scope, meaning, and organization

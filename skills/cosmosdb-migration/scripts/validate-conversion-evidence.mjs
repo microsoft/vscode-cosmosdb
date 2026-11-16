@@ -31,7 +31,7 @@ function preservedSourceColumns(entity, table, resolve, evidence) {
         if (references.length !== 1 || datasetKey(references[0].dataset) !== datasetKey(table) ||
             !['object', 'array'].includes(attribute.type) || mapping?.operation !== 'copy') continue;
         const parent = references[0].field;
-        if (!parent.nativeTypes.some(type => ['object', 'array'].includes(type))) continue;
+        if (!parent.nativeTypes.some(type => ['object', 'document', 'array'].includes(type))) continue;
         for (const field of table.fields) if (isFieldPathPrefix(parent.path, field.path)) fields.add(field.id);
     }
     return fields;

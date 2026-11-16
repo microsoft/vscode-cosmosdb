@@ -528,6 +528,46 @@ test('one subtree mapping covers descendants and preserves unknown roots, nestin
     assert.match(validate()[0].message, /whole-document preservation evidence/u);
 });
 
+test('document aliases cover nested source fields without crediting scalar or unknown parents', t => {
+    const data = documentFixture(t);
+    const parent = data.inventory.datasets[0].fields.find(field => field.id === 'details');
+    const attribute = data.entity.attributes.find(entry => entry.target === 'details');
+    parent.nativeTypes = ['document'];
+    attribute.source.type = 'document';
+    refreshDocumentModel(data);
+    const inventory = structuredClone(data.inventory);
+    assert.deepEqual(validateConversionEvidence(data.project, data.inventory, data.models, data.root, data.evidence), []);
+    assert.deepEqual(data.inventory, inventory);
+    for (const type of ['string', 'unknown']) {
+        parent.nativeTypes = [type];
+        attribute.source.type = type;
+        refreshDocumentModel(data);
+        assert.match(validateConversionEvidence(data.project, data.inventory, data.models, data.root, data.evidence)[0].message, /omits source column/u);
+    }
+});
+
+test('document aliases support recursive native conversions without changing unknown properties or input values', t => {
+    const data = documentFixture(t);
+    const dataset = data.inventory.datasets[0];
+    const parent = dataset.fields.find(field => field.id === 'details');
+    parent.nativeTypes = ['document'];
+    dataset.fields.push({ id: 'native-date', path: [...parent.path, property('events'), { kind: 'array' }, property('at')],
+        nativeTypes: ['BSON Date'], presence: 'optional', nullable: true, evidence: [sourcePath] });
+    const mapping = data.evidence.fieldMappings.find(entry => entry.target === 'details');
+    mapping.conversions = [{ field: 'native-date', operation: 'date-iso8601' }];
+    const input = { events: [{ at: { $date: '2026-01-01T00:00:00.000Z' } }, {}, { at: null }], extra: { retained: [1, null] } };
+    const before = structuredClone(input);
+    assert.deepEqual(executeFieldMapping(mapping, [value(input)], data.inventory),
+        value({ events: [{ at: '2026-01-01T00:00:00.000Z' }, {}, { at: null }], extra: { retained: [1, null] } }));
+    assert.deepEqual(input, before);
+    assert.deepEqual(executeFieldMapping(mapping, [missing], data.inventory), missing);
+    assert.deepEqual(executeFieldMapping(mapping, [value(null)], data.inventory), value(null));
+    for (const type of ['string', 'unknown']) {
+        parent.nativeTypes = [type];
+        assert.throws(() => executeFieldMapping(mapping, [value(input)], data.inventory), /Subtree conversions require an object or array source/u);
+    }
+});
+
 test('earlier conversion checkpoints without the preservation contract become stale', t => {
     const directory = workspace(t);
     const data = fixture(directory);

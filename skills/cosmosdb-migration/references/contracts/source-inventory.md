@@ -246,6 +246,9 @@ Document-oriented sources preserve field names, object nesting, arrays, order, a
 Do not flatten every inventoried path or duplicate a subtree and all its descendants merely to satisfy coverage.
 A unary `copy` mapping of an object/array accounts for its descendant field paths, including literal names and
 array traversal. Relational column coverage remains exact and does not receive this subtree exemption.
+The native type label `document` is an alias for `object` in subtree coverage and recursive conversions.
+Keep that native label in the inventory and source lineage; the target attribute still uses JSON type `object`.
+Scalar or unknown native types alone do not qualify for subtree coverage or recursive conversions.
 Identity/routing metadata and explicit source-property collisions are narrow exceptions to name preservation.
 
 Record one `documentMappings[]` entry per document-sourced target entity:

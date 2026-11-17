@@ -102,17 +102,27 @@ beforeEach(() => {
 });
 afterEach(() => vi.restoreAllMocks());
 
-it('uses a focusable themed tooltip instead of a native title for metric-group explanations', async () => {
-    const user = userEvent.setup();
-    renderMetrics({ chartAffordances: true });
-    const legend = screen.getByText(METRIC_GROUPS.state.label).parentElement!;
-    expect(legend).not.toHaveAttribute('title');
-    expect(legend).toHaveAttribute('tabindex', '0');
-    expect(legend).toHaveAccessibleDescription(METRIC_GROUPS.state.description);
-    await user.click(legend);
-    expect(legend).toHaveFocus();
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(METRIC_GROUPS.state.description);
-});
+it.each([false, true])(
+    'associates State and Activity tooltip descriptions with their focusable legends with chartAffordances=%s',
+    async (chartAffordances) => {
+        const user = userEvent.setup();
+        renderMetrics({ chartAffordances });
+        for (const meta of Object.values(METRIC_GROUPS)) {
+            const legend = screen.getByText(meta.label).parentElement!;
+            expect(legend).not.toHaveAttribute('title');
+            expect(legend).toHaveAttribute('tabindex', '0');
+            expect(legend).toHaveAttribute('aria-describedby');
+            expect(legend).toHaveAccessibleDescription(meta.description);
+            expect(legend).toHaveTextContent(meta.label);
+            expect(legend).not.toHaveTextContent(meta.description);
+            await user.click(legend);
+            expect(legend).toHaveFocus();
+            expect(await screen.findByRole('tooltip')).toHaveTextContent(meta.description);
+            await user.keyboard('{Escape}');
+            await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument());
+        }
+    },
+);
 
 describe.each([false, true])('storage breakdown with chartAffordances=%s', (chartAffordances) => {
     const complete: StorageMeasurement = {

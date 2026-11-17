@@ -466,7 +466,7 @@ export const AccountHeader = ({
                             )}
                         </div>
                         <AccordionHeader
-                            as="h2"
+                            as="div"
                             inline
                             size="small"
                             className={styles.detailsToggle}

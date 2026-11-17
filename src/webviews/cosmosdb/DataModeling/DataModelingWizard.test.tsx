@@ -16,6 +16,7 @@ import {
     ModelingAdvisorSnapshotSchema,
     type ModelingAdvisorSnapshot,
 } from '../../../dataModeling/modelingAdvisorSchema';
+import { modelingInputsEqual } from '../../../dataModeling/modelingTelemetryMetrics';
 import { type ModelingTelemetryEvent } from '../../../dataModeling/modelingTelemetrySchema';
 import { type DataModelingEvent } from '../../api/types';
 import { applyScenario, createBlankContainer } from './dataModel';
@@ -1213,7 +1214,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         await userEvent.click(screen.getByRole('button', { name: 'Back' }));
         expect(screen.getByRole('tab', { name: 'Data' })).toHaveAttribute('aria-selected', 'true');
         await userEvent.click(screen.getByRole('button', { name: 'Next' }));
-        await confirmAdvance();
+        expect(client.dataModeling.confirm.mutate).toHaveBeenCalledOnce();
         await userEvent.click(screen.getByRole('button', { name: 'Next' }));
         await answerConfirmation('Configure queries and scale?', false);
         expect(screen.getByRole('button', { name: 'Get Recommendation' })).toBeVisible();
@@ -1567,7 +1568,29 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         await waitFor(() => expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledOnce());
     });
 
-    it.each(['read', 'document', 'arrays'] as const)(
+    it('requests a recommendation with a mismatched attribute total listed as a non-blocking warning', async () => {
+        const saved = restored(3);
+        saved.recommendation = { status: 'idle' };
+        const container = saved.wizard.dataModel.containers[0];
+        container.document.attributeCount = 250;
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+
+        expect(screen.queryByText('Fix these issues before requesting a recommendation.')).not.toBeInTheDocument();
+        const warning = screen.getByText(
+            `Orders: Total attributes per document must match the ${container.properties.length} attributes in the schema properties table.`,
+        );
+        expect(warning.closest('[role="group"]')).toHaveAccessibleName(
+            'Review these issues. They will not block a recommendation.',
+        );
+        expect(screen.getByRole('button', { name: 'Fix' })).toHaveAccessibleDescription(warning.textContent);
+        await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
+        await waitFor(() => expect(client.dataModeling.requestRecommendation.mutate).toHaveBeenCalledOnce());
+        expect(lastSave().wizard.dataModel.containers[0].document.attributeCount).toBe(250);
+    });
+
+    it.each(['read', 'document', 'arrays', 'attributes'] as const)(
         'opens the offending container and tab and focuses its %s input from Review',
         async (kind) => {
             const saved = restored(4);
@@ -1578,6 +1601,8 @@ describe('data modeler saved-work choice and revisiting steps', () => {
                 container.reads.push({ id: 'empty-read', pattern: '', query: '', qps: 10 });
             } else if (kind === 'document') {
                 container.document.avgSizeKb = container.document.maxSizeKb + 1;
+            } else if (kind === 'attributes') {
+                container.document.attributeCount = container.properties.length + 1;
             } else {
                 container.arrays = { hasArrays: true, avgItems: 5, maxItems: 2, updatePattern: 'none' };
             }
@@ -1587,11 +1612,17 @@ describe('data modeler saved-work choice and revisiting steps', () => {
                     ? 'Description for read 2'
                     : kind === 'document'
                       ? 'Average document size'
-                      : 'Average items per array';
+                      : kind === 'attributes'
+                        ? 'Total attributes per document'
+                        : 'Average items per array';
             client.dataModeling.loadState.query.mockResolvedValue(saved);
             render(<DataModelingWizard />);
             await continueExisting();
-            expect(screen.getByRole('button', { name: 'Get Recommendation' })).toBeDisabled();
+            // A total that differs from the schema properties table is listed with Fix but does not block requests.
+            expect(screen.getByRole('button', { name: 'Get Recommendation' })).toHaveProperty(
+                'disabled',
+                kind !== 'attributes',
+            );
 
             const fix = screen.getByRole('button', { name: 'Fix' });
             expect(fix).toHaveAccessibleDescription(/^DeviceTelemetry:/);
@@ -1609,10 +1640,63 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             await userEvent.click(screen.getByRole('button', { name: 'Fix' }));
             const target = screen.getByRole(kind === 'read' ? 'textbox' : 'spinbutton', { name: label });
             await waitFor(() => expect(target).toHaveFocus());
-            fireEvent.change(target, { target: { value: kind === 'read' ? 'Get a device by id' : '1' } });
+            fireEvent.change(target, {
+                target: {
+                    value:
+                        kind === 'read'
+                            ? 'Get a device by id'
+                            : kind === 'attributes'
+                              ? String(container.properties.length)
+                              : '1',
+                },
+            });
             await userEvent.click(await getStepControl('Review'));
             expect(screen.queryByRole('button', { name: 'Fix' })).not.toBeInTheDocument();
             expect(screen.getByRole('button', { name: 'Get Recommendation' })).toBeEnabled();
+        },
+    );
+
+    it.each([
+        { label: 'Average document size', value: '-1', correction: '1' },
+        { label: 'Maximum document size', value: '2049', correction: '4' },
+        { label: 'Total attributes per document', value: '10001', correction: '3' },
+        { label: 'Average items per array', value: '100001', correction: '10' },
+        { label: 'Maximum items per array', value: '1.5', correction: '100' },
+    ])(
+        'persists invalid $label edits and offers a Review Fix without losing the input',
+        async ({ label, value, correction }) => {
+            const saved = restored(2);
+            saved.recommendation = { status: 'idle' };
+            saved.wizard.dataModel.containers[0].arrays.hasArrays = true;
+            client.dataModeling.loadState.query.mockResolvedValue(saved);
+            render(<DataModelingWizard />);
+            await continueExisting();
+            const input = screen.getByRole('spinbutton', { name: label });
+            fireEvent.change(input, { target: { value } });
+            expect(input).toHaveValue(Number(value));
+            expect(input).toHaveAttribute('aria-invalid', 'true');
+            expect(within(screen.getByRole('tabpanel', { name: 'Data' })).getByRole('alert')).toBeVisible();
+            expect(ModelingAdvisorSnapshotSchema.parse(lastSave()).wizard.dataModel).toEqual(
+                lastSave().wizard.dataModel,
+            );
+
+            await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+            await answerConfirmation('Configure queries and scale?', false);
+            const fix = screen.getByRole('button', { name: 'Fix' });
+            expect(fix).toHaveTextContent('Fix');
+            expect(fix).toHaveAccessibleName('Fix');
+            expect(fix).toHaveAccessibleDescription(/^Orders:/);
+            expect(screen.getByRole('button', { name: 'Get Recommendation' })).toBeDisabled();
+            await userEvent.click(fix);
+            const target = screen.getByRole('spinbutton', { name: label });
+            await waitFor(() => expect(target).toHaveFocus());
+            expect(target).toHaveValue(Number(value));
+            fireEvent.change(target, { target: { value: correction } });
+            expect(within(screen.getByRole('tabpanel', { name: 'Data' })).queryByRole('alert')).not.toBeInTheDocument();
+            await userEvent.click(await getStepControl('Review'));
+            expect(screen.queryByRole('button', { name: 'Fix' })).not.toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'Get Recommendation' })).toBeEnabled();
+            expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
         },
     );
 
@@ -1802,21 +1886,291 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         },
     );
 
-    it.each([
-        { step: 'Workload', next: 'Start' },
-        { step: 'Container: Orders', next: 'Next' },
-    ])('invalidates downstream progress from $step only after confirmation and persists it', async ({ step, next }) => {
+    it('resets all inputs to the selected workload defaults only after confirming a Workload restart', async () => {
+        // Avoid Fluent's zero-width jsdom overflow path while replacing the container steps.
+        const width = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1024);
+        onTestFinished(() => width.mockRestore());
+        const defaults = applyScenario(createInitialSnapshot().wizard, 'chat').dataModel;
+        const saved = createInitialSnapshot();
+        saved.wizard = { scenario: 'chat', step: 2, dataModel: structuredClone(defaults) };
+        const container = saved.wizard.dataModel.containers[0];
+        saved.wizard.reachedSteps = ['workload', `container:${container.id}`];
+        container.entity = 'Edited';
+        container.properties[0].name = 'editedId';
+        container.document = { attributeCount: 20, avgSizeKb: 99, maxSizeKb: 123 };
+        container.arrays.avgItems = 456;
+        container.reads[0].qps = 1234;
+        container.writes.insertsPerSec = 4321;
+        container.scale.candidates[0].distinctValues = 872;
+        saved.wizard.dataModel.containers = [container, createBlankContainer('Custom')];
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        const mounted = render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(await getStepControl('Workload'));
+        const before = lastSave();
+        await userEvent.click(screen.getByRole('button', { name: 'Start' }));
+        await waitFor(() => expect(client.dataModeling.confirm.mutate).toHaveBeenCalled());
+        expect(client.dataModeling.confirm.mutate).toHaveBeenLastCalledWith({
+            message: 'Reset model to workload defaults?',
+            detail: 'Choose Reset to defaults to replace all model values and containers with the defaults for this workload and discard later progress and the existing recommendation. Choose Keep my model to continue with your current model. Choose Cancel to stay on Workload without changes.',
+            buttons: { primary: 'Reset to defaults', secondary: 'Keep my model' },
+        });
+        expect(lastSave()).toEqual(before);
+        await answerConfirmation('Reset model to workload defaults?', true);
+        const persisted = lastSave();
+        expect(modelingInputsEqual(persisted.wizard.dataModel, defaults)).toBe(true);
+        expect(persisted.wizard.scenario).toBe('chat');
+        expect(persisted.wizard.step).toBe(2);
+        const firstId = persisted.wizard.dataModel.containers[0].id;
+        expect(firstId).not.toBe(container.id);
+        expect(persisted.wizard.dataModel.activeContainerId).toBe(firstId);
+        expect(persisted.wizard.reachedSteps).toEqual(['workload', `container:${firstId}`]);
+        expect(persisted.recommendation).toEqual({ status: 'idle' });
+        expect(persisted.deployment).toBeUndefined();
+        expect(screen.getByRole('spinbutton', { name: 'Average document size' })).toHaveValue(
+            defaults.containers[0].document.avgSizeKb,
+        );
+        expect(await getStepControl('Result')).toHaveAttribute('aria-disabled', 'true');
+        mounted.unmount();
+        client.dataModeling.loadState.query.mockResolvedValue(persisted);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        expect(screen.getByRole('spinbutton', { name: 'Average document size' })).toHaveValue(
+            defaults.containers[0].document.avgSizeKb,
+        );
+    });
+
+    it('continues from Workload with the current model and progress when Keep my model is selected', async () => {
+        const saved = deployedSnapshot();
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(await getStepControl('Workload'));
+        const before = lastSave();
+        await userEvent.click(screen.getByRole('button', { name: 'Start' }));
+        await answerConfirmation('Reset model to workload defaults?', false);
+        const persisted = lastSave();
+        expect(persisted).toEqual({ ...before, wizard: { ...before.wizard, step: 2 } });
+        expect(persisted.wizard.dataModel).toEqual(saved.wizard.dataModel);
+        expect(persisted.recommendation).toEqual(saved.recommendation);
+        expect(persisted.deployment).toEqual(saved.deployment);
+        expect(await getStepControl('Container: Orders')).toHaveAttribute('aria-current', 'step');
+        expect(await getStepControl('Result')).not.toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it('stays on Workload with inputs and results intact when restart is dismissed with Escape', async () => {
+        const saved = deployedSnapshot();
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(await getStepControl('Workload'));
+        const before = lastSave();
+        const start = screen.getByRole('button', { name: 'Start' });
+        await userEvent.click(start);
+        await answerConfirmation('Reset model to workload defaults?', undefined);
+        expect(lastSave()).toEqual(before);
+        expect(lastSave().wizard.dataModel).toEqual(saved.wizard.dataModel);
+        expect(lastSave().recommendation).toEqual(saved.recommendation);
+        expect(lastSave().deployment).toEqual(saved.deployment);
+        expect(await getStepControl('Workload')).toHaveAttribute('aria-current', 'step');
+        expect(start).toHaveFocus();
+    });
+
+    it.each(['edited', 'untouched'] as const)(
+        'asks before Start on a revisited Workload only when the model was %s through the UI',
+        async (kind) => {
+            // Avoid Fluent's zero-width jsdom overflow path while adding the container steps.
+            const width = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1024);
+            onTestFinished(() => width.mockRestore());
+            render(<DataModelingWizard />);
+            await userEvent.click(await screen.findByRole('radio', { name: 'Orders & Transactions' }));
+            await userEvent.click(screen.getByRole('button', { name: 'Start' }));
+            expect(client.dataModeling.confirm.mutate).not.toHaveBeenCalled();
+            const defaultSize = lastSave().wizard.dataModel.containers[0].document.avgSizeKb;
+            if (kind === 'edited') {
+                fireEvent.change(screen.getByRole('spinbutton', { name: 'Average document size' }), {
+                    target: { value: '0.5' },
+                });
+            }
+            await waitFor(() =>
+                expect(lastSave().wizard.dataModel.containers[0].document.avgSizeKb).toBe(
+                    kind === 'edited' ? 0.5 : defaultSize,
+                ),
+            );
+            await userEvent.click(await getStepControl('Workload'));
+            await userEvent.click(screen.getByRole('button', { name: 'Start' }));
+            await waitFor(() =>
+                expect(client.dataModeling.confirm.mutate).toHaveBeenCalledTimes(kind === 'edited' ? 1 : 0),
+            );
+            expect(await getStepControl(kind === 'edited' ? 'Workload' : 'Container: Orders')).toHaveAttribute(
+                'aria-current',
+                'step',
+            );
+        },
+    );
+
+    it('starts without a dialog and keeps progress when the model still matches the workload defaults', async () => {
+        const saved = createInitialSnapshot();
+        saved.wizard = { ...applyScenario(saved.wizard, 'chat'), step: 1 };
+        saved.wizard.reachedSteps = [
+            'workload',
+            ...saved.wizard.dataModel.containers.map((container) => `container:${container.id}`),
+            'review',
+            'result',
+        ];
+        saved.recommendation = restored().recommendation;
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(screen.getByRole('button', { name: 'Start' }));
+        expect(client.dataModeling.confirm.mutate).not.toHaveBeenCalled();
+        const persisted = lastSave();
+        expect(persisted).toEqual({ ...saved, wizard: { ...saved.wizard, step: 2 } });
+        expect(await getStepControl('Result')).not.toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it('applies a different workload card only after Start, offering only reset or Cancel', async () => {
+        // Avoid Fluent's zero-width jsdom overflow path while replacing the container steps.
+        const width = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1024);
+        onTestFinished(() => width.mockRestore());
+        const saved = deployedSnapshot();
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(await getStepControl('Workload'));
+        const before = lastSave();
+        await userEvent.click(screen.getByRole('radio', { name: 'Orders & Transactions' }));
+        expect(screen.getByRole('radio', { name: 'Orders & Transactions' })).toBeChecked();
+        expect(lastSave()).toEqual(before);
+        expect(await getStepControl('Container: Orders')).toBeInTheDocument();
+
+        const start = screen.getByRole('button', { name: 'Start' });
+        await userEvent.click(start);
+        await waitFor(() => expect(client.dataModeling.confirm.mutate).toHaveBeenCalled());
+        expect(client.dataModeling.confirm.mutate).toHaveBeenLastCalledWith({
+            message: 'Reset model to workload defaults?',
+            detail: 'Switching workloads replaces all model values and containers with the defaults for the selected workload and discards later progress and the existing recommendation. Choose Cancel to stay on Workload without changes.',
+            buttons: { primary: 'Reset to defaults' },
+        });
+        await answerConfirmation('Reset model to workload defaults?', undefined);
+        expect(lastSave()).toEqual(before);
+        expect(await getStepControl('Workload')).toHaveAttribute('aria-current', 'step');
+        expect(start).toHaveFocus();
+
+        await userEvent.click(start);
+        await answerConfirmation('Reset model to workload defaults?', true);
+        const persisted = lastSave();
+        expect(persisted.wizard.scenario).toBe('ecommerce');
+        expect(
+            modelingInputsEqual(
+                persisted.wizard.dataModel,
+                applyScenario(createInitialSnapshot().wizard, 'ecommerce').dataModel,
+            ),
+        ).toBe(true);
+        expect(persisted.recommendation).toEqual({ status: 'idle' });
+        expect(persisted.deployment).toBeUndefined();
+        expect(persisted.wizard.step).toBe(2);
+    });
+
+    it('asks before switching workloads while a recommendation request is pending', async () => {
+        const saved = createInitialSnapshot();
+        saved.wizard = applyScenario(saved.wizard, 'chat');
+        saved.wizard.step = saved.wizard.dataModel.containers.length + 2;
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(screen.getByRole('button', { name: 'Get Recommendation' }));
+        await waitFor(() => expect(lastSave().recommendation.status).toBe('waiting'));
+        await userEvent.click(await getStepControl('Workload'));
+        await userEvent.click(screen.getByRole('radio', { name: 'Orders & Transactions' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Start' }));
+        await answerConfirmation('Reset model to workload defaults?', undefined);
+        expect(lastSave().recommendation.status).toBe('waiting');
+        expect(lastSave().wizard.scenario).toBe('chat');
+    });
+
+    it('discards an unapplied workload card when leaving Workload', async () => {
+        const saved = deployedSnapshot();
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(await getStepControl('Workload'));
+        await userEvent.click(screen.getByRole('radio', { name: 'Orders & Transactions' }));
+        await userEvent.click(await getStepControl('Review'));
+        await userEvent.click(await getStepControl('Workload'));
+        expect(screen.getByRole('radio', { name: 'Orders & Transactions' })).not.toBeChecked();
+        expect(lastSave().wizard.dataModel).toEqual(saved.wizard.dataModel);
+        expect(lastSave().deployment).toEqual(saved.deployment);
+    });
+
+    it('continues from a revisited container without a dialog when nothing changed since moving ahead', async () => {
+        const saved = deployedSnapshot();
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
+        render(<DataModelingWizard />);
+        await continueExisting();
+        await userEvent.click(await getStepControl('Container: Orders'));
+        await userEvent.click(screen.getByRole('tab', { name: 'Scale' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+        expect(client.dataModeling.confirm.mutate).not.toHaveBeenCalled();
+        expect(await getStepControl('Review')).toHaveAttribute('aria-current', 'step');
+        expect(lastSave().wizard.dataModel).toEqual(saved.wizard.dataModel);
+        expect(lastSave().recommendation).toEqual(saved.recommendation);
+        expect(lastSave().deployment).toEqual(saved.deployment);
+        expect(await getStepControl('Result')).not.toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it.each(['edited before reopening', 'saved without the change marker'] as const)(
+        'asks to restart from a revisited container after reopening when inputs were %s',
+        async (kind) => {
+            const saved = deployedSnapshot();
+            if (kind === 'saved without the change marker') {
+                Reflect.deleteProperty(saved.wizard, 'inputsChangedSinceAdvance');
+            }
+            client.dataModeling.loadState.query.mockResolvedValue(saved);
+            const mounted = render(<DataModelingWizard />);
+            await continueExisting();
+            await userEvent.click(await getStepControl('Container: Orders'));
+            if (kind === 'edited before reopening') {
+                fireEvent.change(screen.getByRole('spinbutton', { name: 'Average document size' }), {
+                    target: { value: '2' },
+                });
+            }
+            const persisted = lastSave();
+            expect(persisted.wizard.inputsChangedSinceAdvance).toBe(
+                kind === 'edited before reopening' ? true : undefined,
+            );
+            mounted.unmount();
+            client.dataModeling.loadState.query.mockResolvedValue(persisted);
+            render(<DataModelingWizard />);
+            await continueExisting();
+            await userEvent.click(await getStepControl('Container: Orders'));
+            await userEvent.click(screen.getByRole('tab', { name: 'Scale' }));
+            await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+            await answerConfirmation('Restart from this step?', undefined);
+            expect(lastSave()).toEqual(persisted);
+            expect(await getStepControl('Container: Orders')).toHaveAttribute('aria-current', 'step');
+            await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+            await confirmAdvance();
+            expect(lastSave().wizard.inputsChangedSinceAdvance).toBe(false);
+            expect(await getStepControl('Result')).toHaveAttribute('aria-disabled', 'true');
+        },
+    );
+
+    it('invalidates downstream progress from a changed container step after confirmation without resetting inputs', async () => {
         const saved = restored(4);
         client.dataModeling.loadState.query.mockResolvedValue(saved);
         const mounted = render(<DataModelingWizard />);
         await continueExisting();
-        await userEvent.click(await getStepControl(step));
-        await userEvent.click(screen.getByRole('button', { name: next }));
-        if (next === 'Next') {
-            await answerConfirmation('Configure queries and scale?', false);
-        }
+        await userEvent.click(await getStepControl('Container: Orders'));
+        fireEvent.change(screen.getByRole('spinbutton', { name: 'Average document size' }), {
+            target: { value: '2' },
+        });
+        const edited = lastSave().wizard.dataModel;
+        expect(edited.containers[0].document.avgSizeKb).toBe(2);
+        await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+        await answerConfirmation('Configure queries and scale?', false);
         await confirmAdvance();
-        expect(lastSave().wizard.dataModel.containers).toEqual(saved.wizard.dataModel.containers);
+        expect(lastSave().wizard.dataModel.containers).toEqual(edited.containers);
         expect(lastSave().recommendation).toEqual({ status: 'idle' });
         expect(await getStepControl('Result')).toHaveAttribute('aria-disabled', 'true');
         const persisted = lastSave();
@@ -1835,7 +2189,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             ...lastSave().wizard,
             requestId: expect.any(String),
         });
-        expect(lastSave().wizard.dataModel).toEqual(saved.wizard.dataModel);
+        expect(lastSave().wizard.dataModel).toEqual({ ...edited, activeContainerId: expect.any(String) });
     });
 
     it('sends the selected scenario and unmodified model so the host can apply the default hint rule', async () => {
@@ -2161,7 +2515,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             expect(screen.getByRole('textbox', { name: 'New database name' })).toHaveValue('');
         });
 
-        it.each(['schema', 'document', 'arrays', 'query', 'scale', 'workload', 'add', 'remove'] as const)(
+        it.each(['schema', 'document', 'arrays', 'query', 'scale', 'add', 'remove'] as const)(
             'invalidates a recommendation after a %s input edit',
             async (edit) => {
                 // Match the existing add-container test's layout stub for Fluent's overflow measurement.
@@ -2199,10 +2553,6 @@ describe('data modeler saved-work choice and revisiting steps', () => {
                         fireEvent.change(screen.getByRole('combobox', { name: 'Estimated distinct values for id' }), {
                             target: { value: '500000' },
                         });
-                        break;
-                    case 'workload':
-                        await userEvent.click(await getStepControl('Workload'));
-                        await userEvent.click(screen.getByRole('radio', { name: /Chat & Sessions/ }));
                         break;
                     case 'add':
                         client.dataModeling.promptContainerName.mutate.mockResolvedValueOnce('Users');

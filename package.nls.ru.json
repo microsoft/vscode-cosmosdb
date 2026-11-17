@@ -5,7 +5,7 @@
   "cosmosdb.command.account.unsupported": "Открыть неподдерживаемую учетную запись",
   "cosmosdb.command.account.overview.open": "Открыть обзор учетной записи",
   "cosmosdb.command.account.databaseHub.open": "Просмотреть в центре баз данных",
-  "cosmosdb.command.account.overview.menu": "Обзор организации (предварительная версия)",
+  "cosmosdb.command.account.overview.menu": "Обзор учетной записи (предварительная версия)",
   "cosmosdb.command.account.overview.overview": "Обзор",
   "cosmosdb.command.account.overview.normalizedRu": "Нормализованные ЕЗ",
   "cosmosdb.command.account.overview.totalRequests": "Всего запросов",

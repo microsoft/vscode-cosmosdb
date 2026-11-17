@@ -99,14 +99,19 @@ function impactLabel(impact: RecommendationImpact): string {
 
 const RecommendationRow = ({
     recommendation,
-    onOpenLink,
+    onOpenUrl,
 }: {
     recommendation: RecommendationItem;
-    onOpenLink: (recommendation: RecommendationItem, url: string) => void;
+    onOpenUrl: (url: string) => void;
 }) => {
     const styles = useStyles();
     const problemId = useId();
+    const { reportEvent } = useDashboardActions();
     const { portalUrl, learnMoreLink } = recommendation;
+    const handleLinkClick = () => {
+        reportEvent('recommendationClicked', { source: 'advisor', impact: recommendation.impact });
+    };
+
     return (
         <Card className={styles.item} appearance="outline" focusMode="off">
             <div className={styles.titleRow}>
@@ -131,10 +136,7 @@ const RecommendationRow = ({
                             className={styles.link}
                             href={portalUrl}
                             aria-describedby={problemId}
-                            onClick={(event) => {
-                                event.preventDefault();
-                                onOpenLink(recommendation, portalUrl);
-                            }}
+                            onClick={handleLinkClick}
                         >
                             <Open16Regular aria-hidden />
                             {l10n.t('View in Azure portal')}
@@ -146,7 +148,8 @@ const RecommendationRow = ({
                             as="button"
                             aria-describedby={problemId}
                             onClick={() => {
-                                onOpenLink(recommendation, learnMoreLink);
+                                handleLinkClick();
+                                onOpenUrl(learnMoreLink);
                             }}
                         >
                             {l10n.t('Learn more')}
@@ -168,12 +171,6 @@ export const Recommendations = ({
     onOpenUrl: (url: string) => void;
 }) => {
     const styles = useStyles();
-    const { reportEvent } = useDashboardActions();
-
-    const handleOpenLink = (recommendation: RecommendationItem, url: string) => {
-        reportEvent('recommendationClicked', { source: 'advisor', impact: recommendation.impact });
-        onOpenUrl(url);
-    };
 
     let body: ReactNode;
     if (loading && !result) {
@@ -190,7 +187,7 @@ export const Recommendations = ({
         body = (
             <div className={styles.list}>
                 {result.recommendations.map((rec) => (
-                    <RecommendationRow key={rec.id} recommendation={rec} onOpenLink={handleOpenLink} />
+                    <RecommendationRow key={rec.id} recommendation={rec} onOpenUrl={onOpenUrl} />
                 ))}
             </div>
         );

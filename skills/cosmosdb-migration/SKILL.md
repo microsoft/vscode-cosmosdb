@@ -39,6 +39,7 @@ a compatible destination API; this Skill targets NoSQL only.
    ask and receive answers in-run, otherwise autonomous with a disclosed fallback.
    Validation-only means no writes. Review-and-fix is read-only until explicit repair approval.
    A scoped `phase` stops at that checkpoint; Discovery includes missing preflight preparation.
+   Never save a whole run request as phase instructions; persist only explicitly reusable guidance.
 4. Inspect with `node <skill-root>/scripts/inspect-migration-state.mjs --workspace <workspace>`
    and optional `--phase <phase>`, `--regenerate`, or preflight `--preflight-step`.
    Before using an unfamiliar helper, run its `--help`; do not forward agent intent parameters

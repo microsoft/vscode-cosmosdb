@@ -61,6 +61,51 @@ stimuli:
     artifacts:
       include: [app/.cosmosdb-migration/**]
 
+  - name: preflight-to-discovery-instruction-routing
+    tags: { category: artifacts, phase: discovery, contract: instruction-routing }
+    agent_environment:
+      commands: [node setup.mjs discovery]
+    turns:
+      - |
+        Run only the schema-acquisition preflight step for the migration in ./app,
+        autonomously, using the supplied authoritative DDL and model-only interpretation.
+        Run ID: routing-schema.
+        For this entire conversation, preserve application files, supplied DDL,
+        existing synthetic workload estimates, and unknown project properties.
+        Do not install dependencies, execute application code, use a custom DDL parser,
+        access databases or cloud services, or analyze projects outside ./app.
+        Stop after the requested step and report the remaining readiness gates.
+      - |
+        Run only the volumetrics preflight step. For this synthetic planning scenario,
+        retention is 30 days and peak traffic is 100 read requests per second.
+        These are additional planning requirements, not production measurements or
+        replacements for the existing per-table estimates. Use the access patterns
+        already available and keep their artifact unchanged.
+        Run ID: routing-volumetrics.
+      - |
+        Now run discovery only, using the prepared inputs and the discovery focus I
+        previously saved in the project. Work autonomously, validate the discovery
+        checkpoint, and stop before assessment. Keep the earlier safety restrictions.
+        Run ID: routing-discovery.
+    rubric:
+      - Execute schema acquisition, then volumetrics, then discovery in the requested turns. The earlier focused-step commands must not prevent the final discovery run or cause it to stop at preflight.
+      - Preserve the saved discoveryInstructions exactly throughout all turns. Do not append launch commands, run IDs, execution mode, or the supplied workload requirements to any phase instruction field.
+      - Record the 30-day retention and 100 peak read requests per second in volumetrics evidence with synthetic planning provenance and clear units, without replacing supplied per-table estimates or modifying the access-pattern artifact.
+      - Apply the saved tenant-isolation focus to the discovery report, tracing the actual query evidence rather than claiming that a TenantId column alone proves tenant isolation.
+      - Complete and validate discovery without advancing assessment, changing application files, or treating synthetic workload inputs as observed production data.
+    graders:
+      - type: completed
+      - type: skill-invocation
+        config: { required: [cosmosdb-migration] }
+      - type: migration-artifacts
+        config: { phase: discovery }
+      - type: prompt
+        config: *artifact-judge
+      - type: output-matches
+        config: { pattern: '\S' }
+    artifacts:
+      include: [app/.cosmosdb-migration/**]
+
   - name: provisioning-target-switch
     tags: { category: artifacts, phase: provisioning, contract: target-switch }
     agent_environment:

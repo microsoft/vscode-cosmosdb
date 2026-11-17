@@ -73,8 +73,8 @@ Required:
 - `project.json` with complete application details and
    `phases.discovery.preflightStatus: "complete"`.
 
-Apply and preserve `phases.discovery.discoveryInstructions` when the `preflight`
-request includes additional discovery or preflight guidance.
+Keep preflight guidance invocation-scoped and workload facts in input artifacts.
+Only explicit requests to save discovery guidance may change `phases.discovery.discoveryInstructions`.
 
 Optional generated DDL is a review/export artifact only. Keep the legacy `schema-ddl/` storage name;
 never move user files merely to rename their category.

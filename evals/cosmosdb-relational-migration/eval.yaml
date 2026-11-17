@@ -67,6 +67,25 @@ stimuli:
       - Preserve the supplied evidence, flag the inconsistency, and request a corrected or verified count or record the feasible count as unknown; do not invent a replacement count, change the DDL, or present the estimate as observed or feasible.
     graders: *guidance
 
+  - name: explicit-phase-guidance-during-preflight
+    tags: { category: guidance, phase: preflight, contract: instruction-routing }
+    prompt: |
+      Explain how you would handle these requests in an existing migration; do not
+      execute them or write files. First, I ask to infer the source inventory from
+      workspace code (schema-source: infer), then run only volumetrics with a declared
+      30-day retention requirement. During that preflight request I also explicitly
+      ask to save "Focus on tenant isolation." as additional instructions for future
+      discovery. The discovery field already contains "Include archived orders."
+      What belongs in saved instructions, what belongs in workload evidence, and
+      what applies only to the current run? What changes if I repeat the save request,
+      explicitly replace the saved text, or ask to save guidance without naming a phase?
+    rubric:
+      - Save only the explicit future discovery guidance in phases.discovery.discoveryInstructions, appending it after the existing text without rewording or discarding either. Do not apply future discovery guidance to preflight.
+      - Keep schema-source inference and focused-step launch controls invocation-scoped; record retention as a declared requirement in volumetrics evidence rather than as discovery instructions.
+      - Do not append an exact duplicate; replace existing text only on an explicit replacement request. Ask for the intended phase before persisting ambiguously scoped guidance rather than defaulting to the current phase.
+      - Do not invent a preflight instruction field or use discoveryInstructions as a catch-all for preflight requests, and make no writes during this explanation-only request.
+    graders: *guidance
+
   - name: parser-choice-and-failure
     tags: { category: guidance, phase: preflight, contract: parser-consent }
     prompt: |

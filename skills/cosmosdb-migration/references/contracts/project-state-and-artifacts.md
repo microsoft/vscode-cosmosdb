@@ -329,30 +329,34 @@ and freshness; never edit hashes to bypass validation.
 
 ## Additional Phase Instructions
 
-When the user asks to run, resume, or continue a phase with additional
-instructions, persist those instructions before changing phase status or artifacts.
-Use the fields prescribed by the version 1 contract:
+Separate request content:
 
-- `preflight` or `discovery`: `phases.discovery.discoveryInstructions`.
+- **Run controls** (phase/step, run ID, mode, regeneration, `schema-source: infer`, permissions)
+  are invocation-scoped. Use prescribed execution state, never saved instruction fields.
+- **Evidence and requirements** belong in input artifacts and summaries, not instructions.
+  Put traffic, retention, and storage in `volumetrics/volumetrics.md` with provenance, units,
+  clarifications, and supplied facts distinguished from estimates. Evidence never expands execution scope.
+- **Persistent guidance** requires an explicit save/reuse request or entry in a phase's instruction field.
+  One-run context does not authorize persistence. Use these version 1 fields:
+
+- `discovery`: `phases.discovery.discoveryInstructions`.
 - `assessment`: `phases.assessment.assessmentInstructions`.
 - `schema-conversion`: `phases.schemaConversion.schemaConversionInstructions`.
 - `code-migration`: root `migrationInstructions`.
 
-Create the optional `assessment` or `schema-conversion` object with
-`status: "not-started"` when needed. Preserve the user's
-instruction text without summarizing or rewording it. If the target field already
-contains different text, do not silently discard it: append the new instructions
-after a blank line unless the user explicitly asks to replace the existing value.
-Do not append an exact duplicate.
+Route and apply saved guidance to its intended phase, not the currently running phase.
+Ask before persisting if intent or destination is ambiguous. Read-only boundaries still apply.
 
-`provisioning` has no free-form instruction field in the version 1 contract. Persist
-structured `provisioning` choices in the existing target-environment and provisioning
-fields. If free-form `provisioning` guidance cannot be represented there, retain it for
-the current invocation and report that it could not be durably stored rather than
-repurposing another phase's field.
+Preserve only the intended guidance verbatim. Append different text after a blank line;
+replace only on explicit request and skip exact duplicates. Create missing `assessment`
+or `schema-conversion` objects with `status: "not-started"` when needed.
 
-When a request covers multiple phases and the intended phase for additional
-instructions is ambiguous, ask which phase they apply to before persisting them.
+`preflight` and `provisioning` have no free-form instruction fields: do not borrow or invent one.
+Keep structured provisioning choices in existing target-environment and provisioning fields.
+Apply other guidance only to the current invocation; explain the limitation if persistence is requested.
+
+Old saved launch controls never constrain later requests. Preserve unrelated guidance and
+obtain approval before removing mistakenly persisted text.
 
 ## Discovery Source Resolution
 

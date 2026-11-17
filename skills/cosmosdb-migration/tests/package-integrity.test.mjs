@@ -279,15 +279,35 @@ test('permits advisory code-migration concerns without relaxing execution checks
     assert.match(codeMigration, /Required execution checks, SDK compatibility, and output\s+evidence still determine acceptance/u);
 });
 
-test('persists request instructions through the version 1 fields', () => {
+test('persists only explicitly saved phase guidance through the version 1 fields', () => {
     const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
     const projectFormat = fs.readFileSync(path.join(skillRoot, 'references', 'contracts', 'project-state-and-artifacts.md'), 'utf8');
     assert.match(skill, /project-state-and-artifacts\.md/u);
-    assert.match(projectFormat, /`preflight` or `discovery`: `phases\.discovery\.discoveryInstructions`/u);
+    assert.match(skill, /Never save a whole run request as phase instructions/u);
+    assert.match(projectFormat, /requires an explicit save\/reuse request or entry in a phase's instruction field/u);
+    assert.match(projectFormat, /`discovery`: `phases\.discovery\.discoveryInstructions`/u);
     assert.match(projectFormat, /`assessment`: `phases\.assessment\.assessmentInstructions`/u);
     assert.match(projectFormat, /`schema-conversion`: `phases\.schemaConversion\.schemaConversionInstructions`/u);
     assert.match(projectFormat, /`code-migration`: root `migrationInstructions`/u);
-    assert.match(projectFormat, /`provisioning` has no free-form instruction field/u);
+    assert.match(projectFormat, /Route and apply saved guidance to its intended phase, not the currently running phase/u);
+    assert.match(projectFormat, /Ask before persisting if intent or destination is ambiguous/u);
+    assert.match(projectFormat, /Preserve only the intended guidance verbatim/u);
+    assert.match(projectFormat, /Append different text after a blank line/u);
+    assert.match(projectFormat, /replace only on explicit request and skip exact duplicates/u);
+    assert.match(projectFormat, /`preflight` and `provisioning` have no free-form instruction fields/u);
+    assert.doesNotMatch(projectFormat, /`preflight` or `discovery`: `phases\.discovery\.discoveryInstructions`/u);
+});
+
+test('keeps preflight controls and workload evidence out of saved discovery guidance', () => {
+    const projectFormat = fs.readFileSync(path.join(skillRoot, 'references/contracts/project-state-and-artifacts.md'), 'utf8');
+    const preflight = fs.readFileSync(path.join(skillRoot, 'references/phases/preflight.md'), 'utf8');
+    assert.match(projectFormat, /Run controls[\s\S]*`schema-source: infer`[\s\S]*never saved instruction fields/u);
+    assert.match(projectFormat, /Put traffic, retention, and storage in `volumetrics\/volumetrics\.md`/u);
+    assert.match(projectFormat, /One-run context does not authorize persistence/u);
+    assert.match(projectFormat, /Old saved launch controls never constrain later requests/u);
+    assert.match(preflight, /Keep preflight guidance invocation-scoped and workload facts in input artifacts/u);
+    assert.match(preflight, /Only explicit requests to save discovery guidance may change `phases\.discovery\.discoveryInstructions`/u);
+    assert.doesNotMatch(preflight, /Apply and preserve `phases\.discovery\.discoveryInstructions`/u);
 });
 
 test('resolves every relative Markdown link inside the migration Skill', () => {

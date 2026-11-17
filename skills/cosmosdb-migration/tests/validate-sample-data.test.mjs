@@ -788,6 +788,29 @@ test('rejects ambiguous composite IDs without an explicit identity mapping', () 
     assert(validateSampleData(definition, data).some((error) => /identity|ambiguous/iu.test(error.message)));
 });
 
+test('accepts JSON-encoded native values without treating object braces as placeholders', () => {
+    const data = samples();
+    data.sampleData[0].items[0].nativeValues = [
+        '{"$numberInt":"3"}',
+        '{"$numberLong":"9007199254740993"}',
+        JSON.stringify({ vendorField: { $numberDecimal: '10.2500' }, values: [null, 'kept'], empty: {} }),
+        JSON.stringify([{ value: { $numberInt: '7' } }]),
+        JSON.stringify(JSON.stringify({ $numberInt: '7' })),
+    ];
+    const before = structuredClone(data);
+    assert.deepEqual(validateSampleData(model(), data), []);
+    assert.deepEqual(data, before);
+});
+
+test('rejects placeholders inside JSON-encoded objects, arrays and strings', () => {
+    for (const value of ['{CustomerId}', 'TBD', '<value>', 'REPLACE_ME', 'TODO', '{"value":TODO}']) {
+        const data = samples();
+        data.sampleData[0].items[0].nativeValue = JSON.stringify({ nested: [JSON.stringify(value)] });
+        assert(validateSampleData(model(), data).some(error =>
+            error.path.endsWith('.nativeValue') && error.message === 'contains an unresolved placeholder'));
+    }
+});
+
 test('rejects unresolved placeholders, including inside credential-named fields', () => {
     const data = samples();
     data.sampleData[0].items[0].notes = '{replaceMe}';

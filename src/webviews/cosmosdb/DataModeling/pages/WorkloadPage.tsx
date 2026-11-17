@@ -20,7 +20,7 @@ import { SelectableCard } from '../components/SelectableCard';
 import { type ScenarioId } from '../models';
 import { getScenarioList, type ScenarioBadge, type ScenarioTag } from '../scenarios';
 
-/** The fallback scenario is not a workload trait, so it has no chip and stays visible while traits are selected. */
+/** The fallback scenario has no trait chip and stays visible regardless of the text or trait filters. */
 const FALLBACK_SCENARIO: ScenarioId = 'other';
 /** Chips are grouped by color so related traits sit together: access patterns, write pressure, read scaling. */
 const TONE_ORDER: ScenarioBadge['tone'][] = ['info', 'warn', 'success'];
@@ -167,11 +167,12 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
         const q = filter.trim().toLowerCase();
         return scenarios.filter(
             (s) =>
-                (tags.length === 0 || s.id === FALLBACK_SCENARIO || tags.includes(s.badge.tag)) &&
-                (!q ||
-                    s.title.toLowerCase().includes(q) ||
-                    s.description.toLowerCase().includes(q) ||
-                    s.searchTerms.includes(q)),
+                s.id === FALLBACK_SCENARIO ||
+                ((tags.length === 0 || tags.includes(s.badge.tag)) &&
+                    (!q ||
+                        s.title.toLowerCase().includes(q) ||
+                        s.description.toLowerCase().includes(q) ||
+                        s.searchTerms.includes(q))),
         );
     }, [filter, tags, scenarios]);
 

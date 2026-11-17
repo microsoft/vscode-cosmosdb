@@ -29,6 +29,11 @@ function DataPage({
     );
 }
 
+function LiveDataPage({ initialModel }: { initialModel: DataModel }) {
+    const [model, setModel] = useState(initialModel);
+    return <StatefulDataPage model={model} onChange={setModel} />;
+}
+
 const confirm = vi.hoisted(() => vi.fn());
 vi.mock('@microsoft/vscode-ext-webview/react', () => ({
     useTrpcClient: () => ({ dataModeling: { confirm: { mutate: confirm } } }),
@@ -78,11 +83,17 @@ describe('DataPage partition-key eligibility', () => {
             expect(icon).toBeVisible();
             expect(icon).toHaveAttribute('aria-hidden', 'true');
             expect(icon?.parentElement).toHaveStyle({ color: 'var(--vscode-editorWarning-foreground)' });
-            expect(roleCell).toHaveAccessibleName(roleCell.textContent);
+            // The remove button shares the cell, so browsers may append its label to the cell's computed name.
+            const warning = roleCell.textContent ?? '';
+            expect(warning).toMatch(/^Not usable as a partition key: /);
+            expect(roleCell).toHaveAccessibleName(expect.stringContaining(warning));
+            expect(within(roleCell).getByRole('button', { name: /^Remove items/ })).toBeVisible();
         }
         expect(table.queryByRole('combobox', { name: 'Role for items' })).not.toBeInTheDocument();
         expect(table.queryByRole('combobox', { name: 'Role for items/productId' })).not.toBeInTheDocument();
-        expect(table.getByRole('combobox', { name: 'Role for id' })).toHaveAccessibleName('Role for id');
+        expect(table.getByRole('combobox', { name: 'Role for id: 🔑 Unique / business key' })).toHaveAccessibleName(
+            'Role for id: 🔑 Unique / business key',
+        );
         expect(screen.getByRole('button', { name: 'Upload JSON' })).toHaveFocus();
 
         fireEvent.click(itemsRow.getByRole('button', { name: 'Remove items' }));
@@ -108,7 +119,9 @@ describe('DataPage partition-key eligibility', () => {
         expect(tags.getByText('customer/customerId')).toBeVisible();
         expect(tags.queryByText('customer')).not.toBeInTheDocument();
         expect(tags.queryByText('embedding')).not.toBeInTheDocument();
-        expect(screen.getByRole('combobox', { name: 'Role for customer/customerId' })).toHaveValue('key');
+        expect(
+            screen.getByRole('combobox', { name: 'Role for customer/customerId: 🔑 Unique / business key' }),
+        ).toHaveTextContent('🔑 Unique / business key');
         expect(
             screen.getAllByText('Not usable as a partition key: this field has object or array values.'),
         ).toHaveLength(2);
@@ -136,10 +149,134 @@ describe('DataPage partition-key eligibility', () => {
         const withScalar = withDerivedCandidates(onChange.mock.lastCall![0]);
         page.rerender(<DataPage model={withScalar} onChange={onChange} />);
         expect(tags.getByText('type')).toBeVisible();
-        expect(screen.getByRole('combobox', { name: 'Role for type' })).toHaveValue('filter');
+        expect(screen.getByRole('combobox', { name: 'Role for type: 🔎 Query filter' })).toHaveTextContent(
+            '🔎 Query filter',
+        );
         expect(withScalar.containers[0].scale.candidates.some((candidate) => candidate.attribute === 'type')).toBe(
             true,
         );
+    });
+});
+
+describe('DataPage role descriptions', () => {
+    it('explains each option and preserves role selection by mouse and keyboard', async () => {
+        const user = userEvent.setup();
+        const container = createBlankContainer();
+        const onChange = vi.fn<(next: DataModel) => void>();
+        const page = render(
+            <DataPage model={{ containers: [container], activeContainerId: container.id }} onChange={onChange} />,
+        );
+        const dropdown = screen.getByRole('combobox', { name: 'Role for id: 🔑 Unique / business key' });
+        expect(dropdown).toHaveTextContent('🔑 Unique / business key');
+        for (const roleDropdown of screen.getAllByRole('combobox', { name: /^Role for / })) {
+            // Fluent applies className to the documented .fui-Dropdown root; the inner button fills it at 100%.
+            const roleDropdownStyle = getComputedStyle(roleDropdown.closest('.fui-Dropdown')!);
+            expect(roleDropdownStyle.width).toBe('260px');
+            expect(roleDropdownStyle.minWidth).toBe('260px');
+
+            const cell = roleDropdown.closest('td');
+            expect(cell).not.toBeNull();
+
+            const remove = within(cell!).getByRole('button', { name: /^Remove / });
+
+            // Ensure the remove control is in the same cell and follows the dropdown in DOM order,
+            // without relying on specific parent/child nesting or adjacency wrappers.
+            expect(remove.closest('td')).toBe(cell);
+            expect(roleDropdown.compareDocumentPosition(remove) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        }
+        await user.click(dropdown);
+
+        expect(screen.getByRole('listbox')).toHaveStyle({ width: 'max-content' });
+        expect(getComputedStyle(screen.getByRole('listbox')).maxWidth).toBe(`${window.innerWidth - 32}px`);
+        for (const [label, description] of [
+            [
+                '🔑 Unique / business key',
+                'Choose for a field that identifies a document or business entity, such as an order ID.',
+            ],
+            ['🔎 Query filter', 'Choose for a field used to filter queries, such as a category or status.'],
+            [
+                '📄 Payload / other',
+                'Choose for a field stored in the document but not used to identify it or filter queries.',
+            ],
+        ]) {
+            const option = screen.getByRole('option', { name: label });
+            expect(option).toHaveAccessibleName(label);
+            expect(option).toHaveAccessibleDescription(description);
+            expect(option).toHaveStyle({
+                display: 'grid',
+                gridTemplateColumns: 'auto minmax(0, 1fr)',
+                textAlign: 'left',
+                whiteSpace: 'normal',
+            });
+            const [icon, ...titleWords] = label.split(' ');
+            expect(within(option).getByText(icon)).toBeVisible();
+            const heading = within(option).getByText(titleWords.join(' '));
+            expect(heading).toBeVisible();
+            expect(heading).toHaveStyle({ whiteSpace: 'nowrap', gridColumn: '2' });
+            expect(option.querySelector('svg')).not.toBeInTheDocument();
+            const descriptionText = within(option).getByText(description);
+            expect(descriptionText).toBeVisible();
+            // The description starts in the title column, so it lines up with the title text after the icon.
+            expect(descriptionText).toHaveStyle({ gridColumn: '2' });
+            expect(heading.parentElement).toBe(option);
+            expect(descriptionText.parentElement).toBe(option);
+        }
+        // jsdom drops the SelectedItem system colour, so verify the generated rule and that it keys off aria-selected.
+        const roleMenu = () => within(screen.getByRole('listbox'));
+        const selectedRule = Array.from(document.styleSheets)
+            .flatMap((sheet) => Array.from(sheet.cssRules))
+            .find((rule) => rule.cssText.includes('[aria-selected="true"]') && /SelectedItem\b/i.test(rule.cssText));
+        expect(selectedRule).toBeDefined();
+        const selectedClass = selectedRule!.cssText.match(/^\.([\w-]+)\[aria-selected/)![1];
+        for (const option of roleMenu().getAllByRole('option')) {
+            expect(option).toHaveClass(selectedClass);
+        }
+        expect(roleMenu().getByRole('option', { selected: true })).toHaveAccessibleName('🔑 Unique / business key');
+
+        await user.click(screen.getByRole('option', { name: '🔎 Query filter' }));
+        const filtered = onChange.mock.lastCall![0];
+        expect(filtered.containers[0].properties.find((property) => property.name === 'id')?.role).toBe('filter');
+        page.rerender(<DataPage model={filtered} onChange={onChange} />);
+        expect(dropdown).toHaveTextContent('🔎 Query filter');
+        expect(dropdown).toHaveAccessibleName('Role for id: 🔎 Query filter');
+        expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+
+        dropdown.focus();
+        await user.keyboard('{ArrowDown}{ArrowDown}');
+        // Arrow keys move the active option (focus ring); aria-selected, and so the blue highlight, changes on commit.
+        const payloadOption = roleMenu().getByRole('option', { name: '📄 Payload / other' });
+        expect(dropdown).toHaveAttribute('aria-activedescendant', payloadOption.id);
+        expect(payloadOption).toHaveAttribute('aria-selected', 'false');
+        expect(roleMenu().getByRole('option', { name: '🔎 Query filter' })).toHaveAttribute('aria-selected', 'true');
+        expect(onChange.mock.lastCall![0]).toBe(filtered);
+        await user.keyboard('{Enter}');
+        const payload = onChange.mock.lastCall![0];
+        expect(payload.containers[0].properties.find((property) => property.name === 'id')?.role).toBe('payload');
+        page.rerender(<DataPage model={payload} onChange={onChange} />);
+        expect(dropdown).toHaveTextContent('📄 Payload / other');
+        expect(dropdown).toHaveAccessibleName('Role for id: 📄 Payload / other');
+        expect(dropdown).toHaveFocus();
+    });
+
+    it('does not size the role menu to the closed control width', async () => {
+        const user = userEvent.setup();
+        const container = createBlankContainer();
+        render(<DataPage model={{ containers: [container], activeContainerId: container.id }} onChange={vi.fn()} />);
+        const dropdown = screen.getByRole('combobox', { name: 'Role for id: 🔑 Unique / business key' });
+        // jsdom has no layout; give the trigger a width so Fluent's matchTargetSize middleware would act if enabled.
+        const rect = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+            const width = this === dropdown || this === dropdown.parentElement ? 260 : 0;
+            return DOMRect.fromRect({ width, height: width ? 32 : 0 });
+        });
+        try {
+            await user.click(dropdown);
+            const listbox = screen.getByRole('listbox');
+            await waitFor(() => expect(listbox.style.position).not.toBe(''));
+            expect(listbox.style.getPropertyValue('--fui-match-target-size')).toBe('');
+            expect(listbox.style.width).toBe('');
+        } finally {
+            rect.mockRestore();
+        }
     });
 });
 
@@ -149,7 +286,7 @@ describe('DataPage document size limits', () => {
         { label: 'Maximum document size', field: 'maxSizeKb' },
     ] as const;
 
-    it.each(fields)('rejects negative $label edits and accepts zero', ({ label, field }) => {
+    it.each(fields)('retains negative $label edits with an error and accepts zero', ({ label, field }) => {
         const container = createBlankContainer();
         container.document.avgSizeKb = field === 'avgSizeKb' ? 1 : 0;
         const model: DataModel = { containers: [container], activeContainerId: container.id };
@@ -161,15 +298,16 @@ describe('DataPage document size limits', () => {
 
         for (const value of ['-1', '-0.01']) {
             fireEvent.change(input, { target: { value } });
-            expect(onChange).not.toHaveBeenCalled();
-            expect(input).toHaveValue(container.document[field]);
+            const next = onChange.mock.lastCall![0];
+            expect(next.containers[0].document[field]).toBe(Number(value));
+            rerender(<DataPage model={next} onChange={onChange} />);
+            expect(input).toHaveValue(Number(value));
             expect(input).toHaveAttribute('aria-invalid', 'true');
             expect(input).toHaveAccessibleDescription('Document size cannot be negative.');
             expect(screen.getByRole('alert')).toHaveTextContent('Document size cannot be negative.');
         }
 
         fireEvent.change(input, { target: { value: '0' } });
-        expect(onChange).toHaveBeenCalledOnce();
         const next = onChange.mock.lastCall![0];
         expect(next.containers[0].document[field]).toBe(0);
         rerender(<DataPage model={next} onChange={onChange} />);
@@ -179,43 +317,48 @@ describe('DataPage document size limits', () => {
         expect(input).toHaveAttribute('min', '0');
     });
 
-    it.each(fields)('rejects oversized $label edits and accepts the inclusive boundary', ({ label, field }) => {
-        const container = createBlankContainer();
-        container.document.avgSizeKb = 0;
-        container.document.maxSizeKb = field === 'avgSizeKb' ? 2048 : 4;
-        const model: DataModel = { containers: [container], activeContainerId: container.id };
-        const onChange = vi.fn<(next: DataModel) => void>();
-        const { rerender } = render(<DataPage model={model} onChange={onChange} />);
-        const input = screen.getByRole('spinbutton', { name: label });
-        expect(screen.getByText(label)).toBeVisible();
-        expect(input).toHaveAccessibleName(label);
-        expect(input).toHaveAttribute('max', '2048');
-        expect(input).toHaveAttribute('step', 'any');
+    it.each(fields)(
+        'retains oversized $label edits with an error and accepts the inclusive boundary',
+        ({ label, field }) => {
+            const container = createBlankContainer();
+            container.document.avgSizeKb = 0;
+            container.document.maxSizeKb = field === 'avgSizeKb' ? 2048 : 4;
+            const model: DataModel = { containers: [container], activeContainerId: container.id };
+            const onChange = vi.fn<(next: DataModel) => void>();
+            const { rerender } = render(<DataPage model={model} onChange={onChange} />);
+            const input = screen.getByRole('spinbutton', { name: label });
+            expect(screen.getByText(label)).toBeVisible();
+            expect(input).toHaveAccessibleName(label);
+            expect(input).toHaveAttribute('max', '2048');
+            expect(input).toHaveAttribute('step', 'any');
 
-        for (const value of ['2048.01', '2049', '49999']) {
-            fireEvent.change(input, { target: { value } });
-            expect(onChange).not.toHaveBeenCalled();
-            expect(input).toHaveValue(container.document[field]);
-            expect(input).toHaveAttribute('aria-invalid', 'true');
-            expect(input).toHaveAccessibleDescription('Document size cannot exceed 2 MB (2048 KB).');
-            expect(screen.getByRole('alert')).toHaveTextContent('Document size cannot exceed 2 MB (2048 KB).');
-        }
+            for (const value of ['2048.01', '2049', '49999']) {
+                fireEvent.change(input, { target: { value } });
+                const next = onChange.mock.lastCall![0];
+                expect(next.containers[0].document[field]).toBe(Number(value));
+                rerender(<DataPage model={next} onChange={onChange} />);
+                expect(input).toHaveValue(Number(value));
+                expect(input).toHaveAttribute('aria-invalid', 'true');
+                expect(input).toHaveAccessibleDescription('Document size cannot exceed 2 MB (2048 KB).');
+                expect(screen.getByRole('alert')).toHaveTextContent('Document size cannot exceed 2 MB (2048 KB).');
+            }
 
-        for (const value of ['2048', '2047.99', '1.5', '0']) {
-            fireEvent.change(input, { target: { value } });
-            const next = onChange.mock.lastCall![0];
-            expect(next.containers[0].document[field]).toBe(Number(value));
-            rerender(<DataPage model={next} onChange={onChange} />);
-            expect(input).toHaveValue(Number(value));
-            expect(input).not.toHaveAttribute('aria-invalid', 'true');
-            expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-        }
-    });
+            for (const value of ['2048', '2047.99', '1.5', '0']) {
+                fireEvent.change(input, { target: { value } });
+                const next = onChange.mock.lastCall![0];
+                expect(next.containers[0].document[field]).toBe(Number(value));
+                rerender(<DataPage model={next} onChange={onChange} />);
+                expect(input).toHaveValue(Number(value));
+                expect(input).not.toHaveAttribute('aria-invalid', 'true');
+                expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+            }
+        },
+    );
 
     it.each([
         { label: 'Average document size', field: 'avgSizeKb', invalid: '4.01', valid: '4' },
         { label: 'Maximum document size', field: 'maxSizeKb', invalid: '1.99', valid: '2' },
-    ] as const)('rejects inconsistent $label edits and allows equality', ({ label, field, invalid, valid }) => {
+    ] as const)('retains inconsistent $label edits and allows equality', ({ label, field, invalid, valid }) => {
         const container = createBlankContainer();
         container.document.avgSizeKb = 2;
         container.document.maxSizeKb = 4;
@@ -224,10 +367,12 @@ describe('DataPage document size limits', () => {
         const { rerender } = render(<DataPage model={model} onChange={onChange} />);
         const input = screen.getByRole('spinbutton', { name: label });
         fireEvent.change(input, { target: { value: invalid } });
-        expect(onChange).not.toHaveBeenCalled();
-        expect(input).toHaveValue(container.document[field]);
-        expect(input).toHaveAttribute('aria-invalid', 'true');
-        expect(input).toHaveAccessibleDescription('Average document size cannot exceed maximum document size.');
+        expect(onChange.mock.lastCall![0].containers[0].document[field]).toBe(Number(invalid));
+        rerender(<DataPage model={onChange.mock.lastCall![0]} onChange={onChange} />);
+        expect(input).toHaveValue(Number(invalid));
+        const average = screen.getByRole('spinbutton', { name: 'Average document size' });
+        expect(average).toHaveAttribute('aria-invalid', 'true');
+        expect(average).toHaveAccessibleDescription('Average document size cannot exceed maximum document size.');
         expect(screen.getByRole('alert')).toHaveTextContent(
             'Average document size cannot exceed maximum document size.',
         );
@@ -249,7 +394,7 @@ describe('DataPage document size limits', () => {
         const model: DataModel = { containers: [container], activeContainerId: container.id };
         const onChange = vi.fn<(next: DataModel) => void>();
         const { rerender } = render(<DataPage model={model} onChange={onChange} />);
-        expect(screen.getAllByRole('alert')).toHaveLength(2);
+        expect(screen.getAllByRole('alert')).toHaveLength(1);
         fireEvent.change(screen.getByRole('spinbutton', { name: label }), { target: { value } });
         const next = onChange.mock.lastCall![0];
         expect(next.containers[0].document.avgSizeKb).toBe(next.containers[0].document.maxSizeKb);
@@ -266,14 +411,44 @@ describe('DataPage document size limits', () => {
         const average = screen.getByRole('spinbutton', { name: 'Average document size' });
         const maximum = screen.getByRole('spinbutton', { name: 'Maximum document size' });
         fireEvent.change(average, { target: { value: '49999' } });
+        rerender(<DataPage model={onChange.mock.lastCall![0]} onChange={onChange} />);
         fireEvent.change(maximum, { target: { value: '49999' } });
+        rerender(<DataPage model={onChange.mock.lastCall![0]} onChange={onChange} />);
         expect(screen.getAllByRole('alert')).toHaveLength(2);
         fireEvent.change(maximum, { target: { value: '2048' } });
+        rerender(<DataPage model={onChange.mock.lastCall![0]} onChange={onChange} />);
         expect(maximum).not.toHaveAttribute('aria-invalid', 'true');
         expect(average).toHaveAttribute('aria-invalid', 'true');
         rerender(<DataPage model={{ ...model, activeContainerId: second.id }} onChange={onChange} />);
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
         expect(average).not.toHaveAttribute('aria-invalid', 'true');
+    });
+
+    it('clears the average error immediately when the maximum is raised, without replacing the average', () => {
+        const container = createBlankContainer();
+        render(<LiveDataPage initialModel={{ containers: [container], activeContainerId: container.id }} />);
+        const average = screen.getByRole('spinbutton', { name: 'Average document size' });
+        const maximum = screen.getByRole('spinbutton', { name: 'Maximum document size' });
+        fireEvent.change(average, { target: { value: '5' } });
+        expect(average).toHaveValue(5);
+        const error = screen.getByRole('alert');
+        expect(error).toHaveTextContent('Average document size cannot exceed maximum document size.');
+        expect(
+            getComputedStyle(error)
+                .gridColumn.split('/')
+                .map((part) => part.trim()),
+        ).toEqual(['1', '-1']);
+        expect(getComputedStyle(error.parentElement!).gridTemplateColumns).toBe('subgrid');
+
+        fireEvent.change(maximum, { target: { value: '6' } });
+        expect(average).toHaveValue(5);
+        expect(maximum).toHaveValue(6);
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(average).not.toHaveAttribute('aria-invalid', 'true');
+        fireEvent.change(maximum, { target: { value: '4' } });
+        expect(screen.getByRole('alert')).toBeVisible();
+        fireEvent.change(average, { target: { value: '3' } });
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 });
 
@@ -491,88 +666,157 @@ describe('DataPage count limits', () => {
         { label: 'Maximum items per array', invalid: '100001', valid: '100000', field: 'maxItems' },
         { label: 'Maximum items per array', invalid: '20.5', valid: '20', field: 'maxItems' },
         { label: 'Average items per array', invalid: '-1', valid: '2.5', field: 'avgItems' },
-    ] as const)('rejects $invalid for $label and accepts $valid', ({ label, invalid, valid, field }) => {
+    ] as const)('retains $invalid for $label with an error and accepts $valid', ({ label, invalid, valid, field }) => {
         const onChange = vi.fn<(next: DataModel) => void>();
-        render(<DataPage model={arraysModel()} onChange={onChange} />);
+        const page = render(<DataPage model={arraysModel()} onChange={onChange} />);
         const input = screen.getByRole('spinbutton', { name: label });
         fireEvent.change(input, { target: { value: invalid } });
-        expect(onChange).not.toHaveBeenCalled();
+        const invalidContainer = onChange.mock.lastCall![0].containers[0];
+        expect(field === 'attributeCount' ? invalidContainer.document[field] : invalidContainer.arrays[field]).toBe(
+            Number(invalid),
+        );
+        page.rerender(<DataPage model={onChange.mock.lastCall![0]} onChange={onChange} />);
+        expect(input).toHaveValue(Number(invalid));
         expect(input).toHaveAttribute('aria-invalid', 'true');
         expect(screen.getByRole('alert')).toBeInTheDocument();
 
         fireEvent.change(input, { target: { value: valid } });
-        if (field !== 'attributeCount') {
-            fireEvent.blur(input);
-        }
         const next = onChange.mock.lastCall![0].containers[0];
         expect(field === 'attributeCount' ? next.document.attributeCount : next.arrays[field]).toBe(Number(valid));
+        page.rerender(<DataPage model={onChange.mock.lastCall![0]} onChange={onChange} />);
+        expect(screen.queryByRole('alert')?.textContent).toBe(
+            field === 'attributeCount'
+                ? 'Total attributes per document must match the 3 attributes in the schema properties table.'
+                : undefined,
+        );
+    });
+
+    it.each([0, 3, 5])('raises a total of %s only when adding a property would exceed it', (initialCount) => {
+        const model = arraysModel();
+        model.containers[0].document.attributeCount = initialCount;
+        const onChange = vi.fn<(next: DataModel) => void>();
+        const page = render(<DataPage model={model} onChange={onChange} />);
+        const add = screen.getByRole('textbox', { name: 'Add property…' });
+        fireEvent.change(add, { target: { value: 'extra' } });
+        fireEvent.keyDown(add, { key: 'Enter' });
+        const next = onChange.mock.lastCall![0];
+        page.rerender(<DataPage model={next} onChange={onChange} />);
+
+        const rows = within(screen.getByRole('table', { name: 'Schema properties' })).getAllByRole('row').length - 1;
+        expect(rows).toBe(4);
+        const total = screen.getByRole('spinbutton', { name: 'Total attributes per document' });
+        expect(total).toHaveValue(Math.max(initialCount, rows));
+        expect(total.getAttribute('aria-invalid') === 'true').toBe(initialCount > rows);
+        expect(screen.queryByRole('alert')?.textContent).toBe(
+            initialCount > rows
+                ? 'Total attributes per document must match the 4 attributes in the schema properties table.'
+                : undefined,
+        );
+
+        fireEvent.change(add, { target: { value: 'EXTRA' } });
+        fireEvent.keyDown(add, { key: 'Enter' });
+        expect(onChange.mock.lastCall![0].containers[0]).toEqual(next.containers[0]);
+    });
+
+    it.each([2, 7])('keeps a manually entered total of %s editable and shows a mismatch until corrected', (count) => {
+        const message = 'Total attributes per document must match the 3 attributes in the schema properties table.';
+        const onChange = vi.fn<(next: DataModel) => void>();
+        const page = render(<DataPage model={arraysModel()} onChange={onChange} />);
+        const input = screen.getByRole('spinbutton', { name: 'Total attributes per document' });
+        fireEvent.change(input, { target: { value: String(count) } });
+        const next = onChange.mock.lastCall![0];
+        expect(next.containers[0].document.attributeCount).toBe(count);
+        page.rerender(<DataPage model={next} onChange={onChange} />);
+        expect(input).toHaveValue(count);
+        expect(input).toHaveAttribute('aria-invalid', 'true');
+        expect(input).toHaveAccessibleDescription(message);
+        expect(screen.getByRole('alert')).toHaveTextContent(message);
+
+        fireEvent.change(input, { target: { value: '3' } });
+        page.rerender(<DataPage model={onChange.mock.lastCall![0]} onChange={onChange} />);
+        expect(input).not.toHaveAttribute('aria-invalid', 'true');
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
-    it('rejects an average above the maximum and clears the error once the maximum is raised', () => {
+    it('validates against all table rows after removing a property', () => {
+        const model = arraysModel();
+        model.containers[0].properties[1].type = 'object';
+        const onChange = vi.fn<(next: DataModel) => void>();
+        const page = render(<DataPage model={model} onChange={onChange} />);
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        const table = within(screen.getByRole('table', { name: 'Schema properties' }));
+        fireEvent.click(table.getByRole('button', { name: 'Remove createdAt' }));
+        page.rerender(<DataPage model={onChange.mock.lastCall![0]} onChange={onChange} />);
+        expect(table.getAllByRole('row')).toHaveLength(3);
+        expect(screen.getByRole('spinbutton', { name: 'Total attributes per document' })).toHaveValue(3);
+        expect(screen.getByRole('alert')).toHaveTextContent(
+            'Total attributes per document must match the 2 attributes in the schema properties table.',
+        );
+    });
+
+    it('retains an average above the maximum and clears the error as the maximum is raised', () => {
         const onChange = vi.fn<(next: DataModel) => void>();
         const { rerender } = render(<DataPage model={arraysModel()} onChange={onChange} />);
         const average = screen.getByRole('spinbutton', { name: 'Average items per array' });
         fireEvent.change(average, { target: { value: '150' } });
-        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-        fireEvent.blur(average);
-        expect(onChange).not.toHaveBeenCalled();
+        rerender(<DataPage model={onChange.mock.lastCall![0]} onChange={onChange} />);
+        expect(average).toHaveValue(150);
         expect(screen.getByRole('alert')).toHaveTextContent(
             'Average items per array cannot exceed maximum items per array.',
         );
 
         const maximum = screen.getByRole('spinbutton', { name: 'Maximum items per array' });
         fireEvent.change(maximum, { target: { value: '200' } });
-        fireEvent.blur(maximum);
         rerender(<DataPage model={onChange.mock.lastCall![0]} onChange={onChange} />);
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-        expect(average).toHaveValue(10);
+        expect(average).toHaveValue(150);
     });
 
     it.each([
-        { label: 'Maximum items per array', field: 'maxItems' },
-        { label: 'Average items per array', field: 'avgItems' },
-    ] as const)('allows typing a replacement for $label before committing on blur', async ({ label, field }) => {
+        { label: 'Maximum items per array', hasIntermediateError: true },
+        { label: 'Average items per array', hasIntermediateError: false },
+        { label: 'Average document size', hasIntermediateError: false },
+        { label: 'Maximum document size', hasIntermediateError: false },
+        { label: 'Total attributes per document', hasIntermediateError: true },
+    ])('allows typing a replacement for $label with live validation', async ({ label, hasIntermediateError }) => {
         const user = userEvent.setup();
-        const onChange = vi.fn<(next: DataModel) => void>();
-        const page = render(<DataPage model={arraysModel()} onChange={onChange} />);
+        const model = arraysModel();
+        model.containers[0].document.maxSizeKb = 100;
+        render(<LiveDataPage initialModel={model} />);
         const input = screen.getByRole('spinbutton', { name: label });
 
         await user.clear(input);
         expect(input).toHaveDisplayValue('');
         await user.type(input, '2');
         expect(input).toHaveValue(2);
-        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-        expect(onChange).not.toHaveBeenCalled();
+        expect(screen.queryByRole('alert') !== null).toBe(hasIntermediateError);
         await user.type(input, '0');
         expect(input).toHaveValue(20);
         await user.tab();
 
-        expect(onChange).toHaveBeenCalledOnce();
-        expect(onChange.mock.lastCall![0].containers[0].arrays[field]).toBe(20);
-        page.rerender(<DataPage model={onChange.mock.lastCall![0]} onChange={onChange} />);
         expect(input).toHaveValue(20);
-        expect(input).not.toHaveAttribute('aria-invalid', 'true');
+        expect(input.getAttribute('aria-invalid') === 'true').toBe(label === 'Total attributes per document');
     });
 
-    it('rejects invalid array ordering on blur and allows a typed correction', async () => {
+    it('preserves invalid array ordering on blur and allows a typed correction', async () => {
         const user = userEvent.setup();
-        const onChange = vi.fn<(next: DataModel) => void>();
-        render(<DataPage model={arraysModel()} onChange={onChange} />);
+        render(<LiveDataPage initialModel={arraysModel()} />);
         const input = screen.getByRole('spinbutton', { name: 'Maximum items per array' });
         await user.clear(input);
         await user.type(input, '2');
         await user.tab();
-        expect(onChange).not.toHaveBeenCalled();
-        expect(input).toHaveValue(100);
-        expect(input).toHaveAttribute('aria-invalid', 'true');
+        expect(input).toHaveValue(2);
+        expect(screen.getByRole('spinbutton', { name: 'Average items per array' })).toHaveAttribute(
+            'aria-invalid',
+            'true',
+        );
         expect(screen.getByRole('alert')).toHaveTextContent(
             'Average items per array cannot exceed maximum items per array.',
         );
         await user.clear(input);
         await user.type(input, '20');
         await user.tab();
-        expect(onChange.mock.lastCall![0].containers[0].arrays.maxItems).toBe(20);
+        expect(input).toHaveValue(20);
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
@@ -611,9 +855,12 @@ describe('DataPage count limits', () => {
         const page = render(<DataPage model={model} onChange={onChange} />);
         const attributes = screen.getByRole('spinbutton', { name: 'Total attributes per document' });
         fireEvent.change(attributes, { target: { value: '10001' } });
+        page.rerender(<DataPage model={onChange.mock.lastCall![0]} onChange={onChange} />);
         expect(attributes).toHaveAttribute('aria-invalid', 'true');
         const average = screen.getByRole('spinbutton', { name: 'Average items per array' });
         fireEvent.change(average, { target: { value: '-1' } });
+        page.rerender(<DataPage model={onChange.mock.lastCall![0]} onChange={onChange} />);
+        onChange.mockClear();
 
         const text = '{"id":"1","items":[]}';
         const file = new File([text], 'valid.json', { type: 'application/json' });
@@ -637,6 +884,7 @@ describe('DataPage count limits', () => {
         const page = render(<DataPage model={model} onChange={onChange} />);
         for (const label of ['Total attributes per document', 'Average items per array', 'Maximum items per array']) {
             fireEvent.change(screen.getByRole('spinbutton', { name: label }), { target: { value: '-1' } });
+            page.rerender(<DataPage model={onChange.mock.lastCall![0]} onChange={onChange} />);
         }
         expect(screen.getAllByRole('alert')).toHaveLength(3);
 

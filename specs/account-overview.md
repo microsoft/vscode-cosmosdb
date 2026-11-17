@@ -702,6 +702,7 @@ Cancellation is not a failure. Delete success leaves the dashboard in its delete
 View Cost and View JSON stay in the account actions row alongside Add database and Add container,
 outside the collapsible Account details.
 Account details is expanded by default and renders all account properties in one responsive grid.
+Its expand/collapse button has no heading semantics and labels the account details region.
 API type, Consistency and Automatic failover are not hidden behind an additional-properties expander.
 
 View Cost opens account-scoped portal Cost Analysis. View JSON reads the ARM resource and opens formatted JSON,

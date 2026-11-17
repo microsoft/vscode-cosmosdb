@@ -1,5 +1,19 @@
 # Change Log
 
+## 0.38.1
+
+### Fixed
+
+- Fixed **Data Modeler** validation for document sizes, attribute counts, and array estimates, preserving invalid draft values for correction and treating schema attribute-count mismatches as non-blocking warnings. ([#3581](https://github.com/microsoft/vscode-cosmosdb/pull/3581))
+- Fixed **Data Modeler** workload filtering to keep the custom workload option visible. ([#3565](https://github.com/microsoft/vscode-cosmosdb/pull/3565))
+- Fixed **Account Overview** portal links opening duplicate browser tabs and removed incorrect heading semantics from the Account details control. ([#3562](https://github.com/microsoft/vscode-cosmosdb/pull/3562), [#3587](https://github.com/microsoft/vscode-cosmosdb/pull/3587))
+
+### Changed
+
+- Improved **Data Modeler** workload navigation with options to reset or keep the current model and tracking of input changes between wizard steps. ([#3564](https://github.com/microsoft/vscode-cosmosdb/pull/3564))
+- Improved **Data Modeler** dropdown descriptions, property-role options, and accessibility. ([#3563](https://github.com/microsoft/vscode-cosmosdb/pull/3563), [#3565](https://github.com/microsoft/vscode-cosmosdb/pull/3565))
+- Updated localization.
+
 ## 0.38.0
 
 ### Added

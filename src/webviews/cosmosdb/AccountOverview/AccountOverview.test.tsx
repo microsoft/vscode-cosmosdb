@@ -520,7 +520,9 @@ describe('account-wide health collection', () => {
         render(<AccountOverview />, { wrapper: Wrapper });
         expect(await screen.findByText('Account health: Critical')).toBeVisible();
         expect(screen.getByRole('tab', { name: 'Monitoring' })).not.toHaveAccessibleDescription();
-        expect(screen.getByLabelText('Critical', { selector: `.${badgeClassNames.root}` })).toHaveAccessibleDescription(
+        const user = userEvent.setup();
+        await user.click(screen.getByRole('button', { name: 'Critical' }));
+        expect(screen.getByRole('group', { name: 'Health: Critical' })).toHaveTextContent(
             /Resource provisioning state: Failed/,
         );
     });
@@ -609,12 +611,13 @@ describe('account-wide health collection', () => {
             unit: 'hour',
             unitDisplay: 'long',
         }).format(HEALTH_POLICY.sustainedThrottling.observation.windowMs / HOUR);
-        expect(badge).toHaveAccessibleDescription(
-            expect.stringContaining(
-                `Account-wide request health over the last ${observationWindow} could not be assessed: ${caption}.`,
-            ),
-        );
         const user = userEvent.setup();
+        expect(badge).toHaveAccessibleDescription('Show account health details');
+        await user.click(badge);
+        expect(screen.getByRole('group', { name: 'Health: Unknown' })).toHaveTextContent(
+            `Account-wide request health over the last ${observationWindow} could not be assessed: ${caption}.`,
+        );
+        await user.keyboard('{Escape}');
         await user.click(screen.getByRole('button', { name: 'Account details' }));
         const details = within(screen.getByRole('region', { name: 'Account details' }));
         expect(within(details.getByText('Status').parentElement!).getByText('Online')).toBeVisible();
@@ -2252,9 +2255,7 @@ describe('alert monitor condition and active health', () => {
         const badge = screen.getByLabelText('Healthy', { selector: `.${badgeClassNames.root}` });
         expect(badge).toHaveTextContent('Healthy');
         expect(badge).toHaveAccessibleName('Healthy');
-        expect(badge).toHaveAccessibleDescription(/Resource provisioning — Passed/);
-        expect(badge).toHaveAccessibleDescription(/Container throttling — Not assessed/);
-        expect(badge).toHaveAccessibleDescription(/Active Azure Monitor alerts — Passed/);
+        expect(badge).toHaveAccessibleDescription('Show account health details');
         expect(badge).toHaveAttribute('tabindex', '0');
         act(() => refresh.focus());
         await user.tab();
@@ -2266,16 +2267,19 @@ describe('alert monitor condition and active health', () => {
         expect(preview).toHaveAccessibleDescription('Preview: features and behavior may change. Use with care.');
         await user.tab();
         expect(badge).toHaveFocus();
-        const tooltip = await screen.findByRole('tooltip');
-        const checks = within(tooltip).getAllByRole('listitem');
+        await user.keyboard('{Enter}');
+        const details = screen.getByRole('group', { name: 'Health: Healthy' });
+        expect(details).toHaveFocus();
+        const checks = within(details).getAllByRole('listitem');
         expect(checks).toHaveLength(5);
         expect(checks[0]).toHaveTextContent('Resource provisioning — Passed');
         expect(checks[2]).toHaveTextContent('Container throttling — Not assessed');
-        expect(tooltip).toHaveTextContent(
+        expect(checks[3]).toHaveTextContent('Active Azure Monitor alerts — Passed');
+        expect(details).toHaveTextContent(
             'HTTP 5xx errors, availability, latency, storage limits, and index health are not assessed',
         );
         await user.keyboard('{Escape}');
-        await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument());
+        await waitFor(() => expect(screen.queryByRole('group', { name: 'Health: Healthy' })).not.toBeInTheDocument());
         expect(badge).toHaveFocus();
     });
 

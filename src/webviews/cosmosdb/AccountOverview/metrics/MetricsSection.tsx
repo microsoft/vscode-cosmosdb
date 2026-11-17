@@ -55,17 +55,6 @@ const useStyles = makeStyles({
         ...typographyStyles.caption1,
         color: tokens.colorNeutralForeground2,
     },
-    visuallyHidden: {
-        position: 'absolute',
-        width: '1px',
-        height: '1px',
-        padding: 0,
-        margin: '-1px',
-        overflow: 'hidden',
-        clipPath: 'inset(50%)',
-        whiteSpace: 'nowrap',
-        border: 0,
-    },
     chartRegion: {
         ':focus-visible': {
             outline: `${tokens.strokeWidthThick} solid ${tokens.colorStrokeFocus2}`,
@@ -187,12 +176,8 @@ export const MetricsSection = ({
                 {(Object.keys(METRIC_GROUPS) as MetricGroup[]).map((groupKey) => {
                     const meta = METRIC_GROUPS[groupKey];
                     return (
-                        <ThemedTooltip key={groupKey} content={meta.description} relationship="inaccessible">
-                            <Text
-                                className={styles.legendItem}
-                                tabIndex={0}
-                                aria-description={chartAffordances ? meta.description : undefined}
-                            >
+                        <ThemedTooltip key={groupKey} content={meta.description} relationship="description">
+                            <Text className={styles.legendItem} tabIndex={0}>
                                 <span
                                     className={styles.legendSwatch}
                                     style={{ backgroundColor: meta.color }}
@@ -201,7 +186,6 @@ export const MetricsSection = ({
                                 <Text id={`${groupLabelId}-${groupKey}`} className={styles.legendText}>
                                     {meta.label}
                                 </Text>
-                                {!chartAffordances && <Text className={styles.visuallyHidden}>{meta.description}</Text>}
                             </Text>
                         </ThemedTooltip>
                     );

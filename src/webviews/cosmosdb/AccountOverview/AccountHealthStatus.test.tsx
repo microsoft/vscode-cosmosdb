@@ -5,11 +5,11 @@
 
 // @vitest-environment jsdom
 
-import { badgeClassNames, Button, FluentProvider, webLightTheme } from '@fluentui/react-components';
-import { createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { badgeClassNames, Button, FluentProvider, tokens, webLightTheme } from '@fluentui/react-components';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type PropsWithChildren } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type OverviewHealthCheck } from '../../../panels/accountOverview/overviewHealthModel';
 import { HEALTH_POLICY } from '../../../panels/accountOverview/services/healthPolicy';
 import { HOUR, MINUTE } from '../../../panels/accountOverview/services/units';
@@ -19,10 +19,27 @@ function Wrapper({ children }: PropsWithChildren) {
     return <FluentProvider theme={webLightTheme}>{children}</FluentProvider>;
 }
 
-afterEach(() => vi.restoreAllMocks());
+const initialKind = document.body.getAttribute('data-vscode-theme-kind');
+
+beforeEach(() => {
+    vi.spyOn(document.body, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 1024, 768));
+    vi.spyOn(HTMLElement.prototype, 'offsetParent', 'get').mockImplementation(function (this: HTMLElement) {
+        return this.parentElement;
+    });
+});
+
+afterEach(() => {
+    vi.restoreAllMocks();
+    if (initialKind === null) {
+        document.body.removeAttribute('data-vscode-theme-kind');
+    } else {
+        document.body.setAttribute('data-vscode-theme-kind', initialKind);
+    }
+});
 
 describe('AccountHealthStatus', () => {
-    it('keeps the visible health label, one live status and policy-backed check descriptions', () => {
+    it('keeps the visible health label, one live status and policy-backed check descriptions', async () => {
+        const user = userEvent.setup();
         render(
             <AccountHealthStatus
                 provisioningState="Succeeded"
@@ -42,19 +59,21 @@ describe('AccountHealthStatus', () => {
         const hours = new Intl.NumberFormat(undefined, { style: 'unit', unit: 'hour', unitDisplay: 'long' }).format(
             policy.observation.windowMs / HOUR,
         );
-        expect(badge).toHaveAccessibleDescription(
-            expect.stringContaining(
-                `No sustained account-wide 429 rate above ${(policy.shareThreshold * 100).toLocaleString()}% for ${minutes} in the last ${hours}.`,
-            ),
+        expect(badge).toHaveAccessibleDescription('Show account health details');
+        await user.click(badge);
+        const details = screen.getByRole('group', { name: 'Health: Healthy' });
+        expect(details).toHaveTextContent(
+            `No sustained account-wide 429 rate above ${(policy.shareThreshold * 100).toLocaleString()}% for ${minutes} in the last ${hours}.`,
         );
-        expect(badge).toHaveAccessibleDescription(
-            expect.stringContaining('Resource provisioning — Passed Resource provisioning state: Online.'),
-        );
+        const provisioningCheck = within(details).getAllByRole('listitem')[0];
+        expect(provisioningCheck).toHaveTextContent('Resource provisioning — Passed');
+        expect(provisioningCheck).toHaveTextContent('Resource provisioning state: Online.');
         expect(screen.getAllByRole('status')).toHaveLength(1);
         expect(screen.getByRole('status')).toHaveTextContent('Account health: Healthy');
     });
 
-    it('renders unavailable alert checks without losing a known problem', () => {
+    it('renders unavailable alert checks without losing a known problem', async () => {
+        const user = userEvent.setup();
         render(
             <AccountHealthStatus
                 provisioningState="Succeeded"
@@ -71,10 +90,11 @@ describe('AccountHealthStatus', () => {
             />,
             { wrapper: Wrapper },
         );
-        expect(screen.getByLabelText('Critical')).toHaveAccessibleDescription(
-            expect.stringContaining(
-                'Active Azure Monitor alerts — Not assessed Active alerts could not be checked. Previously known problems are retained.',
-            ),
+        await user.click(screen.getByRole('button', { name: 'Critical' }));
+        const alertCheck = within(screen.getByRole('group', { name: 'Health: Critical' })).getAllByRole('listitem')[1];
+        expect(alertCheck).toHaveTextContent('Active Azure Monitor alerts — Not assessed');
+        expect(alertCheck).toHaveTextContent(
+            'Active alerts could not be checked. Previously known problems are retained.',
         );
         expect(screen.getByRole('status')).toHaveTextContent('Account health: Critical');
     });
@@ -117,118 +137,99 @@ describe('AccountHealthStatus', () => {
         return screen.getByLabelText('Unknown', { selector: `.${badgeClassNames.root}` });
     }
 
-    describe('tooltip', () => {
-        it('sizes the tooltip surface rather than only its contents and keeps the full accessible explanation', async () => {
+    describe('health details popover', () => {
+        it('sizes the scrollable surface to the viewport and exposes the structured checklist', async () => {
             vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(800);
             vi.spyOn(document.documentElement, 'clientHeight', 'get').mockReturnValue(400);
             const user = userEvent.setup();
             const badge = renderHealth();
             vi.spyOn(badge, 'getBoundingClientRect').mockReturnValue(new DOMRect(24, 100, 64, 20));
             await user.tab();
-            const tooltip = await screen.findByRole('tooltip');
-
             expect(badge).toHaveFocus();
             expect(badge).toHaveTextContent('Unknown');
             expect(badge).toHaveAccessibleName('Unknown');
-            expect(badge).toHaveAccessibleDescription(
+            expect(badge).toHaveAccessibleDescription('Show account health details');
+            expect(badge).toHaveAttribute('aria-describedby');
+            expect(badge).toHaveAttribute('aria-expanded', 'false');
+            expect(screen.queryByRole('group', { name: 'Health: Unknown' })).not.toBeInTheDocument();
+
+            await user.keyboard('{Enter}');
+            const details = screen.getByRole('group', { name: 'Health: Unknown' });
+            expect(badge).toHaveAttribute('aria-expanded', 'true');
+            expect(details).toHaveFocus();
+            expect(within(details).getAllByRole('listitem')).toHaveLength(5);
+            expect(details).toHaveTextContent(
                 /Resource provisioning.*Account-wide throttling.*Container throttling.*Active Azure Monitor alerts.*Azure Advisor.*Extension diagnostics/,
             );
-            expect(getComputedStyle(tooltip).maxWidth).toBe('480px');
-            expect(getComputedStyle(tooltip).overflowY).toBe('auto');
-            await waitFor(() => expect(tooltip.style.maxHeight).not.toBe(''));
-            expect(Number.parseFloat(tooltip.style.maxHeight)).toBeGreaterThan(0);
-            expect(Number.parseFloat(tooltip.style.maxHeight)).toBeLessThan(400);
+            expect(getComputedStyle(details).maxWidth).toBe('480px');
+            expect(getComputedStyle(details).overflowY).toBe('auto');
+            await waitFor(() => expect(details.style.maxHeight).not.toBe(''));
+            expect(Number.parseFloat(details.style.maxHeight)).toBeGreaterThan(0);
+            expect(Number.parseFloat(details.style.maxHeight)).toBeLessThan(400);
         });
 
-        it('stays open on pointer leave and page scroll while focused, but closes on Escape or blur', async () => {
+        it('opens with Space, stays open while reading, and returns focus on Escape', async () => {
             const user = userEvent.setup();
             const badge = renderHealth();
             await user.tab();
-            const tooltip = await screen.findByRole('tooltip');
-            await user.hover(badge);
+            await user.keyboard(' ');
+            const details = screen.getByRole('group', { name: 'Health: Unknown' });
             await user.unhover(badge);
+            await user.hover(details);
+            await user.unhover(details);
             fireEvent.scroll(document);
-            await new Promise((resolve) => setTimeout(resolve, 300));
-            expect(tooltip).toBeVisible();
-            expect(badge).toHaveFocus();
+            expect(details).toBeVisible();
+            expect(details).toHaveFocus();
 
             await user.keyboard('{Escape}');
-            await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument());
+            await waitFor(() =>
+                expect(screen.queryByRole('group', { name: 'Health: Unknown' })).not.toBeInTheDocument(),
+            );
             expect(badge).toHaveFocus();
+            expect(badge).toHaveAttribute('aria-expanded', 'false');
 
             await user.tab();
             expect(screen.getByRole('button', { name: 'Next' })).toHaveFocus();
-            await user.tab({ shift: true });
-            await screen.findByRole('tooltip');
-            await user.tab();
-            await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument());
         });
 
-        it('allows hovering and scrolling the tooltip without focusing the badge', async () => {
+        it('opens on click and dismisses on an outside click', async () => {
             const user = userEvent.setup();
             const badge = renderHealth();
-            await user.hover(badge);
-            const tooltip = await screen.findByRole('tooltip');
-            await user.hover(tooltip);
-            fireEvent.wheel(tooltip, { deltaY: 200 });
-            fireEvent.scroll(tooltip);
-            await new Promise((resolve) => setTimeout(resolve, 300));
-            expect(tooltip).toBeVisible();
-            expect(badge).not.toHaveFocus();
-
-            await user.unhover(tooltip);
-            await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument());
+            await user.click(badge);
+            expect(screen.getByRole('group', { name: 'Health: Unknown' })).toHaveFocus();
+            await user.click(screen.getByRole('button', { name: 'Next' }));
+            await waitFor(() =>
+                expect(screen.queryByRole('group', { name: 'Health: Unknown' })).not.toBeInTheDocument(),
+            );
+            expect(screen.getByRole('button', { name: 'Next' })).toHaveFocus();
         });
 
-        it('scrolls overflowing content with navigation keys without moving focus or scrolling the page', async () => {
-            const user = userEvent.setup();
-            const badge = renderHealth();
-            await user.tab();
-            const tooltip = await screen.findByRole('tooltip');
-            Object.defineProperties(tooltip, {
-                clientHeight: { configurable: true, value: 200 },
-                scrollHeight: { configurable: true, value: 600 },
-                scrollTop: { configurable: true, value: 100 },
-            });
-            const scrollTo = vi.fn();
-            tooltip.scrollTo = scrollTo;
+        it.each(['vscode-dark', 'vscode-light', 'vscode-high-contrast', 'vscode-high-contrast-light'])(
+            'uses the migration help popover appearance in %s',
+            async (kind) => {
+                document.body.setAttribute('data-vscode-theme-kind', kind);
+                const user = userEvent.setup();
+                await user.click(renderHealth());
+                const details = screen.getByRole('group', { name: 'Health: Unknown' });
+                expect(getComputedStyle(details).backgroundColor).toBe(
+                    kind === 'vscode-dark' ? tokens.colorNeutralBackgroundStatic : tokens.colorNeutralBackground1,
+                );
+                expect(getComputedStyle(details).color).toBe(
+                    kind === 'vscode-dark'
+                        ? tokens.colorNeutralForegroundStaticInverted
+                        : tokens.colorNeutralForeground1,
+                );
+            },
+        );
 
-            for (const [key, top] of [
-                ['ArrowDown', 140],
-                ['ArrowUp', 60],
-                ['PageDown', 300],
-                ['PageUp', -100],
-                ['Home', 0],
-                ['End', 600],
-            ] as const) {
-                const event = createEvent.keyDown(badge, { key, cancelable: true });
-                fireEvent(badge, event);
-                expect(event.defaultPrevented).toBe(true);
-                expect(scrollTo).toHaveBeenLastCalledWith({ top });
-                expect(badge).toHaveFocus();
-            }
-
-            scrollTo.mockClear();
-            const tab = createEvent.keyDown(badge, { key: 'Tab', cancelable: true });
-            fireEvent(badge, tab);
-            expect(tab.defaultPrevented).toBe(false);
-            expect(scrollTo).not.toHaveBeenCalled();
-
-            Object.defineProperty(tooltip, 'scrollHeight', { configurable: true, value: 200 });
-            const pageDown = createEvent.keyDown(badge, { key: 'PageDown', cancelable: true });
-            fireEvent(badge, pageDown);
-            expect(pageDown.defaultPrevented).toBe(false);
-            expect(scrollTo).not.toHaveBeenCalled();
-        });
-
-        it('does not open a tooltip or add a tab stop when there is no explanation', async () => {
+        it('does not add an interactive trigger when there is no explanation', async () => {
             const user = userEvent.setup();
             render(<AccountHealthStatus provisioningState="Succeeded" />, { wrapper: Wrapper });
             const badge = screen.getByLabelText('Unknown', { selector: `.${badgeClassNames.root}` });
             expect(badge).not.toHaveAttribute('tabindex');
-            await user.hover(badge);
-            await new Promise((resolve) => setTimeout(resolve, 300));
-            expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+            expect(badge).not.toHaveAttribute('role', 'button');
+            await user.click(badge);
+            expect(screen.queryByRole('group')).not.toBeInTheDocument();
         });
     });
 });

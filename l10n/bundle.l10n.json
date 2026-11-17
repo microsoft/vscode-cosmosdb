@@ -1658,6 +1658,7 @@
   "Shared-throughput database {database} has `{ru} RU/s` across `{count} collections`. {mono} consumes `{monoShare}%` of the pool.": "Shared-throughput database {database} has `{ru} RU/s` across `{count} collections`. {mono} consumes `{monoShare}%` of the pool.",
   "Shared-throughput starvation": "Shared-throughput starvation",
   "Shared-throughput starvation in {database}": "Shared-throughput starvation in {database}",
+  "Show account health details": "Show account health details",
   "Show chart: {metric}": "Show chart: {metric}",
   "Show current schema": "Show current schema",
   "Show full migration assistant description": "Show full migration assistant description",

@@ -657,7 +657,7 @@ describe('AccountHeader', () => {
         expect(screen.getByRole('status')).toHaveTextContent('Account health: Critical');
     });
 
-    it('exposes the health explanation on keyboard focus without replacing the visible badge name', async () => {
+    it('opens focusable health details without replacing the visible badge name', async () => {
         const user = userEvent.setup();
         renderHeader({ summary: { ...summary, provisioningState: 'Failed' } });
         const badge = screen.getByLabelText('Critical', { selector: `.${badgeClassNames.root}` });
@@ -665,10 +665,11 @@ describe('AccountHeader', () => {
         act(() => badge.focus());
         expect(badge).toHaveFocus();
         expect(badge).toHaveAccessibleName('Critical');
-        expect(badge).toHaveAccessibleDescription(
-            'Resource provisioning state: Failed. See Status in Account details.',
-        );
-        expect(await screen.findByRole('tooltip')).toHaveTextContent('Resource provisioning state: Failed.');
+        expect(badge).toHaveAccessibleDescription('Show account health details');
+        await user.keyboard('{Enter}');
+        const details = screen.getByRole('group', { name: 'Health: Critical' });
+        expect(details).toHaveFocus();
+        expect(details).toHaveTextContent('Resource provisioning state: Failed. See Status in Account details.');
         await user.keyboard('{Escape}');
         expect(badge).toHaveFocus();
     });

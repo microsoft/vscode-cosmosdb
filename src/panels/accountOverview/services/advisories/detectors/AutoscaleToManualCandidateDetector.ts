@@ -6,10 +6,10 @@
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale, hasMinimumKnownResourceAge } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
-import { type AutoscaleUtilizationInput, type DerivedAdvisory } from '../core/types';
+import { type AutoscaleUtilizationInput } from '../core/types';
 
 /**
  * AutoscaleToManualCandidate (CODA DX-013): an *autoscale* container whose load is **steady-high** — average
@@ -22,17 +22,17 @@ function evaluateAutoscaleToManualCandidate(
     input: AutoscaleUtilizationInput,
     avgFloorPercent: number,
     peakToAvgCeiling: number,
-): DerivedAdvisory | undefined {
+): DetectorEvaluation {
     if (
         input.sampleCount < DIAGNOSTIC_POLICY.autoscaleUtilization.minSamples ||
         input.avgPercent <= 0 ||
         !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.autoscaleUtilization.minResourceAgeDays)
     ) {
-        return undefined;
+        return { rootCause: 'insufficient_data' };
     }
     const peakToAvg = input.peakPercent / input.avgPercent;
     if (input.avgPercent < avgFloorPercent || peakToAvg > peakToAvgCeiling) {
-        return undefined;
+        return { rootCause: 'evaluated' };
     }
     const scope = containerKey(input.databaseId, input.containerId);
     const avg = Math.round(input.avgPercent);
@@ -69,20 +69,16 @@ function evaluateAutoscaleToManualCandidate(
 
 export class AutoscaleToManualCandidateDetector extends Detector {
     readonly rule = 'AutoscaleToManualCandidate' as const;
-    evaluate = evaluateAutoscaleToManualCandidate;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
-        const out: DerivedAdvisory[] = [];
-        for (const util of ctx.inputs.autoscaleUtilizations ?? []) {
-            const a = this.evaluate(
+    evaluate = (...args: Parameters<typeof evaluateAutoscaleToManualCandidate>) =>
+        this.getAdvisory(evaluateAutoscaleToManualCandidate(...args));
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
+        return (ctx.inputs.autoscaleUtilizations ?? []).map((util) =>
+            evaluateAutoscaleToManualCandidate(
                 util,
                 ctx.thresholds.autoscaleToManualAvgPercent,
                 ctx.thresholds.autoscaleToManualPeakToAvgRatio,
-            );
-            if (a) {
-                out.push(a);
-            }
-        }
-        return out;
+            ),
+        );
     }
 }
 

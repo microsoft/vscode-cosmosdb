@@ -13,6 +13,10 @@
 
 ## Code Style
 
+- **Separate logical blocks with blank lines.** Within each block, put declarations first: single-line declarations before
+  multiline declarations where dependencies and evaluation order allow. Follow the declarations with a blank line, then
+  group related actions (such as property assignments) together. Separate actions, loops, and the final `return` into their
+  own blocks with blank lines. Keep declarations local to the block they support; preserve scope and side-effect order.
 - **Wrap comments at 120 characters**, the same as the code line width — do **not** wrap comments at 80. This applies to `//` line comments and `/* */` block comments. When reflowing, preserve URLs on their own line, blank `//` paragraph separators, and lint directives (e.g. `// oxlint-disable-next-line ...`).
 - **Break comment lines at logical boundaries, not greedily at the character limit.** Prefer breaks at the end of a sentence or clause so each line reads as a coherent unit, and keep the lines reasonably balanced. Never leave a dangling orphan line with just a word or two (e.g. a lone `// 3).` or `// path.`); pull an earlier word down so the last line is substantial.
 - The repository is formatted with **oxfmt** (`npm run prettier-fix`), not Prettier. Never run `npx prettier` — it uses different defaults (e.g. quote style) and will diverge from the repo format.

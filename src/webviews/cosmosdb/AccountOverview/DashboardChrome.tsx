@@ -15,6 +15,7 @@ import {
 } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import { createContext, type ReactNode, useContext, useEffect } from 'react';
+import { type OverviewEvent } from '../../../panels/accountOverview/telemetryContract';
 import { type UnavailableReason } from '../../api/types';
 
 /**
@@ -97,12 +98,8 @@ export const SectionHeader = ({
 // is a no-op so components remain usable outside a provider (tests, storybook).
 
 export interface DashboardActions {
-    /** Sends a webview telemetry event to the host (`common.reportEvent`). */
-    reportEvent: (
-        eventName: string,
-        properties?: Record<string, string>,
-        measurements?: Record<string, number>,
-    ) => void;
+    /** Sends a bounded telemetry event to the host (`accountOverview.reportEvent`). */
+    reportEvent: (eventName: OverviewEvent['eventName'], properties?: OverviewEvent['properties']) => void;
     /** Opens an external URL in the user's browser via the host. */
     openUrl: (url: string) => void;
     showOutput: () => void;

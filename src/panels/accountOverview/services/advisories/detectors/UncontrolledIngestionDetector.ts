@@ -6,10 +6,9 @@
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import {
-    type DerivedAdvisory,
     type DerivedAdvisorySeverity,
     type UncontrolledIngestionInput,
     type UncontrolledIngestionThresholds,
@@ -24,14 +23,14 @@ import {
 function evaluateUncontrolledIngestion(
     input: UncontrolledIngestionInput,
     thresholds: UncontrolledIngestionThresholds,
-): DerivedAdvisory | undefined {
+): DetectorEvaluation {
     if (input.totalRequests < thresholds.minRequests) {
-        return undefined;
+        return { rootCause: 'insufficient_data' };
     }
     const writeRuPct = input.totalRu > 0 ? (100 * input.writeRu) / input.totalRu : 0;
     const throttleRate = input.totalRequests > 0 ? (100 * input.throttledRequests) / input.totalRequests : 0;
     if (writeRuPct < thresholds.writeRuPctFloor || throttleRate < thresholds.throttleRatePct) {
-        return undefined;
+        return { rootCause: 'evaluated' };
     }
     const severity: DerivedAdvisorySeverity = throttleRate >= thresholds.highPct ? 'High' : 'Medium';
     const writePct = Math.round(writeRuPct);
@@ -83,22 +82,19 @@ function evaluateUncontrolledIngestion(
 
 export class UncontrolledIngestionDetector extends Detector {
     readonly rule = 'UncontrolledIngestion' as const;
-    evaluate = evaluateUncontrolledIngestion;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
+    evaluate = (...args: Parameters<typeof evaluateUncontrolledIngestion>) =>
+        this.getAdvisory(evaluateUncontrolledIngestion(...args));
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
         const t = ctx.thresholds;
-        const out: DerivedAdvisory[] = [];
-        for (const input of ctx.inputs.ingestion ?? []) {
-            const a = this.evaluate(input, {
+
+        return (ctx.inputs.ingestion ?? []).map((input) =>
+            evaluateUncontrolledIngestion(input, {
                 writeRuPctFloor: t.ingestionWriteRuPctFloor,
                 throttleRatePct: t.ingestionThrottleRatePct,
                 highPct: t.ingestionHighPct,
                 minRequests: t.ingestionMinRequests,
-            });
-            if (a) {
-                out.push(a);
-            }
-        }
-        return out;
+            }),
+        );
     }
 }
 

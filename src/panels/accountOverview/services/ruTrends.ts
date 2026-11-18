@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type MonitorClient } from '@azure/arm-monitor';
+import { readMetrics, reportReadFailure } from './readDiagnostics';
 import {
     classifyUnavailable,
     containerFilter,
@@ -95,6 +96,7 @@ export async function getRuTrends(
             filter,
         );
     } catch (error) {
+        reportReadFailure('metrics', error);
         return { ...base, reason: classifyUnavailable(error) };
     }
 
@@ -112,7 +114,8 @@ export async function getRuTrends(
             config.bucketMs,
             filter,
         );
-    } catch {
+    } catch (error) {
+        reportReadFailure('metrics', error);
         // Throttling overlay is best-effort; keep the RU series even if it fails.
     }
 
@@ -149,7 +152,7 @@ export async function querySeries(
     interval: string,
     filter: string | undefined,
 ): Promise<Map<number, number>> {
-    const response = await client.metrics.list(resourceUri, {
+    const response = await readMetrics(client, resourceUri, {
         metricnames: metricName,
         aggregation,
         timespan,
@@ -209,7 +212,7 @@ export async function getThrottleRate(
     const filter = containerFilter(databaseId, containerId);
     const statusFilter = filter ? `${filter} and StatusCode eq '*'` : `StatusCode eq '*'`;
 
-    const response = await client.metrics.list(resourceUri, {
+    const response = await readMetrics(client, resourceUri, {
         metricnames: 'TotalRequests',
         aggregation: 'Count',
         timespan,
@@ -272,7 +275,7 @@ export async function queryThrottlingSummary(
     filter: string | undefined,
 ): Promise<{ timestamps: Set<number>; hasObservations: boolean }> {
     const statusFilter = filter ? `${filter} and StatusCode eq '*'` : `StatusCode eq '*'`;
-    const response = await client.metrics.list(resourceUri, {
+    const response = await readMetrics(client, resourceUri, {
         metricnames: 'TotalRequests',
         aggregation: 'Count',
         timespan,

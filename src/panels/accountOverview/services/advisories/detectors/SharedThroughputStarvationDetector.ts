@@ -5,12 +5,11 @@
 
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import {
     type CollectionTrafficInput,
-    type DerivedAdvisory,
     type SharedThroughputInput,
     type SharedThroughputThresholds,
 } from '../core/types';
@@ -26,17 +25,17 @@ import {
 function evaluateSharedThroughputStarvation(
     input: SharedThroughputInput,
     thresholds: SharedThroughputThresholds,
-): DerivedAdvisory | undefined {
+): DetectorEvaluation {
     const active = input.collections.filter((c) => c.requests >= thresholds.minRequests);
     if (active.length < DIAGNOSTIC_POLICY.sharedThroughput.minActiveCollections) {
-        return undefined;
+        return { rootCause: 'insufficient_data' };
     }
     const ruTotal = active.reduce((sum, c) => sum + c.ruConsumed, 0);
     const reqTotal = active.reduce((sum, c) => sum + c.requests, 0);
     const thrTotal = active.reduce((sum, c) => sum + c.throttledRequests, 0);
     const poolRate = reqTotal > 0 ? (100 * thrTotal) / reqTotal : 0;
     if (poolRate < thresholds.poolThrottlePct || ruTotal <= 0) {
-        return undefined;
+        return { rootCause: 'evaluated' };
     }
     const share = (c: CollectionTrafficInput): number => (100 * c.ruConsumed) / ruTotal;
     const throttleRate = (c: CollectionTrafficInput): number =>
@@ -50,7 +49,7 @@ function evaluateSharedThroughputStarvation(
             share(c) <= thresholds.victimSharePct,
     );
     if (monoShare < thresholds.dominancePct || victims.length === 0) {
-        return undefined;
+        return { rootCause: 'evaluated' };
     }
     const victim = victims.reduce((worst, c) => (throttleRate(c) > throttleRate(worst) ? c : worst), victims[0]);
     return {
@@ -102,23 +101,20 @@ function evaluateSharedThroughputStarvation(
 
 export class SharedThroughputStarvationDetector extends Detector {
     readonly rule = 'SharedThroughputStarvation' as const;
-    evaluate = evaluateSharedThroughputStarvation;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
+    evaluate = (...args: Parameters<typeof evaluateSharedThroughputStarvation>) =>
+        this.getAdvisory(evaluateSharedThroughputStarvation(...args));
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
         const t = ctx.thresholds;
-        const out: DerivedAdvisory[] = [];
-        for (const input of ctx.inputs.sharedThroughput ?? []) {
-            const a = this.evaluate(input, {
+
+        return (ctx.inputs.sharedThroughput ?? []).map((input) =>
+            evaluateSharedThroughputStarvation(input, {
                 minRequests: t.sharedThroughputMinRequests,
                 poolThrottlePct: t.sharedThroughputPoolThrottlePct,
                 dominancePct: t.sharedThroughputDominancePct,
                 victimThrottlePct: t.sharedThroughputVictimThrottlePct,
                 victimSharePct: t.sharedThroughputVictimSharePct,
-            });
-            if (a) {
-                out.push(a);
-            }
-        }
-        return out;
+            }),
+        );
     }
 }
 

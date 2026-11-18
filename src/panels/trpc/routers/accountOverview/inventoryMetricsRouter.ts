@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { API, tryGetExperience } from '../../../../AzureDBExperiences';
 import { unavailableStorage } from '../../../accountOverview/metrics/storage';
 import { getInventoryMetrics, type InventoryMetricsResult } from '../../../accountOverview/services/inventoryMetrics';
+import { reportUnavailableClient } from '../../../accountOverview/services/readDiagnostics';
 import { type TimeRange } from '../../../accountOverview/services/shared';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';
@@ -46,6 +47,7 @@ export const inventoryMetricsProcedures = {
 
                 const client = await metadata.getMonitorClient();
                 if (!client) {
+                    reportUnavailableClient('metrics');
                     return {
                         available: false,
                         reason: 'noData',

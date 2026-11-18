@@ -6,19 +6,19 @@
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
-import { type DerivedAdvisory, type DerivedAdvisorySeverity, type ServerlessThrottlingInput } from '../core/types';
+import { type DerivedAdvisorySeverity, type ServerlessThrottlingInput } from '../core/types';
 
 const SERVERLESS_RU_PER_PARTITION = 5_000;
 
-function evaluateServerlessThrottling(input: ServerlessThrottlingInput): DerivedAdvisory | undefined {
+function evaluateServerlessThrottling(input: ServerlessThrottlingInput): DetectorEvaluation {
     if (input.totalRequests < DIAGNOSTIC_POLICY.serverlessThrottling.minRequests) {
-        return undefined;
+        return { rootCause: 'insufficient_data' };
     }
     if (input.throttleRatePercent < DIAGNOSTIC_POLICY.serverlessThrottling.throttleRatePercent) {
-        return undefined;
+        return { rootCause: 'evaluated' };
     }
     const scope = containerKey(input.databaseId, input.containerId);
     const severity: DerivedAdvisorySeverity =
@@ -63,16 +63,10 @@ function evaluateServerlessThrottling(input: ServerlessThrottlingInput): Derived
 
 export class ServerlessThrottlingDetector extends Detector {
     readonly rule = 'ServerlessThrottling' as const;
-    evaluate = evaluateServerlessThrottling;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
-        const out: DerivedAdvisory[] = [];
-        for (const input of ctx.inputs.serverlessThrottling ?? []) {
-            const advisory = this.evaluate(input);
-            if (advisory) {
-                out.push(advisory);
-            }
-        }
-        return out;
+    evaluate = (...args: Parameters<typeof evaluateServerlessThrottling>) =>
+        this.getAdvisory(evaluateServerlessThrottling(...args));
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
+        return (ctx.inputs.serverlessThrottling ?? []).map(evaluateServerlessThrottling);
     }
 }
 

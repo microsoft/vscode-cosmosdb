@@ -8,6 +8,7 @@ import { RestError } from '@azure/core-rest-pipeline';
 import { getMetricApplicability, type MetricUnavailableReason } from '../metrics/contracts';
 import { storageObservation, type StorageMeasurement } from '../metrics/storage';
 import { HEALTH_POLICY, OVERVIEW_DEFAULTS } from './healthPolicy';
+import { readMetrics, reportReadFailure } from './readDiagnostics';
 import {
     classifyUnavailable,
     firstValue,
@@ -162,8 +163,8 @@ export async function getInventoryMetrics(
             weekTimespan,
             weekConfig.interval,
         );
-    } catch {
-        // ignore
+    } catch (error) {
+        reportReadFailure('metrics', error);
     }
 
     let throttling = new Map<string, boolean>();
@@ -177,6 +178,7 @@ export async function getInventoryMetrics(
             hourConfig.bucketMs,
         );
     } catch (error) {
+        reportReadFailure('metrics', error);
         throttlingReason = metricFailureReason(error);
     }
 
@@ -253,7 +255,7 @@ async function querySplitSeries(
     timespan: string,
     interval: string,
 ): Promise<Map<string, Map<number, number>>> {
-    const response = await client.metrics.list(resourceUri, {
+    const response = await readMetrics(client, resourceUri, {
         metricnames: metricName,
         aggregation: 'Maximum',
         timespan,
@@ -321,7 +323,7 @@ async function queryThrottlingByContainer(
     interval: string,
     bucketMs: number,
 ): Promise<Map<string, boolean>> {
-    const response = await client.metrics.list(resourceUri, {
+    const response = await readMetrics(client, resourceUri, {
         metricnames: 'TotalRequests',
         aggregation: 'Count',
         timespan,

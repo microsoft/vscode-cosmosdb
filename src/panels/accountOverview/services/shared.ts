@@ -26,7 +26,9 @@ export type TimeRange = '1H' | '24H' | '7D';
  * is Tier-2-specific: it drives the derived-advisories partial-coverage notice
  * rather than a whole-section empty-state.
  */
-export type UnavailableReason = 'noData' | 'unsupported' | 'rbac' | 'logAnalyticsDisabled';
+export const UNAVAILABLE_REASONS = ['noData', 'unsupported', 'rbac', 'logAnalyticsDisabled'] as const;
+
+export type UnavailableReason = (typeof UNAVAILABLE_REASONS)[number];
 
 /**
  * Classifies an Azure SDK error into an {@link UnavailableReason}. A 403 (or the

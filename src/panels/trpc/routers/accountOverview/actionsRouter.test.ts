@@ -16,6 +16,7 @@ import {
 } from '../../../accountOverview/services/alertsRecommendations';
 import { QueryEditorTab } from '../../../QueryEditorTab';
 import { type AccountOverviewRouterContext } from '../../appRouter';
+import { type AzextTelemetryEnrichment } from '../../middleware/azextTelemetryRunner';
 import { accountOverviewRouter } from '../../trpc';
 import { actionsProcedures } from './actionsRouter';
 
@@ -31,8 +32,12 @@ vi.mock('vscode', async (importOriginal) => ({
 }));
 vi.mock('../../trpc', async () => {
     const { initWebviewTrpc } = await import('@microsoft/vscode-ext-webview');
-    const trpc = initWebviewTrpc<AccountOverviewRouterContext>();
-    return { accountOverviewProcedure: trpc.publicProcedure, accountOverviewRouter: trpc.router };
+    const { accountOverviewTelemetryMiddleware } = await import('../../middleware/accountOverviewTelemetryMiddleware');
+    const trpc = initWebviewTrpc<AccountOverviewRouterContext & AzextTelemetryEnrichment>();
+    return {
+        accountOverviewProcedure: trpc.publicProcedure.use(accountOverviewTelemetryMiddleware),
+        accountOverviewRouter: trpc.router,
+    };
 });
 vi.mock('../../../../cosmosdb/CosmosDBCredential', () => ({ getCosmosDBCredentials: vi.fn() }));
 vi.mock('../../../../extensionVariables', () => ({ ext: { outputChannel: { show: vi.fn() } } }));
@@ -71,7 +76,7 @@ describe('Account Overview auxiliary action routes', () => {
         const { caller, actionContext } = createCaller();
         const message = 'Unable to open private-resource';
         vi.mocked(vscode.window.showErrorMessage).mockImplementationOnce(() => {
-            expect(actionContext.valuesToMask).toContain(message);
+            expect(actionContext.valuesToMask.filter((value) => value === message)).toHaveLength(1);
             return Promise.resolve(undefined);
         });
         await caller.showErrorMessage({ message });
@@ -82,7 +87,7 @@ describe('Account Overview auxiliary action routes', () => {
         const { caller, actionContext } = createCaller();
         const url = 'https://ms.portal.azure.com/#@tenant/resource/account';
         vi.mocked(vscode.env.openExternal).mockImplementationOnce(async () => {
-            expect(actionContext.valuesToMask).toContain(url);
+            expect(actionContext.valuesToMask.filter((value) => value === url)).toHaveLength(1);
             return true;
         });
         await caller.openUrl({ url });
@@ -195,15 +200,31 @@ describe('Account Overview auxiliary action routes', () => {
         const { caller, actionContext } = createCaller();
         vi.mocked(getCosmosDBCredentials).mockImplementationOnce(async () => {
             expect(actionContext.valuesToMask).toEqual(expect.arrayContaining(['db', 'container']));
+            expect(actionContext.valuesToMask.filter((value) => value === 'db')).toHaveLength(1);
+            expect(actionContext.valuesToMask.filter((value) => value === 'container')).toHaveLength(1);
             return [{ type: AuthenticationMethod.accountKey, key: 'private-key' }];
         });
         vi.mocked(QueryEditorTab.render).mockImplementationOnce(() => {
             expect(actionContext.valuesToMask).toContain('private-key');
+            expect(actionContext.valuesToMask.filter((value) => value === 'db')).toHaveLength(1);
+            expect(actionContext.valuesToMask.filter((value) => value === 'container')).toHaveLength(1);
             throw new Error('Editor failed');
         });
         await expect(caller.openQueryEditor({ databaseId: 'db', containerId: 'container' })).rejects.toThrow(
             'Editor failed',
         );
         expect(vscode.window.showErrorMessage).not.toHaveBeenCalled();
+    });
+
+    it('uses the middleware masks when revealing resources, without registering them again', async () => {
+        const { caller, actionContext } = createCaller();
+        vi.mocked(revealAzureResourceInExplorer).mockImplementationOnce(async (context) => {
+            expect(context).toBe(actionContext);
+            expect(actionContext.valuesToMask.filter((value) => value === 'db')).toHaveLength(1);
+            expect(actionContext.valuesToMask.filter((value) => value === 'container')).toHaveLength(1);
+            return undefined;
+        });
+        await caller.revealInTree({ databaseId: 'db', containerId: 'container' });
+        expect(revealAzureResourceInExplorer).toHaveBeenCalledOnce();
     });
 });

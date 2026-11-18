@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type MonitorClient } from '@azure/arm-monitor';
+import { readItems } from './readDiagnostics';
 import { escapeODataLiteral, parseMonitorTimestamp } from './shared';
 import { DAY } from './units';
 
@@ -40,7 +41,7 @@ export async function getContainerCreatedAt(
     const start = new Date(now - ACTIVITY_LOG_LOOKBACK_DAYS * DAY).toISOString();
     const filter = `eventTimestamp ge '${start}' and resourceId eq '${escapeODataLiteral(resourceId)}'`;
     let earliest: number | undefined;
-    for await (const event of client.activityLogs.list(filter)) {
+    for await (const event of readItems('activityLog', () => client.activityLogs.list(filter))) {
         if (!event.operationName?.value?.toLowerCase().endsWith('/containers/write')) {
             continue;
         }

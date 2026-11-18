@@ -110,6 +110,7 @@ describe('account advisory acquisition', () => {
     it.each([{}, { capabilities: [] }])('passes the canonical NoSQL API to collection: %j', async (account) => {
         vi.mocked(collectDerivedAdvisories).mockResolvedValueOnce({
             advisories: [],
+            detectorCoverage: [],
             logSource: { available: false, reason: 'noData' },
             metricSource: { available: true, failures: [] },
         });
@@ -152,6 +153,7 @@ describe('account advisory acquisition', () => {
         };
         vi.mocked(collectDerivedAdvisories).mockResolvedValueOnce({
             advisories: [],
+            detectorCoverage: [],
             logSource: { available: false, reason: 'noData' },
             metricSource,
         });

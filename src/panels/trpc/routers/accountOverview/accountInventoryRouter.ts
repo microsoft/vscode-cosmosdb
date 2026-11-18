@@ -9,6 +9,7 @@ import { API, tryGetExperience } from '../../../../AzureDBExperiences';
 import { getAccountMetricApplicability } from '../../../accountOverview/metrics/contracts';
 import { buildAccountAlertsPortalUrl } from '../../../accountOverview/services/alertsRecommendations';
 import { getInventoryResult, type InventoryContainerRow } from '../../../accountOverview/services/inventory';
+import { reportUnavailableClient } from '../../../accountOverview/services/readDiagnostics';
 import { type ProvisioningState } from '../../../accountOverview/services/shared';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';
@@ -81,6 +82,7 @@ export const accountInventoryProcedures = {
 
         const client = await metadata.getClient();
         if (!client) {
+            reportUnavailableClient('inventory');
             // No management client means we could not authenticate to ARM at all; surface it as an
             // explicit unavailable state so the table renders an empty-state instead of hanging.
             return {

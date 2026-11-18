@@ -6,12 +6,11 @@
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import {
     type CrossPartitionInput,
     type CrossPartitionThresholds,
-    type DerivedAdvisory,
     type DerivedAdvisorySeverity,
     type QueryShapeInput,
 } from '../core/types';
@@ -54,16 +53,19 @@ function shortQueryShape(text: string): string {
 function evaluateCrossPartitionQuery(
     input: CrossPartitionInput,
     thresholds: CrossPartitionThresholds,
-): DerivedAdvisory | undefined {
+): DetectorEvaluation {
     const { totalQueries, containerPartitions, crossPartitionPct, worst } = crossPartitionStats(
         input.shapes,
         thresholds.fanoutThreshold,
     );
-    if (totalQueries < thresholds.minQueries || containerPartitions <= 1) {
-        return undefined;
+    if (totalQueries < thresholds.minQueries) {
+        return { rootCause: 'insufficient_data' };
+    }
+    if (containerPartitions <= 1) {
+        return { rootCause: containerPartitions > 0 ? 'not_applicable' : 'insufficient_data' };
     }
     if (crossPartitionPct < thresholds.medPct || worst === undefined) {
-        return undefined;
+        return { rootCause: 'evaluated' };
     }
     const severity: DerivedAdvisorySeverity = crossPartitionPct >= thresholds.highPct ? 'High' : 'Medium';
     const pct = Math.round(crossPartitionPct);
@@ -104,22 +106,20 @@ function evaluateCrossPartitionQuery(
 
 export class CrossPartitionQueryDetector extends Detector {
     readonly rule = 'CrossPartitionQuery' as const;
-    evaluate = evaluateCrossPartitionQuery;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
+    protected readonly notApplicableRootCauses = ['not_applicable'];
+    evaluate = (...args: Parameters<typeof evaluateCrossPartitionQuery>) =>
+        this.getAdvisory(evaluateCrossPartitionQuery(...args));
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
         const t = ctx.thresholds;
-        const out: DerivedAdvisory[] = [];
-        for (const input of ctx.inputs.crossPartition ?? []) {
-            const a = this.evaluate(input, {
+
+        return (ctx.inputs.crossPartition ?? []).map((input) =>
+            evaluateCrossPartitionQuery(input, {
                 minQueries: t.crossPartitionMinQueries,
                 fanoutThreshold: t.crossPartitionFanoutThreshold,
                 highPct: t.crossPartitionHighPct,
                 medPct: t.crossPartitionMedPct,
-            });
-            if (a) {
-                out.push(a);
-            }
-        }
-        return out;
+            }),
+        );
     }
 }
 

@@ -6,7 +6,7 @@
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { percentile } from '../../shared';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import {
     capacityMaterialitySeverity,
     clampRationale,
@@ -14,7 +14,7 @@ import {
     hasMinimumKnownResourceAge,
 } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
-import { type DerivedAdvisory, type ManualThroughputInput } from '../core/types';
+import { type ManualThroughputInput } from '../core/types';
 
 // Platform minimum RU/s floor a right-size recommendation never drops below — a container's minimum manual
 // throughput is 400 RU/s:
@@ -37,12 +37,18 @@ function evaluateOverProvisioning(
     scope?: string,
     containerId?: string,
     observationLabel: string = l10n.t('7 days'),
-): DerivedAdvisory | undefined {
+): DetectorEvaluation {
     if (!hasManualThroughput || p99Percent === undefined || p99Percent >= thresholdPercent) {
-        return undefined;
+        return {
+            rootCause: !hasManualThroughput
+                ? 'not_applicable'
+                : p99Percent === undefined
+                  ? 'insufficient_data'
+                  : 'evaluated',
+        };
     }
     if (peakPercent !== undefined && peakPercent >= DIAGNOSTIC_POLICY.overProvisioning.peakGuardPercent) {
-        return undefined;
+        return { rootCause: 'evaluated' };
     }
     const p99 = Math.round(p99Percent);
     const threshold = Math.round(thresholdPercent);
@@ -129,13 +135,13 @@ function evaluateManualThroughput(
     input: ManualThroughputInput,
     thresholdPercent: number,
     scopeProvisionedRuTotal?: number,
-): DerivedAdvisory | undefined {
+): DetectorEvaluation {
     const samples = finiteNumbers(input.ruPercents);
     if (
         samples.length < DIAGNOSTIC_POLICY.overProvisioning.minSamples ||
         !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.overProvisioning.minResourceAgeDays)
     ) {
-        return undefined;
+        return { rootCause: 'insufficient_data' };
     }
     return evaluateOverProvisioning(
         percentile(samples, DIAGNOSTIC_POLICY.overProvisioning.percentile),
@@ -152,29 +158,26 @@ function evaluateManualThroughput(
 
 export class OverProvisioningDetector extends Detector {
     readonly rule = 'OverProvisioning' as const;
-    evaluate = evaluateOverProvisioning;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
+    protected readonly notApplicableRootCauses = ['not_applicable'];
+    evaluate = (...args: Parameters<typeof evaluateOverProvisioning>) =>
+        this.getAdvisory(evaluateOverProvisioning(...args));
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
         const { inputs, thresholds } = ctx;
         if (inputs.manualThroughput !== undefined) {
-            return inputs.manualThroughput
-                .map((input) =>
-                    evaluateManualThroughput(
-                        input,
-                        thresholds.overProvisioningBandPercent,
-                        inputs.scopeProvisionedRuTotal,
-                    ),
-                )
-                .filter((advisory): advisory is DerivedAdvisory => advisory !== undefined);
+            return inputs.manualThroughput.map((input) =>
+                evaluateManualThroughput(input, thresholds.overProvisioningBandPercent, inputs.scopeProvisionedRuTotal),
+            );
         }
-        const advisory = this.evaluate(
-            percentile(inputs.weeklyRuPercents, DIAGNOSTIC_POLICY.overProvisioning.percentile),
-            inputs.weeklyPeakPercent ??
-                (inputs.weeklyRuPercents.length > 0 ? Math.max(...inputs.weeklyRuPercents) : undefined),
-            thresholds.overProvisioningBandPercent,
-            inputs.hasManualThroughput,
-            inputs.manualProvisionedRuTotal,
-        );
-        return advisory ? [advisory] : [];
+        return [
+            evaluateOverProvisioning(
+                percentile(inputs.weeklyRuPercents, DIAGNOSTIC_POLICY.overProvisioning.percentile),
+                inputs.weeklyPeakPercent ??
+                    (inputs.weeklyRuPercents.length > 0 ? Math.max(...inputs.weeklyRuPercents) : undefined),
+                thresholds.overProvisioningBandPercent,
+                inputs.hasManualThroughput,
+                inputs.manualProvisionedRuTotal,
+            ),
+        ];
     }
 }
 

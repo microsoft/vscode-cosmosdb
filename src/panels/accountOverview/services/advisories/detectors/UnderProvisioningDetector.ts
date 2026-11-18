@@ -6,10 +6,10 @@
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale, hasMinimumKnownResourceAge } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
-import { type DerivedAdvisory, type DerivedAdvisorySeverity, type PartitionSaturationInput } from '../core/types';
+import { type DerivedAdvisorySeverity, type PartitionSaturationInput } from '../core/types';
 
 /**
  * SustainedThrottlingInRegion / genuine under-provisioning (DX-005): a container is sustaining 429 throttling
@@ -24,18 +24,18 @@ function evaluateUnderProvisioning(
     saturationPercent: number,
     headroomPercent: number,
     throttleThresholdPercent: number,
-): DerivedAdvisory | undefined {
+): DetectorEvaluation {
     if (
         input.totalRequests < DIAGNOSTIC_POLICY.underProvisioning.minRequests ||
         !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.partitionSaturation.minResourceAgeDays)
     ) {
-        return undefined;
+        return { rootCause: 'insufficient_data' };
     }
     const throttling = input.throttleRatePercent >= throttleThresholdPercent;
     const atCapacity = input.maxP99 >= saturationPercent;
     const uniform = input.minP99 >= headroomPercent;
     if (!throttling || !atCapacity || !uniform) {
-        return undefined;
+        return { rootCause: 'evaluated' };
     }
     const scope = containerKey(input.databaseId, input.containerId);
     const rate = Math.round(input.throttleRatePercent * 10) / 10;
@@ -107,17 +107,19 @@ function evaluateUnderProvisioning(
 
 export class UnderProvisioningDetector extends Detector {
     readonly rule = 'SustainedThrottlingInRegion' as const;
-    evaluate = evaluateUnderProvisioning;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
+    evaluate = (...args: Parameters<typeof evaluateUnderProvisioning>) =>
+        this.getAdvisory(evaluateUnderProvisioning(...args));
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
         const t = ctx.thresholds;
-        const out: DerivedAdvisory[] = [];
-        for (const p of ctx.inputs.partitions) {
-            const a = this.evaluate(p, t.partitionSaturationPercent, t.partitionHeadroomPercent, t.throttleRatePercent);
-            if (a) {
-                out.push(a);
-            }
-        }
-        return out;
+
+        return ctx.inputs.partitions.map((p) =>
+            evaluateUnderProvisioning(
+                p,
+                t.partitionSaturationPercent,
+                t.partitionHeadroomPercent,
+                t.throttleRatePercent,
+            ),
+        );
     }
 }
 

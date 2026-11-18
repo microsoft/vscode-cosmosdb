@@ -4,12 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { classifyPaidContinuousBackup } from '../core/helpers';
 import { type AccountConfigInput, type AdvisoryEvaluation, type DerivedAdvisory } from '../core/types';
 
 export class PaidContinuousBackupDetector extends Detector {
     readonly rule = 'PaidContinuousBackup' as const;
+    protected readonly notApplicableRootCauses = ['periodic_backup', 'uncharged_7day_backup'];
 
     evaluateResult = (config: AccountConfigInput): AdvisoryEvaluation<'PaidContinuousBackup'> => {
         const classification = classifyPaidContinuousBackup(config);
@@ -39,9 +40,8 @@ export class PaidContinuousBackupDetector extends Detector {
 
     evaluate = (config: AccountConfigInput) => this.evaluateResult(config).advisory;
 
-    run(ctx: DetectorContext): DerivedAdvisory[] {
-        const finding = ctx.inputs.accountConfig && this.evaluate(ctx.inputs.accountConfig);
-        return finding ? [finding] : [];
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
+        return ctx.inputs.accountConfig ? [this.evaluateResult(ctx.inputs.accountConfig)] : [];
     }
 }
 

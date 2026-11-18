@@ -27,7 +27,9 @@ export type TimeRange = '1H' | '24H' | '7D';
  * is Tier-2-specific: it drives the derived-advisories partial-coverage notice
  * rather than a whole-section empty-state.
  */
-export type UnavailableReason = 'noData' | 'unsupported' | 'rbac' | 'logAnalyticsDisabled';
+export const UNAVAILABLE_REASONS = ['noData', 'unsupported', 'rbac', 'logAnalyticsDisabled'] as const;
+
+export type UnavailableReason = (typeof UNAVAILABLE_REASONS)[number];
 
 /**
  * Classifies nested SDK errors consistently with Log Analytics. Access/authentication failures use `rbac`;

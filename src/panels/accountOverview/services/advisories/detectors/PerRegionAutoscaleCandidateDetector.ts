@@ -4,12 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { classifyPerRegionAutoscale } from '../core/helpers';
 import { type AccountConfigInput, type AdvisoryEvaluation, type DerivedAdvisory } from '../core/types';
 
 export class PerRegionAutoscaleCandidateDetector extends Detector {
     readonly rule = 'PerRegionAutoscaleCandidate' as const;
+    protected readonly notApplicableRootCauses = ['serverless', 'single_region', 'already_enabled'];
 
     evaluateResult = (config: AccountConfigInput): AdvisoryEvaluation<'PerRegionAutoscaleCandidate'> => {
         const classification = classifyPerRegionAutoscale(config);
@@ -40,9 +41,8 @@ export class PerRegionAutoscaleCandidateDetector extends Detector {
 
     evaluate = (config: AccountConfigInput) => this.evaluateResult(config).advisory;
 
-    run(ctx: DetectorContext): DerivedAdvisory[] {
-        const finding = ctx.inputs.accountConfig && this.evaluate(ctx.inputs.accountConfig);
-        return finding ? [finding] : [];
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
+        return ctx.inputs.accountConfig ? [this.evaluateResult(ctx.inputs.accountConfig)] : [];
     }
 }
 

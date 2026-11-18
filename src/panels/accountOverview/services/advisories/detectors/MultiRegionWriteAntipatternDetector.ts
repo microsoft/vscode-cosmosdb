@@ -6,10 +6,10 @@
 import * as l10n from '@vscode/l10n';
 import { API, getExperienceFromApi } from '../../../../../AzureDBExperiences';
 import { classifyEnvironment } from '../../environmentClassifier';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
-import { type AccountConfigInput, type AdvisoryEvaluation, type DerivedAdvisory } from '../core/types';
+import { type AccountConfigInput, type AdvisoryEvaluation } from '../core/types';
 
 /** Cosmos DB APIs whose drivers cannot use multi-region-write failover, so the flag is always a misconfiguration. */
 const NON_MULTI_WRITE_APIS = new Map<
@@ -158,14 +158,15 @@ function evaluateRegionalCapacity(
 
 export class MultiRegionWriteAntipatternDetector extends Detector {
     readonly rule = 'MultiRegionWriteAntipattern' as const;
+    protected readonly notApplicableRootCauses = ['not_multi_region_writes'];
     evaluateResult = evaluateRegionalCapacity;
     evaluate = (...args: Parameters<typeof evaluateRegionalCapacity>) => evaluateRegionalCapacity(...args).advisory;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
         if (!ctx.inputs.accountConfig) {
             return [];
         }
-        const advisory = this.evaluate(ctx.inputs.accountConfig, ctx.inputs.manualRegionalCapacityRu);
-        return advisory ? [advisory] : [];
+
+        return [this.evaluateResult(ctx.inputs.accountConfig, ctx.inputs.manualRegionalCapacityRu)];
     }
 }
 

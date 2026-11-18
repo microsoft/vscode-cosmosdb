@@ -5,7 +5,7 @@
 
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import { operationCategory, summarizeRequestStatuses, type OperationCategory } from '../core/requestMetrics';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
@@ -105,9 +105,8 @@ export class ThrottlingByOperationDetector extends Detector {
 
     evaluate = (input: AccountRequestMetricsInput) => this.evaluateResult(input).advisory;
 
-    run(ctx: DetectorContext): DerivedAdvisory[] {
-        const finding = ctx.inputs.accountRequests && this.evaluate(ctx.inputs.accountRequests);
-        return finding ? [finding] : [];
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
+        return ctx.inputs.accountRequests ? [this.evaluateResult(ctx.inputs.accountRequests)] : [];
     }
 }
 

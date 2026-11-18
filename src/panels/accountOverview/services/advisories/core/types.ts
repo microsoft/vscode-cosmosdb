@@ -21,31 +21,58 @@ import { type OperationCategory } from './requestMetrics';
 // the fetching and calls computeDerivedAdvisories.
 
 /** The derived-advisory rules this engine implements (P0 + best-effort). */
-export type DerivedAdvisoryRule =
-    | 'HotPartitionRisk'
-    | 'SustainedThrottlingInRegion'
-    | 'OverProvisioning'
-    | 'AutoscaleCandidate'
-    | 'StorageGrowthRisk'
-    | 'StorageSkewRisk'
-    | 'IndexingCostRisk'
-    | 'ExpensiveConsistency'
-    | 'MultiRegionWriteAntipattern'
-    | 'IdleContainer'
-    | 'PartitionMergeCandidate'
-    | 'AutoscaleMaxOverProvisioned'
-    | 'AutoscaleToManualCandidate'
-    | 'ServerlessCandidate'
-    | 'ServerlessThrottling'
-    | 'CrossPartitionQuery'
-    | 'ShardKeyMisalignment'
-    | 'UncontrolledIngestion'
-    | 'SharedThroughputStarvation'
-    | 'PaidContinuousBackup'
-    | 'NonThrottlingErrors'
-    | 'ThrottlingByOperation'
-    | 'PerRegionAutoscaleCandidate'
-    | 'ReservedCapacityCandidate';
+export const DERIVED_ADVISORY_RULES = [
+    'HotPartitionRisk',
+    'SustainedThrottlingInRegion',
+    'OverProvisioning',
+    'AutoscaleCandidate',
+    'StorageGrowthRisk',
+    'StorageSkewRisk',
+    'IndexingCostRisk',
+    'ExpensiveConsistency',
+    'MultiRegionWriteAntipattern',
+    'IdleContainer',
+    'PartitionMergeCandidate',
+    'AutoscaleMaxOverProvisioned',
+    'AutoscaleToManualCandidate',
+    'ServerlessCandidate',
+    'ServerlessThrottling',
+    'CrossPartitionQuery',
+    'ShardKeyMisalignment',
+    'UncontrolledIngestion',
+    'SharedThroughputStarvation',
+    'PaidContinuousBackup',
+    'NonThrottlingErrors',
+    'ThrottlingByOperation',
+    'PerRegionAutoscaleCandidate',
+    'ReservedCapacityCandidate',
+] as const;
+
+export type DerivedAdvisoryRule = (typeof DERIVED_ADVISORY_RULES)[number];
+
+export const DETECTOR_COVERAGE_STATUSES = [
+    'evaluated',
+    'notApplicable',
+    'insufficientData',
+    'unavailable',
+    'partial',
+] as const;
+
+/** Counts actual input evaluations, never inferred missing resources. Contains no scope identities or evidence. */
+export interface DetectorCoverage {
+    rule: DerivedAdvisoryRule;
+    status: (typeof DETECTOR_COVERAGE_STATUSES)[number];
+    evaluatedCount: number;
+    matchedCount: number;
+    notApplicableCount: number;
+    insufficientDataCount: number;
+    unavailableReasons: UnavailableReason[];
+}
+
+export interface DerivedAdvisoryAnalysis {
+    advisories: DerivedAdvisory[];
+    detectorCoverage: DetectorCoverage[];
+}
 
 export type DerivedAdvisorySeverity = 'High' | 'Medium' | 'Low';
 
@@ -251,17 +278,20 @@ export type AdvisoryCostEstimate = {
       }
 );
 
-export type CostFailureKind =
-    | 'notConfigured'
-    | 'authentication'
-    | 'accessDenied'
-    | 'rateLimited'
-    | 'timeout'
-    | 'serviceError'
-    | 'queryError'
-    | 'invalidData'
-    | 'noData'
-    | 'unsupported';
+export const COST_FAILURE_KINDS = [
+    'notConfigured',
+    'authentication',
+    'accessDenied',
+    'rateLimited',
+    'timeout',
+    'serviceError',
+    'queryError',
+    'invalidData',
+    'noData',
+    'unsupported',
+] as const;
+
+export type CostFailureKind = (typeof COST_FAILURE_KINDS)[number];
 
 /** Optional financial coverage is separate from detector coverage. No raw service errors or billing rows. */
 export interface CostSourceStatus {
@@ -304,6 +334,7 @@ export interface DerivedAdvisoriesResult extends ReadDiagnosticsResult {
     logSource?: LogsSourceStatus;
     metricSource?: MetricSourceStatus;
     costSource?: CostSourceStatus;
+    detectorCoverage?: DetectorCoverage[];
     /** Epoch milliseconds when the server produced this snapshot. */
     generatedAt: number;
 }

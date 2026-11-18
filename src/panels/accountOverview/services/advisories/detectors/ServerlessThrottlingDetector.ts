@@ -6,7 +6,7 @@
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import {
@@ -76,15 +76,8 @@ export class ServerlessThrottlingDetector extends Detector {
     evaluateResult = evaluateServerlessThrottling;
     evaluate = (...args: Parameters<typeof evaluateServerlessThrottling>) =>
         evaluateServerlessThrottling(...args).advisory;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
-        const out: DerivedAdvisory[] = [];
-        for (const input of ctx.inputs.serverlessThrottling ?? []) {
-            const advisory = this.evaluate(input);
-            if (advisory) {
-                out.push(advisory);
-            }
-        }
-        return out;
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
+        return (ctx.inputs.serverlessThrottling ?? []).map((input) => this.evaluateResult(input));
     }
 }
 

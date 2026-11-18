@@ -6,7 +6,7 @@
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import { type AdvisoryEvaluation, type DerivedAdvisory, type IndexingUsageInput } from '../core/types';
@@ -64,17 +64,11 @@ function evaluateIndexingCostRisk(
 
 export class IndexingCostRiskDetector extends Detector {
     readonly rule = 'IndexingCostRisk' as const;
+    protected readonly notApplicableRootCauses = ['indexing_disabled'];
     evaluateResult = evaluateIndexingCostRisk;
     evaluate = (...args: Parameters<typeof evaluateIndexingCostRisk>) => evaluateIndexingCostRisk(...args).advisory;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
-        const out: DerivedAdvisory[] = [];
-        for (const indexing of ctx.inputs.indexing) {
-            const a = this.evaluate(indexing, ctx.thresholds.indexingUsageRatio);
-            if (a) {
-                out.push(a);
-            }
-        }
-        return out;
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
+        return ctx.inputs.indexing.map((indexing) => this.evaluateResult(indexing, ctx.thresholds.indexingUsageRatio));
     }
 }
 

@@ -6,7 +6,7 @@
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import {
     type AdvisoryEvaluation,
@@ -99,21 +99,17 @@ export class UncontrolledIngestionDetector extends Detector {
     evaluateResult = evaluateUncontrolledIngestion;
     evaluate = (...args: Parameters<typeof evaluateUncontrolledIngestion>) =>
         evaluateUncontrolledIngestion(...args).advisory;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
         const t = ctx.thresholds;
-        const out: DerivedAdvisory[] = [];
-        for (const input of ctx.inputs.ingestion ?? []) {
-            const a = this.evaluate(input, {
+
+        return (ctx.inputs.ingestion ?? []).map((input) =>
+            this.evaluateResult(input, {
                 writeRuPctFloor: t.ingestionWriteRuPctFloor,
                 throttleRatePct: t.ingestionThrottleRatePct,
                 highPct: t.ingestionHighPct,
                 minRequests: t.ingestionMinRequests,
-            });
-            if (a) {
-                out.push(a);
-            }
-        }
-        return out;
+            }),
+        );
     }
 }
 

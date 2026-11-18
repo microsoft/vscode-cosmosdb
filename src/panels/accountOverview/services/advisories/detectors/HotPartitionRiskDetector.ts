@@ -5,7 +5,7 @@
 
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale, hasMinimumKnownResourceAge, offerScope } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import {
@@ -110,18 +110,15 @@ function evaluateHotPartitionRisk(
 
 export class HotPartitionRiskDetector extends Detector {
     readonly rule = 'HotPartitionRisk' as const;
+    protected readonly notApplicableRootCauses = ['single_partition'];
     evaluateResult = evaluateHotPartitionRisk;
     evaluate = (...args: Parameters<typeof evaluateHotPartitionRisk>) => evaluateHotPartitionRisk(...args).advisory;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
         const t = ctx.thresholds;
-        const out: DerivedAdvisory[] = [];
-        for (const p of ctx.inputs.partitions) {
-            const a = this.evaluate(p, t.partitionSaturationPercent, t.partitionHeadroomPercent, t.throttleRatePercent);
-            if (a) {
-                out.push(a);
-            }
-        }
-        return out;
+
+        return ctx.inputs.partitions.map((p) =>
+            this.evaluateResult(p, t.partitionSaturationPercent, t.partitionHeadroomPercent, t.throttleRatePercent),
+        );
     }
 }
 

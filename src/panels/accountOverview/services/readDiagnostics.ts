@@ -65,7 +65,7 @@ export async function withReadDiagnostics<T extends object>(
     });
 }
 
-/** Records categories for the UI only. Detailed messages must never be attached to RPC results or telemetry. */
+/** Records bounded categories for UI and telemetry. Detailed messages stay in local Output only. */
 export function recordReadFailure(source: ReadSource, diagnostic: ErrorDiagnostic<string>): void {
     const context = readContext.getStore();
     if (

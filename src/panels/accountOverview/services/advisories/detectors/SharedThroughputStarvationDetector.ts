@@ -5,7 +5,7 @@
 
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import {
@@ -132,25 +132,22 @@ function evaluateSharedThroughputStarvation(
 
 export class SharedThroughputStarvationDetector extends Detector {
     readonly rule = 'SharedThroughputStarvation' as const;
+    protected readonly notApplicableRootCauses = ['single_collection'];
     evaluateResult = evaluateSharedThroughputStarvation;
     evaluate = (...args: Parameters<typeof evaluateSharedThroughputStarvation>) =>
         evaluateSharedThroughputStarvation(...args).advisory;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
         const t = ctx.thresholds;
-        const out: DerivedAdvisory[] = [];
-        for (const input of ctx.inputs.sharedThroughput ?? []) {
-            const a = this.evaluate(input, {
+
+        return (ctx.inputs.sharedThroughput ?? []).map((input) =>
+            this.evaluateResult(input, {
                 minRequests: t.sharedThroughputMinRequests,
                 poolThrottlePct: t.sharedThroughputPoolThrottlePct,
                 dominancePct: t.sharedThroughputDominancePct,
                 victimThrottlePct: t.sharedThroughputVictimThrottlePct,
                 victimSharePct: t.sharedThroughputVictimSharePct,
-            });
-            if (a) {
-                out.push(a);
-            }
-        }
-        return out;
+            }),
+        );
     }
 }
 

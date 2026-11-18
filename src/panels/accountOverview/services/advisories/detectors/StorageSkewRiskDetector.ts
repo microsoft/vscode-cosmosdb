@@ -6,7 +6,7 @@
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale, hasMinimumKnownResourceAge } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import {
@@ -112,17 +112,13 @@ function evaluateStorageSkewRisk(
 
 export class StorageSkewRiskDetector extends Detector {
     readonly rule = 'StorageSkewRisk' as const;
+    protected readonly notApplicableRootCauses = ['single_partition'];
     evaluateResult = evaluateStorageSkewRisk;
     evaluate = (...args: Parameters<typeof evaluateStorageSkewRisk>) => evaluateStorageSkewRisk(...args).advisory;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
-        const out: DerivedAdvisory[] = [];
-        for (const storage of ctx.inputs.storageSkew ?? ctx.inputs.storage) {
-            const a = this.evaluate(storage, ctx.thresholds.storageSkewBalanceRatio);
-            if (a) {
-                out.push(a);
-            }
-        }
-        return out;
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
+        return (ctx.inputs.storageSkew ?? ctx.inputs.storage).map((storage) =>
+            this.evaluateResult(storage, ctx.thresholds.storageSkewBalanceRatio),
+        );
     }
 }
 

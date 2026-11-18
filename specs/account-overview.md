@@ -99,6 +99,61 @@ The feedback mutation waits for the browser launch; both a refused launch (`fals
 to that notification route rather than completing successfully. The survey helper does not display a duplicate notification.
 No Overview usage scoring, additional questionnaire or automatic survey prompt is introduced.
 
+### Extension telemetry
+
+`cosmosDB.accountOverview.webview.tabViewed` records `tab = monitoring | databases | advisories` and
+`trigger = initial | user | navigation`. The initial event waits until the dashboard can render its tabs.
+A changed selection emits once; selecting the current tab, rerendering, refreshing, or changing filters does not.
+An explicit Explorer navigation emits once for the resulting tab, including reopening the same destination.
+All Overview RPCs and webview events share the in-memory random `panelId` used by the panel's `opened` and `closed` events.
+It is not derived from account identity.
+
+Existing `cosmosDB.rpc.<type>.accountOverview.<procedure>` events retain their timing and thrown-error handling.
+A dedicated Account Overview middleware runs inside the existing RPC telemetry scope. It registers account and
+sensitive input masks before validation or service work, then enriches that same event from the completed read result.
+Resolvers reuse these masks; newly acquired credentials and separate nested telemetry contexts register their own masks.
+Read helpers and advisory collection do not receive telemetry contexts or reporting callbacks.
+The shared telemetry adapter propagates a required `actionContext` through tRPC's context override typing.
+The Overview middleware requires that enriched context, so removing or reordering its telemetry prerequisite is a
+compile-time error rather than a runtime assertion failure.
+Read RPCs additionally report `dataResult = complete | partial | unavailable`, a numeric `readFailureCount`
+(distinct source/kind/reason combinations), and sorted, deduplicated `readFailureSources`, `readFailureKinds`
+and `readFailureReasons` when failures exist. These failures have `errorCategory = infrastructure`.
+Diagnostics include caught failures, optional-client failures, partial Log Analytics responses and late sibling reads,
+even when the RPC returns a usable fallback. Successful empty reads have zero failures, not an exception.
+Metric reads attach only the metric enum, time-range enum and account/database/container scope kind;
+partition reads attach the effective RU/storage mode and time range. Account actions attach the bounded action enum.
+Advisory collection reports finding/check counts, per-tier coverage booleans and cost-failure categories,
+never finding evidence, metric values, billing amounts or scoped identifiers.
+
+Each registered detector also returns a pure coverage summary; it does not receive telemetry contexts or callbacks.
+The existing advisory RPC event reports `detector<Rule>Status` as `evaluated`, `notApplicable`, `insufficientData`,
+`unavailable` or `partial`. `EvaluatedCount` and `MatchedCount` are numeric measurements under the same prefix;
+nonzero `NotApplicableCount` and `InsufficientDataCount` are also measurements. Counts describe actual input evaluations,
+not inferred missing resources. Matches are counted before supersession or UI dismissal.
+Source failures add sorted, deduplicated `detector<Rule>UnavailableReasons` from the shared unavailable-reason enum.
+Known targets without observations remain insufficient/partial; a known empty eligible target set is not applicable.
+Failed or incomplete inventory never implies zero targets, and missing-resource counts are not fabricated.
+Missing configuration fields remain insufficient evidence, not a failed workload-data dependency.
+Required log-query failures affect only their dependent rules; optional cost, request-charge or consistency-charge
+enrichment does not change detector coverage. No per-container or detector-entry/exit events are emitted.
+
+`cosmosDB.accountOverview.webviewError` records subscription failures, render failures and unhandled JavaScript
+errors/rejections with `errorCategory = webview`, `failureKind` and an optional bounded subscription name.
+It deliberately omits original messages, stacks and rejection payloads. Query/mutation errors are reported only by
+the existing host RPC middleware, not again by a client RPC observer. Global webview error/rejection handlers also
+exclude tRPC client errors. Telemetry failures are caught locally and excluded from recursive reporting.
+There is no additional client RPC telemetry middleware: tab visits depend on visible React state, while ErrorBoundary,
+global handlers and subscription callbacks cover failures outside ordinary query/mutation execution.
+
+The host validates webview telemetry names and property values against a bounded schema and drops unknown fields.
+Webview event and read-result schemas live in the telemetry contract; diagnostic categories share one runtime list
+with their domain types rather than maintaining separate telemetry enums.
+No account/resource identities, database/container names, partition keys, URLs, queries, error payloads or deterministic
+hashes are added as telemetry fields. Detailed sanitized diagnostics remain in local Output.
+Background reads and best-effort telemetry suppress native notifications. Existing inline errors and the single native
+notification owner for explicit auxiliary actions remain unchanged; ordinary RPC failures still reach their caller.
+
 ### Refresh dependency matrix
 
 | Trigger                                       | Reads or state changes                                                                                                                                                                                     |

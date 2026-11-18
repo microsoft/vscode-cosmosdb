@@ -6,7 +6,7 @@
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import {
@@ -104,23 +104,20 @@ function evaluateCrossPartitionQuery(
 
 export class CrossPartitionQueryDetector extends Detector {
     readonly rule = 'CrossPartitionQuery' as const;
+    protected readonly notApplicableRootCauses = ['single_partition_container'];
     evaluateResult = evaluateCrossPartitionQuery;
     evaluate = (...args: Parameters<typeof evaluateCrossPartitionQuery>) =>
         evaluateCrossPartitionQuery(...args).advisory;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
         const t = ctx.thresholds;
-        const out: DerivedAdvisory[] = [];
-        for (const input of ctx.inputs.crossPartition ?? []) {
-            const a = this.evaluate(input, {
+
+        return (ctx.inputs.crossPartition ?? []).map((input) =>
+            this.evaluateResult(input, {
                 minQueries: t.crossPartitionMinQueries,
                 fanoutThreshold: t.crossPartitionFanoutThreshold,
                 medPct: t.crossPartitionMedPct,
-            });
-            if (a) {
-                out.push(a);
-            }
-        }
-        return out;
+            }),
+        );
     }
 }
 

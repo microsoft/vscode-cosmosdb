@@ -69,8 +69,9 @@ import {
  *    (`cosmosDB.NoSQL.webview.event.${webviewName}.${eventName}`).
  *
  *  - `actionContext` — the full `IActionContext` from
- *    `@microsoft/vscode-azext-utils`, populated by `telemetryMiddlewareImpl`
- *    in `trpc.ts`. Use this when you need azext-utils features beyond
+ *    `@microsoft/vscode-azext-utils`, populated by the typed telemetry adapter
+ *    in `trpc.ts`. It is optional before that middleware and required after it.
+ *    Use this when you need azext-utils features beyond
  *    plain telemetry — for example, `actionContext.errorHandling
  *    .suppressDisplay`, `.telemetry.suppressIfSuccessful`, or to thread
  *    the context into another `callWithTelemetryAndErrorHandling`-aware
@@ -167,6 +168,7 @@ export type MigrationRouterContext = CosmosDBRouterContext & {
 
 export type AccountOverviewRouterContext = CosmosDBRouterContext & {
     metadata: AzureResourceMetadata;
+    panelId?: string;
     getInitialization: () => AccountOverviewNavigation;
     onNavigation: vscode.Event<AccountOverviewNavigation>;
 };

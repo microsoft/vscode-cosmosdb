@@ -33,6 +33,7 @@ import {
     type DerivedAdvisory,
     type DerivedAdvisoryRule,
     type DerivedAdvisoryThresholds,
+    type DetectorCoverage,
     type IdleContainerInput,
     type IndexingUsageInput,
     type LogsSourceStatus,
@@ -45,8 +46,9 @@ import {
     type UncontrolledIngestionInput,
 } from './core/types';
 import { enrichAdvisoryCosts } from './costEstimates';
+import { completeDetectorCoverage } from './coverage';
 import { expensiveConsistencyDetector } from './detectors/ExpensiveConsistencyDetector';
-import { computeDerivedAdvisories } from './engine';
+import { analyzeDerivedAdvisories } from './engine';
 import { type CostContext } from './fetchers/costManagement';
 import {
     fetchConsistencyReadRu,
@@ -141,6 +143,7 @@ export interface CollectedDerivedAdvisories {
     logSource: LogsSourceStatus;
     metricSource: MetricSourceStatus;
     costSource?: CostSourceStatus;
+    detectorCoverage: DetectorCoverage[];
 }
 
 /** The Tier-2 inputs gathered from Log Analytics plus the coverage status the card surfaces. */
@@ -226,7 +229,7 @@ async function getAccountCreatedAt(
 /**
  * Gathers the telemetry the derived-advisory rules need — authoritative offer inventory, per-offer/manual RU history,
  * per-container partition/storage signals, account-level serverless shape, and Tier-2 Log Analytics evidence — then
- * runs {@link computeDerivedAdvisories}. Failures degrade to per-rule coverage rather than blanking config-only checks.
+ * runs {@link analyzeDerivedAdvisories}. Failures degrade to per-rule coverage rather than blanking config-only checks.
  */
 export async function collectDerivedAdvisories(
     params: CollectDerivedAdvisoriesParams,
@@ -692,7 +695,7 @@ export async function collectDerivedAdvisories(
         params.logsClientFailure,
     );
 
-    const advisories = computeDerivedAdvisories(
+    const { advisories, detectorCoverage } = analyzeDerivedAdvisories(
         {
             manualThroughput,
             serverlessThrottling,
@@ -753,6 +756,29 @@ export async function collectDerivedAdvisories(
         advisoryThresholds,
     );
 
+    const metricSource = { available: metricFailures.length === 0, failures: metricFailures };
+    const targetCounts: Partial<Record<DerivedAdvisoryRule, number>> = {
+        ServerlessCandidate: isServerless ? 0 : 1,
+        ...(inventory.value?.throughputInventoryComplete === true &&
+            invalidOfferScopes.size === 0 && {
+                HotPartitionRisk: offerTargets.length,
+                SustainedThrottlingInRegion: offerTargets.length,
+                OverProvisioning: manualTargets.length,
+                AutoscaleCandidate: manualTargets.length,
+                IdleContainer: offerTargets.length,
+                StorageGrowthRisk: offerTargets.filter((offer) => offer.containerId !== undefined).length,
+                StorageSkewRisk: offerTargets.filter((offer) => offer.containerId !== undefined).length,
+                IndexingCostRisk: rows.filter((row) => row.indexingMode.toLowerCase() !== 'none').length,
+                PartitionMergeCandidate: dedicatedTargets.length,
+                AutoscaleMaxOverProvisioned: autoscaleTargets.length,
+                AutoscaleToManualCandidate: autoscaleTargets.length,
+                ServerlessThrottling: serverlessTargets.length,
+                CrossPartitionQuery: logTargets.length,
+                ShardKeyMisalignment: logTargets.length,
+                UncontrolledIngestion: dedicatedTargets.length,
+                SharedThroughputStarvation: offerTargets.filter((offer) => offer.offerLevel === 'database').length,
+            }),
+    };
     const costSource = await enrichAdvisoryCosts({
         advisories,
         cosmosClient,
@@ -763,10 +789,16 @@ export async function collectDerivedAdvisories(
         inventoryFailureReason: inventory.reason,
         now,
     });
+
     return {
         advisories,
         logSource: logs.logSource,
-        metricSource: { available: metricFailures.length === 0, failures: metricFailures },
+        metricSource,
+        detectorCoverage: completeDetectorCoverage(detectorCoverage, {
+            metricSource,
+            logSource: logs.logSource,
+            targetCounts,
+        }),
         ...(costSource && { costSource }),
     };
 }

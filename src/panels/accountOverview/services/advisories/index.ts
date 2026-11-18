@@ -14,6 +14,7 @@ export * from './core/Detector';
 export * from './engine';
 export * from './registry';
 export * from './collect';
+export * from './coverage';
 
 export * from './detectors/storageMath';
 export * from './detectors/HotPartitionRiskDetector';

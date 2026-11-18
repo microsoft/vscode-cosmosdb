@@ -5,6 +5,7 @@
 
 import { Button, makeStyles, Spinner, tokens, typographyStyles, useAnnounce } from '@fluentui/react-components';
 import { useRpcEvents, useTrpcClient } from '@microsoft/vscode-ext-webview/react';
+import { isTRPCClientError } from '@trpc/client';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { deriveOverviewHealth } from '../../../panels/accountOverview/overviewHealthModel';
@@ -27,6 +28,8 @@ import {
     type TimeRange,
     type UnavailableReason,
 } from '../../api/types';
+import { BaseContextProvider } from '../../utils/context/BaseContextProvider';
+import { ErrorBoundary } from '../../utils/ErrorBoundary';
 import { AccountActions, type AccountActionFailure } from './AccountActions';
 import { AccountHeader, type AccountSummary } from './AccountHeader';
 import { healthIndicatorDescriptions } from './AccountHealthStatus';
@@ -42,6 +45,7 @@ import { Recommendations } from './Recommendations';
 import { type OverviewTab, TabbedOverviewLayout } from './TabbedOverviewLayout';
 import { useOverviewHealthSignals } from './useOverviewHealthSignals';
 import { useOverviewNavigation } from './useOverviewNavigation';
+import { useOverviewTelemetry } from './useOverviewTelemetry';
 
 const NATIVE_ERROR_ACTIONS = new Set([
     'accountOverview.openUrl',
@@ -98,6 +102,42 @@ type Inventory = ReadDiagnosticsResult & {
 };
 
 export const AccountOverview = () => {
+    const client = useTrpcClient<AccountOverviewAppRouter>();
+    const { reportError } = useOverviewTelemetry();
+    const provider = useMemo(() => {
+        const context = new BaseContextProvider<AccountOverviewAppRouter>(() => {}, client);
+        context.reportWebviewError = async () => reportError({ kind: 'render' });
+        return context;
+    }, [client, reportError]);
+
+    useEffect(() => {
+        // RPC failures belong to the host middleware, even when a caller leaves them unhandled.
+        const onError = (event: ErrorEvent) => {
+            if (!isTRPCClientError(event.error)) {
+                reportError({ kind: 'unhandledError' });
+            }
+        };
+        const onRejection = (event: PromiseRejectionEvent) => {
+            if (!isTRPCClientError(event.reason)) {
+                reportError({ kind: 'unhandledRejection' });
+            }
+        };
+        window.addEventListener('error', onError);
+        window.addEventListener('unhandledrejection', onRejection);
+        return () => {
+            window.removeEventListener('error', onError);
+            window.removeEventListener('unhandledrejection', onRejection);
+        };
+    }, [reportError]);
+
+    return (
+        <ErrorBoundary provider={provider}>
+            <OverviewContent />
+        </ErrorBoundary>
+    );
+};
+
+const OverviewContent = () => {
     const { navigation, failed, retry } = useOverviewNavigation();
     const [accountDeleted, setAccountDeleted] = useState(false);
     return (
@@ -132,6 +172,7 @@ export const OverviewDashboard = ({
 }) => {
     const styles = useStyles();
     const trpcClient = useTrpcClient<AccountOverviewAppRouter>();
+    const { reportEvent, reportError } = useOverviewTelemetry();
     const rpcEvents = useRpcEvents();
     const { announce } = useAnnounce();
     const [isAIFeaturesEnabled, setIsAIFeaturesEnabled] = useState(false);
@@ -142,34 +183,37 @@ export const OverviewDashboard = ({
         const subscription = trpcClient.accountOverview.feedbackEnabled.subscribe(undefined, {
             onData: setFeedbackEnabled,
             onError: (error) => {
+                reportError({ kind: 'subscription', operation: 'feedbackEnabled' });
                 setFeedbackEnabled(false);
                 console.error('Unable to receive Account Overview feedback availability.', error);
             },
         });
         return () => subscription.unsubscribe();
-    }, [trpcClient]);
+    }, [trpcClient, reportError]);
 
     useEffect(() => {
         const subscription = trpcClient.accountOverview.dataModelerEnabled.subscribe(undefined, {
             onData: setIsDataModelerEnabled,
             onError: (error) => {
+                reportError({ kind: 'subscription', operation: 'dataModelerEnabled' });
                 setIsDataModelerEnabled(false);
                 console.error('Unable to receive Account Overview Data Modeler availability.', error);
             },
         });
         return () => subscription.unsubscribe();
-    }, [trpcClient]);
+    }, [trpcClient, reportError]);
 
     useEffect(() => {
         const subscription = trpcClient.accountOverview.aiFeaturesEnabled.subscribe(undefined, {
             onData: setIsAIFeaturesEnabled,
             onError: (error) => {
+                reportError({ kind: 'subscription', operation: 'aiFeaturesEnabled' });
                 setIsAIFeaturesEnabled(false);
                 console.error('Unable to receive Account Overview AI feature availability.', error);
             },
         });
         return () => subscription.unsubscribe();
-    }, [trpcClient]);
+    }, [trpcClient, reportError]);
 
     useEffect(
         () =>
@@ -283,12 +327,25 @@ export const OverviewDashboard = ({
         }
     }, [creationBusy]);
 
-    const reportEvent = useCallback(
-        (eventName: string, properties?: Record<string, string>, measurements?: Record<string, number>) => {
-            void trpcClient.accountOverview.reportEvent.mutate({ eventName, properties, measurements });
-        },
-        [trpcClient],
-    );
+    const lastViewedTab = useRef<{ tab: OverviewTab; revision: number } | undefined>(undefined);
+    useEffect(() => {
+        if (!summary || !inventory) {
+            return;
+        }
+        const previous = lastViewedTab.current;
+        // Navigation first updates the requested target, then the selected tab in a separate effect.
+        if (previous?.revision !== navigationRevision && selectedTab !== requestedTab) {
+            return;
+        }
+        if (previous?.tab === selectedTab && previous.revision === navigationRevision) {
+            return;
+        }
+        lastViewedTab.current = { tab: selectedTab, revision: navigationRevision };
+        reportEvent('tabViewed', {
+            tab: selectedTab,
+            trigger: !previous ? 'initial' : previous.revision !== navigationRevision ? 'navigation' : 'user',
+        });
+    }, [summary, inventory, selectedTab, navigationRevision, requestedTab, reportEvent]);
 
     const fetchSummary = useCallback(() => {
         return trpcClient.accountOverview.getAccountSummary.query().then((result: AccountSummary) => {

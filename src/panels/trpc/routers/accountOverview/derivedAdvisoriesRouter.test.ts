@@ -58,6 +58,7 @@ describe('account advisory acquisition', () => {
         vi.mocked(collectDerivedAdvisories).mockResolvedValueOnce({
             advisories: [],
             logSource: { available: true },
+            detectorCoverage: [],
             metricSource: { available: true, failures: [] },
         });
         await getDerivedAdvisoriesForAccount(metadata({ enableMultipleWriteLocations: writes }));
@@ -77,6 +78,7 @@ describe('account advisory acquisition', () => {
         vi.mocked(collectDerivedAdvisories).mockResolvedValueOnce({
             advisories: [],
             metricSource: { available: true, failures: [] },
+            detectorCoverage: [],
             logSource: { available: false, reason: 'rbac', failures: [{ operation: 'client', kind, reason: 'rbac' }] },
         });
         const result = await getDerivedAdvisoriesForAccount(input);
@@ -104,6 +106,7 @@ describe('account advisory acquisition', () => {
         vi.mocked(collectDerivedAdvisories).mockResolvedValueOnce({
             advisories: [],
             logSource: { available: true },
+            detectorCoverage: [],
             metricSource,
         });
         const result = await getDerivedAdvisoriesForAccount(metadata());
@@ -121,6 +124,7 @@ describe('account advisory acquisition', () => {
         vi.mocked(collectDerivedAdvisories).mockResolvedValueOnce({
             advisories: [],
             logSource: { available: true },
+            detectorCoverage: [],
             metricSource: { available: true, failures: [] },
         });
         const result = await getDerivedAdvisoriesForAccount(metadata());
@@ -141,6 +145,7 @@ describe('account advisory acquisition', () => {
             vi.mocked(collectDerivedAdvisories).mockResolvedValueOnce({
                 advisories: [],
                 logSource: { available: true },
+                detectorCoverage: [],
                 metricSource: { available: true, failures: [] },
             });
             const account = { backupPolicy, enableAllVersionsAndDeletesChangeFeed: enabled };
@@ -189,6 +194,7 @@ describe('account advisory acquisition', () => {
         vi.mocked(collectDerivedAdvisories).mockResolvedValueOnce({
             advisories: [],
             logSource: { available: true },
+            detectorCoverage: [],
             metricSource: { available: true, failures: [] },
         });
         await getDerivedAdvisoriesForAccount(
@@ -217,6 +223,7 @@ describe('account advisory acquisition', () => {
         vi.mocked(collectDerivedAdvisories).mockResolvedValueOnce({
             advisories: [],
             logSource: { available: true },
+            detectorCoverage: [],
             metricSource: { available: true, failures: [] },
         });
         const input = metadata({ locations: [{ locationName: 'East US' }, {}] });
@@ -252,6 +259,7 @@ describe('account advisory acquisition', () => {
         vi.mocked(collectDerivedAdvisories).mockResolvedValueOnce({
             advisories: [],
             logSource: { available: false, reason: 'noData' },
+            detectorCoverage: [],
             metricSource: { available: true, failures: [] },
         });
         await getDerivedAdvisoriesForAccount(input);
@@ -331,6 +339,7 @@ describe('account advisory acquisition', () => {
         vi.mocked(collectDerivedAdvisories).mockResolvedValueOnce({
             advisories: [],
             logSource: { available: false, reason: 'noData' },
+            detectorCoverage: [],
             metricSource: { available: true, failures: [] },
         });
         await getDerivedAdvisoriesForAccount(metadata(account));
@@ -354,6 +363,24 @@ describe('account advisory acquisition', () => {
         expect(result.advisories).toEqual([expect.objectContaining({ rule: 'ExpensiveConsistency' })]);
         expect(result.metricSource?.failures.every((failure) => failure.reason === 'rbac')).toBe(true);
         expect(result.diagnostics).toEqual([{ source: 'metrics', kind: 'accessDenied', reason: 'rbac' }]);
+        expect(result.detectorCoverage).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    rule: 'HotPartitionRisk',
+                    status: 'unavailable',
+                    evaluatedCount: 0,
+                    matchedCount: 0,
+                    unavailableReasons: ['rbac'],
+                }),
+                expect.objectContaining({
+                    rule: 'ExpensiveConsistency',
+                    status: 'evaluated',
+                    evaluatedCount: 1,
+                    matchedCount: 1,
+                    unavailableReasons: [],
+                }),
+            ]),
+        );
         expect(vscode.workspace.getConfiguration).not.toHaveBeenCalled();
     });
 
@@ -370,6 +397,7 @@ describe('account advisory acquisition', () => {
         vi.mocked(collectDerivedAdvisories).mockResolvedValueOnce({
             advisories: [],
             metricSource: { available: true, failures: [] },
+            detectorCoverage: [],
             logSource: { available: false, reason: 'noData' },
         });
         const result = await getDerivedAdvisoriesForAccount(input);
@@ -386,6 +414,7 @@ describe('account advisory acquisition', () => {
         vi.mocked(collectDerivedAdvisories).mockResolvedValueOnce({
             advisories: [],
             logSource: { available: false, reason: 'noData' },
+            detectorCoverage: [],
             metricSource,
         });
         const result = await getDerivedAdvisoriesForAccount(input);

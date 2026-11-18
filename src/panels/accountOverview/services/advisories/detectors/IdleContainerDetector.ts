@@ -6,7 +6,7 @@
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { type ThroughputMode } from '../../inventory';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { capacityMaterialitySeverity, clampRationale, hasMinimumKnownResourceAge, offerScope } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import { type AdvisoryEvaluation, type DerivedAdvisory, type IdleContainerInput } from '../core/types';
@@ -114,24 +114,19 @@ function evaluateIdleContainer(
 
 export class IdleContainerDetector extends Detector {
     readonly rule = 'IdleContainer' as const;
+    protected readonly notApplicableRootCauses = ['not_applicable'];
     readonly supersedes = ['OverProvisioning', 'AutoscaleMaxOverProvisioned'] as const;
     appliesTo(mode: ThroughputMode): boolean {
         return mode === 'autoscale' || MANUAL_THROUGHPUT_MODES.has(mode);
     }
     evaluateResult = evaluateIdleContainer;
     evaluate = (...args: Parameters<typeof evaluateIdleContainer>) => evaluateIdleContainer(...args).advisory;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
-        const out: DerivedAdvisory[] = [];
-        for (const idle of ctx.inputs.idleContainers ?? []) {
-            if (!this.appliesTo(idle.throughputMode)) {
-                continue;
-            }
-            const a = this.evaluate(idle, ctx.thresholds.idlePeakRuPerBucket, ctx.inputs.scopeProvisionedRuTotal);
-            if (a) {
-                out.push(a);
-            }
-        }
-        return out;
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
+        return (ctx.inputs.idleContainers ?? []).map((idle) =>
+            this.appliesTo(idle.throughputMode)
+                ? this.evaluateResult(idle, ctx.thresholds.idlePeakRuPerBucket, ctx.inputs.scopeProvisionedRuTotal)
+                : { rootCause: 'not_applicable' },
+        );
     }
 }
 

@@ -9,7 +9,8 @@ import { ext } from '../../../../extensionVariables';
 import { createLogsOutputReporter } from '../../../accountOverview/logsOutput';
 import {
     collectDerivedAdvisories,
-    computeDerivedAdvisories,
+    analyzeDerivedAdvisories,
+    completeDetectorCoverage,
     configurationFailures,
     classifyPaidContinuousBackup,
     type AccountConfigInput,
@@ -20,7 +21,7 @@ import {
     classifyLogsFailure,
     type LogsDiagnostic,
 } from '../../../accountOverview/services/advisories/fetchers/logsDiagnostics';
-import { DETECTORS } from '../../../accountOverview/services/advisories/registry';
+import { CONFIGURATION_ONLY_RULES, DETECTORS } from '../../../accountOverview/services/advisories/registry';
 import {
     readRequest,
     recordReadFailure,
@@ -98,9 +99,8 @@ async function collectForAccount(metadata: AdvisoryAccountMetadata): Promise<Der
                 : undefined,
     };
     const advisoryThresholds = DEFAULT_ADVISORY_THRESHOLDS;
-    const configOnly = (reason: UnavailableReason): DerivedAdvisoriesResult => ({
-        available: true,
-        advisories: computeDerivedAdvisories(
+    const configOnly = (reason: UnavailableReason): DerivedAdvisoriesResult => {
+        const analysis = analyzeDerivedAdvisories(
             {
                 weeklyRuPercents: [],
                 hasManualThroughput: false,
@@ -111,17 +111,14 @@ async function collectForAccount(metadata: AdvisoryAccountMetadata): Promise<Der
                 accountConfig,
             },
             advisoryThresholds,
-        ),
-        metricSource: {
+        );
+        const metricSource = {
             available: false,
             failures: [
                 ...configurationFailures(accountConfig),
                 ...DETECTORS.filter(
                     ({ rule }) =>
-                        rule !== 'ExpensiveConsistency' &&
-                        rule !== 'MultiRegionWriteAntipattern' &&
-                        rule !== 'PaidContinuousBackup' &&
-                        rule !== 'PerRegionAutoscaleCandidate' &&
+                        !CONFIGURATION_ONLY_RULES.includes(rule) &&
                         !(rule === 'ReservedCapacityCandidate' && metadata.isServerless) &&
                         rule !== 'CrossPartitionQuery' &&
                         rule !== 'ShardKeyMisalignment' &&
@@ -129,21 +126,38 @@ async function collectForAccount(metadata: AdvisoryAccountMetadata): Promise<Der
                         rule !== 'SharedThroughputStarvation',
                 ).map(({ rule }) => ({ rule, reason })),
             ],
-        },
-        logSource: { available: false, reason },
-        ...(classifyPaidContinuousBackup(accountConfig).rootCause === 'nonprod_paid_continuous_backup' && {
-            costSource: {
-                available: false,
-                failures: [
-                    {
-                        operation: 'backup',
-                        kind: reason === 'unsupported' ? 'unsupported' : reason === 'rbac' ? 'accessDenied' : 'noData',
-                    },
-                ],
-            },
-        }),
-        generatedAt: Date.now(),
-    });
+        };
+        const logSource = { available: false, reason };
+
+        return {
+            available: true,
+            advisories: analysis.advisories,
+            metricSource,
+            logSource,
+            detectorCoverage: completeDetectorCoverage(analysis.detectorCoverage, {
+                metricSource,
+                logSource,
+                targetCounts: { ServerlessCandidate: metadata.isServerless ? 0 : 1 },
+            }),
+            ...(classifyPaidContinuousBackup(accountConfig).rootCause === 'nonprod_paid_continuous_backup' && {
+                costSource: {
+                    available: false,
+                    failures: [
+                        {
+                            operation: 'backup',
+                            kind:
+                                reason === 'unsupported'
+                                    ? 'unsupported'
+                                    : reason === 'rbac'
+                                      ? 'accessDenied'
+                                      : 'noData',
+                        },
+                    ],
+                },
+            }),
+            generatedAt: Date.now(),
+        };
+    };
 
     if (api !== API.Core) {
         return configOnly('unsupported');

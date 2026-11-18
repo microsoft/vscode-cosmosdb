@@ -18,6 +18,7 @@ import {
 import { createEventChannel } from '@microsoft/vscode-ext-webview/webview';
 import { act, createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { TRPCClientError } from '@trpc/client';
 import { type PropsWithChildren } from 'react';
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { getAccountMetricApplicability } from '../../../panels/accountOverview/metrics/contracts';
@@ -66,6 +67,7 @@ const queries = vi.hoisted(() => ({
     unsubscribeAI: vi.fn(),
     unsubscribe: vi.fn(),
     reportEvent: vi.fn(),
+    reportError: vi.fn(),
     reveal: vi.fn(),
     queryEditor: vi.fn(),
     accountAction: vi.fn(),
@@ -99,6 +101,7 @@ vi.mock('@microsoft/vscode-ext-webview/react', () => {
             provideFeedback: { mutate: queries.provideFeedback },
             dataModelerEnabled: { subscribe: queries.dataModelerEnabled },
             reportEvent: { mutate: queries.reportEvent },
+            reportError: { mutate: queries.reportError },
             revealInTree: { mutate: queries.reveal },
             openQueryEditor: { mutate: queries.queryEditor },
             runAccountAction: { mutate: queries.accountAction },
@@ -209,6 +212,8 @@ beforeEach(() => {
         return { unsubscribe: queries.unsubscribeFeedback };
     });
     queries.provideFeedback.mockResolvedValue(undefined);
+    queries.reportEvent.mockResolvedValue(undefined);
+    queries.reportError.mockResolvedValue(undefined);
     queries.dataModelerEnabled.mockImplementation((_input: unknown, next: typeof modelerCallbacks) => {
         modelerCallbacks = next;
         next.onData(true);
@@ -2308,7 +2313,6 @@ describe('alert monitor condition and active health', () => {
                 {
                     eventName: 'deepLinkFollowed',
                     properties: { target: 'portal' },
-                    measurements: undefined,
                 },
             ],
         ]);
@@ -3193,7 +3197,6 @@ describe('Advisor recommendation accessibility', () => {
                 {
                     eventName: 'recommendationClicked',
                     properties: { source: 'advisor', impact: recommendation.impact },
-                    measurements: undefined,
                 },
             ]),
         );
@@ -3481,6 +3484,143 @@ describe('tabbed Account Overview', () => {
         expect(hot).toHaveClass(badgeClassNames.root);
         expect(hot).not.toHaveAttribute('tabindex');
         expect(hot).not.toHaveAttribute('aria-hidden');
+    });
+
+    it('reports the initial tab once in Strict Mode and user visits to all three tabs', async () => {
+        const user = userEvent.setup();
+        render(<AccountOverview />, { wrapper: Wrapper, reactStrictMode: true });
+        const monitoring = await screen.findByRole('tab', { name: 'Monitoring' });
+        const visits = () =>
+            queries.reportEvent.mock.calls.map(([event]) => event).filter((event) => event.eventName === 'tabViewed');
+        await waitFor(() =>
+            expect(visits()).toEqual([
+                {
+                    eventName: 'tabViewed',
+                    properties: { tab: 'monitoring', trigger: 'initial' },
+                },
+            ]),
+        );
+        await user.click(monitoring);
+        await user.click(screen.getByRole('tab', { name: 'Databases and Containers' }));
+        await user.keyboard('{ArrowRight}{Enter}');
+        await user.click(monitoring);
+        expect(visits()).toEqual([
+            { eventName: 'tabViewed', properties: { tab: 'monitoring', trigger: 'initial' } },
+            { eventName: 'tabViewed', properties: { tab: 'databases', trigger: 'user' } },
+            { eventName: 'tabViewed', properties: { tab: 'advisories', trigger: 'user' } },
+            { eventName: 'tabViewed', properties: { tab: 'monitoring', trigger: 'user' } },
+        ]);
+        await chooseHeaderOption(user, /^Metric time range:/, 'Last 7 days');
+        expect(visits()).toHaveLength(4);
+    });
+
+    it('waits for visible tabs and reports the latest pending destination, not a phantom initial tab', async () => {
+        const pending = Promise.withResolvers<{
+            supported: boolean;
+            available: boolean;
+            rows: InventoryContainerRow[];
+        }>();
+        queries.inventory.mockReturnValue(pending.promise);
+        render(<AccountOverview />, { wrapper: Wrapper });
+        await waitFor(() => expect(queries.summary).toHaveBeenCalled());
+        expect(queries.reportEvent.mock.calls.some(([event]) => event.eventName === 'tabViewed')).toBe(false);
+        navigate('advisories', 1);
+        await act(async () => pending.resolve({ supported: true, available: true, rows }));
+        expect(await screen.findByRole('tab', { name: 'Advisories' })).toHaveAttribute('aria-selected', 'true');
+        expect(queries.reportEvent.mock.calls.filter(([event]) => event.eventName === 'tabViewed')).toEqual([
+            [{ eventName: 'tabViewed', properties: { tab: 'advisories', trigger: 'initial' } }],
+        ]);
+    });
+
+    it('reports Explorer navigation once for the resulting tab, including repeated destinations', async () => {
+        initialTarget = 'advisories';
+        render(<AccountOverview />, { wrapper: Wrapper });
+        await screen.findByRole('tab', { name: 'Advisories' });
+        navigate('overview', 1);
+        navigate('overview', 2);
+        navigate('advisories', 3);
+        expect(queries.reportEvent.mock.calls.filter(([event]) => event.eventName === 'tabViewed')).toEqual([
+            [{ eventName: 'tabViewed', properties: { tab: 'advisories', trigger: 'initial' } }],
+            [{ eventName: 'tabViewed', properties: { tab: 'monitoring', trigger: 'navigation' } }],
+            [{ eventName: 'tabViewed', properties: { tab: 'monitoring', trigger: 'navigation' } }],
+            [{ eventName: 'tabViewed', properties: { tab: 'advisories', trigger: 'navigation' } }],
+        ]);
+    });
+
+    it('reports subscription failures without duplicating RPC errors, cancellations or reporting failures', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        render(<AccountOverview />, { wrapper: Wrapper });
+        await screen.findByRole('tab', { name: 'Monitoring' });
+        const privateError = new Error('private-account/private-db');
+        act(() => {
+            rpcEvents.emitError(privateError, { type: 'query', path: 'accountOverview.getAlerts' });
+            rpcEvents.emitError(privateError, { type: 'mutation', path: 'accountOverview.runAccountAction' });
+            rpcEvents.emitAborted({ type: 'query', path: 'accountOverview.getInventory' });
+            rpcEvents.emitError(privateError, { type: 'mutation', path: 'accountOverview.reportEvent' });
+            rpcEvents.emitError(privateError, { type: 'mutation', path: 'accountOverview.reportError' });
+            callbacks.onError();
+            feedbackCallbacks.onError(privateError);
+            modelerCallbacks.onError(privateError);
+            aiCallbacks.onError(privateError);
+        });
+        expect(queries.reportError.mock.calls).toEqual([
+            [{ kind: 'subscription', operation: 'navigation' }],
+            [{ kind: 'subscription', operation: 'feedbackEnabled' }],
+            [{ kind: 'subscription', operation: 'dataModelerEnabled' }],
+            [{ kind: 'subscription', operation: 'aiFeaturesEnabled' }],
+        ]);
+        expect(queries.showErrorMessage).not.toHaveBeenCalled();
+    });
+
+    it('catches render failures without forwarding their message or stack', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        queries.summary.mockResolvedValue({ ...summary, metricApplicability: undefined });
+        render(<AccountOverview />, { wrapper: Wrapper });
+        expect(await screen.findByText('An unexpected error occurred')).toBeVisible();
+        expect(queries.reportError).toHaveBeenCalledWith({ kind: 'render' });
+        expect(queries.reportError.mock.calls.every(([failure]) => Object.keys(failure).length === 1)).toBe(true);
+    });
+
+    it('observes unhandled webview errors without payloads and removes observers on unmount', async () => {
+        const { unmount } = render(<AccountOverview />, { wrapper: Wrapper });
+        await screen.findByRole('tab', { name: 'Monitoring' });
+        window.dispatchEvent(new ErrorEvent('error', { message: 'private-query', filename: 'private-path' }));
+        window.dispatchEvent(new Event('unhandledrejection'));
+        expect(queries.reportError.mock.calls).toEqual([
+            [{ kind: 'unhandledError' }],
+            [{ kind: 'unhandledRejection' }],
+        ]);
+        unmount();
+        window.dispatchEvent(new ErrorEvent('error'));
+        window.dispatchEvent(new Event('unhandledrejection'));
+        rpcEvents.emitError(new Error('private-error'), { type: 'query', path: 'accountOverview.getAlerts' });
+        expect(queries.reportError).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not report unhandled RPC errors again through global webview handlers', async () => {
+        render(<AccountOverview />, { wrapper: Wrapper });
+        await screen.findByRole('tab', { name: 'Monitoring' });
+        const error = TRPCClientError.from(new Error('private-resource'));
+        const rejection = new Event('unhandledrejection');
+        Object.defineProperty(rejection, 'reason', { value: error });
+        window.dispatchEvent(new ErrorEvent('error', { error }));
+        window.dispatchEvent(rejection);
+        expect(queries.reportError).not.toHaveBeenCalled();
+    });
+
+    it('logs reporting failures without affecting navigation or starting a reporting loop', async () => {
+        const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+        queries.reportEvent.mockRejectedValue(new Error('Telemetry unavailable'));
+        queries.reportError.mockRejectedValue(new Error('Telemetry unavailable'));
+        render(<AccountOverview />, { wrapper: Wrapper });
+        const tab = await screen.findByRole('tab', { name: 'Monitoring' });
+        act(() => callbacks.onError());
+        await waitFor(() =>
+            expect(log).toHaveBeenCalledWith('Unable to report Account Overview failure.', expect.any(Error)),
+        );
+        expect(tab).toHaveAttribute('aria-selected', 'true');
+        expect(queries.reportError).toHaveBeenCalledTimes(1);
+        expect(queries.showErrorMessage).not.toHaveBeenCalled();
     });
 
     it('defaults to Monitoring with three peer tabs and expanded Account details', async () => {

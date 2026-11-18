@@ -6,15 +6,18 @@
 import { type LogsFailureKind } from './services/advisories/fetchers/logsDiagnostics';
 import { type UnavailableReason } from './services/shared';
 
-export type ReadSource =
-    | 'account'
-    | 'inventory'
-    | 'metrics'
-    | 'activityLog'
-    | 'advisor'
-    | 'alerts'
-    | 'alertCounts'
-    | 'logs';
+export const READ_SOURCES = [
+    'account',
+    'inventory',
+    'metrics',
+    'activityLog',
+    'advisor',
+    'alerts',
+    'alertCounts',
+    'logs',
+] as const;
+
+export type ReadSource = (typeof READ_SOURCES)[number];
 
 /** Only bounded categories cross the RPC boundary; service messages and identifiers remain local to Output. */
 export interface ReadFailure {

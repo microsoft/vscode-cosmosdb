@@ -6,7 +6,7 @@
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { percentile } from '../../shared';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import {
     capacityMaterialitySeverity,
     clampRationale,
@@ -181,21 +181,15 @@ function evaluateManualThroughput(
 
 export class OverProvisioningDetector extends Detector {
     readonly rule = 'OverProvisioning' as const;
+    protected readonly notApplicableRootCauses = ['not_applicable'];
     evaluate = evaluateOverProvisioning;
     evaluateResult = evaluateManualThroughput;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
         const { inputs, thresholds } = ctx;
         if (inputs.manualThroughput !== undefined) {
-            return inputs.manualThroughput
-                .map(
-                    (input) =>
-                        this.evaluateResult(
-                            input,
-                            thresholds.overProvisioningBandPercent,
-                            inputs.scopeProvisionedRuTotal,
-                        ).advisory,
-                )
-                .filter((advisory): advisory is DerivedAdvisory => advisory !== undefined);
+            return inputs.manualThroughput.map((input) =>
+                this.evaluateResult(input, thresholds.overProvisioningBandPercent, inputs.scopeProvisionedRuTotal),
+            );
         }
         const advisory = this.evaluate(
             percentile(inputs.weeklyRuPercents, DIAGNOSTIC_POLICY.overProvisioning.percentile),
@@ -205,7 +199,16 @@ export class OverProvisioningDetector extends Detector {
             inputs.hasManualThroughput,
             inputs.manualProvisionedRuTotal,
         );
-        return advisory ? [advisory] : [];
+        return [
+            {
+                advisory,
+                rootCause: !inputs.hasManualThroughput
+                    ? 'not_applicable'
+                    : inputs.weeklyRuPercents.length === 0
+                      ? 'insufficient_data'
+                      : 'evaluated',
+            },
+        ];
     }
 }
 

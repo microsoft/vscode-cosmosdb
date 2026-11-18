@@ -5,7 +5,7 @@
 
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale, finiteNumbers, hasMinimumKnownResourceAge, mean, offerScope } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import {
@@ -128,10 +128,11 @@ function evaluateManualThroughput(
 
 export class AutoscaleCandidateDetector extends Detector {
     readonly rule = 'AutoscaleCandidate' as const;
+    protected readonly notApplicableRootCauses = ['not_applicable'];
     readonly supersedes = ['OverProvisioning'] as const;
     evaluate = evaluateAutoscaleCandidate;
     evaluateResult = evaluateManualThroughput;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
         const { inputs, thresholds } = ctx;
         const dutyCycle = {
             maxPercent: thresholds.autoscaleMaxPercent,
@@ -139,9 +140,7 @@ export class AutoscaleCandidateDetector extends Detector {
             peakToAvgRatio: thresholds.autoscalePeakToAvgRatio,
         };
         if (inputs.manualThroughput !== undefined) {
-            return inputs.manualThroughput
-                .map((input) => this.evaluateResult(input, dutyCycle).advisory)
-                .filter((advisory): advisory is DerivedAdvisory => advisory !== undefined);
+            return inputs.manualThroughput.map((input) => this.evaluateResult(input, dutyCycle));
         }
         const advisory = this.evaluate(
             inputs.weeklyPeakPercent ??
@@ -150,7 +149,16 @@ export class AutoscaleCandidateDetector extends Detector {
             dutyCycle,
             inputs.hasManualThroughput,
         );
-        return advisory ? [advisory] : [];
+        return [
+            {
+                advisory,
+                rootCause: !inputs.hasManualThroughput
+                    ? 'not_applicable'
+                    : inputs.weeklyRuPercents.length === 0
+                      ? 'insufficient_data'
+                      : 'evaluated',
+            },
+        ];
     }
 }
 

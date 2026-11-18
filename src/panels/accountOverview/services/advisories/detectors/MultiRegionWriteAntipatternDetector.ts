@@ -6,10 +6,10 @@
 import * as l10n from '@vscode/l10n';
 import { API, getExperienceFromApi } from '../../../../../AzureDBExperiences';
 import { classifyEnvironment } from '../../environmentClassifier';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
-import { type AccountConfigInput, type DerivedAdvisory } from '../core/types';
+import { type AccountConfigInput } from '../core/types';
 
 /** Cosmos DB APIs whose drivers cannot use multi-region-write failover, so the flag is always a misconfiguration. */
 const NON_MULTI_WRITE_APIS: ReadonlySet<API> = new Set([API.Cassandra, API.Graph, API.Table]);
@@ -22,9 +22,9 @@ const NON_MULTI_WRITE_APIS: ReadonlySet<API> = new Set([API.Cassandra, API.Graph
  * need RTO=0 write failover. Two-or-more write regions in production is legitimate active-active HA and never
  * fires. Pure.
  */
-function evaluateMultiRegionWrites(config: AccountConfigInput): DerivedAdvisory | undefined {
+function evaluateMultiRegionWrites(config: AccountConfigInput): DetectorEvaluation {
     if (!config.multiRegionWritesEnabled) {
-        return undefined;
+        return { rootCause: 'not_applicable' };
     }
 
     const base = { id: 'MultiRegionWriteAntipattern', rule: 'MultiRegionWriteAntipattern' as const };
@@ -80,7 +80,7 @@ function evaluateMultiRegionWrites(config: AccountConfigInput): DerivedAdvisory 
     // Two or more write regions: legitimate active-active HA in production; only flagged in non-production.
     const env = classifyEnvironment(config.accountName, config.tags, config.subscriptionName);
     if (!env.isNonProd) {
-        return undefined;
+        return { rootCause: 'evaluated' };
     }
     return {
         ...base,
@@ -103,13 +103,11 @@ function evaluateMultiRegionWrites(config: AccountConfigInput): DerivedAdvisory 
 
 export class MultiRegionWriteAntipatternDetector extends Detector {
     readonly rule = 'MultiRegionWriteAntipattern' as const;
-    evaluate = evaluateMultiRegionWrites;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
-        if (!ctx.inputs.accountConfig) {
-            return [];
-        }
-        const advisory = this.evaluate(ctx.inputs.accountConfig);
-        return advisory ? [advisory] : [];
+    protected readonly notApplicableRootCauses = ['not_applicable'];
+    evaluate = (...args: Parameters<typeof evaluateMultiRegionWrites>) =>
+        this.getAdvisory(evaluateMultiRegionWrites(...args));
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
+        return ctx.inputs.accountConfig ? [evaluateMultiRegionWrites(ctx.inputs.accountConfig)] : [];
     }
 }
 

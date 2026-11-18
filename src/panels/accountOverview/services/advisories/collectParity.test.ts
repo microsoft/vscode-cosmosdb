@@ -34,9 +34,17 @@ vi.mock('../ruTrends', async (importOriginal) => ({
     getThrottleRate: vi.fn(),
 }));
 
-vi.mock('./engine', () => ({
-    computeDerivedAdvisories: vi.fn(),
-}));
+vi.mock('./engine', () => {
+    const computeDerivedAdvisories = vi.fn<typeof EngineModule.computeDerivedAdvisories>();
+
+    return {
+        computeDerivedAdvisories,
+        analyzeDerivedAdvisories: (...args: Parameters<typeof EngineModule.computeDerivedAdvisories>) => ({
+            advisories: computeDerivedAdvisories(...args),
+            detectorCoverage: [],
+        }),
+    };
+});
 
 vi.mock('./fetchers/logs', () => ({
     fetchCrossPartitionShapes: vi.fn(),

@@ -6,15 +6,15 @@
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
-import { type DerivedAdvisory, type IndexingUsageInput } from '../core/types';
+import { type IndexingUsageInput } from '../core/types';
 
 /**
  * IndexingCostRisk (best-effort): index storage is a large fraction of data
  * storage AND the container has no user exclusions. Pure.
  */
-function evaluateIndexingCostRisk(input: IndexingUsageInput, ratioThreshold: number): DerivedAdvisory | undefined {
+function evaluateIndexingCostRisk(input: IndexingUsageInput, ratioThreshold: number): DetectorEvaluation {
     const { indexUsageBytes, dataUsageBytes, userExcludedPathCount } = input;
     if (
         userExcludedPathCount > 0 ||
@@ -23,11 +23,11 @@ function evaluateIndexingCostRisk(input: IndexingUsageInput, ratioThreshold: num
         indexUsageBytes === undefined ||
         indexUsageBytes < 0
     ) {
-        return undefined;
+        return { rootCause: userExcludedPathCount > 0 ? 'not_applicable' : 'insufficient_data' };
     }
     const ratio = indexUsageBytes / dataUsageBytes;
     if (ratio <= ratioThreshold) {
-        return undefined;
+        return { rootCause: 'evaluated' };
     }
     const scope = containerKey(input.databaseId, input.containerId);
     const percent = Math.round(ratio * 100);
@@ -53,16 +53,13 @@ function evaluateIndexingCostRisk(input: IndexingUsageInput, ratioThreshold: num
 
 export class IndexingCostRiskDetector extends Detector {
     readonly rule = 'IndexingCostRisk' as const;
-    evaluate = evaluateIndexingCostRisk;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
-        const out: DerivedAdvisory[] = [];
-        for (const indexing of ctx.inputs.indexing) {
-            const a = this.evaluate(indexing, ctx.thresholds.indexingUsageRatio);
-            if (a) {
-                out.push(a);
-            }
-        }
-        return out;
+    protected readonly notApplicableRootCauses = ['not_applicable'];
+    evaluate = (...args: Parameters<typeof evaluateIndexingCostRisk>) =>
+        this.getAdvisory(evaluateIndexingCostRisk(...args));
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
+        return ctx.inputs.indexing.map((indexing) =>
+            evaluateIndexingCostRisk(indexing, ctx.thresholds.indexingUsageRatio),
+        );
     }
 }
 

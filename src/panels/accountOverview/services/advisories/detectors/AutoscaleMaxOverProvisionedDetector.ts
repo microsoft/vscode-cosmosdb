@@ -6,10 +6,10 @@
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { capacityMaterialitySeverity, clampRationale, hasMinimumKnownResourceAge } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
-import { type AutoscaleUtilizationInput, type DerivedAdvisory } from '../core/types';
+import { type AutoscaleUtilizationInput } from '../core/types';
 
 // Platform minimum RU/s floor a right-size recommendation never drops below — a container's minimum manual
 // throughput is 400 RU/s:
@@ -34,19 +34,19 @@ function evaluateAutoscaleMaxOverProvisioned(
     input: AutoscaleUtilizationInput,
     bandPercent: number,
     scopeProvisionedRu?: number,
-): DerivedAdvisory | undefined {
+): DetectorEvaluation {
     if (
         input.sampleCount < DIAGNOSTIC_POLICY.autoscaleUtilization.minSamples ||
         input.configuredMaxRu === undefined ||
         input.configuredMaxRu <= 0 ||
         !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.autoscaleUtilization.minResourceAgeDays)
     ) {
-        return undefined;
+        return { rootCause: 'insufficient_data' };
     }
     const peak = input.peakPercent;
     // Peak at/above the saturation guard, or at/above the moderate band, means the max is genuinely needed.
     if (peak >= DIAGNOSTIC_POLICY.overProvisioning.peakGuardPercent || peak >= bandPercent) {
-        return undefined;
+        return { rootCause: 'evaluated' };
     }
     const max = input.configuredMaxRu;
     const peakConsumed = (peak / 100) * max;
@@ -102,20 +102,16 @@ function evaluateAutoscaleMaxOverProvisioned(
 
 export class AutoscaleMaxOverProvisionedDetector extends Detector {
     readonly rule = 'AutoscaleMaxOverProvisioned' as const;
-    evaluate = evaluateAutoscaleMaxOverProvisioned;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
-        const out: DerivedAdvisory[] = [];
-        for (const util of ctx.inputs.autoscaleUtilizations ?? []) {
-            const a = this.evaluate(
+    evaluate = (...args: Parameters<typeof evaluateAutoscaleMaxOverProvisioned>) =>
+        this.getAdvisory(evaluateAutoscaleMaxOverProvisioned(...args));
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
+        return (ctx.inputs.autoscaleUtilizations ?? []).map((util) =>
+            evaluateAutoscaleMaxOverProvisioned(
                 util,
                 ctx.thresholds.overProvisioningBandPercent,
                 ctx.inputs.scopeProvisionedRuTotal,
-            );
-            if (a) {
-                out.push(a);
-            }
-        }
-        return out;
+            ),
+        );
     }
 }
 

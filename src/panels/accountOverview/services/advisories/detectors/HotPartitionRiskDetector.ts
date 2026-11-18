@@ -6,10 +6,10 @@
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale, hasMinimumKnownResourceAge } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
-import { type DerivedAdvisory, type DerivedAdvisorySeverity, type PartitionSaturationInput } from '../core/types';
+import { type DerivedAdvisorySeverity, type PartitionSaturationInput } from '../core/types';
 
 /**
  * HotPartitionRisk (DX-006): the busiest physical partition is **saturated** (p99 at or above the saturation
@@ -24,14 +24,15 @@ function evaluateHotPartitionRisk(
     saturationPercent: number,
     headroomPercent: number,
     throttleThresholdPercent: number,
-): DerivedAdvisory | undefined {
-    if (
-        !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.partitionSaturation.minResourceAgeDays) ||
-        input.partitionCount < DIAGNOSTIC_POLICY.partitionSaturation.minHotPartitions ||
-        input.maxP99 < saturationPercent ||
-        input.minP99 >= headroomPercent
-    ) {
-        return undefined;
+): DetectorEvaluation {
+    if (!hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.partitionSaturation.minResourceAgeDays)) {
+        return { rootCause: 'insufficient_data' };
+    }
+    if (input.partitionCount < DIAGNOSTIC_POLICY.partitionSaturation.minHotPartitions) {
+        return { rootCause: input.partitionCount > 0 ? 'not_applicable' : 'insufficient_data' };
+    }
+    if (input.maxP99 < saturationPercent || input.minP99 >= headroomPercent) {
+        return { rootCause: 'evaluated' };
     }
     const scope = containerKey(input.databaseId, input.containerId);
     const busiest = Math.round(input.maxP99);
@@ -91,17 +92,20 @@ function evaluateHotPartitionRisk(
 
 export class HotPartitionRiskDetector extends Detector {
     readonly rule = 'HotPartitionRisk' as const;
-    evaluate = evaluateHotPartitionRisk;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
+    protected readonly notApplicableRootCauses = ['not_applicable'];
+    evaluate = (...args: Parameters<typeof evaluateHotPartitionRisk>) =>
+        this.getAdvisory(evaluateHotPartitionRisk(...args));
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
         const t = ctx.thresholds;
-        const out: DerivedAdvisory[] = [];
-        for (const p of ctx.inputs.partitions) {
-            const a = this.evaluate(p, t.partitionSaturationPercent, t.partitionHeadroomPercent, t.throttleRatePercent);
-            if (a) {
-                out.push(a);
-            }
-        }
-        return out;
+
+        return ctx.inputs.partitions.map((p) =>
+            evaluateHotPartitionRisk(
+                p,
+                t.partitionSaturationPercent,
+                t.partitionHeadroomPercent,
+                t.throttleRatePercent,
+            ),
+        );
     }
 }
 

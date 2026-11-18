@@ -6,10 +6,10 @@
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale, finiteNumbers, hasMinimumKnownResourceAge, mean } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
-import { type AutoscaleThresholds, type DerivedAdvisory, type ManualThroughputInput } from '../core/types';
+import { type AutoscaleThresholds, type ManualThroughputInput } from '../core/types';
 
 const AUTOSCALE_MIN_MAX_RU = 1_000;
 const AUTOSCALE_STEP_RU = 1_000;
@@ -32,9 +32,15 @@ function evaluateAutoscaleCandidate(
     scope?: string,
     containerId?: string,
     observationLabel: string = l10n.t('7 days'),
-): DerivedAdvisory | undefined {
+): DetectorEvaluation {
     if (!hasManualThroughput || maxPercent === undefined || avgPercent === undefined || avgPercent <= 0) {
-        return undefined;
+        return {
+            rootCause: !hasManualThroughput
+                ? 'not_applicable'
+                : maxPercent === undefined || avgPercent === undefined
+                  ? 'insufficient_data'
+                  : 'evaluated',
+        };
     }
     const peakToAvg = maxPercent / avgPercent;
     if (
@@ -42,7 +48,7 @@ function evaluateAutoscaleCandidate(
         avgPercent > thresholds.avgPercent ||
         peakToAvg < thresholds.peakToAvgRatio
     ) {
-        return undefined;
+        return { rootCause: 'evaluated' };
     }
     const max = Math.round(maxPercent);
     const avg = Math.round(avgPercent);
@@ -97,16 +103,13 @@ function evaluateAutoscaleCandidate(
     };
 }
 
-function evaluateManualThroughput(
-    input: ManualThroughputInput,
-    thresholds: AutoscaleThresholds,
-): DerivedAdvisory | undefined {
+function evaluateManualThroughput(input: ManualThroughputInput, thresholds: AutoscaleThresholds): DetectorEvaluation {
     const samples = finiteNumbers(input.ruPercents);
     if (
         samples.length < DIAGNOSTIC_POLICY.overProvisioning.minSamples ||
         !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.overProvisioning.minResourceAgeDays)
     ) {
-        return undefined;
+        return { rootCause: 'insufficient_data' };
     }
     return evaluateAutoscaleCandidate(
         input.peakPercent ?? (samples.length > 0 ? Math.max(...samples) : undefined),
@@ -123,8 +126,10 @@ function evaluateManualThroughput(
 export class AutoscaleCandidateDetector extends Detector {
     readonly rule = 'AutoscaleCandidate' as const;
     readonly supersedes = ['OverProvisioning'] as const;
-    evaluate = evaluateAutoscaleCandidate;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
+    protected readonly notApplicableRootCauses = ['not_applicable'];
+    evaluate = (...args: Parameters<typeof evaluateAutoscaleCandidate>) =>
+        this.getAdvisory(evaluateAutoscaleCandidate(...args));
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
         const { inputs, thresholds } = ctx;
         const dutyCycle = {
             maxPercent: thresholds.autoscaleMaxPercent,
@@ -132,18 +137,17 @@ export class AutoscaleCandidateDetector extends Detector {
             peakToAvgRatio: thresholds.autoscalePeakToAvgRatio,
         };
         if (inputs.manualThroughput !== undefined) {
-            return inputs.manualThroughput
-                .map((input) => evaluateManualThroughput(input, dutyCycle))
-                .filter((advisory): advisory is DerivedAdvisory => advisory !== undefined);
+            return inputs.manualThroughput.map((input) => evaluateManualThroughput(input, dutyCycle));
         }
-        const advisory = this.evaluate(
-            inputs.weeklyPeakPercent ??
-                (inputs.weeklyRuPercents.length > 0 ? Math.max(...inputs.weeklyRuPercents) : undefined),
-            inputs.weeklyRuPercents.length > 0 ? mean(inputs.weeklyRuPercents) : undefined,
-            dutyCycle,
-            inputs.hasManualThroughput,
-        );
-        return advisory ? [advisory] : [];
+        return [
+            evaluateAutoscaleCandidate(
+                inputs.weeklyPeakPercent ??
+                    (inputs.weeklyRuPercents.length > 0 ? Math.max(...inputs.weeklyRuPercents) : undefined),
+                inputs.weeklyRuPercents.length > 0 ? mean(inputs.weeklyRuPercents) : undefined,
+                dutyCycle,
+                inputs.hasManualThroughput,
+            ),
+        ];
     }
 }
 

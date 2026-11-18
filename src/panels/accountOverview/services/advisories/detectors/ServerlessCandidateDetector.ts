@@ -4,10 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
-import { type DerivedAdvisory, type ServerlessCandidateInput, type ServerlessCandidateThresholds } from '../core/types';
+import { type ServerlessCandidateInput, type ServerlessCandidateThresholds } from '../core/types';
 
 /**
  * ServerlessCandidate (CODA DX-014): the account's total consumed throughput is **low and sporadic** — a small
@@ -20,16 +20,16 @@ import { type DerivedAdvisory, type ServerlessCandidateInput, type ServerlessCan
 function evaluateServerlessCandidate(
     input: ServerlessCandidateInput,
     thresholds: ServerlessCandidateThresholds,
-): DerivedAdvisory | undefined {
+): DetectorEvaluation {
     if (input.isServerless || input.sampleCount < DIAGNOSTIC_POLICY.serverless.minSamples) {
-        return undefined;
+        return { rootCause: input.isServerless ? 'not_applicable' : 'insufficient_data' };
     }
     if (input.peakRuPerSec < thresholds.peakFloorRuPerSec || input.peakRuPerSec > thresholds.peakCeilingRuPerSec) {
-        return undefined;
+        return { rootCause: 'evaluated' };
     }
     const ratio = input.peakRuPerSec > 0 ? input.avgRuPerSec / input.peakRuPerSec : 0;
     if (ratio >= thresholds.sporadicRatio) {
-        return undefined;
+        return { rootCause: 'evaluated' };
     }
     const peak = Math.round(input.peakRuPerSec);
     const avg = Math.round(input.avgRuPerSec);
@@ -63,18 +63,21 @@ function evaluateServerlessCandidate(
 
 export class ServerlessCandidateDetector extends Detector {
     readonly rule = 'ServerlessCandidate' as const;
-    evaluate = evaluateServerlessCandidate;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
+    protected readonly notApplicableRootCauses = ['not_applicable'];
+    evaluate = (...args: Parameters<typeof evaluateServerlessCandidate>) =>
+        this.getAdvisory(evaluateServerlessCandidate(...args));
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
         const { inputs, thresholds } = ctx;
         if (!inputs.serverless) {
             return [];
         }
-        const advisory = this.evaluate(inputs.serverless, {
-            sporadicRatio: thresholds.serverlessSporadicRatio,
-            peakFloorRuPerSec: thresholds.serverlessPeakFloorRuPerSec,
-            peakCeilingRuPerSec: thresholds.serverlessPeakCeilingRuPerSec,
-        });
-        return advisory ? [advisory] : [];
+        return [
+            evaluateServerlessCandidate(inputs.serverless, {
+                sporadicRatio: thresholds.serverlessSporadicRatio,
+                peakFloorRuPerSec: thresholds.serverlessPeakFloorRuPerSec,
+                peakCeilingRuPerSec: thresholds.serverlessPeakCeilingRuPerSec,
+            }),
+        ];
     }
 }
 

@@ -6,9 +6,9 @@
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
-import { type ContainerStorageInput, type DerivedAdvisory, type DerivedAdvisorySeverity } from '../core/types';
+import { type ContainerStorageInput, type DerivedAdvisorySeverity } from '../core/types';
 import {
     daysToStorageLimit,
     GIB,
@@ -30,13 +30,17 @@ import {
  * growing steadily does. Immaterial (< 1 GiB) and flat/noisy (< 0.1 GiB/day)
  * partitions are ignored. Severity grades by horizon. Pure.
  */
-function evaluateStorageGrowthRisk(input: ContainerStorageInput, horizonDays: number): DerivedAdvisory | undefined {
+function evaluateStorageGrowthRisk(input: ContainerStorageInput, horizonDays: number): DetectorEvaluation {
     if (horizonDays <= 0) {
-        return undefined;
+        return { rootCause: 'not_applicable' };
     }
+    let hasObservations = false;
     let soonest: { days: number; currentBytes: number; slopeBytesPerDay: number; atOrOverLimit: boolean } | undefined;
     for (const partition of input.partitions) {
         const currentBytes = latestBytes(partition);
+        if (currentBytes !== undefined && currentBytes < STORAGE_GROWTH_MIN_MATERIAL_BYTES) {
+            hasObservations = true;
+        }
         if (currentBytes === undefined || currentBytes < STORAGE_GROWTH_MIN_MATERIAL_BYTES) {
             continue;
         }
@@ -48,6 +52,9 @@ function evaluateStorageGrowthRisk(input: ContainerStorageInput, horizonDays: nu
             continue;
         }
         const slopeBytesPerDay = storageGrowthSlopeBytesPerDay(partition.samples);
+        if (slopeBytesPerDay !== undefined) {
+            hasObservations = true;
+        }
         if (slopeBytesPerDay === undefined || slopeBytesPerDay < STORAGE_GROWTH_MIN_SLOPE_BYTES_PER_DAY) {
             continue;
         }
@@ -60,7 +67,7 @@ function evaluateStorageGrowthRisk(input: ContainerStorageInput, horizonDays: nu
         }
     }
     if (soonest === undefined || soonest.days > horizonDays) {
-        return undefined;
+        return { rootCause: soonest !== undefined || hasObservations ? 'evaluated' : 'insufficient_data' };
     }
 
     if (soonest.atOrOverLimit) {
@@ -138,16 +145,13 @@ function evaluateStorageGrowthRisk(input: ContainerStorageInput, horizonDays: nu
 
 export class StorageGrowthRiskDetector extends Detector {
     readonly rule = 'StorageGrowthRisk' as const;
-    evaluate = evaluateStorageGrowthRisk;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
-        const out: DerivedAdvisory[] = [];
-        for (const storage of ctx.inputs.storage) {
-            const a = this.evaluate(storage, ctx.thresholds.storageGrowthHorizonDays);
-            if (a) {
-                out.push(a);
-            }
-        }
-        return out;
+    protected readonly notApplicableRootCauses = ['not_applicable'];
+    evaluate = (...args: Parameters<typeof evaluateStorageGrowthRisk>) =>
+        this.getAdvisory(evaluateStorageGrowthRisk(...args));
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
+        return ctx.inputs.storage.map((storage) =>
+            evaluateStorageGrowthRisk(storage, ctx.thresholds.storageGrowthHorizonDays),
+        );
     }
 }
 

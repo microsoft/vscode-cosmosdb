@@ -96,6 +96,7 @@ export class AccountOverviewTab extends BaseTab {
         const getMetadata = () => this.metadata;
         return {
             webviewName: AccountOverviewTab.viewType,
+            panelId: this.id,
             get metadata() {
                 return getMetadata();
             },

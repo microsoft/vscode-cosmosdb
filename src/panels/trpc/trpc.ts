@@ -11,42 +11,36 @@
  * the need for middleware-based context casting (`next({ ctx: ctx as T })`)
  * and avoids the shallow-copy problem that such middleware introduces.
  *
- * All three instances share the same observability stack, wired
+ * All instances share the same observability stack, wired
  * directly per-instance below:
  *
  *  1. **Logging middleware** — `loggingMiddlewareBody` + the cosmosdb-
  *     specific `outputChannelProcedureLogger` (writes to
  *     `ext.outputChannel`). Generic, no telemetry-backend dependency.
- *  2. **Telemetry middleware** — `telemetryMiddlewareBody` + the
+ *  2. **Telemetry middleware** — a typed tRPC adapter + the
  *     cosmosdb-specific `azextTelemetryRunner` (uses
  *     `callWithTelemetryAndErrorHandling` from
  *     `@microsoft/vscode-azext-utils`). Wraps every procedure in an
- *     `IActionContext` and surfaces it on `ctx.actionContext` /
- *     `ctx.telemetry`.
+ *     `IActionContext` and surfaces it on `ctx.actionContext`.
  *
- * The middleware **bodies** (`loggingMiddlewareBody`,
- * `telemetryMiddlewareBody`) come from
- * `@microsoft/vscode-ext-webview/host`; only the cosmosdb-specific
- * adapters (`outputChannelProcedureLogger`, `azextTelemetryRunner`) live
- * under `./middleware/`.
+ * `loggingMiddlewareBody` comes from `@microsoft/vscode-ext-webview/host`.
+ * The telemetry adapter uses tRPC's context override type so subsequent
+ * middleware and procedures know that `actionContext` is required.
  *
  * Procedures access:
  *  - `ctx.actionContext` — full `IActionContext`, populated by the
  *    azext telemetry runner. Use for `errorHandling.suppressDisplay`,
  *    `telemetry.suppressIfSuccessful`, etc.
- *  - `ctx.telemetry` — `properties`/`measurements` for fire-and-forget
- *    metadata attachments (same object as `ctx.actionContext.telemetry`).
+ *  - `ctx.actionContext.telemetry` — properties and measurements for
+ *    the current invocation.
  *
  * @see https://trpc.io/docs/v11/router
  * @see https://trpc.io/docs/v11/procedures
  */
 
 import { initWebviewTrpc } from '@microsoft/vscode-ext-webview';
-import {
-    loggingMiddlewareBody,
-    type ProcedureInvocation,
-    telemetryMiddlewareBody,
-} from '@microsoft/vscode-ext-webview/host';
+import { loggingMiddlewareBody, type ProcedureInvocation } from '@microsoft/vscode-ext-webview/host';
+import { type TRPCMiddlewareFunction } from '@trpc/server';
 import {
     type AccountOverviewRouterContext,
     type DataModelingRouterContext,
@@ -54,7 +48,8 @@ import {
     type MigrationRouterContext,
     type QueryEditorRouterContext,
 } from './appRouter';
-import { azextTelemetryRunner } from './middleware/azextTelemetryRunner';
+import { accountOverviewTelemetryMiddleware } from './middleware/accountOverviewTelemetryMiddleware';
+import { azextTelemetryRunner, type AzextTelemetryEnrichment } from './middleware/azextTelemetryRunner';
 import { outputChannelProcedureLogger } from './middleware/outputChannelLogger';
 
 // ─── Shared observability wiring ────────────────────────────────────────────
@@ -77,12 +72,14 @@ function buildCosmosDbEventId({ type, path }: ProcedureInvocation): string {
 // `input`/`output` typing). Two near-identical lines per instance is
 // the price of that precision.
 
-// `telemetryMiddlewareBody` is curried and returns a ready-to-use body;
-// `loggingMiddlewareBody` takes the invocation directly, so it is wrapped
-// per call site with the output-channel logger.
-const sharedTelemetryBody = telemetryMiddlewareBody(azextTelemetryRunner, {
-    buildEventId: buildCosmosDbEventId,
-});
+type AzextTelemetryMiddleware = TRPCMiddlewareFunction<object, object, object, AzextTelemetryEnrichment, unknown>;
+
+// The framework's structural telemetry body erases context overrides.
+// Keep the typed next({ ctx }) call here so tRPC carries the enrichment through each procedure chain.
+const sharedTelemetryBody: AzextTelemetryMiddleware = (invocation) =>
+    azextTelemetryRunner.run(buildCosmosDbEventId(invocation), invocation, (enrichment) =>
+        invocation.next({ ctx: enrichment }),
+    );
 
 // ─── Query Editor tRPC Instance ─────────────────────────────────────────────
 
@@ -126,7 +123,8 @@ const accountOverviewT = initWebviewTrpc<AccountOverviewRouterContext>();
 /** Base procedure with logging + telemetry middleware already applied. */
 export const accountOverviewProcedure = accountOverviewT.publicProcedure
     .use((opts) => loggingMiddlewareBody(opts, outputChannelProcedureLogger))
-    .use(sharedTelemetryBody);
+    .use(sharedTelemetryBody)
+    .use(accountOverviewTelemetryMiddleware);
 export const accountOverviewRouter = accountOverviewT.router;
 export const accountOverviewCallerFactory = accountOverviewT.createCallerFactory;
 

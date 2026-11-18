@@ -19,26 +19,53 @@ import { type LogsFailureKind, type LogsOperation } from '../fetchers/logsDiagno
 // the fetching and calls computeDerivedAdvisories.
 
 /** The derived-advisory rules this engine implements (P0 + best-effort). */
-export type DerivedAdvisoryRule =
-    | 'HotPartitionRisk'
-    | 'SustainedThrottlingInRegion'
-    | 'OverProvisioning'
-    | 'AutoscaleCandidate'
-    | 'StorageGrowthRisk'
-    | 'StorageSkewRisk'
-    | 'IndexingCostRisk'
-    | 'ExpensiveConsistency'
-    | 'MultiRegionWriteAntipattern'
-    | 'IdleContainer'
-    | 'PartitionMergeCandidate'
-    | 'AutoscaleMaxOverProvisioned'
-    | 'AutoscaleToManualCandidate'
-    | 'ServerlessCandidate'
-    | 'ServerlessThrottling'
-    | 'CrossPartitionQuery'
-    | 'ShardKeyMisalignment'
-    | 'UncontrolledIngestion'
-    | 'SharedThroughputStarvation';
+export const DERIVED_ADVISORY_RULES = [
+    'HotPartitionRisk',
+    'SustainedThrottlingInRegion',
+    'OverProvisioning',
+    'AutoscaleCandidate',
+    'StorageGrowthRisk',
+    'StorageSkewRisk',
+    'IndexingCostRisk',
+    'ExpensiveConsistency',
+    'MultiRegionWriteAntipattern',
+    'IdleContainer',
+    'PartitionMergeCandidate',
+    'AutoscaleMaxOverProvisioned',
+    'AutoscaleToManualCandidate',
+    'ServerlessCandidate',
+    'ServerlessThrottling',
+    'CrossPartitionQuery',
+    'ShardKeyMisalignment',
+    'UncontrolledIngestion',
+    'SharedThroughputStarvation',
+] as const;
+
+export type DerivedAdvisoryRule = (typeof DERIVED_ADVISORY_RULES)[number];
+
+export const DETECTOR_COVERAGE_STATUSES = [
+    'evaluated',
+    'notApplicable',
+    'insufficientData',
+    'unavailable',
+    'partial',
+] as const;
+
+/** Counts actual input evaluations, never inferred missing resources. Contains no scope identities or evidence. */
+export interface DetectorCoverage {
+    rule: DerivedAdvisoryRule;
+    status: (typeof DETECTOR_COVERAGE_STATUSES)[number];
+    evaluatedCount: number;
+    matchedCount: number;
+    notApplicableCount: number;
+    insufficientDataCount: number;
+    unavailableReasons: UnavailableReason[];
+}
+
+export interface DerivedAdvisoryAnalysis {
+    advisories: DerivedAdvisory[];
+    detectorCoverage: DetectorCoverage[];
+}
 
 export type DerivedAdvisorySeverity = 'High' | 'Medium' | 'Low';
 
@@ -94,6 +121,7 @@ export interface DerivedAdvisoriesResult {
      */
     logSource?: LogsSourceStatus;
     metricSource?: MetricSourceStatus;
+    detectorCoverage?: DetectorCoverage[];
     /** Epoch milliseconds when the server produced this snapshot. */
     generatedAt: number;
 }

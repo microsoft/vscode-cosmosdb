@@ -9,12 +9,19 @@ import { ext } from '../../../../extensionVariables';
 import { createLogsOutputReporter } from '../../../accountOverview/logsOutput';
 import {
     collectDerivedAdvisories,
-    computeDerivedAdvisories,
+    analyzeDerivedAdvisories,
+    completeDetectorCoverage,
     type AccountConfigInput,
     type DerivedAdvisoriesResult,
 } from '../../../accountOverview/services/advisories';
 import { DEFAULT_ADVISORY_THRESHOLDS } from '../../../accountOverview/services/advisories/core/thresholds';
-import { DETECTORS } from '../../../accountOverview/services/advisories/registry';
+import { CONFIGURATION_ONLY_RULES, DETECTORS } from '../../../accountOverview/services/advisories/registry';
+import {
+    readRequest,
+    recordReadDiagnostic,
+    reportUncaughtReadFailure,
+    reportUnavailableClient,
+} from '../../../accountOverview/services/readDiagnostics';
 import { classifyUnavailable, type UnavailableReason } from '../../../accountOverview/services/shared';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';
@@ -53,9 +60,8 @@ export async function getDerivedAdvisoriesForAccount(
         api,
     };
     const advisoryThresholds = DEFAULT_ADVISORY_THRESHOLDS;
-    const configOnly = (reason: UnavailableReason): DerivedAdvisoriesResult => ({
-        available: true,
-        advisories: computeDerivedAdvisories(
+    const configOnly = (reason: UnavailableReason): DerivedAdvisoriesResult => {
+        const analysis = analyzeDerivedAdvisories(
             {
                 weeklyRuPercents: [],
                 hasManualThroughput: false,
@@ -66,45 +72,73 @@ export async function getDerivedAdvisoriesForAccount(
                 accountConfig,
             },
             advisoryThresholds,
-        ),
-        metricSource: {
+        );
+        const metricSource = {
             available: false,
             failures: DETECTORS.filter(
                 ({ rule }) =>
-                    rule !== 'ExpensiveConsistency' &&
-                    rule !== 'MultiRegionWriteAntipattern' &&
+                    !CONFIGURATION_ONLY_RULES.includes(rule) &&
                     rule !== 'CrossPartitionQuery' &&
                     rule !== 'ShardKeyMisalignment' &&
                     rule !== 'UncontrolledIngestion' &&
                     rule !== 'SharedThroughputStarvation',
             ).map(({ rule }) => ({ rule, reason })),
-        },
-        logSource: { available: false, reason },
-        generatedAt: Date.now(),
-    });
+        };
+        const logSource = { available: false, reason };
+
+        return {
+            available: true,
+            advisories: analysis.advisories,
+            metricSource,
+            logSource,
+            detectorCoverage: completeDetectorCoverage(analysis.detectorCoverage, {
+                metricSource,
+                logSource,
+                targetCounts: { ServerlessCandidate: metadata.isServerless ? 0 : 1 },
+            }),
+            generatedAt: Date.now(),
+        };
+    };
 
     if (api !== API.Core) {
         return configOnly('unsupported');
     }
 
     try {
-        const monitorClient = await metadata.getMonitorClient();
-        const cosmosClient = await metadata.getClient();
+        const monitorClient = await readRequest('metrics', () => metadata.getMonitorClient());
+        const cosmosClient = await readRequest('inventory', () => metadata.getClient());
         if (!monitorClient || !cosmosClient) {
+            if (!monitorClient) {
+                reportUnavailableClient('metrics');
+            }
+            if (!cosmosClient) {
+                reportUnavailableClient('inventory');
+            }
             return configOnly('noData');
         }
         // A failed optional log client must not suppress metric-backed or configuration checks.
-        const logsClient = await metadata.getLogsQueryClient().catch((error: unknown) => {
-            ext.outputChannel.warn(
-                `[Account Overview] Log Analytics client unavailable: ${classifyUnavailable(error)}.`,
-            );
-            return undefined;
-        });
+        const logsClient = await readRequest('logs', () => metadata.getLogsQueryClient())
+            .then((client) => {
+                if (!client) {
+                    reportUnavailableClient('logs');
+                }
+                return client;
+            })
+            .catch((error: unknown) => {
+                ext.outputChannel.warn(
+                    `[Account Overview] Log Analytics client unavailable: ${classifyUnavailable(error)}.`,
+                );
+                return undefined;
+            });
+        const outputReporter = createLogsOutputReporter((message) => ext.outputChannel.warn(message));
         const collected = await collectDerivedAdvisories({
             monitorClient,
             cosmosClient,
             logsClient,
-            onLogsDiagnostic: createLogsOutputReporter((message) => ext.outputChannel.warn(message)),
+            onLogsDiagnostic: (diagnostic) => {
+                recordReadDiagnostic('logs', diagnostic);
+                outputReporter(diagnostic);
+            },
             accountId: metadata.accountId,
             resourceGroup: metadata.resourceGroup,
             accountName: metadata.accountName,
@@ -114,6 +148,7 @@ export async function getDerivedAdvisoriesForAccount(
         });
         return { available: true, ...collected, generatedAt: Date.now() };
     } catch (error) {
+        reportUncaughtReadFailure('account', error);
         return configOnly(classifyUnavailable(error));
     }
 }

@@ -18,6 +18,7 @@ import {
     DEFAULT_PARTITION_THRESHOLDS,
     type PartitionStorageResult,
 } from '../partitionHealth';
+import { readRequest, recordReadDiagnostic, type ReadSource } from '../readDiagnostics';
 import { getContainerCreatedAt, getKnownResourceAgeDays, getSystemCreatedAt } from '../resourceAge';
 import { getRuTrends, getThrottleRate } from '../ruTrends';
 import { classifyUnavailable, containerKey } from '../shared';
@@ -28,6 +29,7 @@ import {
     type DerivedAdvisory,
     type DerivedAdvisoryRule,
     type DerivedAdvisoryThresholds,
+    type DetectorCoverage,
     type IdleContainerInput,
     type IndexingUsageInput,
     type LogsSourceStatus,
@@ -39,7 +41,8 @@ import {
     type SharedThroughputInput,
     type UncontrolledIngestionInput,
 } from './core/types';
-import { computeDerivedAdvisories } from './engine';
+import { completeDetectorCoverage } from './coverage';
+import { analyzeDerivedAdvisories } from './engine';
 import {
     fetchCrossPartitionShapes,
     fetchSharedThroughputTraffic,
@@ -121,6 +124,7 @@ export interface CollectedDerivedAdvisories {
     advisories: DerivedAdvisory[];
     logSource: LogsSourceStatus;
     metricSource: MetricSourceStatus;
+    detectorCoverage: DetectorCoverage[];
 }
 
 /** The Tier-2 inputs gathered from Log Analytics plus the coverage status the card surfaces. */
@@ -155,9 +159,9 @@ async function mapInBatches<TItem, TResult>(
     return results;
 }
 
-async function capture<T>(work: Promise<T>): Promise<CollectResult<T>> {
+async function capture<T>(work: Promise<T>, source: ReadSource = 'metrics'): Promise<CollectResult<T>> {
     try {
-        return { value: await work };
+        return { value: await readRequest(source, () => work) };
     } catch (error) {
         return { reason: classifyUnavailable(error) };
     }
@@ -209,7 +213,7 @@ async function getAccountCreatedAt(
 /**
  * Gathers the telemetry the derived-advisory rules need — authoritative offer inventory, per-offer/manual RU history,
  * per-container partition/storage signals, account-level serverless shape, and Tier-2 Log Analytics evidence — then
- * runs {@link computeDerivedAdvisories}. Failures degrade to per-rule coverage rather than blanking config-only checks.
+ * runs {@link analyzeDerivedAdvisories}. Failures degrade to per-rule coverage rather than blanking config-only checks.
  */
 export async function collectDerivedAdvisories(
     params: CollectDerivedAdvisoriesParams,
@@ -228,11 +232,14 @@ export async function collectDerivedAdvisories(
 
     const now = Date.now();
     const metricFailures: MetricSourceStatus['failures'] = [];
-    const accountCreatedAtPromise = capture(getAccountCreatedAt(cosmosClient, resourceGroup, accountName));
+    const accountCreatedAtPromise = capture(getAccountCreatedAt(cosmosClient, resourceGroup, accountName), 'account');
 
     let rows: InventoryContainerRow[] = [];
     let offers: InventoryThroughputOffer[] = [];
-    const inventory = await capture(getSqlInventoryDetails(cosmosClient, resourceGroup, accountName, isServerless));
+    const inventory = await capture(
+        getSqlInventoryDetails(cosmosClient, resourceGroup, accountName, isServerless),
+        'inventory',
+    );
     if (inventory.value) {
         rows = inventory.value.rows;
         offers = inventory.value.offers;
@@ -586,7 +593,7 @@ export async function collectDerivedAdvisories(
         dedicatedTargets,
     );
 
-    const advisories = computeDerivedAdvisories(
+    const { advisories, detectorCoverage } = analyzeDerivedAdvisories(
         {
             manualThroughput,
             serverlessThrottling,
@@ -638,10 +645,48 @@ export async function collectDerivedAdvisories(
         advisoryThresholds,
     );
 
+    const metricSource = { available: metricFailures.length === 0, failures: metricFailures };
+    const targetCounts: Partial<Record<DerivedAdvisoryRule, number>> = {
+        ServerlessCandidate: isServerless ? 0 : 1,
+        ...(inventory.value &&
+            rows.every(
+                (row) =>
+                    row.throughputMode !== 'unknown' &&
+                    (row.throughputMode === 'serverless' ||
+                        (row.throughputRU !== undefined &&
+                            Number.isFinite(row.throughputRU) &&
+                            row.throughputRU > 0 &&
+                            (row.offerLevel === 'container' || row.offerLevel === 'database') &&
+                            (row.offerThroughputMode === 'manual' || row.offerThroughputMode === 'autoscale'))),
+            ) && {
+                HotPartitionRisk: dedicatedTargets.length,
+                SustainedThrottlingInRegion: dedicatedTargets.length,
+                OverProvisioning: manualTargets.length,
+                AutoscaleCandidate: manualTargets.length,
+                IdleContainer: dedicatedTargets.length,
+                StorageGrowthRisk: dedicatedTargets.length,
+                StorageSkewRisk: dedicatedTargets.length,
+                IndexingCostRisk: rows.length,
+                PartitionMergeCandidate: dedicatedTargets.length,
+                AutoscaleMaxOverProvisioned: autoscaleTargets.length,
+                AutoscaleToManualCandidate: autoscaleTargets.length,
+                ServerlessThrottling: serverlessTargets.length,
+                CrossPartitionQuery: logTargets.length,
+                ShardKeyMisalignment: logTargets.length,
+                UncontrolledIngestion: dedicatedTargets.length,
+                SharedThroughputStarvation: offers.filter((offer) => offer.offerLevel === 'database').length,
+            }),
+    };
+
     return {
         advisories,
         logSource: logs.logSource,
-        metricSource: { available: metricFailures.length === 0, failures: metricFailures },
+        metricSource,
+        detectorCoverage: completeDetectorCoverage(detectorCoverage, {
+            metricSource,
+            logSource: logs.logSource,
+            targetCounts,
+        }),
     };
 }
 
@@ -667,6 +712,7 @@ export async function collectTier2Logs(
     const empty = { crossPartition: [], ingestion: [], sharedThroughput: [] };
     const failures: NonNullable<LogsSourceStatus['failures']> = [];
     const report: LogsDiagnosticReporter = (diagnostic: LogsDiagnostic) => {
+        recordReadDiagnostic('logs', diagnostic);
         if (
             !failures.some((failure) => failure.operation === diagnostic.operation && failure.kind === diagnostic.kind)
         ) {

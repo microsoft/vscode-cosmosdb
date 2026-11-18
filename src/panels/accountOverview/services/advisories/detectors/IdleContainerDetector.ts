@@ -7,10 +7,10 @@ import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { type ThroughputMode } from '../../inventory';
 import { containerKey } from '../../shared';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { capacityMaterialitySeverity, clampRationale, hasMinimumKnownResourceAge } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
-import { type DerivedAdvisory, type IdleContainerInput } from '../core/types';
+import { type IdleContainerInput } from '../core/types';
 
 // DX-004/011: autoscale bills between 10% and 100% of the configured max (`0.1*Tmax ≤ T ≤ Tmax`), so an idle
 // or over-sized autoscale container only recovers its idle floor, never the full max:
@@ -34,7 +34,7 @@ function evaluateIdleContainer(
     input: IdleContainerInput,
     maxIdlePeakRu: number,
     scopeProvisionedRu?: number,
-): DerivedAdvisory | undefined {
+): DetectorEvaluation {
     const isAutoscale = input.throughputMode === 'autoscale';
     const isManual = MANUAL_THROUGHPUT_MODES.has(input.throughputMode);
     // Only manual/autoscale containers have a provisioned offer to recover; serverless has none.
@@ -44,11 +44,11 @@ function evaluateIdleContainer(
         input.provisionedRu <= 0 ||
         !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.idle.minResourceAgeDays)
     ) {
-        return undefined;
+        return { rootCause: !isAutoscale && !isManual ? 'not_applicable' : 'insufficient_data' };
     }
     // Consumed real RU in some bucket ⇒ active, not idle — DX-001 right-sizes it instead.
     if (input.peakRuPerBucket > maxIdlePeakRu) {
-        return undefined;
+        return { rootCause: 'evaluated' };
     }
     const recoverableRu = isAutoscale ? AUTOSCALE_IDLE_FRACTION * input.provisionedRu : input.provisionedRu;
     const severity = capacityMaterialitySeverity(recoverableRu, scopeProvisionedRu);
@@ -100,16 +100,12 @@ function evaluateIdleContainer(
 export class IdleContainerDetector extends Detector {
     readonly rule = 'IdleContainer' as const;
     readonly supersedes = ['OverProvisioning', 'AutoscaleMaxOverProvisioned'] as const;
-    evaluate = evaluateIdleContainer;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
-        const out: DerivedAdvisory[] = [];
-        for (const idle of ctx.inputs.idleContainers ?? []) {
-            const a = this.evaluate(idle, ctx.thresholds.idlePeakRuPerBucket, ctx.inputs.scopeProvisionedRuTotal);
-            if (a) {
-                out.push(a);
-            }
-        }
-        return out;
+    protected readonly notApplicableRootCauses = ['not_applicable'];
+    evaluate = (...args: Parameters<typeof evaluateIdleContainer>) => this.getAdvisory(evaluateIdleContainer(...args));
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
+        return (ctx.inputs.idleContainers ?? []).map((idle) =>
+            evaluateIdleContainer(idle, ctx.thresholds.idlePeakRuPerBucket, ctx.inputs.scopeProvisionedRuTotal),
+        );
     }
 }
 

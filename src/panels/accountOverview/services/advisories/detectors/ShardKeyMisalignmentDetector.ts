@@ -5,12 +5,11 @@
 
 import * as l10n from '@vscode/l10n';
 import { containerKey } from '../../shared';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import {
     type CrossPartitionInput,
-    type DerivedAdvisory,
     type DerivedAdvisorySeverity,
     type QueryShapeInput,
     type ShardKeyThresholds,
@@ -49,18 +48,20 @@ function evaluateShardKeyMisalignment(
     thresholds: ShardKeyThresholds,
     crossPartitionFanoutThreshold: number,
     minQueries: number = DIAGNOSTIC_POLICY.crossPartition.minQueries,
-): DerivedAdvisory | undefined {
+): DetectorEvaluation {
     const { totalQueries, containerPartitions, crossPartitionPct } = crossPartitionStats(
         input.shapes,
         crossPartitionFanoutThreshold,
     );
     const roundedCrossPartitionPct = Math.round(crossPartitionPct * 10) / 10;
-    if (
-        totalQueries < minQueries ||
-        roundedCrossPartitionPct < thresholds.structuralPct ||
-        containerPartitions < thresholds.minPartitions
-    ) {
-        return undefined;
+    if (totalQueries < minQueries) {
+        return { rootCause: 'insufficient_data' };
+    }
+    if (containerPartitions < thresholds.minPartitions) {
+        return { rootCause: containerPartitions > 0 ? 'not_applicable' : 'insufficient_data' };
+    }
+    if (roundedCrossPartitionPct < thresholds.structuralPct) {
+        return { rootCause: 'evaluated' };
     }
     const severity: DerivedAdvisorySeverity = roundedCrossPartitionPct >= thresholds.highPct ? 'High' : 'Medium';
     const pct = Math.round(roundedCrossPartitionPct);
@@ -103,12 +104,14 @@ function evaluateShardKeyMisalignment(
 export class ShardKeyMisalignmentDetector extends Detector {
     readonly rule = 'ShardKeyMisalignment' as const;
     readonly supersedes = ['CrossPartitionQuery'] as const;
-    evaluate = evaluateShardKeyMisalignment;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
+    protected readonly notApplicableRootCauses = ['not_applicable'];
+    evaluate = (...args: Parameters<typeof evaluateShardKeyMisalignment>) =>
+        this.getAdvisory(evaluateShardKeyMisalignment(...args));
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
         const t = ctx.thresholds;
-        const out: DerivedAdvisory[] = [];
-        for (const input of ctx.inputs.crossPartition ?? []) {
-            const a = this.evaluate(
+
+        return (ctx.inputs.crossPartition ?? []).map((input) =>
+            evaluateShardKeyMisalignment(
                 input,
                 {
                     structuralPct: t.shardKeyStructuralPct,
@@ -117,12 +120,8 @@ export class ShardKeyMisalignmentDetector extends Detector {
                 },
                 t.crossPartitionFanoutThreshold,
                 t.crossPartitionMinQueries,
-            );
-            if (a) {
-                out.push(a);
-            }
-        }
-        return out;
+            ),
+        );
     }
 }
 

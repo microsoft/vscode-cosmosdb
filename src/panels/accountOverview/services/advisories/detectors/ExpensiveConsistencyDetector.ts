@@ -4,10 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
-import { type AccountConfigInput, type DerivedAdvisory } from '../core/types';
+import { type AccountConfigInput } from '../core/types';
 
 // ─── Account-scoped configuration advisories (ARM config only) ─────────────────────
 //
@@ -30,13 +30,13 @@ function normalizeConsistency(level: string | undefined): string {
  * region the cross-region cost does not apply, so it never fires there. Strong is Medium, Bounded Staleness is Low.
  * Pure.
  */
-function evaluateExpensiveConsistency(config: AccountConfigInput): DerivedAdvisory | undefined {
+function evaluateExpensiveConsistency(config: AccountConfigInput): DetectorEvaluation {
     const level = normalizeConsistency(config.consistencyLevel);
     if (
         !PREMIUM_CONSISTENCY_LEVELS.has(level) ||
         config.regionCount < DIAGNOSTIC_POLICY.expensiveConsistency.minRegions
     ) {
-        return undefined;
+        return { rootCause: !level || config.regionCount === 0 ? 'insufficient_data' : 'not_applicable' };
     }
     const isStrong = level === 'strong';
     const displayLevel = config.consistencyLevel ?? (isStrong ? 'Strong' : 'Bounded Staleness');
@@ -67,13 +67,11 @@ function evaluateExpensiveConsistency(config: AccountConfigInput): DerivedAdviso
 
 export class ExpensiveConsistencyDetector extends Detector {
     readonly rule = 'ExpensiveConsistency' as const;
-    evaluate = evaluateExpensiveConsistency;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
-        if (!ctx.inputs.accountConfig) {
-            return [];
-        }
-        const advisory = this.evaluate(ctx.inputs.accountConfig);
-        return advisory ? [advisory] : [];
+    protected readonly notApplicableRootCauses = ['not_applicable'];
+    evaluate = (...args: Parameters<typeof evaluateExpensiveConsistency>) =>
+        this.getAdvisory(evaluateExpensiveConsistency(...args));
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
+        return ctx.inputs.accountConfig ? [evaluateExpensiveConsistency(ctx.inputs.accountConfig)] : [];
     }
 }
 

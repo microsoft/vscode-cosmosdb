@@ -6,10 +6,10 @@
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
-import { type DerivedAdvisory, type DerivedAdvisorySeverity, type PartitionMergeInput } from '../core/types';
+import { type DerivedAdvisorySeverity, type PartitionMergeInput } from '../core/types';
 import { GIB } from './storageMath';
 
 // DX-009: each physical partition serves up to 10,000 RU/s and stores up to 50 GiB. Both are Azure platform
@@ -34,17 +34,17 @@ function neededPartitions(provisionedRu: number, storageBytes: number): number {
  * Severity is Medium when actual ≥ 2× needed (the slice is very thin), else Low. Merge is a platform operation.
  * Pure.
  */
-function evaluatePartitionMergeCandidate(input: PartitionMergeInput): DerivedAdvisory | undefined {
+function evaluatePartitionMergeCandidate(input: PartitionMergeInput): DetectorEvaluation {
     const actual = input.actualPartitions;
     // 0 ⇒ no partition reading (insufficient data); 1 ⇒ single partition can never be merged.
     if (actual <= 1) {
-        return undefined;
+        return { rootCause: actual === 1 ? 'not_applicable' : 'insufficient_data' };
     }
     const provisionedRu = input.provisionedRu ?? 0;
     const storageBytes = input.dataUsageBytes ?? 0;
     const needed = neededPartitions(provisionedRu, storageBytes);
     if (actual <= needed) {
-        return undefined;
+        return { rootCause: 'evaluated' };
     }
     const severity: DerivedAdvisorySeverity =
         actual >= DIAGNOSTIC_POLICY.partitionMerge.mediumExcessRatio * needed ? 'Medium' : 'Low';
@@ -89,16 +89,11 @@ function evaluatePartitionMergeCandidate(input: PartitionMergeInput): DerivedAdv
 
 export class PartitionMergeCandidateDetector extends Detector {
     readonly rule = 'PartitionMergeCandidate' as const;
-    evaluate = evaluatePartitionMergeCandidate;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
-        const out: DerivedAdvisory[] = [];
-        for (const merge of ctx.inputs.partitionMerges ?? []) {
-            const a = this.evaluate(merge);
-            if (a) {
-                out.push(a);
-            }
-        }
-        return out;
+    protected readonly notApplicableRootCauses = ['not_applicable'];
+    evaluate = (...args: Parameters<typeof evaluatePartitionMergeCandidate>) =>
+        this.getAdvisory(evaluatePartitionMergeCandidate(...args));
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
+        return (ctx.inputs.partitionMerges ?? []).map(evaluatePartitionMergeCandidate);
     }
 }
 

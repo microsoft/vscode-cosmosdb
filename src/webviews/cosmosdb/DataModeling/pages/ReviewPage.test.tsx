@@ -200,7 +200,7 @@ describe('ReviewPage', () => {
         expect(onFixIssue).toHaveBeenLastCalledWith(warning);
     });
 
-    it('lists each unvisited container tab with a described Configure button', async () => {
+    it('shows unreviewed configuration links inside each container card with accessible navigation', async () => {
         const orders = createBlankContainer('Orders');
         const users = createBlankContainer('Users');
         const onOpenContainerTab = vi.fn();
@@ -214,22 +214,32 @@ describe('ReviewPage', () => {
                 onEditContainer={vi.fn()}
             />,
         );
-        const title = 'Some tabs have not been visited. Check that their settings match your app.';
-        const notice = screen.getByRole('group', { name: title });
-        const messages = [
-            'The Queries tab of Orders has not been visited.',
-            'The Data tab of Users has not been visited.',
-            'The Queries tab of Users has not been visited.',
-            'The Scale tab of Users has not been visited.',
-        ];
-        const configures = within(notice).getAllByRole('button', { name: 'Configure' });
-        expect(configures.map((button) => button.textContent)).toEqual(messages.map(() => 'Configure'));
-        for (const [index, configure] of configures.entries()) {
-            expect(configure).toHaveAccessibleDescription(messages[index]);
+        const cards = screen.getByRole('list', { name: 'Containers' });
+        const ordersCard = within(cards).getByRole('heading', { name: 'Container: Orders' }).closest('li')!;
+        const usersCard = within(cards).getByRole('heading', { name: 'Container: Users' }).closest('li')!;
+        const warnings = within(cards).getAllByText(/^Please review configuration:/);
+        expect(warnings.map((warning) => warning.textContent)).toEqual([
+            'Please review configuration: Queries',
+            'Please review configuration: Data, Queries, Scale',
+        ]);
+        expect(ordersCard).toContainElement(warnings[0]);
+        expect(usersCard).toContainElement(warnings[1]);
+        expect(
+            screen.queryByText(
+                'Some configuration sections have not been reviewed. Check that their settings match your app.',
+            ),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Configure' })).not.toBeInTheDocument();
+        const links = warnings.flatMap((warning) => within(warning).getAllByRole('button'));
+        expect(links.map((link) => link.textContent)).toEqual(['Queries', 'Data', 'Queries', 'Scale']);
+        for (const [index, link] of links.entries()) {
+            expect(link).toHaveAccessibleName(link.textContent);
+            expect(link).toHaveAccessibleDescription(index === 0 ? 'Container: Orders' : 'Container: Users');
         }
-        await userEvent.click(configures[0]);
+        await userEvent.click(links[0]);
         expect(onOpenContainerTab).toHaveBeenLastCalledWith(orders.id, 'queries');
-        await userEvent.click(configures[3]);
+        links[3].focus();
+        await userEvent.keyboard('{Enter}');
         expect(onOpenContainerTab).toHaveBeenLastCalledWith(users.id, 'scale');
 
         const all = new Set(['data', 'queries', 'scale'] as const);
@@ -248,7 +258,7 @@ describe('ReviewPage', () => {
                 onEditContainer={vi.fn()}
             />,
         );
-        expect(screen.queryByText(title)).not.toBeInTheDocument();
+        expect(screen.queryByText(/^Please review configuration:/)).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Configure' })).not.toBeInTheDocument();
     });
 

@@ -1200,18 +1200,18 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         await continueExisting();
         await waitFor(() => expect(screen.getByRole('tab', { name: 'Data' })).toHaveAccessibleDescription('Visited'));
         await userEvent.click(screen.getByRole('button', { name: 'Next' }));
-        const message = (tab: string) => `The ${tab} tab of Orders has not been visited.`;
-        expect(screen.queryByText(message('Data'))).not.toBeInTheDocument();
-        expect(screen.getByText(message('Scale'))).toBeVisible();
-        await userEvent.click(screen.getByRole('button', { name: 'Configure', description: message('Queries') }));
+        const notice = () => within(screen.getByRole('heading', { name: 'Container: Orders' }).closest('li')!);
+        expect(notice().queryByRole('button', { name: 'Data' })).not.toBeInTheDocument();
+        expect(notice().getByRole('button', { name: 'Scale', description: 'Container: Orders' })).toBeVisible();
+        await userEvent.click(notice().getByRole('button', { name: 'Queries', description: 'Container: Orders' }));
         const queries = screen.getByRole('tab', { name: 'Queries' });
         expect(queries).toHaveAttribute('aria-selected', 'true');
         await waitFor(() => expect(document.getElementById(queries.getAttribute('aria-controls')!)).toHaveFocus());
         expect(queries).toHaveAccessibleDescription('Visited');
         await userEvent.click(screen.getByRole('button', { name: 'Next' }));
         expect(screen.getByRole('button', { name: 'Get Recommendation' })).toBeVisible();
-        expect(screen.queryByText(message('Queries'))).not.toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Configure', description: message('Scale') })).toBeVisible();
+        expect(notice().queryByRole('button', { name: 'Queries' })).not.toBeInTheDocument();
+        expect(notice().getByRole('button', { name: 'Scale', description: 'Container: Orders' })).toBeVisible();
     });
 
     it.each([

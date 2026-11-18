@@ -20,9 +20,10 @@ import {
     FlashRegular,
     SearchRegular,
     TaskListSquareLtrRegular,
+    WarningRegular,
 } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { useId, type ReactNode } from 'react';
+import { Fragment, useId, type ReactNode } from 'react';
 import { ContainerIcon } from '../../../icons/ContainerIcon';
 import { AssessmentIcon } from '../components/AssessmentIcon';
 import { MythBox } from '../components/primitives';
@@ -32,7 +33,7 @@ import { type ContainerTab } from './ContainerPage';
 /**
  * Review step. Shows the selected workload with a Change link, one summary card per container (laid out in a
  * horizontal row that wraps on narrow surfaces) with an Edit shortcut, and the rules the analysis evaluates. Container
- * tabs not yet visited are listed with Configure shortcuts so default settings are not accepted unnoticed.
+ * configuration sections not yet visited appear as warning links in each card so defaults are not accepted unnoticed.
  * Editing jumps back via the provided callbacks so the page stays decoupled from the wizard mechanism.
  */
 
@@ -86,6 +87,21 @@ const useStyles = makeStyles({
     },
     validationFix: {
         flexShrink: 0,
+    },
+    reviewWarning: {
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: tokens.spacingHorizontalS,
+        color: tokens.colorStatusWarningForeground1,
+        fontSize: tokens.fontSizeBase200,
+    },
+    reviewWarningIcon: {
+        flexShrink: 0,
+        fontSize: '16px',
+    },
+    reviewWarningText: {
+        margin: 0,
+        overflowWrap: 'anywhere',
     },
     cards: {
         display: 'grid',
@@ -203,7 +219,7 @@ export interface ReviewPageProps {
     /** Issues listed with Fix buttons that do not block recommendation requests. */
     validationWarnings?: ReviewValidationIssue[];
     onFixIssue?: (issue: ReviewValidationIssue) => void;
-    /** Container tabs visited this session, keyed by container id; unvisited tabs are listed with Configure buttons. */
+    /** Container tabs visited this session, keyed by container id; unvisited tabs are listed as links. */
     visitedTabs?: ReadonlyMap<string, ReadonlySet<ContainerTab>>;
     onOpenContainerTab?: (containerId: string, tab: ContainerTab) => void;
     onEditWorkload: () => void;
@@ -212,14 +228,14 @@ export interface ReviewPageProps {
 
 const CONTAINER_TABS: readonly ContainerTab[] = ['data', 'queries', 'scale'];
 
-function unvisitedTabMessage(tab: ContainerTab, name: string): string {
+function containerTabLabel(tab: ContainerTab): string {
     switch (tab) {
         case 'data':
-            return l10n.t('The Data tab of {name} has not been visited.', { name });
+            return l10n.t('Data');
         case 'queries':
-            return l10n.t('The Queries tab of {name} has not been visited.', { name });
+            return l10n.t('Queries');
         case 'scale':
-            return l10n.t('The Scale tab of {name} has not been visited.', { name });
+            return l10n.t('Scale');
     }
 }
 
@@ -250,9 +266,21 @@ function SummaryItem({ icon, iconLabel, children }: { icon: ReactNode; iconLabel
     );
 }
 
-function ContainerCard({ container, onEdit }: { container: ContainerModel; onEdit: () => void }) {
+function ContainerCard({
+    container,
+    onEdit,
+    visitedTabs,
+    onOpenContainerTab,
+}: {
+    container: ContainerModel;
+    onEdit: () => void;
+    visitedTabs?: ReviewPageProps['visitedTabs'];
+    onOpenContainerTab?: ReviewPageProps['onOpenContainerTab'];
+}) {
     const styles = useStyles();
+    const headingId = useId();
     const editLabel = l10n.t('Edit {name}', { name: container.entity });
+    const unvisitedTabs = visitedTabs ? CONTAINER_TABS.filter((tab) => !visitedTabs.get(container.id)?.has(tab)) : [];
 
     const itemsLabel: Record<ItemsPerPartition, string> = {
         low: l10n.t('Low'),
@@ -284,7 +312,7 @@ function ContainerCard({ container, onEdit }: { container: ContainerModel; onEdi
                     <ContainerIcon />
                 </span>
                 <div className={styles.cardTitleBlock}>
-                    <h3 className={styles.cardTitle}>
+                    <h3 id={headingId} className={styles.cardTitle}>
                         {l10n.t('Container:')} {container.entity}
                     </h3>
                 </div>
@@ -319,6 +347,30 @@ function ContainerCard({ container, onEdit }: { container: ContainerModel; onEdi
                     })}
                 </SummaryItem>
             </ul>
+            {unvisitedTabs.length > 0 ? (
+                <div className={styles.reviewWarning}>
+                    <WarningRegular className={styles.reviewWarningIcon} aria-hidden="true" />
+                    <p className={styles.reviewWarningText}>
+                        {l10n.t('Please review configuration:')}{' '}
+                        {unvisitedTabs.map((tab, index) => (
+                            <Fragment key={tab}>
+                                {index > 0 ? ', ' : null}
+                                {onOpenContainerTab ? (
+                                    <Link
+                                        as="button"
+                                        aria-describedby={headingId}
+                                        onClick={() => onOpenContainerTab(container.id, tab)}
+                                    >
+                                        {containerTabLabel(tab)}
+                                    </Link>
+                                ) : (
+                                    containerTabLabel(tab)
+                                )}
+                            </Fragment>
+                        ))}
+                    </p>
+                </div>
+            ) : null}
         </li>
     );
 }
@@ -351,7 +403,7 @@ export function ReviewPage({
 
     const actionList = (
         rows: ActionRow[],
-        kind: 'issue' | 'warning' | 'unvisited',
+        kind: 'issue' | 'warning',
         actionLabel: string,
         appearance: 'primary' | 'secondary',
         showAction = true,
@@ -386,15 +438,6 @@ export function ReviewPage({
             'primary',
             !!onFixIssue,
         );
-    const unvisitedRows: ActionRow[] = visitedTabs
-        ? containers.flatMap((container) =>
-              CONTAINER_TABS.filter((tab) => !visitedTabs.get(container.id)?.has(tab)).map((tab) => ({
-                  key: `${container.id}-${tab}`,
-                  message: unvisitedTabMessage(tab, container.entity),
-                  onClick: () => onOpenContainerTab?.(container.id, tab),
-              })),
-          )
-        : [];
     return (
         <div className={styles.page}>
             <div className={styles.intro}>
@@ -436,23 +479,14 @@ export function ReviewPage({
                 </MessageBar>
             ) : null}
 
-            {unvisitedRows.length > 0 ? (
-                <MessageBar intent="info" politeness="polite" layout="multiline">
-                    <MessageBarBody>
-                        <MessageBarTitle>
-                            {l10n.t('Some tabs have not been visited. Check that their settings match your app.')}
-                        </MessageBarTitle>
-                        {actionList(unvisitedRows, 'unvisited', l10n.t('Configure'), 'secondary', !!onOpenContainerTab)}
-                    </MessageBarBody>
-                </MessageBar>
-            ) : null}
-
             <ul className={styles.cards} aria-label={l10n.t('Containers')}>
                 {containers.map((container) => (
                     <ContainerCard
                         key={container.id}
                         container={container}
                         onEdit={() => onEditContainer(container.id)}
+                        visitedTabs={visitedTabs}
+                        onOpenContainerTab={onOpenContainerTab}
                     />
                 ))}
             </ul>

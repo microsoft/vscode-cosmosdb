@@ -84,6 +84,69 @@ function inventoryRow(overrides: Partial<inventory.InventoryContainerRow> = {}):
 }
 
 describe('pure detector coverage', () => {
+    it.each([0, 1, 2])('treats known low query fan-out as a completed negative evaluation (%s)', (fanout) => {
+        const result = analyzeDerivedAdvisories(
+            {
+                ...emptyInputs,
+                crossPartition: [
+                    {
+                        databaseId: 'private-db',
+                        containerId: 'private-container',
+                        shapes: [
+                            {
+                                text: 'private-query',
+                                executions: 10000,
+                                avgFanout: Math.min(fanout, 1),
+                                maxFanout: fanout,
+                            },
+                        ],
+                    },
+                ],
+            },
+            DEFAULT_ADVISORY_THRESHOLDS,
+        );
+
+        for (const rule of ['CrossPartitionQuery', 'ShardKeyMisalignment']) {
+            expect(result.detectorCoverage.find((entry) => entry.rule === rule)).toMatchObject({
+                status: fanout > 0 ? 'evaluated' : 'insufficientData',
+                evaluatedCount: fanout > 0 ? 1 : 0,
+                notApplicableCount: 0,
+                matchedCount: 0,
+            });
+        }
+    });
+
+    it.each([
+        { consistencyLevel: 'Session', regionCount: 0, status: 'notApplicable' },
+        { consistencyLevel: 'Eventual', regionCount: 0, status: 'notApplicable' },
+        { consistencyLevel: undefined, regionCount: 1, status: 'notApplicable' },
+        { consistencyLevel: undefined, regionCount: 0, status: 'insufficientData' },
+        { consistencyLevel: 'Strong', regionCount: 0, status: 'insufficientData' },
+        { consistencyLevel: 'Strong', regionCount: 2, status: 'evaluated' },
+    ])(
+        'uses conclusive consistency applicability before missing fields: %j',
+        ({ consistencyLevel, regionCount, status }) => {
+            const result = analyzeDerivedAdvisories(
+                {
+                    ...emptyInputs,
+                    accountConfig: {
+                        accountName: 'private-account',
+                        consistencyLevel,
+                        regionCount,
+                        multiRegionWritesEnabled: false,
+                        writeRegionCount: 1,
+                        api: API.Core,
+                    },
+                },
+                DEFAULT_ADVISORY_THRESHOLDS,
+            );
+
+            expect(result.detectorCoverage.find(({ rule }) => rule === 'ExpensiveConsistency')).toMatchObject({
+                status,
+            });
+        },
+    );
+
     it('covers exactly the registered rule catalog, including rules with no inputs', () => {
         const result = analyzeDerivedAdvisories(emptyInputs, DEFAULT_ADVISORY_THRESHOLDS);
 
@@ -271,6 +334,149 @@ describe('detector dependency coverage', () => {
 
     describe('main collector coverage integration', () => {
         afterEach(() => vi.restoreAllMocks());
+
+        it.each([
+            ['manual', 'empty'],
+            ['autoscale', 'empty'],
+            ['manual', 403],
+            ['autoscale', 503],
+            ['manual', 'optionalFailure'],
+            ['autoscale', 'optionalFailure'],
+        ] as const)('separates empty observations from failed reads for %s offers (%s)', async (mode, state) => {
+            const cosmosClient = new CosmosDBManagementClient({ getToken: async () => null }, 'sub');
+            const row = inventoryRow({ offerThroughputMode: mode });
+            const monitorClient = mockClient({});
+
+            vi.spyOn(cosmosClient.databaseAccounts, 'get').mockResolvedValue({});
+            vi.spyOn(inventory, 'getSqlInventoryDetails').mockResolvedValue({
+                rows: [row],
+                offers: [],
+                databases: [],
+            });
+            vi.spyOn(monitorClient.metrics, 'list').mockImplementation(async (_resource, options) => {
+                if (
+                    typeof state === 'number' ||
+                    (state === 'optionalFailure' && options?.metricnames === 'DocumentCountV2')
+                ) {
+                    throw Object.assign(new Error('private-metric-error'), {
+                        statusCode: typeof state === 'number' ? state : 403,
+                    });
+                }
+                return { cost: 0, timespan: 'window', value: [] };
+            });
+            const captured = await withReadDiagnostics(() =>
+                collectDerivedAdvisories({
+                    monitorClient,
+                    cosmosClient,
+                    accountId: 'private-account',
+                    resourceGroup: 'private-rg',
+                    accountName: 'private-account',
+                    isServerless: false,
+                    advisoryThresholds: DEFAULT_ADVISORY_THRESHOLDS,
+                }),
+            );
+            const rules = [
+                'IdleContainer',
+                'IndexingCostRisk',
+                'StorageGrowthRisk',
+                'StorageSkewRisk',
+                'PartitionMergeCandidate',
+                ...(mode === 'manual'
+                    ? ['OverProvisioning', 'AutoscaleCandidate']
+                    : ['AutoscaleMaxOverProvisioned', 'AutoscaleToManualCandidate']),
+            ];
+
+            for (const rule of rules) {
+                expect(captured.result.detectorCoverage.find((entry) => entry.rule === rule)).toMatchObject({
+                    status: typeof state === 'number' ? 'unavailable' : 'insufficientData',
+                    unavailableReasons: typeof state === 'number' ? [state === 403 ? 'rbac' : 'noData'] : [],
+                });
+            }
+            expect(captured.result.metricSource.available).toBe(false);
+            expect(captured.result.metricSource.failures).toContainEqual({
+                rule: 'IdleContainer',
+                scope: 'private-db/private-container',
+                reason: state === 403 ? 'rbac' : 'noData',
+            });
+            expect(captured.result.advisories).toEqual([]);
+            expect(JSON.stringify(captured.result.detectorCoverage)).not.toContain('private-');
+        });
+
+        it.each(['DataUsage', 'NormalizedRUConsumption'])(
+            'retains indexing inapplicability when the primary %s read fails',
+            async (metric) => {
+                const cosmosClient = new CosmosDBManagementClient({ getToken: async () => null }, 'sub');
+                const row = inventoryRow({ userExcludedPathCount: 1 });
+                const monitorClient = mockClient({});
+
+                vi.spyOn(cosmosClient.databaseAccounts, 'get').mockResolvedValue({});
+                vi.spyOn(inventory, 'getSqlInventoryDetails').mockResolvedValue({
+                    rows: [row],
+                    offers: [],
+                    databases: [],
+                });
+                vi.spyOn(monitorClient.metrics, 'list').mockImplementation(async (_resource, options) => {
+                    if (options?.metricnames === metric) {
+                        throw Object.assign(new Error('private-primary-error'), { statusCode: 403 });
+                    }
+                    return { cost: 0, timespan: 'window', value: [] };
+                });
+                const result = await collectDerivedAdvisories({
+                    monitorClient,
+                    cosmosClient,
+                    accountId: 'private-account',
+                    resourceGroup: 'private-rg',
+                    accountName: 'private-account',
+                    isServerless: false,
+                    advisoryThresholds: DEFAULT_ADVISORY_THRESHOLDS,
+                });
+
+                expect(result.detectorCoverage.find(({ rule }) => rule === 'IndexingCostRisk')).toMatchObject({
+                    status: 'notApplicable',
+                    notApplicableCount: 1,
+                    unavailableReasons: [],
+                });
+                expect(result.metricSource.failures).toContainEqual({
+                    rule: 'IndexingCostRisk',
+                    scope: undefined,
+                    reason: 'rbac',
+                });
+                expect(result.advisories.filter(({ rule }) => rule === 'IndexingCostRisk')).toEqual([]);
+            },
+        );
+
+        it.each([1, 2])('retains a known partition count when merge storage fails (%s)', async (count) => {
+            const cosmosClient = new CosmosDBManagementClient({ getToken: async () => null }, 'sub');
+
+            vi.spyOn(cosmosClient.databaseAccounts, 'get').mockResolvedValue({});
+            vi.spyOn(inventory, 'getSqlInventoryDetails').mockResolvedValue({
+                rows: [inventoryRow()],
+                offers: [],
+                databases: [],
+            });
+            vi.spyOn(metrics, 'getContainerPartitionCount').mockResolvedValue(count);
+            vi.spyOn(metrics, 'getContainerMergeStoragePeak').mockRejectedValue({ statusCode: 503 });
+            const result = await collectDerivedAdvisories({
+                monitorClient: mockClient({}),
+                cosmosClient,
+                accountId: 'private-account',
+                resourceGroup: 'private-rg',
+                accountName: 'private-account',
+                isServerless: false,
+                advisoryThresholds: DEFAULT_ADVISORY_THRESHOLDS,
+            });
+
+            expect(result.detectorCoverage.find(({ rule }) => rule === 'PartitionMergeCandidate')).toMatchObject({
+                status: count === 1 ? 'notApplicable' : 'unavailable',
+                notApplicableCount: count === 1 ? 1 : 0,
+                unavailableReasons: count === 1 ? [] : ['noData'],
+            });
+            expect(result.metricSource.failures).toContainEqual({
+                rule: 'PartitionMergeCandidate',
+                scope: 'private-db/private-container',
+                reason: 'noData',
+            });
+        });
 
         it('keeps evaluated known targets partial when another row has unknown eligibility', async () => {
             const cosmosClient = new CosmosDBManagementClient({ getToken: async () => null }, 'sub');

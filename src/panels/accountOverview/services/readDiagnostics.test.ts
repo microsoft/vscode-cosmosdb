@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { describe, expect, it, vi } from 'vitest';
+import { getAccountConsumedRuShape, getAutoscaleUtilization } from './advisories/fetchers/metrics';
 import {
     readItems,
     readMetrics,
@@ -12,9 +13,126 @@ import {
     reportUnavailableClient,
     withReadDiagnostics,
 } from './readDiagnostics';
+import { getRuTrends, getThrottleRate, querySeries } from './ruTrends';
 import { mockClient } from './testFixtures';
 
 describe('invocation-local Account Overview read diagnostics', () => {
+    it.each([403, '403', 503])('recognizes HTTP errors in numeric code fields (%s)', async (code) => {
+        const error = Object.assign(new Error('private-error'), { code });
+        const captured = await withReadDiagnostics(async () => {
+            await expect(
+                readRequest('inventory', async () => {
+                    throw error;
+                }),
+            ).rejects.toBe(error);
+        });
+
+        expect(captured.diagnostics).toEqual([
+            {
+                source: 'inventory',
+                kind: code === 503 ? 'transient' : 'accessDenied',
+                reason: code === 503 ? 'noData' : 'rbac',
+            },
+        ]);
+    });
+
+    it('isolates required-metric evidence while preserving every failure on the outer RPC', async () => {
+        const client = mockClient({});
+        vi.spyOn(client.metrics, 'list').mockImplementation(async (_resource, options) => {
+            throw Object.assign(new Error('private-error'), {
+                statusCode: options?.metricnames === 'NormalizedRUConsumption' ? 503 : 403,
+            });
+        });
+        const outer = await withReadDiagnostics(() =>
+            withReadDiagnostics(async () => {
+                await expect(
+                    readMetrics(client, 'private-account', { metricnames: 'TotalRequests' }),
+                ).rejects.toThrow();
+                await expect(
+                    readMetrics(client, 'private-account', { metricnames: 'NormalizedRUConsumption' }),
+                ).rejects.toThrow();
+            }, ['NormalizedRUConsumption']),
+        );
+
+        expect(outer.result.diagnostics).toEqual([{ source: 'metrics', kind: 'transient', reason: 'noData' }]);
+        expect(outer.diagnostics).toEqual([
+            { source: 'metrics', kind: 'accessDenied', reason: 'rbac' },
+            { source: 'metrics', kind: 'transient', reason: 'noData' },
+        ]);
+        expect(JSON.stringify(outer)).not.toContain('private-');
+    });
+
+    it.each([
+        [
+            'series',
+            (client: ReturnType<typeof mockClient>) =>
+                querySeries(client, 'private-account', 'TotalRequests', 'Total', 'window', 'PT1H', undefined),
+        ],
+        [
+            'throttle',
+            (client: ReturnType<typeof mockClient>) =>
+                getThrottleRate(client, 'private-account', '7D', 'private-db', 'private-container'),
+        ],
+        ['account RU', (client: ReturnType<typeof mockClient>) => getAccountConsumedRuShape(client, 'private-account')],
+        [
+            'autoscale',
+            (client: ReturnType<typeof mockClient>) =>
+                getAutoscaleUtilization(client, 'private-account', 'private-db', 'private-container', 1000),
+        ],
+    ] as const)('deduplicates propagated inline errors from %s', async (_label, read) => {
+        const client = mockClient({});
+        vi.spyOn(client.metrics, 'list').mockResolvedValue({
+            cost: 0,
+            timespan: 'window',
+            value: [
+                {
+                    id: 'private-id',
+                    type: 'private-type',
+                    name: { value: 'TotalRequests' },
+                    unit: 'Count',
+                    timeseries: [],
+                    errorCode: 'Forbidden',
+                    errorMessage: 'private-account is denied',
+                },
+            ],
+        });
+        const captured = await withReadDiagnostics(async () => {
+            await expect(
+                readRequest('metrics', async () => {
+                    await read(client);
+                }),
+            ).rejects.toMatchObject({ code: 'Forbidden' });
+        });
+
+        expect(captured.diagnostics).toEqual([{ source: 'metrics', kind: 'accessDenied', reason: 'rbac' }]);
+        expect(JSON.stringify(captured)).not.toContain('private-');
+    });
+
+    it('keeps an inline RU failure classified after the reader catches it', async () => {
+        const client = mockClient({});
+        vi.spyOn(client.metrics, 'list').mockResolvedValue({
+            cost: 0,
+            timespan: 'window',
+            value: [
+                {
+                    id: 'private-id',
+                    type: 'private-type',
+                    name: { value: 'NormalizedRUConsumption' },
+                    unit: 'Percent',
+                    timeseries: [],
+                    errorCode: 'Forbidden',
+                    errorMessage: 'private-account is denied',
+                },
+            ],
+        });
+        const captured = await withReadDiagnostics(() =>
+            getRuTrends(client, 'private-account', '7D', 'private-db', 'private-container'),
+        );
+
+        expect(captured.result).toMatchObject({ available: false, reason: 'rbac' });
+        expect(captured.diagnostics).toEqual([{ source: 'metrics', kind: 'accessDenied', reason: 'rbac' }]);
+    });
+
     it('preserves successful results and does not fabricate failures for empty reads', async () => {
         const result = { available: false, reason: 'noData' };
         const captured = await withReadDiagnostics(async () => result);

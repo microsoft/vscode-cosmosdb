@@ -396,7 +396,7 @@ export interface QueryShapeInput {
     executions: number;
     /** Average distinct physical partitions touched per execution (`avg(dcount(PartitionKeyRangeId))`). */
     avgFanout: number;
-    /** Widest fan-out observed for this shape, the container's estimated physical-partition count. */
+    /** Widest observed query fan-out; a lower bound, not an inventory count of physical partitions. */
     maxFanout: number;
 }
 

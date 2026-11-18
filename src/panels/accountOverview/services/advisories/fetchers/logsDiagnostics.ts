@@ -137,7 +137,8 @@ function errorFields(error: unknown): { codes: string[]; messages: string[]; sta
         httpStatus(field(error, 'statusCode')) ??
         httpStatus(field(error, 'status')) ??
         httpStatus(field(response, 'status')) ??
-        httpStatus(field(response, 'statusCode'));
+        httpStatus(field(response, 'statusCode')) ??
+        httpStatus(field(error, 'code'));
     const requestId = field(error, 'requestId') ?? field(response, 'requestId') ?? responseRequestId(response);
     return {
         codes: [...new Set(codes)],

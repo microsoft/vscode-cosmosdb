@@ -58,7 +58,7 @@ function evaluateShardKeyMisalignment(
         return { rootCause: 'insufficient_data' };
     }
     if (containerPartitions < thresholds.minPartitions) {
-        return { rootCause: containerPartitions > 0 ? 'not_applicable' : 'insufficient_data' };
+        return { rootCause: containerPartitions > 0 ? 'evaluated' : 'insufficient_data' };
     }
     if (roundedCrossPartitionPct < thresholds.structuralPct) {
         return { rootCause: 'evaluated' };

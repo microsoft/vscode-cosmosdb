@@ -32,11 +32,16 @@ function normalizeConsistency(level: string | undefined): string {
  */
 function evaluateExpensiveConsistency(config: AccountConfigInput): DetectorEvaluation {
     const level = normalizeConsistency(config.consistencyLevel);
+    const hasRegionCount = Number.isFinite(config.regionCount) && config.regionCount > 0;
+
     if (
-        !PREMIUM_CONSISTENCY_LEVELS.has(level) ||
-        config.regionCount < DIAGNOSTIC_POLICY.expensiveConsistency.minRegions
+        (level && !PREMIUM_CONSISTENCY_LEVELS.has(level)) ||
+        (hasRegionCount && config.regionCount < DIAGNOSTIC_POLICY.expensiveConsistency.minRegions)
     ) {
-        return { rootCause: !level || config.regionCount === 0 ? 'insufficient_data' : 'not_applicable' };
+        return { rootCause: 'not_applicable' };
+    }
+    if (!level || !hasRegionCount) {
+        return { rootCause: 'insufficient_data' };
     }
     const isStrong = level === 'strong';
     const displayLevel = config.consistencyLevel ?? (isStrong ? 'Strong' : 'Bounded Staleness');

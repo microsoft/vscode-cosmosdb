@@ -29,6 +29,9 @@ export interface ReadFailure {
 interface ReadContext {
     failures: ReadFailure[];
     reportedErrors: WeakSet<object>;
+    parent?: ReadContext;
+    requiredMetrics?: ReadonlySet<string>;
+    metric?: string;
 }
 
 const readContext = new AsyncLocalStorage<ReadContext>();
@@ -36,8 +39,14 @@ const readContext = new AsyncLocalStorage<ReadContext>();
 /** Snapshots bounded diagnostics when work completes, without delaying results for unfinished sibling reads. */
 export async function withReadDiagnostics<T>(
     work: () => Promise<T>,
+    requiredMetrics?: readonly string[],
 ): Promise<{ result: T; diagnostics: ReadFailure[] }> {
-    const context: ReadContext = { failures: [], reportedErrors: new WeakSet() };
+    const context: ReadContext = {
+        failures: [],
+        reportedErrors: new WeakSet(),
+        parent: readContext.getStore(),
+        requiredMetrics: requiredMetrics && new Set(requiredMetrics),
+    };
 
     return readContext.run(context, async () => ({
         result: await work(),
@@ -47,23 +56,31 @@ export async function withReadDiagnostics<T>(
 
 /** Records bounded categories only; no file contents, paths, or names are emitted. */
 export function recordReadDiagnostic(source: ReadSource, diagnostic: Pick<LogsDiagnostic, 'kind' | 'reason'>): void {
-    const context = readContext.getStore();
+    const metric = readContext.getStore()?.metric;
 
-    if (
-        context &&
-        !context.failures.some(
-            (failure) =>
-                failure.source === source && failure.kind === diagnostic.kind && failure.reason === diagnostic.reason,
-        )
-    ) {
-        context.failures.push({ source, kind: diagnostic.kind, reason: diagnostic.reason });
+    for (let context = readContext.getStore(); context; context = context.parent) {
+        if (source === 'metrics' && context.requiredMetrics && (!metric || !context.requiredMetrics.has(metric))) {
+            continue;
+        }
+        if (
+            !context.failures.some(
+                (failure) =>
+                    failure.source === source &&
+                    failure.kind === diagnostic.kind &&
+                    failure.reason === diagnostic.reason,
+            )
+        ) {
+            context.failures.push({ source, kind: diagnostic.kind, reason: diagnostic.reason });
+        }
     }
 }
 
 /** Records bounded categories only; no file contents, paths, or names are emitted. */
 export function reportReadFailure(source: ReadSource, error: unknown): void {
     if (error && typeof error === 'object') {
-        readContext.getStore()?.reportedErrors.add(error);
+        for (let context = readContext.getStore(); context; context = context.parent) {
+            context.reportedErrors.add(error);
+        }
     }
     recordReadDiagnostic(source, classifyLogsFailure(error));
 }
@@ -104,15 +121,19 @@ export async function readMetrics(
     resourceUri: string,
     options?: Parameters<MonitorClient['metrics']['list']>[1],
 ): ReturnType<MonitorClient['metrics']['list']> {
-    return readRequest('metrics', async () => {
-        const response = await client.metrics.list(resourceUri, options);
+    const read = () =>
+        readRequest('metrics', async () => {
+            const response = await client.metrics.list(resourceUri, options);
 
-        for (const metric of response.value ?? []) {
-            if (metric.errorCode && metric.errorCode !== 'Success') {
-                reportReadFailure('metrics', { code: metric.errorCode, message: metric.errorMessage });
+            for (const metric of response.value ?? []) {
+                if (metric.errorCode && metric.errorCode !== 'Success') {
+                    reportReadFailure('metrics', { code: metric.errorCode, message: metric.errorMessage });
+                }
             }
-        }
 
-        return response;
-    });
+            return response;
+        });
+    const context = readContext.getStore();
+
+    return context ? readContext.run({ ...context, metric: options?.metricnames }, read) : read();
 }

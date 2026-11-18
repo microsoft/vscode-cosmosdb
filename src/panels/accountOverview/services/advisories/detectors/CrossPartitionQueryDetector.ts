@@ -62,7 +62,7 @@ function evaluateCrossPartitionQuery(
         return { rootCause: 'insufficient_data' };
     }
     if (containerPartitions <= 1) {
-        return { rootCause: containerPartitions > 0 ? 'not_applicable' : 'insufficient_data' };
+        return { rootCause: containerPartitions > 0 ? 'evaluated' : 'insufficient_data' };
     }
     if (crossPartitionPct < thresholds.medPct || worst === undefined) {
         return { rootCause: 'evaluated' };

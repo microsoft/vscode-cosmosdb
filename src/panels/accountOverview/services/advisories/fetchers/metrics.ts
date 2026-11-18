@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type MonitorClient } from '@azure/arm-monitor';
+import { RestError } from '@azure/core-rest-pipeline';
 import { readMetrics } from '../../readDiagnostics';
 import { querySeries } from '../../ruTrends';
 import {
@@ -61,7 +62,7 @@ export async function getAccountConsumedRuShape(
     const perBucket = new Map<number, number>();
     for (const metric of response.value ?? []) {
         if (metric.errorCode && metric.errorCode !== 'Success') {
-            throw new Error(metric.errorMessage ?? metric.errorCode);
+            throw new RestError(metric.errorMessage ?? metric.errorCode, { code: metric.errorCode });
         }
         for (const series of metric.timeseries ?? []) {
             for (const point of series.data ?? []) {
@@ -223,7 +224,7 @@ export async function getAutoscaleUtilization(
     const totals = new Map<number, number>();
     for (const metric of response.value ?? []) {
         if (metric.errorCode && metric.errorCode !== 'Success') {
-            throw new Error(metric.errorMessage ?? metric.errorCode);
+            throw new RestError(metric.errorMessage ?? metric.errorCode, { code: metric.errorCode });
         }
         for (const series of metric.timeseries ?? []) {
             for (const point of series.data ?? []) {

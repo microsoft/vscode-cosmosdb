@@ -157,7 +157,7 @@ export function ContainerPage({
             {unvisitedTabs.length > 0 ? (
                 <div className={styles.visitReminder}>
                     <InfoFilled className={styles.visitReminderIcon} aria-hidden="true" />
-                    <Text size={200}>{l10n.t('Visit these tabs to review this container’s configuration:')}</Text>
+                    <Text size={200}>{l10n.t('Remaining configuration to review:')}</Text>
                     {unvisitedTabs.map(({ value, label }) => (
                         <Link
                             key={value}

@@ -1141,7 +1141,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             expect(tab).toHaveAccessibleDescription('Not yet visited');
             expect(tab.querySelector('[aria-hidden="true"]')).toBeInTheDocument();
         }
-        const reminder = screen.getByText('Visit these tabs to review this container’s configuration:');
+        const reminder = screen.getByText('Remaining configuration to review:');
         const notice = reminder.parentElement!;
         expect(notice).toBeVisible();
         expect(notice.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
@@ -1165,13 +1165,9 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(scale).toHaveFocus();
         expect(scale).toHaveAccessibleDescription('Visited');
         expect(scale.querySelector('[aria-hidden="true"]')).toBeNull();
-        expect(
-            screen.queryByText('Visit these tabs to review this container’s configuration:'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Remaining configuration to review:')).not.toBeInTheDocument();
         await userEvent.click(screen.getByRole('tab', { name: 'Data' }));
-        expect(
-            screen.queryByText('Visit these tabs to review this container’s configuration:'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Remaining configuration to review:')).not.toBeInTheDocument();
         await userEvent.click(screen.getByRole('button', { name: 'Next' }));
         expect(client.dataModeling.confirm.mutate).not.toHaveBeenCalled();
         expect(screen.getByRole('button', { name: 'Get Recommendation' })).toBeVisible();

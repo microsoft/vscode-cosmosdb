@@ -255,24 +255,29 @@ export const DataModelingWizard = () => {
     );
     const persistence = useModelingAdvisorPersistence({ load, save });
     const loadMessage = l10n.t('Loading saved modeling advisor state…');
-    const loadError = l10n.t('Could not load the modeling advisor state. Retry before making changes.');
+    const loadError = l10n.t(
+        'Could not load the saved data model. Changes to this temporary model will not be saved. Retry loading to restore the saved model and discard temporary changes.',
+    );
     const saveError = l10n.t('Could not save the modeling advisor state. Keep this tab open and retry.');
 
-    if (persistence.loadStatus === 'loading' || persistence.loadStatus === 'error') {
+    if (persistence.loadStatus === 'loading') {
         return (
             <div>
                 <output aria-live="polite">
-                    <Text>{persistence.loadStatus === 'loading' ? loadMessage : loadError}</Text>
+                    <Text>{loadMessage}</Text>
                 </output>
-                {persistence.loadStatus === 'error' ? (
-                    <Button onClick={persistence.retryLoad}>{l10n.t('Retry loading')}</Button>
-                ) : null}
             </div>
         );
     }
 
     return (
         <div className={styles.viewport}>
+            {persistence.loadFailed ? (
+                <div className={styles.statusRow}>
+                    <Text role="alert">{loadError}</Text>
+                    <Button onClick={persistence.retryLoad}>{l10n.t('Retry loading')}</Button>
+                </div>
+            ) : null}
             <div role="alert" className={styles.statusRow}>
                 {persistence.saveFailed ? <Text>{saveError}</Text> : null}
             </div>

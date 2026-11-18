@@ -200,6 +200,58 @@ describe('ReviewPage', () => {
         expect(onFixIssue).toHaveBeenLastCalledWith(warning);
     });
 
+    it('lists each unvisited container tab with a described Configure button', async () => {
+        const orders = createBlankContainer('Orders');
+        const users = createBlankContainer('Users');
+        const onOpenContainerTab = vi.fn();
+        const { rerender } = render(
+            <ReviewPage
+                workloadLabel="Other"
+                containers={[orders, users]}
+                visitedTabs={new Map([[orders.id, new Set(['data', 'scale'] as const)]])}
+                onOpenContainerTab={onOpenContainerTab}
+                onEditWorkload={vi.fn()}
+                onEditContainer={vi.fn()}
+            />,
+        );
+        const title = 'Some tabs have not been visited. Check that their settings match your app.';
+        const notice = screen.getByRole('group', { name: title });
+        const messages = [
+            'The Queries tab of Orders has not been visited.',
+            'The Data tab of Users has not been visited.',
+            'The Queries tab of Users has not been visited.',
+            'The Scale tab of Users has not been visited.',
+        ];
+        const configures = within(notice).getAllByRole('button', { name: 'Configure' });
+        expect(configures.map((button) => button.textContent)).toEqual(messages.map(() => 'Configure'));
+        for (const [index, configure] of configures.entries()) {
+            expect(configure).toHaveAccessibleDescription(messages[index]);
+        }
+        await userEvent.click(configures[0]);
+        expect(onOpenContainerTab).toHaveBeenLastCalledWith(orders.id, 'queries');
+        await userEvent.click(configures[3]);
+        expect(onOpenContainerTab).toHaveBeenLastCalledWith(users.id, 'scale');
+
+        const all = new Set(['data', 'queries', 'scale'] as const);
+        rerender(
+            <ReviewPage
+                workloadLabel="Other"
+                containers={[orders, users]}
+                visitedTabs={
+                    new Map([
+                        [orders.id, all],
+                        [users.id, all],
+                    ])
+                }
+                onOpenContainerTab={onOpenContainerTab}
+                onEditWorkload={vi.fn()}
+                onEditContainer={vi.fn()}
+            />,
+        );
+        expect(screen.queryByText(title)).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Configure' })).not.toBeInTheDocument();
+    });
+
     it('lists validation issues with individually described Fix buttons', async () => {
         const errors = ['Orders: First issue.', 'Users: Second issue.'];
         const issues = errors.map((message) => ({ message, path: [] }));

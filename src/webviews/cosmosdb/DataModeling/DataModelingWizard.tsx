@@ -303,11 +303,10 @@ const HydratedDataModelingWizard = ({
     const visible = useModelingPageVisible();
     const { confirm, confirming, confirmationError } = useNativeConfirmation();
     const advanceButtonRef = useRef<HTMLButtonElement>(null);
-    const queriesTabRef = useRef<HTMLButtonElement>(null);
     const [containerTab, setContainerTab] = useState<ContainerTab>('data');
     // A workload card is only a selection until Start applies it, so revisiting Workload is side-effect free.
     const [pendingScenario, setPendingScenario] = useState<ScenarioId>();
-    const [fixTarget, setFixTarget] = useState<ReviewValidationIssue>();
+    const [fixTarget, setFixTarget] = useState<Pick<ReviewValidationIssue, 'containerId' | 'path'>>();
     const clearFixTarget = useCallback(() => setFixTarget(undefined), []);
     const removeButtonRef = useRef<HTMLButtonElement>(null);
     const addButtonRef = useRef<HTMLButtonElement>(null);
@@ -792,23 +791,31 @@ const HydratedDataModelingWizard = ({
     const workloadIssues = useMemo(() => getWorkloadIssues(state), [state]);
     const workloadWarnings = useMemo(() => getWorkloadWarnings(state), [state]);
     const workloadErrors = useMemo(() => workloadIssues.map((issue) => issue.message), [workloadIssues]);
+    // Older drafts infer reached steps from the current step; preserve access to Review when jumping back.
+    const preserveReachedSteps = () => setState((previous) => ({ ...previous, reachedSteps }));
+    // An empty focus path focuses the opened tab panel itself.
+    const openContainerTab = (containerId: string, tab: ContainerTab, focusPath: string[] = []) => {
+        preserveReachedSteps();
+        goToContainer(containerId);
+        setContainerTab(tab);
+        setFixTarget({ containerId, path: focusPath });
+    };
     const fixIssue = (issue: ReviewValidationIssue) => {
-        // Older drafts infer reached steps from the current step; preserve access to Review when jumping back.
-        setState((previous) => ({ ...previous, reachedSteps }));
         if (!issue.containerId) {
+            preserveReachedSteps();
             goToStep(1);
             return;
         }
-        goToContainer(issue.containerId);
         const section = issue.path[0];
-        setContainerTab(
+        openContainerTab(
+            issue.containerId,
             section === 'scale'
                 ? 'scale'
                 : section === 'reads' || section === 'writes' || section === undefined
                   ? 'queries'
                   : 'data',
+            issue.path,
         );
-        setFixTarget(issue);
     };
 
     // Send the finished data model to Copilot Chat and wait for the tool callback.
@@ -1047,25 +1054,6 @@ const HydratedDataModelingWizard = ({
         if (isWorkload) {
             if (selectedScenario) await startWorkload(selectedScenario);
             return;
-        }
-        const visitedTabs = isContainerStep ? visits.get(activeValue.slice(CONTAINER_PREFIX.length)) : undefined;
-        if (isContainerStep && containerTab === 'data' && !visitedTabs?.has('queries') && !visitedTabs?.has('scale')) {
-            const result = await confirm(
-                l10n.t('Configure queries and scale?'),
-                l10n.t(
-                    'You have not visited the Queries or Scale tabs for this container. Configure them now, or go to the next step?',
-                ),
-                { primary: l10n.t('Configure'), secondary: l10n.t('Next') },
-            );
-            if (result === true) {
-                setContainerTab('queries');
-                queriesTabRef.current?.focus();
-                return;
-            }
-            if (result !== false) {
-                advanceButtonRef.current?.focus();
-                return;
-            }
         }
         const hasLaterProgress =
             !!recommendation || reachedSteps.some((value) => stepValues.indexOf(value) >= stepIndex);
@@ -1407,7 +1395,7 @@ const HydratedDataModelingWizard = ({
                                 model={state.dataModel}
                                 tab={containerTab}
                                 onTabChange={setContainerTab}
-                                queriesTabRef={queriesTabRef}
+                                visitedTabs={visits.get(c.id)}
                                 active={activeValue === containerStep(c.id)}
                                 containerId={c.id}
                                 focusPath={fixTarget?.containerId === c.id ? fixTarget.path : undefined}
@@ -1433,6 +1421,8 @@ const HydratedDataModelingWizard = ({
                             validationErrors={workloadIssues}
                             validationWarnings={workloadWarnings}
                             onFixIssue={fixIssue}
+                            visitedTabs={visits}
+                            onOpenContainerTab={openContainerTab}
                             workloadLabel={scenarioLabel ?? l10n.t('Not selected')}
                             containers={state.dataModel.containers}
                             onEditWorkload={() => goToStep(1)}

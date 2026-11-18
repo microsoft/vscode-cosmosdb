@@ -3,9 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { makeStyles, Tab, TabList, tokens } from '@fluentui/react-components';
+import { Link, makeStyles, Tab, TabList, Text, tokens } from '@fluentui/react-components';
+import { InfoFilled } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { type Ref, type SetStateAction, useEffect, useId, useRef } from 'react';
+import { type SetStateAction, useEffect, useId, useRef } from 'react';
 import { modelingInputsEqual } from '../../../../dataModeling/modelingTelemetryMetrics';
 import { type ModelingSection, type ModelingTelemetryEvent } from '../../../../dataModeling/modelingTelemetrySchema';
 import { type DataModel } from '../dataModel';
@@ -33,13 +34,44 @@ const useStyles = makeStyles({
     tabList: {
         flexWrap: 'wrap',
     },
+    visitReminder: {
+        display: 'flex',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: tokens.spacingHorizontalS,
+        color: tokens.colorNeutralForeground2,
+    },
+    // Matches the unvisited-tab dots so the reminder visually points at the tabs it lists.
+    visitReminderIcon: {
+        flexShrink: 0,
+        fontSize: '16px',
+        color: tokens.colorPaletteBlueForeground2,
+        '@media (forced-colors: active)': {
+            color: 'Highlight',
+            forcedColorAdjust: 'none',
+        },
+    },
+    unvisitedDot: {
+        display: 'inline-block',
+        width: '6px',
+        height: '6px',
+        marginLeft: tokens.spacingHorizontalXXS,
+        // Sit at the top-right of the label like a notification badge rather than on the text baseline.
+        verticalAlign: 'top',
+        borderRadius: tokens.borderRadiusCircular,
+        backgroundColor: tokens.colorPaletteBlueForeground2,
+        '@media (forced-colors: active)': {
+            backgroundColor: 'Highlight',
+            forcedColorAdjust: 'none',
+        },
+    },
 });
 
 export interface ContainerPageProps {
     model: DataModel;
     tab: ContainerTab;
     onTabChange: (tab: ContainerTab) => void;
-    queriesTabRef?: Ref<HTMLButtonElement>;
+    visitedTabs?: ReadonlySet<ContainerTab>;
     focusPath?: string[];
     onFocused?: () => void;
     /** Data-tab edits change the schema, so the wizard re-derives partition-key candidates. */
@@ -59,7 +91,7 @@ export function ContainerPage({
     model,
     tab,
     onTabChange,
-    queriesTabRef,
+    visitedTabs,
     focusPath,
     onFocused,
     onChangeData,
@@ -105,36 +137,62 @@ export function ContainerPage({
         if (!modelingInputsEqual(next, model)) onEdited?.('data');
         onChangeData(update);
     };
+    const tabs = [
+        { value: 'data', label: l10n.t('Data') },
+        { value: 'queries', label: l10n.t('Queries') },
+        { value: 'scale', label: l10n.t('Scale') },
+    ] as const;
+    const unvisitedTabs = tabs.filter(({ value }) => !visitedTabs?.has(value));
+    const selectTab = (next: ContainerTab) => {
+        onTabChange(next);
+        onTelemetry?.({
+            type: 'control',
+            control:
+                next === 'data' ? 'containerDataTab' : next === 'queries' ? 'containerQueriesTab' : 'containerScaleTab',
+        });
+    };
 
     return (
         <div className={styles.stack} ref={rootRef}>
+            {unvisitedTabs.length > 0 ? (
+                <div className={styles.visitReminder}>
+                    <InfoFilled className={styles.visitReminderIcon} aria-hidden="true" />
+                    <Text size={200}>{l10n.t('Visit these tabs to review this container’s configuration:')}</Text>
+                    {unvisitedTabs.map(({ value, label }) => (
+                        <Link
+                            key={value}
+                            as="button"
+                            onClick={() => {
+                                selectTab(value);
+                                rootRef.current?.querySelector<HTMLButtonElement>(`[id="${id}-${value}-tab"]`)?.focus();
+                            }}
+                        >
+                            {label}
+                        </Link>
+                    ))}
+                </div>
+            ) : null}
             <TabList
                 className={styles.tabList}
                 selectedValue={tab}
                 onTabSelect={(_, data) => {
                     if (data.value === 'data' || data.value === 'queries' || data.value === 'scale') {
-                        onTabChange(data.value);
-                        onTelemetry?.({
-                            type: 'control',
-                            control:
-                                data.value === 'data'
-                                    ? 'containerDataTab'
-                                    : data.value === 'queries'
-                                      ? 'containerQueriesTab'
-                                      : 'containerScaleTab',
-                        });
+                        selectTab(data.value);
                     }
                 }}
             >
-                <Tab value="data" id={`${id}-data-tab`} aria-controls={`${id}-data-panel`}>
-                    {l10n.t('Data')}
-                </Tab>
-                <Tab value="queries" id={`${id}-queries-tab`} aria-controls={`${id}-queries-panel`} ref={queriesTabRef}>
-                    {l10n.t('Queries')}
-                </Tab>
-                <Tab value="scale" id={`${id}-scale-tab`} aria-controls={`${id}-scale-panel`}>
-                    {l10n.t('Scale')}
-                </Tab>
+                {tabs.map(({ value, label }) => (
+                    <Tab
+                        key={value}
+                        value={value}
+                        id={`${id}-${value}-tab`}
+                        aria-controls={`${id}-${value}-panel`}
+                        aria-description={visitedTabs?.has(value) ? l10n.t('Visited') : l10n.t('Not yet visited')}
+                    >
+                        {label}
+                        {!visitedTabs?.has(value) ? <span className={styles.unvisitedDot} aria-hidden="true" /> : null}
+                    </Tab>
+                ))}
             </TabList>
 
             <div

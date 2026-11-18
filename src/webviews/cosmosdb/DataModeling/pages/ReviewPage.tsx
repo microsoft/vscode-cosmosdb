@@ -27,10 +27,12 @@ import { ContainerIcon } from '../../../icons/ContainerIcon';
 import { AssessmentIcon } from '../components/AssessmentIcon';
 import { MythBox } from '../components/primitives';
 import { type ContainerModel, type DataGrowth, type ItemsPerPartition, type WriteDistribution } from '../models';
+import { type ContainerTab } from './ContainerPage';
 
 /**
  * Review step. Shows the selected workload with a Change link, one summary card per container (laid out in a
- * horizontal row that wraps on narrow surfaces) with an Edit shortcut, and the rules the analysis evaluates.
+ * horizontal row that wraps on narrow surfaces) with an Edit shortcut, and the rules the analysis evaluates. Container
+ * tabs not yet visited are listed with Configure shortcuts so default settings are not accepted unnoticed.
  * Editing jumps back via the provided callbacks so the page stays decoupled from the wizard mechanism.
  */
 
@@ -201,8 +203,30 @@ export interface ReviewPageProps {
     /** Issues listed with Fix buttons that do not block recommendation requests. */
     validationWarnings?: ReviewValidationIssue[];
     onFixIssue?: (issue: ReviewValidationIssue) => void;
+    /** Container tabs visited this session, keyed by container id; unvisited tabs are listed with Configure buttons. */
+    visitedTabs?: ReadonlyMap<string, ReadonlySet<ContainerTab>>;
+    onOpenContainerTab?: (containerId: string, tab: ContainerTab) => void;
     onEditWorkload: () => void;
     onEditContainer: (containerId: string) => void;
+}
+
+const CONTAINER_TABS: readonly ContainerTab[] = ['data', 'queries', 'scale'];
+
+function unvisitedTabMessage(tab: ContainerTab, name: string): string {
+    switch (tab) {
+        case 'data':
+            return l10n.t('The Data tab of {name} has not been visited.', { name });
+        case 'queries':
+            return l10n.t('The Queries tab of {name} has not been visited.', { name });
+        case 'scale':
+            return l10n.t('The Scale tab of {name} has not been visited.', { name });
+    }
+}
+
+interface ActionRow {
+    key: string;
+    message: string;
+    onClick: () => void;
 }
 
 const formatNumber = (value: number) => new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(value);
@@ -305,6 +329,8 @@ export function ReviewPage({
     validationErrors = [],
     validationWarnings = [],
     onFixIssue,
+    visitedTabs,
+    onOpenContainerTab,
     onEditWorkload,
     onEditContainer,
 }: ReviewPageProps) {
@@ -323,25 +349,52 @@ export function ReviewPage({
         l10n.t('Hierarchical PK assessment'),
     ];
 
-    const issueList = (issues: ReviewValidationIssue[], kind: 'issue' | 'warning') => (
+    const actionList = (
+        rows: ActionRow[],
+        kind: 'issue' | 'warning' | 'unvisited',
+        actionLabel: string,
+        appearance: 'primary' | 'secondary',
+        showAction = true,
+    ) => (
         <ul className={styles.validationList}>
-            {issues.map((issue, index) => (
-                <li key={index} className={styles.validationItem}>
-                    <span id={`${rulesHeadingId}-${kind}-${index}`}>{issue.message}</span>
-                    {onFixIssue ? (
+            {rows.map((row, index) => (
+                <li key={row.key} className={styles.validationItem}>
+                    <span id={`${rulesHeadingId}-${kind}-${index}`}>{row.message}</span>
+                    {showAction ? (
                         <Button
                             className={styles.validationFix}
-                            appearance="primary"
+                            appearance={appearance}
                             aria-describedby={`${rulesHeadingId}-${kind}-${index}`}
-                            onClick={() => onFixIssue(issue)}
+                            onClick={row.onClick}
                         >
-                            {l10n.t('Fix')}
+                            {actionLabel}
                         </Button>
                     ) : null}
                 </li>
             ))}
         </ul>
     );
+    const issueList = (issues: ReviewValidationIssue[], kind: 'issue' | 'warning') =>
+        actionList(
+            issues.map((issue, index) => ({
+                key: String(index),
+                message: issue.message,
+                onClick: () => onFixIssue?.(issue),
+            })),
+            kind,
+            l10n.t('Fix'),
+            'primary',
+            !!onFixIssue,
+        );
+    const unvisitedRows: ActionRow[] = visitedTabs
+        ? containers.flatMap((container) =>
+              CONTAINER_TABS.filter((tab) => !visitedTabs.get(container.id)?.has(tab)).map((tab) => ({
+                  key: `${container.id}-${tab}`,
+                  message: unvisitedTabMessage(tab, container.entity),
+                  onClick: () => onOpenContainerTab?.(container.id, tab),
+              })),
+          )
+        : [];
     return (
         <div className={styles.page}>
             <div className={styles.intro}>
@@ -379,6 +432,17 @@ export function ReviewPage({
                             {l10n.t('Review these issues. They will not block a recommendation.')}
                         </MessageBarTitle>
                         {issueList(validationWarnings, 'warning')}
+                    </MessageBarBody>
+                </MessageBar>
+            ) : null}
+
+            {unvisitedRows.length > 0 ? (
+                <MessageBar intent="info" politeness="polite" layout="multiline">
+                    <MessageBarBody>
+                        <MessageBarTitle>
+                            {l10n.t('Some tabs have not been visited. Check that their settings match your app.')}
+                        </MessageBarTitle>
+                        {actionList(unvisitedRows, 'unvisited', l10n.t('Configure'), 'secondary', !!onOpenContainerTab)}
                     </MessageBarBody>
                 </MessageBar>
             ) : null}

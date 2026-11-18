@@ -287,6 +287,17 @@ describe('AccountHeader', () => {
         expect(screen.getByText('Capacity mode: Provisioned throughput')).toBeVisible();
     });
 
+    it.each([false, true])('exposes only the account title as a heading when details are open: %s', (open) => {
+        renderHeader({ defaultEssentialsOpen: open });
+        expect(screen.getAllByRole('heading')).toEqual([
+            screen.getByRole('heading', { level: 1, name: summary.accountName }),
+        ]);
+        const toggle = screen.getByRole('button', { name: 'Account details' });
+        expect(toggle).toHaveTextContent('Account details');
+        expect(toggle).toHaveAccessibleName('Account details');
+        expect(toggle).toHaveAttribute('aria-expanded', String(open));
+    });
+
     it('opens and closes Account details with Enter and Space while maintaining its ARIA relationship', async () => {
         const user = userEvent.setup();
         renderHeader();

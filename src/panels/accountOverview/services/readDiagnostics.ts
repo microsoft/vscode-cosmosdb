@@ -28,28 +28,21 @@ export interface ReadFailure {
 
 interface ReadContext {
     failures: ReadFailure[];
-    pending: Set<Promise<unknown>>;
     reportedErrors: WeakSet<object>;
 }
 
 const readContext = new AsyncLocalStorage<ReadContext>();
 
-/** Collects bounded read diagnostics without changing RPC results or passing telemetry contexts to readers. */
+/** Snapshots bounded diagnostics when work completes, without delaying results for unfinished sibling reads. */
 export async function withReadDiagnostics<T>(
     work: () => Promise<T>,
 ): Promise<{ result: T; diagnostics: ReadFailure[] }> {
-    const context: ReadContext = { failures: [], pending: new Set(), reportedErrors: new WeakSet() };
+    const context: ReadContext = { failures: [], reportedErrors: new WeakSet() };
 
-    return readContext.run(context, async () => {
-        try {
-            return { result: await work(), diagnostics: context.failures };
-        } finally {
-            // A fail-fast reader can finish before sibling requests have reported their errors.
-            while (context.pending.size > 0) {
-                await Promise.allSettled(context.pending);
-            }
-        }
-    });
+    return readContext.run(context, async () => ({
+        result: await work(),
+        diagnostics: [...context.failures],
+    }));
 }
 
 /** Records bounded categories only; no file contents, paths, or names are emitted. */
@@ -89,20 +82,11 @@ export function reportUnavailableClient(source: ReadSource): void {
 }
 
 export async function readRequest<T>(source: ReadSource, work: () => Promise<T>): Promise<T> {
-    const context = readContext.getStore();
-    let pending: Promise<T> | undefined;
-
     try {
-        pending = work();
-        context?.pending.add(pending);
-        return await pending;
+        return await work();
     } catch (error) {
         reportUncaughtReadFailure(source, error);
         throw error;
-    } finally {
-        if (pending) {
-            context?.pending.delete(pending);
-        }
     }
 }
 

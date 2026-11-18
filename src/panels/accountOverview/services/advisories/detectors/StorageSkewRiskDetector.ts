@@ -45,10 +45,12 @@ function evaluateStorageSkewRisk(input: ContainerStorageInput, balanceThreshold:
         })
         .filter((bytes): bytes is number => bytes !== undefined);
     const ratio = balanceRatio(sizes);
+    const hasCompleteObservations = sizes.length === input.partitions.length;
+
     if (ratio === undefined || ratio >= balanceThreshold) {
         return {
             rootCause:
-                ratio !== undefined
+                ratio !== undefined && hasCompleteObservations
                     ? 'evaluated'
                     : sizes.length === 1 && input.partitions.length === 1
                       ? 'not_applicable'
@@ -57,7 +59,7 @@ function evaluateStorageSkewRisk(input: ContainerStorageInput, balanceThreshold:
     }
     const busiestBytes = Math.max(...sizes);
     if (busiestBytes < STORAGE_SKEW_MIN_BUSIEST_BYTES) {
-        return { rootCause: 'evaluated' };
+        return { rootCause: hasCompleteObservations ? 'evaluated' : 'insufficient_data' };
     }
 
     const severity: DerivedAdvisorySeverity =

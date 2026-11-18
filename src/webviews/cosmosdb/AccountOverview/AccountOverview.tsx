@@ -327,22 +327,29 @@ export const OverviewDashboard = ({
 
     const lastViewedTab = useRef<{ tab: OverviewTab; revision: number } | undefined>(undefined);
     useEffect(() => {
-        if (!summary || !inventory) {
-            return;
-        }
-        const previous = lastViewedTab.current;
-        // Navigation first updates the requested target, then the selected tab in a separate effect.
-        if (previous?.revision !== navigationRevision && selectedTab !== requestedTab) {
-            return;
-        }
-        if (previous?.tab === selectedTab && previous.revision === navigationRevision) {
-            return;
-        }
-        lastViewedTab.current = { tab: selectedTab, revision: navigationRevision };
-        reportEvent('tabViewed', {
-            tab: selectedTab,
-            trigger: !previous ? 'initial' : previous.revision !== navigationRevision ? 'navigation' : 'user',
-        });
+        const reportVisit = () => {
+            if (!summary || !inventory || document.visibilityState !== 'visible') {
+                return;
+            }
+            const previous = lastViewedTab.current;
+
+            // Navigation first updates the requested target, then the selected tab in a separate effect.
+            if (previous?.revision !== navigationRevision && selectedTab !== requestedTab) {
+                return;
+            }
+            if (previous?.tab === selectedTab && previous.revision === navigationRevision) {
+                return;
+            }
+            lastViewedTab.current = { tab: selectedTab, revision: navigationRevision };
+            reportEvent('tabViewed', {
+                tab: selectedTab,
+                trigger: !previous ? 'initial' : previous.revision !== navigationRevision ? 'navigation' : 'user',
+            });
+        };
+
+        reportVisit();
+        document.addEventListener('visibilitychange', reportVisit);
+        return () => document.removeEventListener('visibilitychange', reportVisit);
     }, [summary, inventory, selectedTab, navigationRevision, requestedTab, reportEvent]);
 
     const fetchSummary = useCallback(() => {

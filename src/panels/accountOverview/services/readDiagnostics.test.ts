@@ -23,6 +23,39 @@ describe('invocation-local Account Overview read diagnostics', () => {
         expect(captured.diagnostics).toEqual([]);
     });
 
+    it('returns a fail-fast fallback without waiting for a stalled sibling read', async () => {
+        const sibling = Promise.withResolvers<void>();
+        const error = Object.assign(new Error('private-service-error'), { statusCode: 403 });
+        const fallback = { available: false };
+        let completed = false;
+        const captured = withReadDiagnostics(async () => {
+            try {
+                await Promise.all([
+                    readRequest('metrics', async () => {
+                        throw error;
+                    }),
+                    readRequest('metrics', () => sibling.promise),
+                ]);
+                return { available: true };
+            } catch {
+                return fallback;
+            }
+        });
+
+        void captured.then(() => {
+            completed = true;
+        });
+        await new Promise<void>((resolve) => setImmediate(resolve));
+        const completedBeforeSibling = completed;
+
+        sibling.resolve();
+        const result = await captured;
+
+        expect(completedBeforeSibling).toBe(true);
+        expect(result.result).toBe(fallback);
+        expect(result.diagnostics).toEqual([{ source: 'metrics', kind: 'accessDenied', reason: 'rbac' }]);
+    });
+
     it('records only bounded, deduplicated categories while preserving reader errors', async () => {
         const error = Object.assign(new Error('Access to private-account/private-db was denied.'), { statusCode: 403 });
         const captured = await withReadDiagnostics(async () => {
@@ -42,6 +75,32 @@ describe('invocation-local Account Overview read diagnostics', () => {
             { source: 'logs', kind: 'clientUnavailable', reason: 'noData' },
         ]);
         expect(JSON.stringify(captured)).not.toContain('private-');
+    });
+
+    it('does not mutate completed diagnostics when a sibling fails later', async () => {
+        const sibling = Promise.withResolvers<void>();
+        const error = Object.assign(new Error('private-service-error'), { statusCode: 403 });
+        const captured = await withReadDiagnostics(async () => {
+            try {
+                await Promise.all([
+                    readRequest('metrics', async () => {
+                        throw error;
+                    }),
+                    readRequest('logs', async () => {
+                        await sibling.promise;
+                        throw Object.assign(new Error('private-late-error'), { statusCode: 503 });
+                    }),
+                ]);
+                return { available: true };
+            } catch {
+                return { available: false };
+            }
+        });
+
+        expect(captured.diagnostics).toEqual([{ source: 'metrics', kind: 'accessDenied', reason: 'rbac' }]);
+        sibling.resolve();
+        await new Promise<void>((resolve) => setImmediate(resolve));
+        expect(captured.diagnostics).toEqual([{ source: 'metrics', kind: 'accessDenied', reason: 'rbac' }]);
     });
 
     it('keeps concurrent invocation scopes isolated', async () => {

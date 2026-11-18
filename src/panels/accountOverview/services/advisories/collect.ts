@@ -232,6 +232,8 @@ export async function collectDerivedAdvisories(
 
     const now = Date.now();
     const metricFailures: MetricSourceStatus['failures'] = [];
+    const ageFailures: MetricSourceStatus['failures'] = [];
+    const metricCoverageFailures: MetricSourceStatus['failures'] = [];
     const accountCreatedAtPromise = capture(getAccountCreatedAt(cosmosClient, resourceGroup, accountName), 'account');
 
     let rows: InventoryContainerRow[] = [];
@@ -254,7 +256,7 @@ export async function collectDerivedAdvisories(
     const dedicatedTargets = rows.filter(isDedicatedContainerOffer);
     if (accountCreation.reason && dedicatedTargets.length > 0) {
         for (const rule of AGE_GATED_RULES) {
-            addMetricFailure(metricFailures, rule, accountCreation.reason);
+            addMetricFailure(ageFailures, rule, accountCreation.reason);
         }
     }
     await mapInBatches(
@@ -265,7 +267,7 @@ export async function collectDerivedAdvisories(
             );
             if (creation.reason) {
                 for (const rule of AGE_GATED_RULES) {
-                    addMetricFailure(metricFailures, rule, creation.reason, scopeOf(row));
+                    addMetricFailure(ageFailures, rule, creation.reason, scopeOf(row));
                 }
             } else if (creation.value) {
                 row.resourceCreatedAt = creation.value;
@@ -365,6 +367,21 @@ export async function collectDerivedAdvisories(
         inventoryMetrics?.available === true
             ? rows.map((row) => {
                   const metrics = inventoryMetrics.metrics[scopeOf(row)];
+                  const storage = metrics?.storage ?? inventoryMetrics.storageFallback;
+
+                  if (row.userExcludedPathCount === 0) {
+                      for (const observation of [storage?.data, storage?.index]) {
+                          if (observation?.status === 'unavailable' && observation.reason !== 'noData') {
+                              addMetricFailure(
+                                  metricCoverageFailures,
+                                  'IndexingCostRisk',
+                                  observation.reason === 'error' ? 'noData' : observation.reason,
+                                  scopeOf(row),
+                              );
+                          }
+                      }
+                  }
+
                   return {
                       databaseId: row.databaseId,
                       containerId: row.containerId,
@@ -645,37 +662,61 @@ export async function collectDerivedAdvisories(
         advisoryThresholds,
     );
 
+    metricCoverageFailures.push(...metricFailures);
+    // Preserve source failures even when a target's own timestamp or an account fallback supplies its age.
+    for (const failure of ageFailures) {
+        const targets =
+            failure.rule === 'OverProvisioning' || failure.rule === 'AutoscaleCandidate'
+                ? manualTargets
+                : failure.rule === 'AutoscaleMaxOverProvisioned' || failure.rule === 'AutoscaleToManualCandidate'
+                  ? autoscaleTargets
+                  : dedicatedTargets;
+
+        if (
+            targets.some(
+                (row) =>
+                    (failure.scope === undefined || failure.scope === scopeOf(row)) &&
+                    rowAgeDays(row, accountCreatedAt, now) === undefined,
+            )
+        ) {
+            addMetricFailure(metricCoverageFailures, failure.rule, failure.reason, failure.scope);
+        }
+        addMetricFailure(metricFailures, failure.rule, failure.reason, failure.scope);
+    }
+
     const metricSource = { available: metricFailures.length === 0, failures: metricFailures };
+    const inventoryTargetsKnown =
+        inventory.value !== undefined &&
+        rows.every(
+            (row) =>
+                row.throughputMode !== 'unknown' &&
+                (row.throughputMode === 'serverless' ||
+                    (row.throughputRU !== undefined &&
+                        Number.isFinite(row.throughputRU) &&
+                        row.throughputRU > 0 &&
+                        (row.offerLevel === 'container' || row.offerLevel === 'database') &&
+                        (row.offerThroughputMode === 'manual' || row.offerThroughputMode === 'autoscale'))),
+        );
     const targetCounts: Partial<Record<DerivedAdvisoryRule, number>> = {
         ServerlessCandidate: isServerless ? 0 : 1,
-        ...(inventory.value &&
-            rows.every(
-                (row) =>
-                    row.throughputMode !== 'unknown' &&
-                    (row.throughputMode === 'serverless' ||
-                        (row.throughputRU !== undefined &&
-                            Number.isFinite(row.throughputRU) &&
-                            row.throughputRU > 0 &&
-                            (row.offerLevel === 'container' || row.offerLevel === 'database') &&
-                            (row.offerThroughputMode === 'manual' || row.offerThroughputMode === 'autoscale'))),
-            ) && {
-                HotPartitionRisk: dedicatedTargets.length,
-                SustainedThrottlingInRegion: dedicatedTargets.length,
-                OverProvisioning: manualTargets.length,
-                AutoscaleCandidate: manualTargets.length,
-                IdleContainer: dedicatedTargets.length,
-                StorageGrowthRisk: dedicatedTargets.length,
-                StorageSkewRisk: dedicatedTargets.length,
-                IndexingCostRisk: rows.length,
-                PartitionMergeCandidate: dedicatedTargets.length,
-                AutoscaleMaxOverProvisioned: autoscaleTargets.length,
-                AutoscaleToManualCandidate: autoscaleTargets.length,
-                ServerlessThrottling: serverlessTargets.length,
-                CrossPartitionQuery: logTargets.length,
-                ShardKeyMisalignment: logTargets.length,
-                UncontrolledIngestion: dedicatedTargets.length,
-                SharedThroughputStarvation: offers.filter((offer) => offer.offerLevel === 'database').length,
-            }),
+        ...(inventory.value && { IndexingCostRisk: rows.length }),
+        ...(inventoryTargetsKnown && {
+            HotPartitionRisk: dedicatedTargets.length,
+            SustainedThrottlingInRegion: dedicatedTargets.length,
+            OverProvisioning: manualTargets.length,
+            AutoscaleCandidate: manualTargets.length,
+            IdleContainer: dedicatedTargets.length,
+            StorageGrowthRisk: dedicatedTargets.length,
+            StorageSkewRisk: dedicatedTargets.length,
+            PartitionMergeCandidate: dedicatedTargets.length,
+            AutoscaleMaxOverProvisioned: autoscaleTargets.length,
+            AutoscaleToManualCandidate: autoscaleTargets.length,
+            ServerlessThrottling: serverlessTargets.length,
+            CrossPartitionQuery: logTargets.length,
+            ShardKeyMisalignment: logTargets.length,
+            UncontrolledIngestion: dedicatedTargets.length,
+            SharedThroughputStarvation: offers.filter((offer) => offer.offerLevel === 'database').length,
+        }),
     };
 
     return {
@@ -683,9 +724,13 @@ export async function collectDerivedAdvisories(
         logSource: logs.logSource,
         metricSource,
         detectorCoverage: completeDetectorCoverage(detectorCoverage, {
-            metricSource,
+            metricSource: { available: metricCoverageFailures.length === 0, failures: metricCoverageFailures },
             logSource: logs.logSource,
             targetCounts,
+            uncertainTargetRules:
+                inventory.value && !inventoryTargetsKnown
+                    ? INVENTORY_DEPENDENT_RULES.filter((rule) => rule !== 'IndexingCostRisk')
+                    : undefined,
         }),
     };
 }

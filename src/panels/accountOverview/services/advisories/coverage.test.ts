@@ -8,7 +8,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { API } from '../../../../AzureDBExperiences';
 import * as inventory from '../inventory';
 import { withReadDiagnostics } from '../readDiagnostics';
-import { mockClient } from '../testFixtures';
+import * as resourceAge from '../resourceAge';
+import { dims, GB, iso, mockClient } from '../testFixtures';
+import { DAY } from '../units';
 import { collectDerivedAdvisories } from './collect';
 import { DEFAULT_ADVISORY_THRESHOLDS } from './core/thresholds';
 import {
@@ -21,6 +23,7 @@ import {
 import { completeDetectorCoverage } from './coverage';
 import { analyzeDerivedAdvisories, computeDerivedAdvisories } from './engine';
 import { type LogsOperation } from './fetchers/logsDiagnostics';
+import * as metrics from './fetchers/metrics';
 import { DETECTORS } from './registry';
 
 const emptyInputs: DerivedAdvisoryInputs = {
@@ -57,6 +60,25 @@ function partition(overrides: Partial<PartitionSaturationInput> = {}): Partition
         throttleRatePercent: 5,
         throughputMode: 'dedicated',
         provisionedRu: 1000,
+        ...overrides,
+    };
+}
+
+function inventoryRow(overrides: Partial<inventory.InventoryContainerRow> = {}): inventory.InventoryContainerRow {
+    return {
+        databaseId: 'private-db',
+        containerId: 'private-container',
+        throughputMode: 'dedicated',
+        throughputRU: 1000,
+        offerLevel: 'container',
+        offerThroughputMode: 'manual',
+        resourceCreatedAt: '2020-01-01T00:00:00.000Z',
+        partitionKeyPaths: [],
+        indexingMode: 'consistent',
+        excludedPathCount: 0,
+        userExcludedPathCount: 0,
+        compositeIndexCount: 0,
+        health: 'Healthy',
         ...overrides,
     };
 }
@@ -137,6 +159,50 @@ describe('pure detector coverage', () => {
         }
     });
 
+    it.each([
+        { rule: 'StorageGrowthRisk', sizes: [[0.5], [30]], status: 'insufficientData', matches: 0 },
+        { rule: 'StorageGrowthRisk', sizes: [[30, 30], [30]], status: 'insufficientData', matches: 0 },
+        { rule: 'StorageGrowthRisk', sizes: [[10, 10.1], []], status: 'insufficientData', matches: 0 },
+        { rule: 'StorageGrowthRisk', sizes: [[30, 30], [0.5]], status: 'evaluated', matches: 0 },
+        { rule: 'StorageGrowthRisk', sizes: [[45, 46], []], status: 'evaluated', matches: 1 },
+        { rule: 'StorageSkewRisk', sizes: [[30], [30], []], status: 'insufficientData', matches: 0 },
+        { rule: 'StorageSkewRisk', sizes: [[0.5], [0.1], []], status: 'insufficientData', matches: 0 },
+        { rule: 'StorageSkewRisk', sizes: [[30], [30]], status: 'evaluated', matches: 0 },
+        { rule: 'StorageSkewRisk', sizes: [[30]], status: 'notApplicable', matches: 0 },
+        { rule: 'StorageSkewRisk', sizes: [[40], [5], []], status: 'evaluated', matches: 1 },
+    ] satisfies {
+        rule: DerivedAdvisoryRule;
+        sizes: number[][];
+        status: DetectorCoverage['status'];
+        matches: number;
+    }[])('reports $rule coverage with partition histories $sizes as $status', ({ rule, sizes, status, matches }) => {
+        const result = analyzeDerivedAdvisories(
+            {
+                ...emptyInputs,
+                storage: [
+                    {
+                        databaseId: 'private-db',
+                        containerId: 'private-container',
+                        resourceAgeDays: 30,
+                        partitions: sizes.map((values, index) => ({
+                            partitionId: String(index),
+                            samples: values.map((value, day) => ({ timestamp: day * DAY, bytes: value * GB })),
+                        })),
+                    },
+                ],
+            },
+            DEFAULT_ADVISORY_THRESHOLDS,
+        );
+
+        expect(result.detectorCoverage.find((coverage) => coverage.rule === rule)).toMatchObject({
+            status,
+            evaluatedCount: status === 'evaluated' ? 1 : 0,
+            matchedCount: matches,
+            insufficientDataCount: status === 'insufficientData' ? 1 : 0,
+        });
+        expect(result.advisories.filter((advisory) => advisory.rule === rule)).toHaveLength(matches);
+    });
+
     it('counts findings before supersession without changing their visibility decisions', () => {
         const result = analyzeDerivedAdvisories(
             {
@@ -205,6 +271,186 @@ describe('detector dependency coverage', () => {
 
     describe('main collector coverage integration', () => {
         afterEach(() => vi.restoreAllMocks());
+
+        it('keeps evaluated known targets partial when another row has unknown eligibility', async () => {
+            const cosmosClient = new CosmosDBManagementClient({ getToken: async () => null }, 'sub');
+            const known = inventoryRow();
+            const unknown = inventoryRow({
+                containerId: 'private-unknown',
+                throughputMode: 'unknown',
+                throughputRU: undefined,
+                offerLevel: undefined,
+                offerThroughputMode: 'unknown',
+            });
+
+            vi.spyOn(cosmosClient.databaseAccounts, 'get').mockResolvedValue({});
+            vi.spyOn(inventory, 'getSqlInventoryDetails').mockResolvedValue({
+                rows: [known, unknown],
+                offers: [],
+                databases: [],
+            });
+            vi.spyOn(metrics, 'getContainerIdlePeak').mockResolvedValue(0);
+
+            const result = await collectDerivedAdvisories({
+                monitorClient: mockClient({}),
+                cosmosClient,
+                accountId: 'private-account',
+                resourceGroup: 'private-rg',
+                accountName: 'private-account',
+                isServerless: false,
+                advisoryThresholds: DEFAULT_ADVISORY_THRESHOLDS,
+            });
+
+            expect(result.detectorCoverage.find(({ rule }) => rule === 'IdleContainer')).toMatchObject({
+                status: 'partial',
+                evaluatedCount: 1,
+                matchedCount: 1,
+                insufficientDataCount: 0,
+                unavailableReasons: [],
+            });
+            expect(result.advisories.some(({ rule }) => rule === 'IdleContainer')).toBe(true);
+            expect(JSON.stringify(result.detectorCoverage)).not.toContain('private-');
+        });
+
+        it.each(['containerDate', 'offerDate', 'discoveredDate', 'accountFallback', 'unknown', 'idleFailure'] as const)(
+            'attributes age failures only when needed by the target (%s)',
+            async (state) => {
+                const cosmosClient = new CosmosDBManagementClient({ getToken: async () => null }, 'sub');
+                const createdAt = '2020-01-01T00:00:00.000Z';
+                const row = inventoryRow({
+                    resourceCreatedAt: state === 'containerDate' || state === 'idleFailure' ? createdAt : undefined,
+                    offerCreatedAt: state === 'offerDate' ? createdAt : undefined,
+                });
+                const getAccount = vi.spyOn(cosmosClient.databaseAccounts, 'get');
+
+                if (state === 'accountFallback') {
+                    getAccount.mockResolvedValue({ systemData: { createdAt: new Date(createdAt) } });
+                } else {
+                    getAccount.mockRejectedValue(Object.assign(new Error('private-age-error'), { statusCode: 403 }));
+                }
+                vi.spyOn(inventory, 'getSqlInventoryDetails').mockResolvedValue({
+                    rows: [row],
+                    offers: [],
+                    databases: [],
+                });
+                const getContainerAge = vi.spyOn(resourceAge, 'getContainerCreatedAt');
+                if (state === 'accountFallback') {
+                    getContainerAge.mockRejectedValue(
+                        Object.assign(new Error('private-container-age-error'), { statusCode: 503 }),
+                    );
+                } else {
+                    getContainerAge.mockResolvedValue(state === 'discoveredDate' ? createdAt : undefined);
+                }
+                const getIdle = vi.spyOn(metrics, 'getContainerIdlePeak');
+                if (state === 'idleFailure') {
+                    getIdle.mockRejectedValue(Object.assign(new Error('private-idle-error'), { statusCode: 403 }));
+                } else {
+                    getIdle.mockResolvedValue(0);
+                }
+
+                const result = await collectDerivedAdvisories({
+                    monitorClient: mockClient({}),
+                    cosmosClient,
+                    accountId: 'private-account',
+                    resourceGroup: 'private-rg',
+                    accountName: 'private-account',
+                    isServerless: false,
+                    advisoryThresholds: DEFAULT_ADVISORY_THRESHOLDS,
+                });
+
+                expect(result.detectorCoverage.find(({ rule }) => rule === 'IdleContainer')).toMatchObject({
+                    status: state === 'unknown' ? 'partial' : state === 'idleFailure' ? 'unavailable' : 'evaluated',
+                    evaluatedCount: state === 'idleFailure' ? 0 : 1,
+                    unavailableReasons: state === 'unknown' || state === 'idleFailure' ? ['rbac'] : [],
+                });
+                expect(result.metricSource.available).toBe(false);
+                expect(result.metricSource.failures).toContainEqual({
+                    rule: 'IdleContainer',
+                    reason: state === 'accountFallback' ? 'noData' : 'rbac',
+                    scope: state === 'accountFallback' ? 'private-db/private-container' : undefined,
+                });
+            },
+        );
+
+        it.each([403, 503, 'empty', 'excluded'] as const)(
+            'preserves index-read failure reasons without treating successful empty reads as failures (%s)',
+            async (state) => {
+                const cosmosClient = new CosmosDBManagementClient({ getToken: async () => null }, 'sub');
+                const row = inventoryRow({
+                    throughputMode: 'serverless',
+                    throughputRU: undefined,
+                    offerLevel: 'none',
+                    offerThroughputMode: 'serverless',
+                    userExcludedPathCount: state === 'excluded' ? 1 : 0,
+                });
+                const monitorClient = mockClient({
+                    DataUsage: {
+                        value: [
+                            {
+                                timeseries: [
+                                    {
+                                        metadatavalues: dims(row.databaseId, row.containerId),
+                                        data: [{ timeStamp: iso(Date.now()), maximum: 100 }],
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                });
+                const list = monitorClient.metrics.list.bind(monitorClient.metrics);
+
+                vi.spyOn(cosmosClient.databaseAccounts, 'get').mockResolvedValue({});
+                vi.spyOn(inventory, 'getSqlInventoryDetails').mockResolvedValue({
+                    rows: [row],
+                    offers: [],
+                    databases: [],
+                });
+                vi.spyOn(monitorClient.metrics, 'list').mockImplementation((resource, options) =>
+                    options?.metricnames === 'IndexUsage' && state !== 'empty'
+                        ? Promise.reject(
+                              Object.assign(new Error('private-index-error'), {
+                                  statusCode: state === 503 ? 503 : 403,
+                              }),
+                          )
+                        : list(resource, options),
+                );
+
+                const captured = await withReadDiagnostics(() =>
+                    collectDerivedAdvisories({
+                        monitorClient,
+                        cosmosClient,
+                        accountId: 'private-account',
+                        resourceGroup: 'private-rg',
+                        accountName: 'private-account',
+                        isServerless: true,
+                        advisoryThresholds: DEFAULT_ADVISORY_THRESHOLDS,
+                    }),
+                );
+                const result = captured.result;
+
+                expect(result.detectorCoverage.find(({ rule }) => rule === 'IndexingCostRisk')).toMatchObject({
+                    status:
+                        state === 'empty' ? 'insufficientData' : state === 'excluded' ? 'notApplicable' : 'unavailable',
+                    evaluatedCount: 0,
+                    unavailableReasons:
+                        state === 'empty' || state === 'excluded' ? [] : [state === 403 ? 'rbac' : 'noData'],
+                });
+                expect(result.metricSource).toEqual({ available: true, failures: [] });
+                expect(result.advisories).toEqual([]);
+                expect(captured.diagnostics.filter(({ source }) => source === 'metrics')).toEqual(
+                    state === 'empty'
+                        ? []
+                        : [
+                              {
+                                  source: 'metrics',
+                                  kind: state === 503 ? 'transient' : 'accessDenied',
+                                  reason: state === 503 ? 'noData' : 'rbac',
+                              },
+                          ],
+                );
+                expect(JSON.stringify(result.detectorCoverage)).not.toContain('private-');
+            },
+        );
 
         it.each(['empty', 'unknown', 'failed', 'missingOffer', 'nonfiniteRu', 'zeroRu'] as const)(
             'does not confuse %s inventory with an authoritative empty target set',

@@ -34,14 +34,15 @@ function evaluateStorageGrowthRisk(input: ContainerStorageInput, horizonDays: nu
     if (horizonDays <= 0) {
         return { rootCause: 'not_applicable' };
     }
-    let hasObservations = false;
+    let hasCompleteObservations = input.partitions.length > 0;
     let soonest: { days: number; currentBytes: number; slopeBytesPerDay: number; atOrOverLimit: boolean } | undefined;
     for (const partition of input.partitions) {
         const currentBytes = latestBytes(partition);
-        if (currentBytes !== undefined && currentBytes < STORAGE_GROWTH_MIN_MATERIAL_BYTES) {
-            hasObservations = true;
+        if (currentBytes === undefined) {
+            hasCompleteObservations = false;
+            continue;
         }
-        if (currentBytes === undefined || currentBytes < STORAGE_GROWTH_MIN_MATERIAL_BYTES) {
+        if (currentBytes < STORAGE_GROWTH_MIN_MATERIAL_BYTES) {
             continue;
         }
         if (currentBytes >= PARTITION_STORAGE_LIMIT_BYTES) {
@@ -52,10 +53,11 @@ function evaluateStorageGrowthRisk(input: ContainerStorageInput, horizonDays: nu
             continue;
         }
         const slopeBytesPerDay = storageGrowthSlopeBytesPerDay(partition.samples);
-        if (slopeBytesPerDay !== undefined) {
-            hasObservations = true;
+        if (slopeBytesPerDay === undefined) {
+            hasCompleteObservations = false;
+            continue;
         }
-        if (slopeBytesPerDay === undefined || slopeBytesPerDay < STORAGE_GROWTH_MIN_SLOPE_BYTES_PER_DAY) {
+        if (slopeBytesPerDay < STORAGE_GROWTH_MIN_SLOPE_BYTES_PER_DAY) {
             continue;
         }
         const days = daysToStorageLimit(currentBytes, slopeBytesPerDay, PARTITION_STORAGE_LIMIT_BYTES);
@@ -67,7 +69,7 @@ function evaluateStorageGrowthRisk(input: ContainerStorageInput, horizonDays: nu
         }
     }
     if (soonest === undefined || soonest.days > horizonDays) {
-        return { rootCause: soonest !== undefined || hasObservations ? 'evaluated' : 'insufficient_data' };
+        return { rootCause: hasCompleteObservations ? 'evaluated' : 'insufficient_data' };
     }
 
     if (soonest.atOrOverLimit) {

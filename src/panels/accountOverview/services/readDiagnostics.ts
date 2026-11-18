@@ -22,11 +22,33 @@ interface ReadContext {
     emitted: Set<string>;
     reportedErrors: WeakSet<object>;
     sensitiveValues: readonly string[];
-    warn: (message: string) => void;
+    warn?: (message: string) => void;
+    parent?: ReadContext;
+    requiredMetrics?: ReadonlySet<string>;
+    metric?: string;
 }
 
 // SDK clients are shared, but diagnostics and masks belong to one RPC invocation, including its concurrent reads.
 const readContext = new AsyncLocalStorage<ReadContext>();
+
+/** Captures required-read evidence without hiding failures or sanitized Output from the enclosing RPC. */
+export async function captureReadDiagnostics<T>(
+    work: () => Promise<T>,
+    requiredMetrics?: readonly string[],
+): Promise<{ result: T; diagnostics: ReadFailure[] }> {
+    const parent = readContext.getStore();
+    const context: ReadContext = {
+        failures: [],
+        emitted: parent?.emitted ?? new Set(),
+        reportedErrors: parent?.reportedErrors ?? new WeakSet(),
+        sensitiveValues: parent?.sensitiveValues ?? [],
+        warn: parent?.warn,
+        parent,
+        requiredMetrics: requiredMetrics && new Set(requiredMetrics),
+    };
+
+    return readContext.run(context, async () => ({ result: await work(), diagnostics: [...context.failures] }));
+}
 
 export async function withReadDiagnostics<T extends object>(
     source: ReadSource,
@@ -60,15 +82,22 @@ export async function withReadDiagnostics<T extends object>(
 
 /** Records bounded categories for UI and telemetry. Detailed messages stay in local Output only. */
 export function recordReadFailure(source: ReadSource, diagnostic: ErrorDiagnostic<string>): void {
-    const context = readContext.getStore();
-    if (
-        context &&
-        !context.failures.some(
-            (failure) =>
-                failure.source === source && failure.kind === diagnostic.kind && failure.reason === diagnostic.reason,
-        )
-    ) {
-        context.failures.push({ source, kind: diagnostic.kind, reason: diagnostic.reason });
+    const metric = readContext.getStore()?.metric;
+
+    for (let context = readContext.getStore(); context; context = context.parent) {
+        if (source === 'metrics' && context.requiredMetrics && (!metric || !context.requiredMetrics.has(metric))) {
+            continue;
+        }
+        if (
+            !context.failures.some(
+                (failure) =>
+                    failure.source === source &&
+                    failure.kind === diagnostic.kind &&
+                    failure.reason === diagnostic.reason,
+            )
+        ) {
+            context.failures.push({ source, kind: diagnostic.kind, reason: diagnostic.reason });
+        }
     }
 }
 
@@ -97,7 +126,7 @@ export function reportReadFailure(
 
 function writeReadOutput(line: string): void {
     const context = readContext.getStore();
-    if (!context) {
+    if (!context?.warn) {
         return;
     }
     if (!context.emitted.has(line)) {
@@ -184,19 +213,23 @@ export async function readMetrics(
     options?: Parameters<MonitorClient['metrics']['list']>[1],
     sensitiveValues: readonly string[] = [],
 ): ReturnType<MonitorClient['metrics']['list']> {
-    return readRequest(
-        'metrics',
-        'metrics.list',
-        async () => {
-            const response = await client.metrics.list(resourceUri, options);
-            const failed = response.value?.find((metric) => metric.errorCode && metric.errorCode !== 'Success');
-            if (failed) {
-                throw new RestError(failed.errorMessage ?? failed.errorCode ?? 'Metric request failed.', {
-                    code: failed.errorCode,
-                });
-            }
-            return response;
-        },
-        [resourceUri, ...sensitiveValues],
-    );
+    const read = () =>
+        readRequest(
+            'metrics',
+            'metrics.list',
+            async () => {
+                const response = await client.metrics.list(resourceUri, options);
+                const failed = response.value?.find((metric) => metric.errorCode && metric.errorCode !== 'Success');
+                if (failed) {
+                    throw new RestError(failed.errorMessage ?? failed.errorCode ?? 'Metric request failed.', {
+                        code: failed.errorCode,
+                    });
+                }
+                return response;
+            },
+            [resourceUri, ...sensitiveValues],
+        );
+    const context = readContext.getStore();
+
+    return context ? readContext.run({ ...context, metric: options?.metricnames }, read) : read();
 }

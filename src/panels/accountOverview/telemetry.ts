@@ -18,8 +18,15 @@ export function reportOverviewResultTelemetry(context: IActionContext, result: u
     if (!read.success) {
         return;
     }
-    reportOverviewReadTelemetry(context, read.data.diagnostics ?? [], read.data.available);
     const advisory = overviewAdvisoryResultSchema.safeParse(result);
+
+    reportOverviewReadTelemetry(
+        context,
+        read.data.diagnostics ?? [],
+        read.data.available,
+        advisory.success &&
+            (advisory.data.metricSource?.available === false || advisory.data.logSource?.available === false),
+    );
     if (advisory.success) {
         reportOverviewAdvisoryTelemetry(context, advisory.data);
     }
@@ -30,9 +37,10 @@ function reportOverviewReadTelemetry(
     context: IActionContext,
     failures: readonly ReadFailure[],
     available: boolean,
+    partial: boolean,
 ): void {
     const { properties, measurements } = context.telemetry;
-    properties.dataResult = !available ? 'unavailable' : failures.length ? 'partial' : 'complete';
+    properties.dataResult = !available ? 'unavailable' : failures.length || partial ? 'partial' : 'complete';
     measurements.readFailureCount = failures.length;
     if (failures.length) {
         properties.errorCategory = 'infrastructure';

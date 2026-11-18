@@ -41,11 +41,11 @@ function evaluateCrossPartitionQuery(
         return { rootCause: 'insufficient_data' };
     }
     const { totalQueries, containerPartitions, crossPartitionPct, crossQueriesPerSecond, worst } = stats;
-    if (totalQueries < thresholds.minQueries) {
+    if (totalQueries < thresholds.minQueries || containerPartitions <= 0) {
         return { rootCause: 'insufficient_data' };
     }
     if (containerPartitions <= 1) {
-        return { rootCause: 'single_partition_container' };
+        return { rootCause: 'mostly_single_partition' };
     }
     if (crossPartitionPct < thresholds.medPct || worst === undefined) {
         return { rootCause: 'mostly_single_partition' };
@@ -104,7 +104,6 @@ function evaluateCrossPartitionQuery(
 
 export class CrossPartitionQueryDetector extends Detector {
     readonly rule = 'CrossPartitionQuery' as const;
-    protected readonly notApplicableRootCauses = ['single_partition_container'];
     evaluateResult = evaluateCrossPartitionQuery;
     evaluate = (...args: Parameters<typeof evaluateCrossPartitionQuery>) =>
         evaluateCrossPartitionQuery(...args).advisory;

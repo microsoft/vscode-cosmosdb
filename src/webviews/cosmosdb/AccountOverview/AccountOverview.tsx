@@ -131,7 +131,7 @@ export const AccountOverview = () => {
     }, [reportError]);
 
     return (
-        <ErrorBoundary provider={provider}>
+        <ErrorBoundary provider={provider} focusOnError>
             <OverviewContent />
         </ErrorBoundary>
     );

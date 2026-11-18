@@ -34,7 +34,7 @@ function evaluateShardKeyMisalignment(
         return { rootCause: 'insufficient_data' };
     }
     const { totalQueries, containerPartitions, crossPartitionPct, crossQueriesPerSecond, worst } = stats;
-    if (totalQueries < minQueries) {
+    if (totalQueries < minQueries || containerPartitions <= 0) {
         return { rootCause: 'insufficient_data' };
     }
     if (

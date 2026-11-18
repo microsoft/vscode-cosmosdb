@@ -1043,10 +1043,11 @@ describe('collectDerivedAdvisories parity wiring', () => {
                       ],
             );
             expect(result.detectorCoverage.find(({ rule }) => rule === 'IndexingCostRisk')).toMatchObject({
-                status: outcome === 'positive' ? 'evaluated' : 'unavailable',
+                status: outcome === 'positive' ? 'evaluated' : outcome === 'empty' ? 'insufficientData' : 'unavailable',
                 evaluatedCount: outcome === 'positive' ? 1 : 0,
                 matchedCount: outcome === 'positive' ? 1 : 0,
-                unavailableReasons: outcome === 'positive' ? [] : [outcome === 'denied' ? 'rbac' : 'noData'],
+                unavailableReasons:
+                    outcome === 'positive' || outcome === 'empty' ? [] : [outcome === 'denied' ? 'rbac' : 'noData'],
             });
         },
     );

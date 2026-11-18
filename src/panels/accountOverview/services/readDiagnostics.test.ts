@@ -21,7 +21,13 @@ import {
 import { __resetAdvisorCache, getActiveAlertSummary, getAlerts, getRecommendations } from './alertsRecommendations';
 import { getInventoryResult } from './inventory';
 import { getPartitionStorageSeries } from './partitionHealth';
-import { readMetrics, readRequest, recordReadFailure, withReadDiagnostics } from './readDiagnostics';
+import {
+    captureReadDiagnostics,
+    readMetrics,
+    readRequest,
+    recordReadFailure,
+    withReadDiagnostics,
+} from './readDiagnostics';
 import { getContainerCreatedAt } from './resourceAge';
 import { getRuTrends, getThrottleRate } from './ruTrends';
 import { pagedItems, mockClient, throwingClient } from './testFixtures';
@@ -41,6 +47,55 @@ beforeEach(() => {
 });
 
 describe('Account Overview read diagnostics', () => {
+    it.each([403, '403', 503])('recognizes HTTP errors in numeric code fields (%s)', async (code) => {
+        const error = Object.assign(new Error('private-error'), { code });
+        const captured = await captureReadDiagnostics(async () => {
+            await expect(
+                readRequest('inventory', 'test', async () => {
+                    throw error;
+                }),
+            ).rejects.toBe(error);
+        });
+
+        expect(captured.diagnostics).toEqual([
+            {
+                source: 'inventory',
+                kind: code === 503 ? 'transient' : 'accessDenied',
+                reason: code === 503 ? 'noData' : 'rbac',
+            },
+        ]);
+    });
+
+    it('captures required metrics without losing other failures or masked Output from the RPC', async () => {
+        const client = mockClient({});
+        const warn = vi.fn();
+
+        vi.spyOn(client.metrics, 'list').mockImplementation(async (_resource, options) => {
+            throw Object.assign(new Error('private-account is denied'), {
+                statusCode: options?.metricnames === 'NormalizedRUConsumption' ? 503 : 403,
+            });
+        });
+        const outer = await withReadDiagnostics('metrics', ['private-account'], warn, async () => ({
+            captured: await captureReadDiagnostics(async () => {
+                await expect(
+                    readMetrics(client, 'private-account', { metricnames: 'TotalRequests' }),
+                ).rejects.toThrow();
+                await expect(
+                    readMetrics(client, 'private-account', { metricnames: 'NormalizedRUConsumption' }),
+                ).rejects.toThrow();
+            }, ['NormalizedRUConsumption']),
+        }));
+
+        expect(outer.captured.diagnostics).toEqual([{ source: 'metrics', kind: 'transient', reason: 'noData' }]);
+        expect(outer.diagnostics).toEqual([
+            { source: 'metrics', kind: 'accessDenied', reason: 'rbac' },
+            { source: 'metrics', kind: 'transient', reason: 'noData' },
+        ]);
+        expect(warn).toHaveBeenCalledTimes(2);
+        expect(warn.mock.calls.flat().join('\n')).not.toContain('private-account');
+        expect(JSON.stringify(outer)).not.toContain('private-');
+    });
+
     it.each(['ServerSideLatencyDirect', 'ServerSideLatencyGateway'])(
         'returns the fallback after %s fails without waiting for sibling diagnostics',
         async (firstMetric) => {

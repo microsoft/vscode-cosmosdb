@@ -3,9 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { describe, expect, it } from 'vitest';
-import { GB } from '../testFixtures';
+import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { API } from '../../../../AzureDBExperiences';
+import * as inventory from '../inventory';
+import { withReadDiagnostics } from '../readDiagnostics';
+import { GB, mockClient } from '../testFixtures';
 import { DAY } from '../units';
+import { collectDerivedAdvisories } from './collect';
 import { DEFAULT_ADVISORY_THRESHOLDS } from './core/thresholds';
 import {
     DERIVED_ADVISORY_RULES,
@@ -17,6 +22,7 @@ import {
 import { completeDetectorCoverage } from './coverage';
 import { analyzeDerivedAdvisories, computeDerivedAdvisories } from './engine';
 import { type LogsOperation } from './fetchers/logsDiagnostics';
+import * as metrics from './fetchers/metrics';
 import { DETECTORS } from './registry';
 
 const emptyInputs: DerivedAdvisoryInputs = {
@@ -58,6 +64,65 @@ function partition(overrides: Partial<PartitionSaturationInput> = {}): Partition
 }
 
 describe('pure detector coverage', () => {
+    it.each([0, 1, 2])('treats known low query fan-out as a completed negative evaluation (%s)', (fanout) => {
+        const result = analyzeDerivedAdvisories(
+            {
+                ...emptyInputs,
+                crossPartition: [
+                    {
+                        databaseId: 'private-db',
+                        containerId: 'private-container',
+                        evaluationWindowSeconds: 300,
+                        shapes: [
+                            {
+                                text: 'private-query',
+                                executions: 10000,
+                                avgFanout: Math.min(fanout, 1),
+                                maxFanout: fanout,
+                            },
+                        ],
+                    },
+                ],
+            },
+            DEFAULT_ADVISORY_THRESHOLDS,
+        );
+
+        for (const rule of ['CrossPartitionQuery', 'ShardKeyMisalignment']) {
+            expect(result.detectorCoverage.find((entry) => entry.rule === rule)).toMatchObject({
+                status: fanout > 0 ? 'evaluated' : 'insufficientData',
+                evaluatedCount: fanout > 0 ? 1 : 0,
+                notApplicableCount: 0,
+                matchedCount: 0,
+            });
+        }
+    });
+
+    it.each([
+        { consistencyLevel: 'Session', regionCount: 0, status: 'notApplicable' },
+        { consistencyLevel: 'Eventual', regionCount: 0, status: 'notApplicable' },
+        { consistencyLevel: undefined, regionCount: 1, status: 'insufficientData' },
+        { consistencyLevel: undefined, regionCount: 0, status: 'insufficientData' },
+        { consistencyLevel: 'Strong', regionCount: 1, status: 'evaluated' },
+        { consistencyLevel: 'BoundedStaleness', regionCount: 1, status: 'notApplicable' },
+    ])('preserves the original consistency eligibility: %j', ({ consistencyLevel, regionCount, status }) => {
+        const result = analyzeDerivedAdvisories(
+            {
+                ...emptyInputs,
+                accountConfig: {
+                    accountName: 'private-account',
+                    consistencyLevel,
+                    regionCount,
+                    multiRegionWritesEnabled: false,
+                    writeRegionCount: 1,
+                    api: API.Core,
+                },
+            },
+            DEFAULT_ADVISORY_THRESHOLDS,
+        );
+
+        expect(result.detectorCoverage.find(({ rule }) => rule === 'ExpensiveConsistency')).toMatchObject({ status });
+    });
+
     it('covers exactly the registered rule catalog, including rules with no inputs', () => {
         const result = analyzeDerivedAdvisories(emptyInputs, DEFAULT_ADVISORY_THRESHOLDS);
 
@@ -216,6 +281,178 @@ describe('pure detector coverage', () => {
 });
 
 describe('detector dependency coverage', () => {
+    describe('collected required-read evidence', () => {
+        afterEach(() => vi.restoreAllMocks());
+
+        function row(overrides: Partial<inventory.InventoryContainerRow> = {}): inventory.InventoryContainerRow {
+            return {
+                databaseId: 'private-db',
+                containerId: 'private-container',
+                throughputMode: 'dedicated',
+                throughputRU: 1000,
+                offerLevel: 'container',
+                offerThroughputMode: 'manual',
+                resourceCreatedAt: '2020-01-01T00:00:00.000Z',
+                partitionKeyPaths: [],
+                indexingMode: 'consistent',
+                excludedPathCount: 0,
+                userExcludedPathCount: 0,
+                compositeIndexCount: 0,
+                health: 'Healthy',
+                ...overrides,
+            };
+        }
+
+        function setup(target: inventory.InventoryContainerRow) {
+            const cosmosClient = new CosmosDBManagementClient({ getToken: async () => null }, 'sub');
+            const monitorClient = mockClient({});
+
+            vi.spyOn(cosmosClient.databaseAccounts, 'get').mockResolvedValue({});
+            vi.spyOn(inventory, 'getSqlInventoryDetails').mockResolvedValue({
+                rows: [target],
+                databases: [target.databaseId],
+                throughputInventoryComplete: true,
+                offers: [
+                    {
+                        databaseId: target.databaseId,
+                        containerId: target.containerId,
+                        offerLevel: 'container',
+                        throughputMode: target.throughputMode,
+                        offerThroughputMode: target.offerThroughputMode === 'autoscale' ? 'autoscale' : 'manual',
+                        throughputRU: 1000,
+                        resourceCreatedAt: target.resourceCreatedAt,
+                    },
+                ],
+            });
+            return {
+                monitorClient,
+                cosmosClient,
+                accountId: 'private-account',
+                resourceGroup: 'private-rg',
+                accountName: 'private-account',
+                isServerless: false,
+                advisoryThresholds: DEFAULT_ADVISORY_THRESHOLDS,
+            };
+        }
+
+        it.each([
+            ['manual', 'empty'],
+            ['autoscale', 'empty'],
+            ['manual', 403],
+            ['autoscale', 503],
+            ['manual', 'optionalFailure'],
+            ['autoscale', 'optionalFailure'],
+        ] as const)('separates empty observations from failed reads for %s offers (%s)', async (mode, state) => {
+            const params = setup(row({ offerThroughputMode: mode }));
+
+            vi.spyOn(params.monitorClient.metrics, 'list').mockImplementation(async (_resource, options) => {
+                if (
+                    typeof state === 'number' ||
+                    (state === 'optionalFailure' && options?.metricnames === 'TotalRequests')
+                ) {
+                    throw Object.assign(new Error('private-metric-error'), {
+                        statusCode: typeof state === 'number' ? state : 403,
+                    });
+                }
+                return { cost: 0, timespan: 'window', value: [] };
+            });
+            const result = await withReadDiagnostics('metrics', ['private-account'], vi.fn(), () =>
+                collectDerivedAdvisories(params),
+            );
+            const rules = [
+                'IndexingCostRisk',
+                'StorageGrowthRisk',
+                'StorageSkewRisk',
+                'PartitionMergeCandidate',
+                ...(mode === 'manual'
+                    ? ['OverProvisioning', 'AutoscaleCandidate']
+                    : ['AutoscaleMaxOverProvisioned', 'AutoscaleToManualCandidate']),
+            ];
+
+            for (const rule of rules) {
+                expect(result.detectorCoverage.find((entry) => entry.rule === rule)).toMatchObject({
+                    status: typeof state === 'number' ? 'unavailable' : 'insufficientData',
+                    unavailableReasons: typeof state === 'number' ? [state === 403 ? 'rbac' : 'noData'] : [],
+                });
+            }
+            expect(result.detectorCoverage.find(({ rule }) => rule === 'IdleContainer')).toMatchObject({
+                status: typeof state === 'number' ? 'unavailable' : 'evaluated',
+                matchedCount: typeof state === 'number' ? 0 : 1,
+                unavailableReasons: typeof state === 'number' ? [state === 403 ? 'rbac' : 'noData'] : [],
+            });
+            expect(result.metricSource.available).toBe(false);
+            expect(result.metricSource.failures).toContainEqual({
+                rule: 'IndexingCostRisk',
+                scope: 'private-db/private-container',
+                reason: state === 403 ? 'rbac' : 'noData',
+            });
+            expect(result.advisories.map(({ rule }) => rule)).toEqual(
+                typeof state === 'number' ? [] : ['IdleContainer'],
+            );
+            expect(JSON.stringify(result.detectorCoverage)).not.toContain('private-');
+        });
+
+        it.each(['DataUsage', 'IndexUsage'])(
+            'preserves indexing failure coverage despite user exclusions when %s fails',
+            async (metric) => {
+                const params = setup(row({ userExcludedPathCount: 1 }));
+
+                vi.spyOn(params.monitorClient.metrics, 'list').mockImplementation(async (_resource, options) => {
+                    if (options?.metricnames === metric) {
+                        throw Object.assign(new Error('private-primary-error'), { statusCode: 403 });
+                    }
+                    return { cost: 0, timespan: 'window', value: [] };
+                });
+                const result = await collectDerivedAdvisories(params);
+
+                expect(result.detectorCoverage.find(({ rule }) => rule === 'IndexingCostRisk')).toMatchObject({
+                    status: 'unavailable',
+                    notApplicableCount: 0,
+                    unavailableReasons: ['rbac'],
+                });
+                expect(result.metricSource.failures).toContainEqual({
+                    rule: 'IndexingCostRisk',
+                    scope: 'private-db/private-container',
+                    reason: 'rbac',
+                });
+                expect(result.advisories.filter(({ rule }) => rule === 'IndexingCostRisk')).toEqual([]);
+            },
+        );
+
+        it('retains disabled-indexing inapplicability without requiring index metrics', async () => {
+            const params = setup(row({ indexingMode: 'none' }));
+            const readIndexing = vi.spyOn(metrics, 'getContainerIndexingUsage');
+
+            const result = await collectDerivedAdvisories(params);
+
+            expect(result.detectorCoverage.find(({ rule }) => rule === 'IndexingCostRisk')).toMatchObject({
+                status: 'notApplicable',
+                unavailableReasons: [],
+            });
+            expect(readIndexing).not.toHaveBeenCalled();
+            expect(result.metricSource.failures.filter(({ rule }) => rule === 'IndexingCostRisk')).toEqual([]);
+        });
+
+        it.each([1, 2])('retains a known partition count when merge storage fails (%s)', async (count) => {
+            const params = setup(row());
+
+            vi.spyOn(metrics, 'getContainerPartitionCount').mockResolvedValue(count);
+            vi.spyOn(metrics, 'getContainerMergeStoragePeak').mockRejectedValue({ statusCode: 503 });
+            const result = await collectDerivedAdvisories(params);
+
+            expect(result.detectorCoverage.find(({ rule }) => rule === 'PartitionMergeCandidate')).toMatchObject({
+                status: count === 1 ? 'notApplicable' : 'unavailable',
+                notApplicableCount: count === 1 ? 1 : 0,
+                unavailableReasons: count === 1 ? [] : ['noData'],
+            });
+            expect(result.metricSource.failures).toContainEqual({
+                rule: 'PartitionMergeCandidate',
+                scope: 'private-db/private-container',
+                reason: 'noData',
+            });
+        });
+    });
+
     it('preserves partial per-rule success and deduplicates reasons without forwarding scopes', () => {
         const result = completeDetectorCoverage(
             [entry('HotPartitionRisk', { status: 'evaluated', evaluatedCount: 1, matchedCount: 1 })],

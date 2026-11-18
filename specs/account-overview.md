@@ -125,6 +125,8 @@ Diagnostics include caught failures, optional-client failures and partial Log An
 read completes, even when the RPC returns a usable fallback. Unfinished sibling reads never delay that fallback;
 their later failures remain in sanitized local Output and do not mutate the completed result or emitted telemetry.
 Successful empty reads have zero failures, not an exception.
+Advisory results with an unavailable metric or log source report partial data even when a configuration-only fallback
+remains available; this does not create an exception or an artificial read failure.
 Metric reads attach only the metric enum, time-range enum and account/database/container scope kind;
 partition reads attach the effective RU/storage mode and time range. Account actions attach the bounded action enum.
 Advisory collection reports finding/check counts, per-tier coverage booleans and cost-failure categories,
@@ -141,6 +143,10 @@ Failed or incomplete inventory never implies zero targets, and missing-resource 
 Completed checks remain partial when incomplete throughput inventory leaves other targets potentially eligible.
 Age-read failures affect detector coverage only when an eligible target still lacks its required age evidence;
 redundant failures remain in source diagnostics without reducing completed detector coverage.
+Successful empty observations do not create unavailable dependencies; rules retain their existing evidence semantics,
+including empty successful consumption reads establishing idleness. Disabled indexing and a known single physical partition
+can establish inapplicability without otherwise-required metric reads; user-excluded paths do not suppress indexing checks.
+Sufficient query traffic with known low fan-out is a completed negative evaluation, not proof of container inapplicability.
 Missing configuration fields remain insufficient evidence, not a failed workload-data dependency.
 Required log-query failures affect only their dependent rules; optional cost, request-charge or consistency-charge
 enrichment does not change detector coverage. No per-container or detector-entry/exit events are emitted.

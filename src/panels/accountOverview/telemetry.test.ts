@@ -211,7 +211,7 @@ describe('Account Overview telemetry summaries', () => {
             costSource: { available: false, failures: [{ operation: 'throughput', kind: 'accessDenied' }] },
         });
         expect(context.telemetry.properties).toEqual({
-            dataResult: 'complete',
+            dataResult: 'partial',
             metricCoverage: 'false',
             logCoverage: 'false',
             costCoverage: 'false',
@@ -225,6 +225,33 @@ describe('Account Overview telemetry summaries', () => {
             costFailureCount: 1,
         });
         expect(JSON.stringify(context.telemetry)).not.toContain('private-');
+    });
+
+    it.each([
+        [false, false],
+        [false, true],
+        [true, false],
+        [true, true],
+    ])('uses advisory source availability without inventing exceptions (%s, %s)', (metric, logs) => {
+        const context = createArmTestContext();
+        const result = {
+            available: true,
+            advisories: [],
+            metricSource: { available: metric, failures: [] },
+            logSource: { available: logs },
+        };
+        const snapshot = structuredClone(result);
+
+        reportOverviewResultTelemetry(context, result);
+
+        expect(context.telemetry.properties).toEqual({
+            dataResult: metric && logs ? 'complete' : 'partial',
+            metricCoverage: String(metric),
+            logCoverage: String(logs),
+        });
+        expect(context.telemetry.measurements.readFailureCount).toBe(0);
+        expect(context.telemetry.properties.errorCategory).toBeUndefined();
+        expect(result).toEqual(snapshot);
     });
 
     it.each([

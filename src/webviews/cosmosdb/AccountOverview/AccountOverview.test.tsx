@@ -3631,8 +3631,25 @@ describe('tabbed Account Overview', () => {
         queries.summary.mockResolvedValue({ ...summary, metricApplicability: undefined });
         render(<AccountOverview />, { wrapper: Wrapper });
         expect(await screen.findByText('An unexpected error occurred')).toBeVisible();
+        expect(screen.getByRole('heading', { name: 'An unexpected error occurred' })).toHaveFocus();
         expect(queries.reportError).toHaveBeenCalledWith({ kind: 'render' });
         expect(queries.reportError.mock.calls.every(([failure]) => Object.keys(failure).length === 1)).toBe(true);
+    });
+
+    it('moves focus from a removed dashboard control to the render error and keeps the issue link reachable', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        const user = userEvent.setup();
+
+        render(<AccountOverview />, { wrapper: Wrapper });
+        const refresh = await screen.findByRole('button', { name: 'Refresh' });
+        refresh.focus();
+        expect(refresh).toHaveFocus();
+        queries.summary.mockResolvedValue({ ...summary, metricApplicability: undefined });
+        await user.click(refresh);
+        expect(await screen.findByRole('heading', { name: 'An unexpected error occurred' })).toHaveFocus();
+        await user.tab();
+        expect(screen.getByText('report the issue')).toHaveFocus();
+        expect(screen.getByText('report the issue')).toHaveAccessibleName('report the issue');
     });
 
     it('observes unhandled webview errors without payloads and removes observers on unmount', async () => {

@@ -42,6 +42,9 @@ function neededPartitions(provisionedRu: number, storageBytes: number): number {
 function evaluatePartitionMergeCandidate(input: PartitionMergeInput): AdvisoryEvaluation<'PartitionMergeCandidate'> {
     const actual = input.actualPartitions;
     // 0 ⇒ no partition reading (insufficient data); 1 ⇒ single partition can never be merged.
+    if (actual === 1) {
+        return { rootCause: 'single_partition' };
+    }
     if (
         !Number.isInteger(actual) ||
         actual < 1 ||
@@ -53,9 +56,6 @@ function evaluatePartitionMergeCandidate(input: PartitionMergeInput): AdvisoryEv
         input.dataUsageBytes < 0
     ) {
         return { rootCause: 'insufficient_data' };
-    }
-    if (actual === 1) {
-        return { rootCause: 'single_partition' };
     }
     const provisionedRu = input.provisionedRu;
     const storageBytes = input.dataUsageBytes;

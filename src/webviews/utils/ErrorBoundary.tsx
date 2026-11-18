@@ -5,7 +5,7 @@
 
 import { Link, makeStyles } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { type BaseContextProvider } from './context/BaseContextProvider';
 
 // Error boundary component must be a class component in order to catch errors (with componentDidCatch and
@@ -15,9 +15,10 @@ export type ErrorBoundaryProps = {
     style?: React.CSSProperties;
     children?: React.ReactNode;
     provider: BaseContextProvider;
+    focusOnError?: boolean;
 };
 
-export const ErrorBoundary: React.FC<ErrorBoundaryProps> = ({ style, children, provider }) => {
+export const ErrorBoundary: React.FC<ErrorBoundaryProps> = ({ style, children, provider, focusOnError }) => {
     const errorHandler = useCallback(
         (message: string, stack?: string, componentStack?: string | null) => {
             // If rendering throws right away, provider.reportWebviewError might not be initialized, yet, so check first.
@@ -26,7 +27,7 @@ export const ErrorBoundary: React.FC<ErrorBoundaryProps> = ({ style, children, p
         [provider],
     );
     return (
-        <ErrorBoundaryComponent style={style} onError={errorHandler} provider={provider}>
+        <ErrorBoundaryComponent style={style} onError={errorHandler} provider={provider} focusOnError={focusOnError}>
             {children}
         </ErrorBoundaryComponent>
     );
@@ -45,11 +46,22 @@ const ErrorDisplay: React.FC<{
     message: string | undefined;
     details: string | null | undefined;
     provider: BaseContextProvider;
-}> = ({ message, details, provider }) => {
+    focusOnError?: boolean;
+}> = ({ message, details, provider, focusOnError }) => {
     const styles = useStyles();
+    const heading = useRef<HTMLHeadingElement>(null);
+
+    useEffect(() => {
+        if (focusOnError) {
+            heading.current?.focus();
+        }
+    }, [focusOnError]);
+
     return (
         <div className={styles.container}>
-            <h1>{l10n.t('An unexpected error occurred')}</h1>
+            <h1 ref={heading} tabIndex={focusOnError ? -1 : undefined}>
+                {l10n.t('An unexpected error occurred')}
+            </h1>
             <p>
                 {l10n.t('Please try again. If the error persists, please')}{' '}
                 <Link onClick={() => void provider.executeReportIssueCommand()}>{l10n.t('report the issue')}</Link>
@@ -73,6 +85,7 @@ type ErrorBoundaryComponentProps = {
     style?: React.CSSProperties;
     provider: BaseContextProvider;
     onError?: (message: string, stack: string | undefined, componentStack: string | null | undefined) => void;
+    focusOnError?: boolean;
 };
 
 class ErrorBoundaryComponent extends React.Component<ErrorBoundaryComponentProps, ErrorBoundaryState> {
@@ -100,6 +113,7 @@ class ErrorBoundaryComponent extends React.Component<ErrorBoundaryComponentProps
                     message={this.state.error?.message}
                     details={this.state.errorInfo?.componentStack}
                     provider={this.props.provider}
+                    focusOnError={this.props.focusOnError}
                 />
             );
         } else {

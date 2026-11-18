@@ -24,12 +24,13 @@ interface DetectorAvailability {
     logSource: LogsSourceStatus;
     /** Absent when inventory failed; zero is meaningful only when the target set is known. */
     targetCounts?: Partial<Record<DerivedAdvisoryRule, number>>;
+    uncertainTargetRules?: readonly DerivedAdvisoryRule[];
 }
 
 /** Combines actual evaluations with unavailable dependencies without inferring counts of missing resources. Pure. */
 export function completeDetectorCoverage(
     coverage: readonly DetectorCoverage[],
-    { metricSource, logSource, targetCounts }: DetectorAvailability,
+    { metricSource, logSource, targetCounts, uncertainTargetRules }: DetectorAvailability,
 ): DetectorCoverage[] {
     return coverage.map((entry): DetectorCoverage => {
         const inputCount = entry.evaluatedCount + entry.notApplicableCount + entry.insufficientDataCount;
@@ -57,7 +58,7 @@ export function completeDetectorCoverage(
             return { ...entry, status: 'notApplicable', unavailableReasons: [] };
         }
         if (unavailableReasons.length === 0) {
-            if (targetCount !== undefined && targetCount > inputCount) {
+            if (uncertainTargetRules?.includes(entry.rule) || (targetCount !== undefined && targetCount > inputCount)) {
                 return {
                     ...entry,
                     status: entry.evaluatedCount > 0 || entry.notApplicableCount > 0 ? 'partial' : 'insufficientData',

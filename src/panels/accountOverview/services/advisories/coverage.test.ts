@@ -4,6 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { describe, expect, it } from 'vitest';
+import { GB } from '../testFixtures';
+import { DAY } from '../units';
 import { DEFAULT_ADVISORY_THRESHOLDS } from './core/thresholds';
 import {
     DERIVED_ADVISORY_RULES,
@@ -128,6 +130,51 @@ describe('pure detector coverage', () => {
                 insufficientDataCount: 1,
             });
         }
+    });
+
+    it.each([
+        { rule: 'StorageGrowthRisk', sizes: [[0.5], [30]], status: 'insufficientData', matches: 0 },
+        { rule: 'StorageGrowthRisk', sizes: [[30, 30], [30]], status: 'insufficientData', matches: 0 },
+        { rule: 'StorageGrowthRisk', sizes: [[10, 10.1], []], status: 'insufficientData', matches: 0 },
+        { rule: 'StorageGrowthRisk', sizes: [[30, 30], [0.5]], status: 'evaluated', matches: 0 },
+        { rule: 'StorageGrowthRisk', sizes: [[45, 46], []], status: 'evaluated', matches: 1 },
+        { rule: 'StorageSkewRisk', sizes: [[30], [30], []], status: 'insufficientData', matches: 0 },
+        { rule: 'StorageSkewRisk', sizes: [[0.5], [0.1], []], status: 'insufficientData', matches: 0 },
+        { rule: 'StorageSkewRisk', sizes: [[30], []], status: 'insufficientData', matches: 0 },
+        { rule: 'StorageSkewRisk', sizes: [[30], [30]], status: 'evaluated', matches: 0 },
+        { rule: 'StorageSkewRisk', sizes: [[30]], status: 'notApplicable', matches: 0 },
+        { rule: 'StorageSkewRisk', sizes: [[40], [5], []], status: 'evaluated', matches: 1 },
+    ] satisfies {
+        rule: DerivedAdvisoryRule;
+        sizes: number[][];
+        status: DetectorCoverage['status'];
+        matches: number;
+    }[])('reports $rule coverage with partition histories $sizes as $status', ({ rule, sizes, status, matches }) => {
+        const result = analyzeDerivedAdvisories(
+            {
+                ...emptyInputs,
+                storage: [
+                    {
+                        databaseId: 'private-db',
+                        containerId: 'private-container',
+                        resourceAgeDays: 30,
+                        partitions: sizes.map((values, index) => ({
+                            partitionId: String(index),
+                            samples: values.map((value, day) => ({ timestamp: day * DAY, bytes: value * GB })),
+                        })),
+                    },
+                ],
+            },
+            DEFAULT_ADVISORY_THRESHOLDS,
+        );
+
+        expect(result.detectorCoverage.find((coverage) => coverage.rule === rule)).toMatchObject({
+            status,
+            evaluatedCount: status === 'evaluated' ? 1 : 0,
+            matchedCount: matches,
+            insufficientDataCount: status === 'insufficientData' ? 1 : 0,
+        });
+        expect(result.advisories.filter((advisory) => advisory.rule === rule)).toHaveLength(matches);
     });
 
     it('counts findings before supersession without changing their visibility decisions', () => {

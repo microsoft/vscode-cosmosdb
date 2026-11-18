@@ -102,7 +102,9 @@ No Overview usage scoring, additional questionnaire or automatic survey prompt i
 ### Extension telemetry
 
 `cosmosDB.accountOverview.webview.tabViewed` records `tab = monitoring | databases | advisories` and
-`trigger = initial | user | navigation`. The initial event waits until the dashboard can render its tabs.
+`trigger = initial | user | navigation`. The initial event waits until the dashboard can render its tabs and the webview
+document is visible. Loads and navigation in a hidden retained webview remain pending until `visibilitychange` reveals it;
+only the latest pending destination is reported, without refetching data.
 A changed selection emits once; selecting the current tab, rerendering, refreshing, or changing filters does not.
 An explicit Explorer navigation emits once for the resulting tab, including reopening the same destination.
 All Overview RPCs and webview events share the in-memory random `panelId` used by the panel's `opened` and `closed` events.
@@ -119,8 +121,10 @@ compile-time error rather than a runtime assertion failure.
 Read RPCs additionally report `dataResult = complete | partial | unavailable`, a numeric `readFailureCount`
 (distinct source/kind/reason combinations), and sorted, deduplicated `readFailureSources`, `readFailureKinds`
 and `readFailureReasons` when failures exist. These failures have `errorCategory = infrastructure`.
-Diagnostics include caught failures, optional-client failures, partial Log Analytics responses and late sibling reads,
-even when the RPC returns a usable fallback. Successful empty reads have zero failures, not an exception.
+Diagnostics include caught failures, optional-client failures and partial Log Analytics responses observed before the
+read completes, even when the RPC returns a usable fallback. Unfinished sibling reads never delay that fallback;
+their later failures remain in sanitized local Output and do not mutate the completed result or emitted telemetry.
+Successful empty reads have zero failures, not an exception.
 Metric reads attach only the metric enum, time-range enum and account/database/container scope kind;
 partition reads attach the effective RU/storage mode and time range. Account actions attach the bounded action enum.
 Advisory collection reports finding/check counts, per-tier coverage booleans and cost-failure categories,
@@ -134,6 +138,9 @@ not inferred missing resources. Matches are counted before supersession or UI di
 Source failures add sorted, deduplicated `detector<Rule>UnavailableReasons` from the shared unavailable-reason enum.
 Known targets without observations remain insufficient/partial; a known empty eligible target set is not applicable.
 Failed or incomplete inventory never implies zero targets, and missing-resource counts are not fabricated.
+Completed checks remain partial when incomplete throughput inventory leaves other targets potentially eligible.
+Age-read failures affect detector coverage only when an eligible target still lacks its required age evidence;
+redundant failures remain in source diagnostics without reducing completed detector coverage.
 Missing configuration fields remain insufficient evidence, not a failed workload-data dependency.
 Required log-query failures affect only their dependent rules; optional cost, request-charge or consistency-charge
 enrichment does not change detector coverage. No per-container or detector-entry/exit events are emitted.

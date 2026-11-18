@@ -42,7 +42,7 @@ beforeEach(() => {
 
 describe('Account Overview read diagnostics', () => {
     it.each(['ServerSideLatencyDirect', 'ServerSideLatencyGateway'])(
-        'serializes late sibling failures after %s fails first',
+        'returns the fallback after %s fails without waiting for sibling diagnostics',
         async (firstMetric) => {
             vi.useFakeTimers();
             try {
@@ -58,21 +58,18 @@ describe('Account Overview read diagnostics', () => {
                     fetchMetricSeries('serverLatency', client, accountId, {}, '1H'),
                 ).then((result) => {
                     returned = true;
-                    return JSON.stringify(result);
+                    return result;
                 });
 
                 await vi.advanceTimersByTimeAsync(10);
                 expect(list).toHaveBeenCalledTimes(2);
-                expect(returned).toBe(false);
+                expect(returned).toBe(true);
                 expect(warn).toHaveBeenCalledOnce();
-                await vi.advanceTimersByTimeAsync(40);
-
-                const wire = JSON.parse(await response);
+                const wire = await response;
                 expect(wire).toMatchObject({ available: false, reason: 'error', points: [] });
-                expect(wire.diagnostics).toEqual([
-                    { source: 'metrics', kind: 'transient', reason: 'noData' },
-                    { source: 'metrics', kind: 'accessDenied', reason: 'rbac' },
-                ]);
+                expect(wire.diagnostics).toEqual([{ source: 'metrics', kind: 'transient', reason: 'noData' }]);
+                await vi.advanceTimersByTimeAsync(40);
+                expect(wire.diagnostics).toEqual([{ source: 'metrics', kind: 'transient', reason: 'noData' }]);
                 expect(warn).toHaveBeenCalledTimes(2);
                 expect(warn).toHaveBeenCalledWith(expect.stringContaining('HTTP 403'));
                 expect(JSON.stringify(wire.diagnostics)).not.toMatch(/private-|Insufficient|AuthorizationFailed/);
@@ -85,7 +82,7 @@ describe('Account Overview read diagnostics', () => {
         },
     );
 
-    it('includes late indexing failures before serializing a fallback', async () => {
+    it('returns an indexing fallback before the sibling finishes and keeps invocation diagnostics isolated', async () => {
         vi.useFakeTimers();
         try {
             const client = new MonitorClient(credential, 'private-sub');
@@ -104,27 +101,60 @@ describe('Account Overview read diagnostics', () => {
                 () => ({}),
             ).then((result) => {
                 returned = true;
-                return JSON.stringify(result);
+                return result;
             });
 
             await vi.advanceTimersByTimeAsync(10);
-            expect(returned).toBe(false);
+            expect(returned).toBe(true);
             const independent = await withReadDiagnostics('account', [], vi.fn(), async () => ({ available: true }));
             expect(independent).toEqual({ available: true });
-            await vi.advanceTimersByTimeAsync(40);
-
-            expect(JSON.parse(await response)).toEqual({
-                diagnostics: [
-                    { source: 'metrics', kind: 'transient', reason: 'noData' },
-                    { source: 'metrics', kind: 'accessDenied', reason: 'rbac' },
-                ],
+            const result = await response;
+            expect(result).toEqual({
+                diagnostics: [{ source: 'metrics', kind: 'transient', reason: 'noData' }],
             });
+            await vi.advanceTimersByTimeAsync(40);
+            expect(result.diagnostics).toEqual([{ source: 'metrics', kind: 'transient', reason: 'noData' }]);
             expect(warn).toHaveBeenCalledTimes(2);
             expect(vi.getTimerCount()).toBe(0);
         } finally {
             await vi.runAllTimersAsync();
             vi.useRealTimers();
         }
+    });
+
+    it('does not delay a fail-fast fallback for a stalled sibling request', async () => {
+        const sibling = Promise.withResolvers<void>();
+        let completed = false;
+        const response = withReadDiagnostics(
+            'metrics',
+            [accountId],
+            vi.fn(),
+            async () => {
+                await Promise.all([
+                    readRequest('metrics', 'first', async () => {
+                        throw Object.assign(new Error('Service unavailable.'), { statusCode: 503 });
+                    }),
+                    readRequest('metrics', 'sibling', () => sibling.promise),
+                ]);
+                return { available: true };
+            },
+            () => ({ available: false }),
+        );
+
+        void response.then(() => {
+            completed = true;
+        });
+        await new Promise<void>((resolve) => setImmediate(resolve));
+        const completedBeforeSibling = completed;
+
+        sibling.resolve();
+        const result = await response;
+
+        expect(completedBeforeSibling).toBe(true);
+        expect(result).toMatchObject({
+            available: false,
+            diagnostics: [{ source: 'metrics', kind: 'transient', reason: 'noData' }],
+        });
     });
 
     it('preserves sanitized RPC errors for synchronously throwing requests', async () => {

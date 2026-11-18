@@ -249,6 +249,7 @@ export async function collectDerivedAdvisories(
     const now = Date.now();
     const effectiveAccountConfig = accountConfig && { ...accountConfig, isServerless };
     const metricFailures = configurationFailures(effectiveAccountConfig);
+    const ageFailures: MetricSourceStatus['failures'] = [];
     const accountCreatedAtPromise = capture(getAccountCreatedAt(cosmosClient, resourceGroup, accountName));
     const accountRequestsPromise = capture(getAccountRequestStatusCounts(monitorClient, accountId, now));
 
@@ -269,7 +270,7 @@ export async function collectDerivedAdvisories(
     const dedicatedTargets = rows.filter(isDedicatedContainerOffer);
     if (accountCreation.reason && offers.length > 0) {
         for (const rule of AGE_GATED_RULES) {
-            addMetricFailure(metricFailures, rule, accountCreation.reason);
+            addMetricFailure(ageFailures, rule, accountCreation.reason);
         }
     }
     await mapInBatches(
@@ -280,7 +281,7 @@ export async function collectDerivedAdvisories(
             );
             if (creation.reason) {
                 for (const rule of AGE_GATED_RULES) {
-                    addMetricFailure(metricFailures, rule, creation.reason, scopeOf(row));
+                    addMetricFailure(ageFailures, rule, creation.reason, scopeOf(row));
                 }
             } else if (creation.value) {
                 row.resourceCreatedAt = creation.value;
@@ -756,28 +757,60 @@ export async function collectDerivedAdvisories(
         advisoryThresholds,
     );
 
+    const metricCoverageFailures = [...metricFailures];
+
+    // Preserve source failures even when a target's own timestamp or an account fallback supplies its age.
+    for (const failure of ageFailures) {
+        const targets =
+            failure.rule === 'OverProvisioning' || failure.rule === 'AutoscaleCandidate'
+                ? manualTargets
+                : failure.rule === 'AutoscaleMaxOverProvisioned' || failure.rule === 'AutoscaleToManualCandidate'
+                  ? autoscaleTargets
+                  : offerTargets;
+        const needsAge =
+            failure.rule === 'StorageSkewRisk'
+                ? dedicatedTargets.some(
+                      (row) =>
+                          (failure.scope === undefined || failure.scope === scopeOf(row)) &&
+                          rowAgeDays(row, accountCreatedAt, now) === undefined,
+                  )
+                : targets.some(
+                      (offer) =>
+                          (failure.scope === undefined || failure.scope === scopeOf(offer)) &&
+                          offerAgeDays(offer) === undefined,
+                  );
+
+        if (needsAge) {
+            addMetricFailure(metricCoverageFailures, failure.rule, failure.reason, failure.scope);
+        }
+        addMetricFailure(metricFailures, failure.rule, failure.reason, failure.scope);
+    }
+
     const metricSource = { available: metricFailures.length === 0, failures: metricFailures };
+    const inventoryTargetsKnown =
+        inventory.value?.throughputInventoryComplete === true && invalidOfferScopes.size === 0;
     const targetCounts: Partial<Record<DerivedAdvisoryRule, number>> = {
         ServerlessCandidate: isServerless ? 0 : 1,
-        ...(inventory.value?.throughputInventoryComplete === true &&
-            invalidOfferScopes.size === 0 && {
-                HotPartitionRisk: offerTargets.length,
-                SustainedThrottlingInRegion: offerTargets.length,
-                OverProvisioning: manualTargets.length,
-                AutoscaleCandidate: manualTargets.length,
-                IdleContainer: offerTargets.length,
-                StorageGrowthRisk: offerTargets.filter((offer) => offer.containerId !== undefined).length,
-                StorageSkewRisk: offerTargets.filter((offer) => offer.containerId !== undefined).length,
-                IndexingCostRisk: rows.filter((row) => row.indexingMode.toLowerCase() !== 'none').length,
-                PartitionMergeCandidate: dedicatedTargets.length,
-                AutoscaleMaxOverProvisioned: autoscaleTargets.length,
-                AutoscaleToManualCandidate: autoscaleTargets.length,
-                ServerlessThrottling: serverlessTargets.length,
-                CrossPartitionQuery: logTargets.length,
-                ShardKeyMisalignment: logTargets.length,
-                UncontrolledIngestion: dedicatedTargets.length,
-                SharedThroughputStarvation: offerTargets.filter((offer) => offer.offerLevel === 'database').length,
-            }),
+        ...(inventory.value && {
+            IndexingCostRisk: rows.filter((row) => row.indexingMode.toLowerCase() !== 'none').length,
+        }),
+        ...(inventoryTargetsKnown && {
+            HotPartitionRisk: offerTargets.length,
+            SustainedThrottlingInRegion: offerTargets.length,
+            OverProvisioning: manualTargets.length,
+            AutoscaleCandidate: manualTargets.length,
+            IdleContainer: offerTargets.length,
+            StorageGrowthRisk: offerTargets.filter((offer) => offer.containerId !== undefined).length,
+            StorageSkewRisk: offerTargets.filter((offer) => offer.containerId !== undefined).length,
+            PartitionMergeCandidate: dedicatedTargets.length,
+            AutoscaleMaxOverProvisioned: autoscaleTargets.length,
+            AutoscaleToManualCandidate: autoscaleTargets.length,
+            ServerlessThrottling: serverlessTargets.length,
+            CrossPartitionQuery: logTargets.length,
+            ShardKeyMisalignment: logTargets.length,
+            UncontrolledIngestion: dedicatedTargets.length,
+            SharedThroughputStarvation: offerTargets.filter((offer) => offer.offerLevel === 'database').length,
+        }),
     };
     const costSource = await enrichAdvisoryCosts({
         advisories,
@@ -795,9 +828,13 @@ export async function collectDerivedAdvisories(
         logSource: logs.logSource,
         metricSource,
         detectorCoverage: completeDetectorCoverage(detectorCoverage, {
-            metricSource,
+            metricSource: { available: metricCoverageFailures.length === 0, failures: metricCoverageFailures },
             logSource: logs.logSource,
             targetCounts,
+            uncertainTargetRules:
+                inventory.value && !inventoryTargetsKnown
+                    ? INVENTORY_DEPENDENT_RULES.filter((rule) => rule !== 'IndexingCostRisk')
+                    : undefined,
         }),
         ...(costSource && { costSource }),
     };

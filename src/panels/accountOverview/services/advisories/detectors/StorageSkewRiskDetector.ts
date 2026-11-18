@@ -53,15 +53,17 @@ function evaluateStorageSkewRisk(
         })
         .filter((bytes): bytes is number => bytes !== undefined);
     const ratio = balanceRatio(sizes);
+    const hasCompleteObservations = sizes.length === input.partitions.length;
+
     if (sizes.length === 0) {
         return { rootCause: 'insufficient_data' };
     }
     if (sizes.length === 1) {
-        return { rootCause: 'single_partition' };
+        return { rootCause: hasCompleteObservations ? 'single_partition' : 'insufficient_data' };
     }
     const busiestBytes = Math.max(...sizes);
     if (busiestBytes < STORAGE_SKEW_MIN_BUSIEST_BYTES) {
-        return { rootCause: 'too_small' };
+        return { rootCause: hasCompleteObservations ? 'too_small' : 'insufficient_data' };
     }
     if (ratio === undefined || ratio >= balanceThreshold) {
         return { rootCause: 'uniform_storage' };

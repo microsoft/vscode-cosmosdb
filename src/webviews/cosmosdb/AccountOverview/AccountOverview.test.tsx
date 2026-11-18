@@ -3547,6 +3547,60 @@ describe('tabbed Account Overview', () => {
         ]);
     });
 
+    it('defers a tab loaded in a hidden webview until the panel becomes visible', async () => {
+        const pending = Promise.withResolvers<{
+            supported: boolean;
+            available: boolean;
+            rows: InventoryContainerRow[];
+        }>();
+        const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+        const visits = () =>
+            queries.reportEvent.mock.calls.map(([event]) => event).filter((event) => event.eventName === 'tabViewed');
+
+        queries.inventory.mockReturnValue(pending.promise);
+        const view = render(<AccountOverview />, { wrapper: Wrapper, reactStrictMode: true });
+        await waitFor(() => expect(queries.summary).toHaveBeenCalled());
+        visibility.mockReturnValue('hidden');
+        fireEvent(document, new Event('visibilitychange'));
+        navigate('advisories', 1);
+        await act(async () => pending.resolve({ supported: true, available: true, rows }));
+        await screen.findByRole('tab', { name: 'Advisories' });
+        expect(visits()).toEqual([]);
+        const counts = dataQueryCounts();
+
+        visibility.mockReturnValue('visible');
+        fireEvent(document, new Event('visibilitychange'));
+        fireEvent(document, new Event('visibilitychange'));
+        expect(visits()).toEqual([{ eventName: 'tabViewed', properties: { tab: 'advisories', trigger: 'initial' } }]);
+        expect(dataQueryCounts()).toEqual(counts);
+        view.unmount();
+        fireEvent(document, new Event('visibilitychange'));
+        expect(visits()).toHaveLength(1);
+    });
+
+    it('reports only the latest pending navigation when a retained webview becomes visible', async () => {
+        const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+        const visits = () =>
+            queries.reportEvent.mock.calls.map(([event]) => event).filter((event) => event.eventName === 'tabViewed');
+
+        render(<AccountOverview />, { wrapper: Wrapper });
+        await screen.findByRole('tab', { name: 'Monitoring' });
+        expect(visits()).toHaveLength(1);
+        visibility.mockReturnValue('hidden');
+        fireEvent(document, new Event('visibilitychange'));
+        navigate('advisories', 1);
+        navigate('overview', 2);
+        navigate('advisories', 3);
+        expect(visits()).toHaveLength(1);
+        visibility.mockReturnValue('visible');
+        fireEvent(document, new Event('visibilitychange'));
+        fireEvent(document, new Event('visibilitychange'));
+        expect(visits()).toEqual([
+            { eventName: 'tabViewed', properties: { tab: 'monitoring', trigger: 'initial' } },
+            { eventName: 'tabViewed', properties: { tab: 'advisories', trigger: 'navigation' } },
+        ]);
+    });
+
     it('reports subscription failures without duplicating RPC errors, cancellations or reporting failures', async () => {
         vi.spyOn(console, 'error').mockImplementation(() => {});
         render(<AccountOverview />, { wrapper: Wrapper });

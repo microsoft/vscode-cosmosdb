@@ -258,29 +258,28 @@ describe('Account Overview RPC telemetry', () => {
         expect(JSON.stringify(mocks.events[0].context.telemetry)).not.toMatch(/private-|123/);
     });
 
-    it('waits for late sibling diagnostics before enriching the RPC event', async () => {
+    it('returns the fallback before late sibling reads and keeps the emitted diagnostics unchanged', async () => {
         vi.useFakeTimers();
         try {
             const response = createCaller().caller.lateFailure();
             await vi.advanceTimersByTimeAsync(10);
-            expect(mocks.events).toHaveLength(1);
-            expect(mocks.events[0].context.telemetry.measurements.readFailureCount).toBeUndefined();
-            await vi.advanceTimersByTimeAsync(40);
             await expect(response).resolves.toMatchObject({
                 available: false,
-                diagnostics: [
-                    { source: 'metrics', kind: 'transient', reason: 'noData' },
-                    { source: 'logs', kind: 'accessDenied', reason: 'rbac' },
-                ],
+                diagnostics: [{ source: 'metrics', kind: 'transient', reason: 'noData' }],
             });
             expect(mocks.events).toHaveLength(1);
             expect(mocks.events[0].context.telemetry.properties).toMatchObject({
                 dataResult: 'unavailable',
-                readFailureSources: 'logs,metrics',
-                readFailureKinds: 'accessDenied,transient',
-                readFailureReasons: 'noData,rbac',
+                readFailureSources: 'metrics',
+                readFailureKinds: 'transient',
+                readFailureReasons: 'noData',
             });
-            expect(mocks.events[0].context.telemetry.measurements.readFailureCount).toBe(2);
+            expect(mocks.events[0].context.telemetry.measurements.readFailureCount).toBe(1);
+            const telemetry = structuredClone(mocks.events[0].context.telemetry);
+
+            await vi.advanceTimersByTimeAsync(40);
+            expect(mocks.events).toHaveLength(1);
+            expect(mocks.events[0].context.telemetry).toEqual(telemetry);
         } finally {
             await vi.runAllTimersAsync();
             vi.useRealTimers();

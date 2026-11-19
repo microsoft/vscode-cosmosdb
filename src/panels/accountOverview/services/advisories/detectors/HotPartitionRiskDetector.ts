@@ -26,7 +26,12 @@ function evaluateHotPartitionRisk(
     throttleThresholdPercent: number,
 ): DetectorEvaluation {
     if (input.partitionCount < DIAGNOSTIC_POLICY.partitionSaturation.minHotPartitions) {
-        return { rootCause: input.partitionCount > 0 ? 'not_applicable' : 'insufficient_data' };
+        return {
+            rootCause:
+                input.partitionCount === 1 && input.physicalPartitionCount === 1
+                    ? 'not_applicable'
+                    : 'insufficient_data',
+        };
     }
     if (
         input.throttleRatePercent === undefined ||

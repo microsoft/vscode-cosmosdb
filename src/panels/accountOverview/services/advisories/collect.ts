@@ -25,6 +25,7 @@ import { classifyUnavailable, containerKey } from '../shared';
 import { DIAGNOSTIC_POLICY } from './core/thresholds';
 import {
     type AccountConfigInput,
+    type ContainerStorageInput,
     type CrossPartitionInput,
     type DerivedAdvisory,
     type DerivedAdvisoryRule,
@@ -42,6 +43,7 @@ import {
     type UncontrolledIngestionInput,
 } from './core/types';
 import { completeDetectorCoverage } from './coverage';
+import { hasSingleStoragePartition } from './detectors/storageMath';
 import { analyzeDerivedAdvisories } from './engine';
 import {
     fetchCrossPartitionShapes,
@@ -438,6 +440,13 @@ export async function collectDerivedAdvisories(
             };
         });
 
+    const partitionCounts = await mapInBatches(dedicatedTargets, async (row) => ({
+        row,
+        count: await capture(() =>
+            getContainerPartitionCount(monitorClient, accountId, row.databaseId, row.containerId, now),
+        ),
+    }));
+    const countsByScope = new Map(partitionCounts.map(({ row, count }) => [scopeOf(row), count]));
     const partitionSignals = await mapInBatches(dedicatedTargets, async (row) => {
         const [partition, throttle, growth, skew] = await Promise.all([
             capture(() =>
@@ -494,12 +503,14 @@ export async function collectDerivedAdvisories(
 
     const partitions: PartitionSaturationInput[] = [];
     const storage: PartitionStorageResult[] = [];
-    const storageSkew: PartitionStorageResult[] = [];
+    const storageSkew: ContainerStorageInput[] = [];
     for (const { row, partition, throttle, growth, skew } of partitionSignals) {
         const scope = scopeOf(row);
         const ageDays = rowAgeDays(row, accountCreatedAt, now);
         const requiredPartitionRead = { ...partition, failures: [...partition.failures, ...throttle.failures] };
-        const singlePartition = partition.value?.available === true && partition.value.partitionCount === 1;
+        const physicalPartitionCount = countsByScope.get(scope)?.value;
+        const singlePartition =
+            physicalPartitionCount === 1 && partition.value?.available === true && partition.value.partitionCount === 1;
 
         if (partition.reason) {
             recordMetricFailure('SustainedThrottlingInRegion', requiredPartitionRead, scope);
@@ -519,6 +530,7 @@ export async function collectDerivedAdvisories(
                 maxP99: partition.value.maxSaturationPercent ?? partition.value.topPartitionShare,
                 minP99: partition.value.minSaturationPercent ?? 0,
                 partitionCount: partition.value.partitionCount,
+                physicalPartitionCount,
                 throttleRatePercent: throttle.value?.ratePercent,
                 totalRequests: throttle.value?.totalRequests,
                 throughputMode: row.throughputMode,
@@ -540,16 +552,14 @@ export async function collectDerivedAdvisories(
         } else if (!skew.value?.available) {
             recordMetricFailure('StorageSkewRisk', skew, scope, skew.value?.reason ?? 'noData');
         } else {
-            storageSkew.push(skew.value);
+            storageSkew.push({ ...skew.value, physicalPartitionCount });
         }
     }
 
     const partitionMerges: PartitionMergeInput[] = (
-        await mapInBatches(dedicatedTargets, async (row) => ({
+        await mapInBatches(partitionCounts, async ({ row, count }) => ({
             row,
-            count: await capture(() =>
-                getContainerPartitionCount(monitorClient, accountId, row.databaseId, row.containerId, now),
-            ),
+            count,
             storage: await capture(() =>
                 getContainerMergeStoragePeak(monitorClient, accountId, row.databaseId, row.containerId, now),
             ),
@@ -671,6 +681,7 @@ export async function collectDerivedAdvisories(
             storageSkew: storageSkew.map((result) => ({
                 databaseId: result.databaseId,
                 containerId: result.containerId,
+                physicalPartitionCount: result.physicalPartitionCount,
                 partitions: result.partitions,
                 resourceAgeDays: lookupRowAgeDays(
                     rowsByScope,
@@ -731,11 +742,16 @@ export async function collectDerivedAdvisories(
                     (failure.scope === undefined || failure.scope === scopeOf(row)) &&
                     !(
                         failure.rule === 'HotPartitionRisk' &&
-                        partitions.some((input) => scopeOf(input) === scopeOf(row) && input.partitionCount === 1)
+                        partitions.some(
+                            (input) =>
+                                scopeOf(input) === scopeOf(row) &&
+                                input.partitionCount === 1 &&
+                                input.physicalPartitionCount === 1,
+                        )
                     ) &&
                     !(
                         failure.rule === 'StorageSkewRisk' &&
-                        storageSkew.some((input) => scopeOf(input) === scopeOf(row) && input.partitions.length === 1)
+                        storageSkew.some((input) => scopeOf(input) === scopeOf(row) && hasSingleStoragePartition(input))
                     ) &&
                     rowAgeDays(row, accountCreatedAt, now) === undefined,
             )

@@ -88,10 +88,10 @@ describe('pure detector coverage', () => {
             })),
         ),
     )(
-        'requires operation evidence only after throttling gates: %j',
+        'preserves CODA operation classifications without inventing a decomposition: %j',
         ({ statusCounts, sufficient, throttling, throttledOperationCounts }) => {
             const hasOperation = (throttledOperationCounts?.Create ?? 0) > 0;
-            const insufficient = !sufficient || (throttling && !hasOperation);
+            const insufficient = !sufficient;
             const matches = sufficient && throttling && hasOperation;
             const result = analyzeDerivedAdvisories(
                 {

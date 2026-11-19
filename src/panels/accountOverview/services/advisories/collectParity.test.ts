@@ -828,10 +828,10 @@ describe('collectDerivedAdvisories parity wiring', () => {
                 scope: undefined,
             });
             expect(result.detectorCoverage.find(({ rule }) => rule === 'ThrottlingByOperation')).toMatchObject({
-                status: scenario === 'denied' ? 'unavailable' : 'insufficientData',
-                evaluatedCount: 0,
+                status: scenario === 'denied' ? 'partial' : 'evaluated',
+                evaluatedCount: 1,
                 matchedCount: 0,
-                insufficientDataCount: 1,
+                insufficientDataCount: 0,
                 unavailableReasons: scenario === 'denied' ? ['rbac'] : [],
             });
         },

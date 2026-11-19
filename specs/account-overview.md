@@ -156,6 +156,8 @@ Missing throttle observations are never replaced with synthetic values or counte
 Successful empty observations do not create unavailable dependencies; rules retain their existing evidence semantics,
 including empty successful consumption reads establishing idleness. Disabled indexing and a single observed partition
 can establish inapplicability without otherwise-required metric reads; user-excluded paths do not suppress indexing checks.
+DX-021 retains CODA's `not_throttling` root when there is no usable operation breakdown, even when status counts contain 429s.
+This does not discard acquisition failures: denied operation reads remain separately visible in source/coverage diagnostics.
 Sufficient query traffic with known low fan-out is a completed negative evaluation, not proof of container inapplicability.
 Missing configuration fields remain insufficient evidence, not a failed workload-data dependency.
 Required log-query failures affect only their dependent rules; optional cost, request-charge or consistency-charge

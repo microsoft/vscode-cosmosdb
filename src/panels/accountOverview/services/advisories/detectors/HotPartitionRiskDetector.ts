@@ -25,11 +25,14 @@ function evaluateHotPartitionRisk(
     headroomPercent: number,
     throttleThresholdPercent: number,
 ): DetectorEvaluation {
-    if (!hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.partitionSaturation.minResourceAgeDays)) {
-        return { rootCause: 'insufficient_data' };
-    }
     if (input.partitionCount < DIAGNOSTIC_POLICY.partitionSaturation.minHotPartitions) {
         return { rootCause: input.partitionCount > 0 ? 'not_applicable' : 'insufficient_data' };
+    }
+    if (
+        input.throttleRatePercent === undefined ||
+        !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.partitionSaturation.minResourceAgeDays)
+    ) {
+        return { rootCause: 'insufficient_data' };
     }
     if (input.maxP99 < saturationPercent || input.minP99 >= headroomPercent) {
         return { rootCause: 'evaluated' };

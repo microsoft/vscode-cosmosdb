@@ -112,10 +112,12 @@ export interface CollectDerivedAdvisoriesParams {
     accountConfig?: AccountConfigInput;
     /**
      * Data-plane Log Analytics client for the Tier-2 log-based advisories (DX-002/003/007/010). Absent when the
-     * client could not be acquired — the collector then reports Tier-2 as unavailable (`noData`) while still
+     * client could not be acquired — the collector then reports Tier-2 as unavailable while still
      * returning the Tier-1 advisories.
      */
     logsClient?: LogsQueryExecutor;
+    /** Already-reported acquisition failure, preserved without inventing a second generic client error. */
+    logsClientFailure?: Pick<LogsDiagnostic, 'kind' | 'reason'>;
     /** Sanitized Log Analytics failures for the local Output channel, not telemetry. */
     onLogsDiagnostic?: LogsDiagnosticReporter;
 }
@@ -497,6 +499,7 @@ export async function collectDerivedAdvisories(
         const scope = scopeOf(row);
         const ageDays = rowAgeDays(row, accountCreatedAt, now);
         const requiredPartitionRead = { ...partition, failures: [...partition.failures, ...throttle.failures] };
+        const singlePartition = partition.value?.available === true && partition.value.partitionCount === 1;
 
         if (partition.reason) {
             recordMetricFailure('SustainedThrottlingInRegion', requiredPartitionRead, scope);
@@ -507,16 +510,17 @@ export async function collectDerivedAdvisories(
             recordMetricFailure('HotPartitionRisk', requiredPartitionRead, scope, reason);
         } else if (throttle.reason) {
             recordMetricFailure('SustainedThrottlingInRegion', throttle, scope);
-            recordMetricFailure('HotPartitionRisk', throttle, scope);
-        } else if (throttle.value) {
+            recordMetricFailure('HotPartitionRisk', throttle, scope, throttle.reason, !singlePartition);
+        }
+        if (partition.value?.available && (throttle.value || singlePartition)) {
             partitions.push({
                 databaseId: row.databaseId,
                 containerId: row.containerId,
                 maxP99: partition.value.maxSaturationPercent ?? partition.value.topPartitionShare,
                 minP99: partition.value.minSaturationPercent ?? 0,
                 partitionCount: partition.value.partitionCount,
-                throttleRatePercent: throttle.value.ratePercent,
-                totalRequests: throttle.value.totalRequests,
+                throttleRatePercent: throttle.value?.ratePercent,
+                totalRequests: throttle.value?.totalRequests,
                 throughputMode: row.throughputMode,
                 provisionedRu: row.throughputRU,
                 resourceAgeDays: ageDays,
@@ -657,6 +661,7 @@ export async function collectDerivedAdvisories(
         offers,
         params.onLogsDiagnostic,
         dedicatedTargets,
+        params.logsClientFailure,
     );
 
     const { advisories, detectorCoverage } = analyzeDerivedAdvisories(
@@ -724,6 +729,14 @@ export async function collectDerivedAdvisories(
             targets.some(
                 (row) =>
                     (failure.scope === undefined || failure.scope === scopeOf(row)) &&
+                    !(
+                        failure.rule === 'HotPartitionRisk' &&
+                        partitions.some((input) => scopeOf(input) === scopeOf(row) && input.partitionCount === 1)
+                    ) &&
+                    !(
+                        failure.rule === 'StorageSkewRisk' &&
+                        storageSkew.some((input) => scopeOf(input) === scopeOf(row) && input.partitions.length === 1)
+                    ) &&
                     rowAgeDays(row, accountCreatedAt, now) === undefined,
             )
         ) {
@@ -801,6 +814,7 @@ export async function collectTier2Logs(
     }[],
     onDiagnostic?: LogsDiagnosticReporter,
     ingestionTargets: readonly { databaseId: string; containerId: string }[] = scanTargets,
+    clientFailure?: Pick<LogsDiagnostic, 'kind' | 'reason'>,
 ): Promise<Tier2Logs> {
     const empty = { crossPartition: [], ingestion: [], sharedThroughput: [] };
     const failures: NonNullable<LogsSourceStatus['failures']> = [];
@@ -825,6 +839,10 @@ export async function collectTier2Logs(
         return { available: false, reason, failures };
     };
     if (!logsClient) {
+        if (clientFailure) {
+            failures.push({ operation: 'client', ...clientFailure });
+            return { ...empty, logSource: coverage() };
+        }
         report({
             operation: 'client',
             kind: 'clientUnavailable',

@@ -245,10 +245,10 @@ export interface PartitionSaturationInput {
     /** Coolest physical partition's p99 utilization (% of provisioned). */
     minP99: number;
     partitionCount: number;
-    /** Container 429 rate (`sum(429)/sum(total)`, %). */
-    throttleRatePercent: number;
-    /** Total requests over the window; below the abstain gate the rate is too noisy to judge. */
-    totalRequests: number;
+    /** Container 429 rate (`sum(429)/sum(total)`, %), absent when the throttle read failed. */
+    throttleRatePercent?: number;
+    /** Total requests over the window; absent when unavailable, below the abstain gate too noisy to judge. */
+    totalRequests?: number;
     /** Throughput mode, so the under-provisioning remediation can say "raise the max" vs "raise RU/s". */
     throughputMode: ThroughputMode;
     /** Provisioned RU/s, quoted in the under-provisioning remediation when known. */

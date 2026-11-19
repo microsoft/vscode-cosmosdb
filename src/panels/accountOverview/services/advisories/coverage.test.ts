@@ -7,6 +7,7 @@ import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { API } from '../../../../AzureDBExperiences';
 import * as inventory from '../inventory';
+import * as partitionHealth from '../partitionHealth';
 import { withReadDiagnostics } from '../readDiagnostics';
 import * as resourceAge from '../resourceAge';
 import { dims, GB, iso, mockClient } from '../testFixtures';
@@ -84,6 +85,55 @@ function inventoryRow(overrides: Partial<inventory.InventoryContainerRow> = {}):
 }
 
 describe('pure detector coverage', () => {
+    it.each([undefined, 0.1, 30])('does not require age for a known single partition (%s days)', (resourceAgeDays) => {
+        const result = analyzeDerivedAdvisories(
+            {
+                ...emptyInputs,
+                partitions: [partition({ partitionCount: 1, resourceAgeDays })],
+                storage: [
+                    {
+                        databaseId: 'private-db',
+                        containerId: 'private-container',
+                        resourceAgeDays,
+                        partitions: [{ partitionId: '0', samples: [{ timestamp: 0, bytes: GB }] }],
+                    },
+                ],
+            },
+            DEFAULT_ADVISORY_THRESHOLDS,
+        );
+
+        for (const rule of ['HotPartitionRisk', 'StorageSkewRisk']) {
+            expect(result.detectorCoverage.find((entry) => entry.rule === rule)).toMatchObject({
+                status: 'notApplicable',
+                notApplicableCount: 1,
+                evaluatedCount: 0,
+                unavailableReasons: [],
+            });
+        }
+        expect(
+            result.advisories.filter(({ rule }) => rule === 'HotPartitionRisk' || rule === 'StorageSkewRisk'),
+        ).toEqual([]);
+    });
+
+    it('does not evaluate partition findings from missing throttling evidence', () => {
+        const result = analyzeDerivedAdvisories(
+            {
+                ...emptyInputs,
+                partitions: [partition({ throttleRatePercent: undefined, totalRequests: undefined })],
+            },
+            DEFAULT_ADVISORY_THRESHOLDS,
+        );
+
+        for (const rule of ['HotPartitionRisk', 'SustainedThrottlingInRegion']) {
+            expect(result.detectorCoverage.find((entry) => entry.rule === rule)).toMatchObject({
+                status: 'insufficientData',
+                evaluatedCount: 0,
+                matchedCount: 0,
+            });
+        }
+        expect(result.advisories).toEqual([]);
+    });
+
     it.each([0, 1, 2])('treats known low query fan-out as a completed negative evaluation (%s)', (fanout) => {
         const result = analyzeDerivedAdvisories(
             {
@@ -334,6 +384,87 @@ describe('detector dependency coverage', () => {
 
     describe('main collector coverage integration', () => {
         afterEach(() => vi.restoreAllMocks());
+
+        it.each([1, 2])(
+            'keeps applicability separate from failed throttle and age reads (%s partitions)',
+            async (count) => {
+                const cosmosClient = new CosmosDBManagementClient({ getToken: async () => null }, 'sub');
+                const row = inventoryRow({ resourceCreatedAt: undefined });
+                const rejected = Object.assign(new Error('private-error'), { statusCode: 403 });
+
+                vi.spyOn(cosmosClient.databaseAccounts, 'get').mockRejectedValue(rejected);
+                vi.spyOn(resourceAge, 'getContainerCreatedAt').mockRejectedValue(rejected);
+                vi.spyOn(inventory, 'getSqlInventoryDetails').mockResolvedValue({
+                    rows: [row],
+                    offers: [],
+                    databases: [],
+                });
+                vi.spyOn(partitionHealth, 'getPartitionHealth').mockResolvedValue({
+                    available: true,
+                    mode: 'ru',
+                    databaseId: row.databaseId,
+                    containerId: row.containerId,
+                    tiles: [],
+                    skewScore: 0,
+                    topPartitionShare: 95,
+                    maxSaturationPercent: 95,
+                    minSaturationPercent: 95,
+                    partitionCount: count,
+                    topN: 5,
+                    generatedAt: 0,
+                });
+                vi.spyOn(partitionHealth, 'getPartitionStorageSeries').mockResolvedValue({
+                    available: true,
+                    databaseId: row.databaseId,
+                    containerId: row.containerId,
+                    generatedAt: 0,
+                    partitions: Array.from({ length: count }, (_, index) => ({
+                        partitionId: String(index),
+                        samples: [{ timestamp: 0, bytes: GB }],
+                    })),
+                });
+                const monitorClient = mockClient({});
+                vi.spyOn(monitorClient.metrics, 'list').mockImplementation(async (_resource, options) => {
+                    if (options?.metricnames === 'TotalRequests') {
+                        throw rejected;
+                    }
+                    return { cost: 0, timespan: 'window', value: [] };
+                });
+                const result = await collectDerivedAdvisories({
+                    monitorClient,
+                    cosmosClient,
+                    accountId: 'private-account',
+                    resourceGroup: 'private-rg',
+                    accountName: 'private-account',
+                    isServerless: false,
+                    advisoryThresholds: DEFAULT_ADVISORY_THRESHOLDS,
+                });
+
+                for (const rule of ['HotPartitionRisk', 'StorageSkewRisk']) {
+                    expect(result.detectorCoverage.find((entry) => entry.rule === rule)).toMatchObject({
+                        status: count === 1 ? 'notApplicable' : rule === 'HotPartitionRisk' ? 'unavailable' : 'partial',
+                        notApplicableCount: count === 1 ? 1 : 0,
+                        evaluatedCount: count === 2 && rule === 'StorageSkewRisk' ? 1 : 0,
+                        matchedCount: 0,
+                        unavailableReasons: count === 1 ? [] : ['rbac'],
+                    });
+                    expect(result.metricSource.failures).toContainEqual({ rule, scope: undefined, reason: 'rbac' });
+                }
+                expect(
+                    result.detectorCoverage.find(({ rule }) => rule === 'SustainedThrottlingInRegion'),
+                ).toMatchObject({
+                    evaluatedCount: 0,
+                    matchedCount: 0,
+                    unavailableReasons: ['rbac'],
+                });
+                expect(result.metricSource.failures).toContainEqual({
+                    rule: 'HotPartitionRisk',
+                    scope: 'private-db/private-container',
+                    reason: 'rbac',
+                });
+                expect(result.advisories).toEqual([]);
+            },
+        );
 
         it.each([
             ['manual', 'empty'],

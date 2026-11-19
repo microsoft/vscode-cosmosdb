@@ -62,12 +62,13 @@ class TestMetadata extends ArmTestMetadata {
     public override getMonitorClient = vi.fn<ArmTestMetadata['getMonitorClient']>().mockResolvedValue(mockClient({}));
 }
 
-function createCaller() {
+function createCaller(signal?: AbortSignal) {
     const metadata = new TestMetadata(createArmTestClient());
     const context: AccountOverviewRouterContext = {
         webviewName: 'cosmosDbAccountOverview',
         metadata,
         panelId: 'random-panel-id',
+        signal,
         getInitialization: () => ({ type: 'navigate', target: 'overview', revision: 0 }),
         onNavigation: () => ({ dispose() {} }),
     };
@@ -116,6 +117,29 @@ beforeEach(() => {
 });
 
 describe('Account Overview RPC telemetry', () => {
+    it.each(['error', 'fallback'])(
+        'does not categorize a canceled invocation as an infrastructure failure (%s)',
+        async (result) => {
+            const controller = new AbortController();
+            const { caller } = createCaller(controller.signal);
+
+            controller.abort();
+            const response =
+                result === 'error'
+                    ? caller.fail({ databaseId: 'private-db' })
+                    : caller.queryResult({
+                          available: false,
+                          diagnostics: [{ source: 'metrics', kind: 'accessDenied', reason: 'rbac' }],
+                      });
+            const [settled] = await Promise.allSettled([response]);
+
+            expect(settled.status).toBe(result === 'error' ? 'rejected' : 'fulfilled');
+            expect(mocks.events).toHaveLength(1);
+            expect(mocks.events[0].context.telemetry.properties).toMatchObject({ result: 'Canceled', aborted: 'true' });
+            expect(mocks.events[0].context.telemetry.properties.errorCategory).toBeUndefined();
+        },
+    );
+
     it('requires the telemetry prerequisite at compile time, without changing the caller context', () => {
         const { publicProcedure } = initWebviewTrpc<AccountOverviewRouterContext>();
         publicProcedure.use(({ ctx, next }) => {

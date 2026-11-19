@@ -15,6 +15,10 @@ import {
     type DerivedAdvisoriesResult,
 } from '../../../accountOverview/services/advisories';
 import { DEFAULT_ADVISORY_THRESHOLDS } from '../../../accountOverview/services/advisories/core/thresholds';
+import {
+    classifyLogsFailure,
+    type LogsDiagnostic,
+} from '../../../accountOverview/services/advisories/fetchers/logsDiagnostics';
 import { CONFIGURATION_ONLY_RULES, DETECTORS } from '../../../accountOverview/services/advisories/registry';
 import {
     readRequest,
@@ -117,14 +121,17 @@ export async function getDerivedAdvisoriesForAccount(
             return configOnly('noData');
         }
         // A failed optional log client must not suppress metric-backed or configuration checks.
+        let logsClientFailure: Pick<LogsDiagnostic, 'kind' | 'reason'> | undefined;
         const logsClient = await readRequest('logs', () => metadata.getLogsQueryClient())
             .then((client) => {
                 if (!client) {
                     reportUnavailableClient('logs');
+                    logsClientFailure = { kind: 'clientUnavailable', reason: 'noData' };
                 }
                 return client;
             })
             .catch((error: unknown) => {
+                logsClientFailure = classifyLogsFailure(error);
                 ext.outputChannel.warn(
                     `[Account Overview] Log Analytics client unavailable: ${classifyUnavailable(error)}.`,
                 );
@@ -135,6 +142,7 @@ export async function getDerivedAdvisoriesForAccount(
             monitorClient,
             cosmosClient,
             logsClient,
+            logsClientFailure,
             onLogsDiagnostic: (diagnostic) => {
                 recordReadDiagnostic('logs', diagnostic);
                 outputReporter(diagnostic);

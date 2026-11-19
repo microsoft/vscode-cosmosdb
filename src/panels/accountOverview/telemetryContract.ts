@@ -24,6 +24,12 @@ export const overviewReadResultSchema = z.object({
 
 export type OverviewReadResult = z.infer<typeof overviewReadResultSchema>;
 
+const storageComponentSchema = z.object({ status: z.enum(['available', 'unavailable']) });
+
+export const overviewStorageResultSchema = z.object({
+    storage: z.object({ data: storageComponentSchema, index: storageComponentSchema }),
+});
+
 const coverageSchema = z.object({ available: z.boolean(), failures: z.array(z.unknown()) });
 
 const detectorCoverageSchema = z

@@ -30,11 +30,8 @@ import {
  * healthy: they simply split as they grow. Pure.
  */
 function evaluateStorageSkewRisk(input: ContainerStorageInput, balanceThreshold: number): DetectorEvaluation {
-    if (
-        balanceThreshold <= 0 ||
-        !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.storageSkew.minResourceAgeDays)
-    ) {
-        return { rootCause: balanceThreshold <= 0 ? 'not_applicable' : 'insufficient_data' };
+    if (balanceThreshold <= 0) {
+        return { rootCause: 'not_applicable' };
     }
     const sizes = input.partitions
         .map((partition) => {
@@ -47,14 +44,15 @@ function evaluateStorageSkewRisk(input: ContainerStorageInput, balanceThreshold:
     const ratio = balanceRatio(sizes);
     const hasCompleteObservations = sizes.length === input.partitions.length;
 
+    if (sizes.length === 1 && hasCompleteObservations) {
+        return { rootCause: 'not_applicable' };
+    }
+    if (!hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.storageSkew.minResourceAgeDays)) {
+        return { rootCause: 'insufficient_data' };
+    }
     if (ratio === undefined || ratio >= balanceThreshold) {
         return {
-            rootCause:
-                ratio !== undefined && hasCompleteObservations
-                    ? 'evaluated'
-                    : sizes.length === 1 && input.partitions.length === 1
-                      ? 'not_applicable'
-                      : 'insufficient_data',
+            rootCause: ratio !== undefined && hasCompleteObservations ? 'evaluated' : 'insufficient_data',
         };
     }
     const busiestBytes = Math.max(...sizes);

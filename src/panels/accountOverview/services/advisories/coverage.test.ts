@@ -212,38 +212,41 @@ describe('pure detector coverage', () => {
         expect(result.advisories).toEqual([]);
     });
 
-    it.each([undefined, 0.1, 30])('applies the CODA age gate before singleton classification (%s days)', (resourceAgeDays) => {
-        const young = resourceAgeDays === 0.1;
-        const result = analyzeDerivedAdvisories(
-            {
-                ...emptyInputs,
-                partitions: [partition({ partitionCount: 1, physicalPartitionCount: 1, resourceAgeDays })],
-                storage: [
-                    {
-                        databaseId: 'private-db',
-                        containerId: 'private-container',
-                        resourceAgeDays,
-                        physicalPartitionCount: 1,
-                        partitions: [{ partitionId: '0', samples: [{ timestamp: 0, bytes: GB }] }],
-                    },
-                ],
-            },
-            DEFAULT_ADVISORY_THRESHOLDS,
-        );
+    it.each([undefined, 0.1, 30])(
+        'applies the CODA age gate before singleton classification (%s days)',
+        (resourceAgeDays) => {
+            const young = resourceAgeDays === 0.1;
+            const result = analyzeDerivedAdvisories(
+                {
+                    ...emptyInputs,
+                    partitions: [partition({ partitionCount: 1, physicalPartitionCount: 1, resourceAgeDays })],
+                    storage: [
+                        {
+                            databaseId: 'private-db',
+                            containerId: 'private-container',
+                            resourceAgeDays,
+                            physicalPartitionCount: 1,
+                            partitions: [{ partitionId: '0', samples: [{ timestamp: 0, bytes: GB }] }],
+                        },
+                    ],
+                },
+                DEFAULT_ADVISORY_THRESHOLDS,
+            );
 
-        for (const rule of ['HotPartitionRisk', 'StorageSkewRisk']) {
-            expect(result.detectorCoverage.find((entry) => entry.rule === rule)).toMatchObject({
-                status: young ? 'insufficientData' : 'notApplicable',
-                notApplicableCount: young ? 0 : 1,
-                insufficientDataCount: young ? 1 : 0,
-                evaluatedCount: 0,
-                unavailableReasons: [],
-            });
-        }
-        expect(
-            result.advisories.filter(({ rule }) => rule === 'HotPartitionRisk' || rule === 'StorageSkewRisk'),
-        ).toEqual([]);
-    });
+            for (const rule of ['HotPartitionRisk', 'StorageSkewRisk']) {
+                expect(result.detectorCoverage.find((entry) => entry.rule === rule)).toMatchObject({
+                    status: young ? 'insufficientData' : 'notApplicable',
+                    notApplicableCount: young ? 0 : 1,
+                    insufficientDataCount: young ? 1 : 0,
+                    evaluatedCount: 0,
+                    unavailableReasons: [],
+                });
+            }
+            expect(
+                result.advisories.filter(({ rule }) => rule === 'HotPartitionRisk' || rule === 'StorageSkewRisk'),
+            ).toEqual([]);
+        },
+    );
 
     it('does not evaluate partition findings from missing throttling evidence', () => {
         const result = analyzeDerivedAdvisories(
@@ -602,7 +605,16 @@ describe('detector dependency coverage', () => {
 
                 for (const rule of ['HotPartitionRisk', 'StorageSkewRisk']) {
                     expect(captured.result.detectorCoverage.find((entry) => entry.rule === rule)).toMatchObject({
-                        status: unavailable ? 'unavailable' : evaluated ? 'evaluated' : 'insufficientData',
+                        status: unavailable
+                            ? state === 'single'
+                                ? 'partial'
+                                : 'unavailable'
+                            : evaluated
+                              ? 'evaluated'
+                              : state === 'single'
+                                ? 'notApplicable'
+                                : 'insufficientData',
+                        notApplicableCount: state === 'single' ? 1 : 0,
                         evaluatedCount: evaluated ? 1 : 0,
                         matchedCount: state === 'positive' ? 1 : 0,
                         unavailableReasons: unavailable ? ['rbac'] : [],
@@ -710,13 +722,21 @@ describe('detector dependency coverage', () => {
 
                 const result = await collectDerivedAdvisories(params);
                 const coverage = result.detectorCoverage.find(({ rule }) => rule === 'StorageSkewRisk');
+                const storageSingleton = state === 'missing' || state === 'multiple' || state === 'valid';
+                const requiredAgeFailure = ageFailed && state !== 'valid';
 
                 expect(coverage).toMatchObject({
-                    status: state === 'valid' ? 'notApplicable' : ageFailed ? 'unavailable' : 'insufficientData',
-                    notApplicableCount: state === 'valid' ? 1 : 0,
+                    status: requiredAgeFailure
+                        ? storageSingleton
+                            ? 'partial'
+                            : 'unavailable'
+                        : storageSingleton
+                          ? 'notApplicable'
+                          : 'insufficientData',
+                    notApplicableCount: storageSingleton ? 1 : 0,
                     evaluatedCount: 0,
                     matchedCount: 0,
-                    unavailableReasons: state === 'valid' || !ageFailed ? [] : ['rbac'],
+                    unavailableReasons: requiredAgeFailure ? ['rbac'] : [],
                 });
                 expect(
                     result.metricSource.failures.some(
@@ -724,13 +744,8 @@ describe('detector dependency coverage', () => {
                     ),
                 ).toBe(ageFailed);
                 expect(result.detectorCoverage.find(({ rule }) => rule === 'HotPartitionRisk')).toMatchObject({
-                    status:
-                        state === 'missing' || state === 'multiple'
-                            ? ageFailed
-                                ? 'unavailable'
-                                : 'insufficientData'
-                            : 'notApplicable',
-                    notApplicableCount: state === 'missing' || state === 'multiple' ? 0 : 1,
+                    status: ageFailed && (state === 'missing' || state === 'multiple') ? 'partial' : 'notApplicable',
+                    notApplicableCount: 1,
                     evaluatedCount: 0,
                     matchedCount: 0,
                     unavailableReasons: ageFailed && (state === 'missing' || state === 'multiple') ? ['rbac'] : [],

@@ -823,9 +823,7 @@ export async function collectDerivedAdvisories(
         const unknownOfferAges = new Set(
             offerTargets.filter((offer) => offerAgeDays(offer) === undefined).map(scopeOf),
         );
-        const unknownManualAges = new Set(
-            manualTargets.map(scopeOf).filter((scope) => unknownOfferAges.has(scope)),
-        );
+        const unknownManualAges = new Set(manualTargets.map(scopeOf).filter((scope) => unknownOfferAges.has(scope)));
         const unknownAutoscaleAges = new Set(
             autoscaleTargets.map(scopeOf).filter((scope) => unknownOfferAges.has(scope)),
         );
@@ -858,7 +856,8 @@ export async function collectDerivedAdvisories(
                       ? unknownHotPartitionAges
                       : failure.rule === 'OverProvisioning' || failure.rule === 'AutoscaleCandidate'
                         ? unknownManualAges
-                        : failure.rule === 'AutoscaleMaxOverProvisioned' || failure.rule === 'AutoscaleToManualCandidate'
+                        : failure.rule === 'AutoscaleMaxOverProvisioned' ||
+                            failure.rule === 'AutoscaleToManualCandidate'
                           ? unknownAutoscaleAges
                           : unknownOfferAges;
             const needsAge = failure.scope === undefined ? unknownAges.size > 0 : unknownAges.has(failure.scope);

@@ -354,6 +354,14 @@ describe('collectDerivedAdvisories parity wiring', () => {
         });
         vi.spyOn(resourceAge, 'getContainerCreatedAt').mockRejectedValue({ statusCode: 503 });
         vi.mocked(getContainerIdlePeak).mockResolvedValue(0);
+        vi.mocked(getRuTrends).mockResolvedValue({
+            available: false,
+            reason: 'noData',
+            points: [],
+            provisionedPercent: 100,
+            timeRange: '7D',
+            generatedAt: 0,
+        });
 
         const result = await collectDerivedAdvisories(params({ logsClient: undefined }));
 

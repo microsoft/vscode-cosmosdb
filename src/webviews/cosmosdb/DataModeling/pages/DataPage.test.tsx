@@ -654,6 +654,34 @@ describe('DataPage native schema confirmation', () => {
     });
 });
 
+describe('DataPage array control labels', () => {
+    it('names the enabled array controls using their visible labels and preserves pattern selection', async () => {
+        const user = userEvent.setup();
+        const container = createBlankContainer();
+        render(<LiveDataPage initialModel={{ containers: [container], activeContainerId: container.id }} />);
+
+        await user.click(screen.getByRole('checkbox', { name: 'This container has arrays / nested collections' }));
+
+        const averageLabel = screen.getByText('Average items per array');
+        const maximumLabel = screen.getByText('Maximum items per array');
+        const patternLabel = screen.getByText('Array update pattern');
+        const average = screen.getByRole('spinbutton', { name: averageLabel.textContent });
+        const maximum = screen.getByRole('spinbutton', { name: maximumLabel.textContent });
+        const pattern = screen.getByDisplayValue('Rarely updated after write');
+        for (const [control, label] of [
+            [average, averageLabel],
+            [maximum, maximumLabel],
+            [pattern, patternLabel],
+        ]) {
+            expect(label).toBeVisible();
+            expect(control).toHaveAccessibleName(label.textContent);
+        }
+
+        await user.selectOptions(pattern, 'append');
+        expect(pattern).toHaveValue('append');
+    });
+});
+
 describe('DataPage count limits', () => {
     function arraysModel(): DataModel {
         const container = createBlankContainer();

@@ -5,11 +5,15 @@
 
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
-import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
-import { clampRationale, hasMinimumKnownResourceAge } from '../core/helpers';
+import { clampRationale, hasMinimumKnownResourceAge, offerScope } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
-import { type DerivedAdvisory, type DerivedAdvisorySeverity, type PartitionSaturationInput } from '../core/types';
+import {
+    type AdvisoryEvaluation,
+    type DerivedAdvisory,
+    type DerivedAdvisorySeverity,
+    type PartitionSaturationInput,
+} from '../core/types';
 
 /**
  * SustainedThrottlingInRegion / genuine under-provisioning (DX-005): a container is sustaining 429 throttling
@@ -24,20 +28,24 @@ function evaluateUnderProvisioning(
     saturationPercent: number,
     headroomPercent: number,
     throttleThresholdPercent: number,
-): DerivedAdvisory | undefined {
+): AdvisoryEvaluation<'SustainedThrottlingInRegion'> {
     if (
         input.totalRequests < DIAGNOSTIC_POLICY.underProvisioning.minRequests ||
         !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.partitionSaturation.minResourceAgeDays)
     ) {
-        return undefined;
+        return { rootCause: 'insufficient_data' };
     }
     const throttling = input.throttleRatePercent >= throttleThresholdPercent;
     const atCapacity = input.maxP99 >= saturationPercent;
     const uniform = input.minP99 >= headroomPercent;
-    if (!throttling || !atCapacity || !uniform) {
-        return undefined;
+    if (!throttling || !atCapacity) {
+        return { rootCause: 'not_throttling' };
     }
-    const scope = containerKey(input.databaseId, input.containerId);
+    if (!uniform) {
+        return { rootCause: 'skew_suspected', severity: 'Medium' };
+    }
+    const scope = offerScope(input);
+    const name = input.containerId ?? input.databaseId;
     const rate = Math.round(input.throttleRatePercent * 10) / 10;
     const busiest = Math.round(input.maxP99);
     const coolest = Math.round(input.minP99);
@@ -67,14 +75,14 @@ function evaluateUnderProvisioning(
                 )
               : l10n.t('Raise provisioned throughput, or convert to autoscale if the demand is bursty.');
 
-    return {
+    const advisory: DerivedAdvisory = {
         id: `SustainedThrottlingInRegion:${scope}`,
         rule: 'SustainedThrottlingInRegion',
         severity,
-        title: l10n.t('Sustained throttling in {container}', { container: input.containerId }),
+        title: l10n.t('Sustained throttling in {container}', { container: name }),
         rationale: clampRationale(
             l10n.t('In "{container}", `{rate}%` of requests were throttled (HTTP 429).', {
-                container: escapeAdvisoryText(input.containerId),
+                container: escapeAdvisoryText(name),
                 rate,
             }) +
                 ' ' +
@@ -103,11 +111,13 @@ function evaluateUnderProvisioning(
         ),
         scope,
     };
+    return { rootCause: 'global_under_provisioning', advisory };
 }
 
 export class UnderProvisioningDetector extends Detector {
     readonly rule = 'SustainedThrottlingInRegion' as const;
-    evaluate = evaluateUnderProvisioning;
+    evaluateResult = evaluateUnderProvisioning;
+    evaluate = (...args: Parameters<typeof evaluateUnderProvisioning>) => evaluateUnderProvisioning(...args).advisory;
     run(ctx: DetectorContext): DerivedAdvisory[] {
         const t = ctx.thresholds;
         const out: DerivedAdvisory[] = [];

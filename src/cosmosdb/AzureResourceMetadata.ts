@@ -37,6 +37,10 @@ type DeepReadonly<T> = T extends (...args: never[]) => unknown
         ? { readonly [K in keyof T]: DeepReadonly<T[K]> }
         : T;
 
+type DatabaseAccountSnapshot = DatabaseAccountGetResults & {
+    enableAllVersionsAndDeletesChangeFeed?: boolean;
+};
+
 export class AzureResourceMetadata {
     /**
      * This is only one available way to get AzureResourceMetadata, so we require the following props
@@ -70,12 +74,32 @@ export class AzureResourceMetadata {
                 throw new Error(l10n.t('Failed to create CosmosDB management client.'));
             }
 
-            const databaseAccount = await client.databaseAccounts.get(resourceGroup, accountName);
+            let enableAllVersionsAndDeletesChangeFeed: boolean | undefined;
+            const databaseAccount = await client.databaseAccounts.get(resourceGroup, accountName, {
+                onResponse: (response) => {
+                    // The SDK drops this unmodeled property, so preserve only its boolean value from the raw response.
+                    const body: unknown = response.parsedBody;
+                    if (typeof body === 'object' && body !== null && 'properties' in body) {
+                        const properties = body.properties;
+                        if (
+                            typeof properties === 'object' &&
+                            properties !== null &&
+                            'enableAllVersionsAndDeletesChangeFeed' in properties &&
+                            typeof properties.enableAllVersionsAndDeletesChangeFeed === 'boolean'
+                        ) {
+                            enableAllVersionsAndDeletesChangeFeed = properties.enableAllVersionsAndDeletesChangeFeed;
+                        }
+                    }
+                },
+            });
 
             // Database account has to have document endpoint
             nonNullProp(databaseAccount, 'documentEndpoint', `of the database account ${accountId}`);
 
-            return new AzureResourceMetadata(subscription, accountId, accountName, resourceGroup, databaseAccount);
+            return new AzureResourceMetadata(subscription, accountId, accountName, resourceGroup, {
+                ...databaseAccount,
+                enableAllVersionsAndDeletesChangeFeed,
+            });
         });
     }
 
@@ -84,7 +108,7 @@ export class AzureResourceMetadata {
         public readonly accountId: string,
         public readonly accountName: string,
         public readonly resourceGroup: string,
-        public readonly databaseAccount: DeepReadonly<DatabaseAccountGetResults>,
+        public readonly databaseAccount: DeepReadonly<DatabaseAccountSnapshot>,
     ) {
         // The constructor is intentionally simple; all logic is in the static create method
     }

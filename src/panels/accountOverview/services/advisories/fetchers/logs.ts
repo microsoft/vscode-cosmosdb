@@ -220,8 +220,7 @@ export async function fetchCrossPartitionShapes(
         `| where DatabaseName == '${db}' and CollectionName == '${coll}' ` +
         '| summarize partitionsHit = dcount(PartitionKeyRangeId) by CorrelatedActivityId, QueryText ' +
         '| summarize executions = count(), avgFanout = avg(partitionsHit), maxFanout = max(partitionsHit) ' +
-        'by QueryText ' +
-        '| top 200 by executions desc';
+        'by QueryText';
     const rows = await executeLogsQuery(
         executor,
         resourceId,
@@ -239,7 +238,12 @@ export async function fetchCrossPartitionShapes(
             avgFanout: num(r.avgFanout),
             maxFanout: Math.round(num(r.maxFanout)),
         }));
-    return { databaseId, containerId, shapes };
+    return {
+        databaseId,
+        containerId,
+        shapes,
+        evaluationWindowSeconds: (timespan.endTime.getTime() - timespan.startTime.getTime()) / 1000,
+    };
 }
 
 /**

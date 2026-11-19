@@ -46,7 +46,7 @@ describe('advisory text', () => {
         expect(parts.filter((part) => part.highlighted)).toEqual([{ text: '400 RU/s', highlighted: true }]);
     });
 
-    it('marks detector evidence without changing the deferred minimum-capacity verdict', () => {
+    it('marks minimum-capacity evidence while withholding no-op lowering guidance', () => {
         const container = 'order-`2026`';
         const finding = new OverProvisioningDetector().evaluate(
             5,
@@ -70,8 +70,9 @@ describe('advisory text', () => {
             '0 RU/s',
             '~400 RU/s',
         ]);
-        expect(rationale.map((part) => part.text).join('')).toContain(`Container "${container}" stayed at 5%`);
-        expect(finding?.suggestedAction).toContain('from `400 RU/s` toward `~400 RU/s`');
+        expect(rationale.map((part) => part.text).join('')).toContain(`Offer "${container}" stayed at 5%`);
+        expect(finding?.suggestedAction).toContain('No throughput reduction is available');
+        expect(finding?.actionEligibility).toBe('blocked');
         expect(finding?.thresholdReference).toBe('Threshold: p99 RU < `30%` and peak < `90%`');
     });
 });

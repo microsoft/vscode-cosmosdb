@@ -9,62 +9,44 @@ import { Detector, type DetectorContext } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import {
+    type AdvisoryEvaluation,
     type CrossPartitionInput,
     type DerivedAdvisory,
-    type DerivedAdvisorySeverity,
-    type QueryShapeInput,
     type ShardKeyThresholds,
 } from '../core/types';
-
-/** Folds the per-shape fan-out into total executions, cross-partition share, and the worst (most frequent) shape. Pure. */
-interface CrossPartitionStats {
-    totalQueries: number;
-    containerPartitions: number;
-    crossPartitionPct: number;
-    worst: QueryShapeInput | undefined;
-}
-
-function crossPartitionStats(shapes: readonly QueryShapeInput[], fanoutThreshold: number): CrossPartitionStats {
-    const totalQueries = shapes.reduce((sum, s) => sum + s.executions, 0);
-    const containerPartitions = shapes.reduce((max, s) => Math.max(max, s.maxFanout), 0);
-    const crossShapes = shapes.filter((s) => s.avgFanout >= fanoutThreshold);
-    const crossExec = crossShapes.reduce((sum, s) => sum + s.executions, 0);
-    const crossPartitionPct = totalQueries > 0 ? (100 * crossExec) / totalQueries : 0;
-    const worst = crossShapes.reduce<QueryShapeInput | undefined>(
-        (best, s) => (best === undefined || s.executions > best.executions ? s : best),
-        undefined,
-    );
-    return { totalQueries, containerPartitions, crossPartitionPct, worst };
-}
+import { fanoutRuDescription, fanoutRuEvidence, fanoutSeverity, fanoutStats } from './fanout';
 
 /**
  * ShardKeyMisalignment (CODA DX-007): the structural escalation of DX-002. When the *dominant* share of query
  * executions fans out (≥ `structuralPct`) across ≥ `minPartitions` physical partitions, the problem is the
  * partition key itself (the data model), not individual queries — the fix is to re-key the container
  * (migration-class). Reuses DX-002's fan-out signal. When this fires it **supersedes** DX-002 on the same
- * container (the caller drops the DX-002 advisory). Container-scoped. Pure.
+ * container (the engine retains DX-002 as superseded evidence). Container-scoped. Pure.
  */
 function evaluateShardKeyMisalignment(
     input: CrossPartitionInput,
     thresholds: ShardKeyThresholds,
     crossPartitionFanoutThreshold: number,
     minQueries: number = DIAGNOSTIC_POLICY.crossPartition.minQueries,
-): DerivedAdvisory | undefined {
-    const { totalQueries, containerPartitions, crossPartitionPct } = crossPartitionStats(
-        input.shapes,
-        crossPartitionFanoutThreshold,
-    );
-    const roundedCrossPartitionPct = Math.round(crossPartitionPct * 10) / 10;
+): AdvisoryEvaluation<'ShardKeyMisalignment'> {
+    const stats = fanoutStats(input, crossPartitionFanoutThreshold);
+    if (!stats) {
+        return { rootCause: 'insufficient_data' };
+    }
+    const { totalQueries, containerPartitions, crossPartitionPct, crossQueriesPerSecond, worst } = stats;
+    if (totalQueries < minQueries) {
+        return { rootCause: 'insufficient_data' };
+    }
     if (
-        totalQueries < minQueries ||
-        roundedCrossPartitionPct < thresholds.structuralPct ||
+        crossPartitionPct < thresholds.structuralPct ||
+        crossQueriesPerSecond < DIAGNOSTIC_POLICY.crossPartition.minQueriesPerSecond ||
         containerPartitions < thresholds.minPartitions
     ) {
-        return undefined;
+        return { rootCause: 'not_misaligned' };
     }
-    const severity: DerivedAdvisorySeverity = roundedCrossPartitionPct >= thresholds.highPct ? 'High' : 'Medium';
-    const pct = Math.round(roundedCrossPartitionPct);
-    return {
+    const severity = fanoutSeverity(containerPartitions, crossQueriesPerSecond);
+    const pct = Math.round(crossPartitionPct);
+    const advisory: DerivedAdvisory = {
         id: `ShardKeyMisalignment/${containerKey(input.databaseId, input.containerId)}`,
         rule: 'ShardKeyMisalignment',
         severity,
@@ -92,18 +74,32 @@ function evaluateShardKeyMisalignment(
             ' ' +
             l10n.t(
                 'Per-query fixes cannot resolve a fundamentally mismatched key, and the cost grows as the container adds partitions.',
-            ),
-        thresholdReference: l10n.t('Threshold: ≥ `{pct}%` of executions fan out across ≥ `{partitions} partitions`', {
-            pct: thresholds.structuralPct,
-            partitions: thresholds.minPartitions,
-        }),
+            ) +
+            fanoutRuDescription(worst),
+        evidence: {
+            totalQueries,
+            containerPartitions,
+            crossPartitionPct,
+            crossQueriesPerSecond,
+            ...fanoutRuEvidence(input, worst),
+        },
+        thresholdReference: l10n.t(
+            'Threshold: ≥ `{pct}%` fan-out share across ≥ `{partitions} partitions`, and ≥ `0.1 fan-out queries/s`',
+            {
+                pct: thresholds.structuralPct,
+                partitions: thresholds.minPartitions,
+            },
+        ),
     };
+    return { rootCause: 'shard_key_misaligned', advisory };
 }
 
 export class ShardKeyMisalignmentDetector extends Detector {
     readonly rule = 'ShardKeyMisalignment' as const;
     readonly supersedes = ['CrossPartitionQuery'] as const;
-    evaluate = evaluateShardKeyMisalignment;
+    evaluateResult = evaluateShardKeyMisalignment;
+    evaluate = (...args: Parameters<typeof evaluateShardKeyMisalignment>) =>
+        evaluateShardKeyMisalignment(...args).advisory;
     run(ctx: DetectorContext): DerivedAdvisory[] {
         const t = ctx.thresholds;
         const out: DerivedAdvisory[] = [];
@@ -113,7 +109,6 @@ export class ShardKeyMisalignmentDetector extends Detector {
                 {
                     structuralPct: t.shardKeyStructuralPct,
                     minPartitions: DIAGNOSTIC_POLICY.shardKey.minPartitions,
-                    highPct: t.shardKeyHighPct,
                 },
                 t.crossPartitionFanoutThreshold,
                 t.crossPartitionMinQueries,

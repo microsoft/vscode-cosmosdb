@@ -13,7 +13,7 @@ import { type LogsFailureKind, type LogsOperation } from '../fetchers/logsDiagno
 //
 // Unlike Azure Alerts + Advisor recommendations, these advisories are derived on
 // the extension host from telemetry the dashboard has already fetched (RU trends,
-// inventory metrics, partition health). No new ARM endpoints. The portal does not
+// inventory metrics, partition health and account request metrics), plus optional diagnostic logs. The portal does not
 // derive these on its Overview blade. Thresholds follow the internal CODA-governed policy, not VS Code settings.
 // Every rule function is pure so it can be unit-tested against synthetic inputs; collectDerivedAdvisories does
 // the fetching and calls computeDerivedAdvisories.
@@ -42,6 +42,109 @@ export type DerivedAdvisoryRule =
 
 export type DerivedAdvisorySeverity = 'High' | 'Medium' | 'Low';
 
+export type UtilizationBand = 'idle' | 'low' | 'moderate' | 'ok' | 'insufficient_data';
+
+/** Production sizing observations remain inspectable even when a finding is withheld. */
+export interface ProvisioningEvaluation {
+    band: UtilizationBand;
+    recommendedRu?: number;
+    recoverableRu?: number;
+    advisory?: DerivedAdvisory;
+}
+
+type EvaluationOutcome<RootCause extends string, Observations = never> = { rootCause: RootCause } & ([
+    Observations,
+] extends [never]
+    ? { observations?: never }
+    : { observations: Observations });
+
+interface AdvisoryEvaluationResults {
+    AutoscaleCandidate: EvaluationOutcome<'insufficient_data' | 'spiky_manual' | 'well_matched'>;
+    AutoscaleToManualCandidate: EvaluationOutcome<'insufficient_data' | 'well_matched' | 'steady_autoscale'>;
+    CrossPartitionQuery: EvaluationOutcome<
+        | 'insufficient_data'
+        | 'single_partition_container'
+        | 'mostly_single_partition'
+        | 'occasional_fanout'
+        | 'cross_partition'
+    >;
+    ExpensiveConsistency: EvaluationOutcome<
+        'unknown' | 'default_or_relaxed' | 'single_region' | 'strong_single_region' | 'premium_multi_region'
+    >;
+    HotPartitionRisk: EvaluationOutcome<
+        'insufficient_data' | 'single_partition' | 'not_saturated' | 'uniform_saturation' | 'hot_partition'
+    >;
+    IdleContainer:
+        | EvaluationOutcome<'insufficient_data' | 'active'>
+        | EvaluationOutcome<'idle', { recoverableRu: number }>;
+    IndexingCostRisk:
+        | EvaluationOutcome<'indexing_disabled' | 'insufficient_data'>
+        | EvaluationOutcome<
+              'normal_ratio' | 'high_index_ratio',
+              { indexDataRatio: number; userExcludedPathCount: number }
+          >;
+    MultiRegionWriteAntipattern: {
+        rootCause:
+            | 'not_multi_region_writes'
+            | `${'cassandra' | 'gremlin' | 'table' | 'mongo'}_multi_region_writes`
+            | 'single_region_multi_region_writes_tripwire'
+            | 'legitimate_ha'
+            | 'nonprod_multi_region_writes';
+        observations?:
+            | { regionalCapacityQuantified: false }
+            | {
+                  regionalCapacityQuantified: true;
+                  configuredPerRegionRu: number;
+                  globalRegionalFootprintRu: number;
+                  removableExtraRegionRu: number | null;
+              };
+    };
+    PartitionMergeCandidate:
+        | EvaluationOutcome<'insufficient_data' | 'single_partition' | 'right_sized'>
+        | EvaluationOutcome<
+              'over_partitioned',
+              {
+                  mergeEligibility:
+                      | 'blocked_pitr'
+                      | 'blocked_full_fidelity'
+                      | 'requires_platform_validation'
+                      | 'unknown';
+              }
+          >;
+    ServerlessCandidate: EvaluationOutcome<
+        | 'already_serverless'
+        | 'insufficient_data'
+        | 'idle_or_empty'
+        | 'too_high'
+        | 'steady_load'
+        | 'serverless_candidate'
+    >;
+    ServerlessThrottling:
+        | EvaluationOutcome<'insufficient_data' | 'not_throttling'>
+        | EvaluationOutcome<'serverless_throttling', { throttleRatePercent: number }>;
+    ShardKeyMisalignment: EvaluationOutcome<'insufficient_data' | 'not_misaligned' | 'shard_key_misaligned'>;
+    SharedThroughputStarvation:
+        | EvaluationOutcome<'insufficient_data' | 'single_collection' | 'not_throttling' | 'no_disparity'>
+        | EvaluationOutcome<'starvation', { monopolizer: string; victim: string }>;
+    StorageGrowthRisk:
+        | EvaluationOutcome<'insufficient_data' | 'too_small' | 'stable'>
+        | EvaluationOutcome<'at_or_over_limit' | 'rapid_growth', { daysToLimit: number }>;
+    StorageSkewRisk: EvaluationOutcome<
+        'insufficient_data' | 'single_partition' | 'uniform_storage' | 'too_small' | 'storage_skew'
+    >;
+    SustainedThrottlingInRegion: EvaluationOutcome<
+        'insufficient_data' | 'not_throttling' | 'skew_suspected' | 'global_under_provisioning'
+    >;
+    UncontrolledIngestion: EvaluationOutcome<'insufficient_data' | 'not_uncontrolled' | 'uncontrolled_ingestion'>;
+}
+
+export type AdvisoryEvaluation<Rule extends keyof AdvisoryEvaluationResults = keyof AdvisoryEvaluationResults> =
+    AdvisoryEvaluationResults[Rule] & {
+        advisory?: DerivedAdvisory;
+        /** A diagnostic classification can have severity without emitting this rule's finding. */
+        severity?: DerivedAdvisorySeverity;
+    };
+
 export interface DerivedAdvisory {
     /** Stable id (rule + optional scope) so the webview can dismiss it for the session. */
     id: string;
@@ -58,6 +161,10 @@ export interface DerivedAdvisory {
     scope?: string;
     /** Retained for diagnostic provenance, but hidden from the default actionable list. */
     supersededBy?: string;
+    /** Machine-readable observed/modelled values, separate from localized presentation. Not telemetry. */
+    evidence?: Record<string, number | string | boolean | null>;
+    /** Structural findings can remain visible while a proposed action is blocked or unverified. */
+    actionEligibility?: 'requiresValidation' | 'blocked' | 'unknown';
 }
 
 /**
@@ -75,7 +182,7 @@ export interface LogsSourceStatus {
     failures?: { operation: LogsOperation; kind: LogsFailureKind; reason: UnavailableReason }[];
 }
 
-/** Failed metric checks stay distinguishable from successful checks with no finding. */
+/** Missing metric/configuration evidence stays distinguishable from successful checks with no finding. */
 export interface MetricSourceStatus {
     available: boolean;
     failures: { rule: DerivedAdvisoryRule; scope?: string; reason: UnavailableReason }[];
@@ -175,14 +282,10 @@ export interface DerivedAdvisoryThresholds {
     crossPartitionMinQueries: number;
     /** DX-002: a query shape whose average fan-out (distinct partitions per logical query) is at or above this counts as cross-partition. */
     crossPartitionFanoutThreshold: number;
-    /** DX-002: share (%) of executions fanning out at or above which CrossPartitionQuery is High (else Medium down to the med floor). */
-    crossPartitionHighPct: number;
     /** DX-002: share (%) of executions fanning out below which CrossPartitionQuery does not fire. */
     crossPartitionMedPct: number;
     /** DX-007: share (%) of executions fanning out at or above which the partition *key* is structurally misaligned (re-key), superseding DX-002. */
     shardKeyStructuralPct: number;
-    /** DX-007: cross-partition share (%) at or above which ShardKeyMisalignment is High (else Medium). */
-    shardKeyHighPct: number;
     /** DX-010: write-op RU share (%) at or above which the workload is write-dominant. */
     ingestionWriteRuPctFloor: number;
     /** DX-010: 429 rate (%) at or above which the container is throttling (paired with write-dominance to fire). */
@@ -211,7 +314,8 @@ export interface DerivedAdvisoryThresholds {
 export interface PartitionSaturationInput {
     resourceAgeDays?: number;
     databaseId: string;
-    containerId: string;
+    /** Absent for a shared database offer. */
+    containerId?: string;
     /** Busiest physical partition's p99 utilization (% of provisioned). */
     maxP99: number;
     /** Coolest physical partition's p99 utilization (% of provisioned). */
@@ -258,6 +362,7 @@ export interface IndexingUsageInput {
     dataUsageBytes?: number;
     /** Number of excluded paths other than the default root `_etag` exclusion. */
     userExcludedPathCount: number;
+    indexingMode?: string;
 }
 
 /** Already-known ARM account configuration the config-only advisories (DX-016 / DX-008) read. */
@@ -277,16 +382,28 @@ export interface AccountConfigInput {
     /** Number of write regions the account has. */
     writeRegionCount: number;
     /** Canonical API; undefined means unknown. */
-    api: API | undefined;
+    api: API | 'MongoDB' | undefined;
+    backupPolicy?: BackupEligibilityInput;
+    /** Unknown must not be interpreted as provisioned capacity or as a disabled feature. */
+    isServerless?: boolean;
+    perRegionPerPartitionAutoscaleEnabled?: boolean;
+}
+
+export interface BackupEligibilityInput {
+    type?: string;
+    continuousTier?: string;
+    migrationState?: { status?: string; targetType?: string };
+    fullFidelityChangeFeedEnabled?: boolean;
 }
 
 /** Already-fetched idle signal for one container over the 30-day window (DX-004). */
 export interface IdleContainerInput {
     resourceAgeDays?: number;
     databaseId: string;
-    containerId: string;
-    /** Peak RU consumed in any single bucket (max of `TotalRequestUnits`, Total). 0 for an all-zero/empty series. */
-    peakRuPerBucket: number;
+    /** Absent for a shared database offer; recovery belongs to the offer, not each member. */
+    containerId?: string;
+    /** Peak RU consumed in any bucket; successful empty reads become zero, unavailable reads remain undefined. */
+    peakRuPerBucket?: number;
     /** Throughput billing mode; only manual (dedicated/shared) and autoscale offers are recoverable. */
     throughputMode: ThroughputMode;
     /** The container's configured provisioned RU/s (autoscale max for autoscale). */
@@ -303,13 +420,15 @@ export interface PartitionMergeInput {
     provisionedRu?: number;
     /** Peak data storage in bytes over the same six-hour window as the partition count. */
     dataUsageBytes?: number;
+    backupPolicy?: BackupEligibilityInput;
 }
 
 /** Already-fetched autoscale duty-cycle signal for one container (DX-011 / DX-013). */
 export interface AutoscaleUtilizationInput {
     resourceAgeDays?: number;
     databaseId: string;
-    containerId: string;
+    /** Absent for a shared database offer. */
+    containerId?: string;
     /** Peak of the `AutoscaledRU`-as-%-of-configured-max series over the window (0..100). */
     peakPercent: number;
     /** Average of the same series (0..100), for the duty-cycle read. */
@@ -332,10 +451,10 @@ export interface ServerlessCandidateInput {
     isServerless: boolean;
 }
 
-/** One dedicated manual offer's observed utilization; never an account-level mixture of throughput modes. */
+/** One manual offer's observed utilization; dedicated container or shared database, never a mode mixture. */
 export interface ManualThroughputInput {
     databaseId: string;
-    containerId: string;
+    containerId?: string;
     ruPercents: readonly number[];
     peakPercent?: number;
     provisionedRu: number;
@@ -370,6 +489,22 @@ export interface QueryShapeInput {
     avgFanout: number;
     /** Widest fan-out observed for this shape, the container's estimated physical-partition count. */
     maxFanout: number;
+    /** Mean logical-query RU only when every execution/activity matched valid raw request charges. Not savings. */
+    avgRu?: number;
+}
+
+/** Auditable request-log source and half-open absolute observation window. Not telemetry. */
+export interface RequestLogEvidence {
+    sourceTable: 'CDBDataPlaneRequests' | 'CDBDataPlaneRequests5M';
+    sourceResolution: 'perRequest' | 'PT5M';
+    observationStart: string;
+    observationEnd: string;
+}
+
+export interface ConsistencyReadRuInput extends RequestLogEvidence {
+    status: 'observed' | 'noObservations';
+    readRequests: number;
+    readRu: number;
 }
 
 /** Per-container cross-partition / shard-key input (DX-002 / DX-007). */
@@ -377,19 +512,21 @@ export interface CrossPartitionInput {
     databaseId: string;
     containerId: string;
     shapes: readonly QueryShapeInput[];
+    /** Actual duration of the request-log observation; rates must not assume a fixed day. */
+    evaluationWindowSeconds: number;
+    observationStart?: string;
+    observationEnd?: string;
 }
 
 export interface CrossPartitionThresholds {
     minQueries: number;
     fanoutThreshold: number;
-    highPct: number;
     medPct: number;
 }
 
 export interface ShardKeyThresholds {
     structuralPct: number;
     minPartitions: number;
-    highPct: number;
 }
 
 /** Per-container write-dominance + throttling input (CODA DX-010). RU/request totals over the window. */
@@ -408,6 +545,7 @@ export interface UncontrolledIngestionInput {
     burstFactor: number;
     /** Dominant write-path client `UserAgent`, surfaced as context when present. */
     dominantUserAgent?: string;
+    requestLogEvidence?: RequestLogEvidence;
 }
 
 export interface UncontrolledIngestionThresholds {
@@ -431,6 +569,9 @@ export interface SharedThroughputInput {
     /** Provisioned RU/s shared across the database's collections, surfaced as context. */
     sharedRu: number;
     collections: readonly CollectionTrafficInput[];
+    /** Authoritative shared-offer membership. Unknown membership is insufficient evidence. */
+    sharedContainerIds?: readonly string[];
+    requestLogEvidence?: RequestLogEvidence;
 }
 
 export interface SharedThroughputThresholds {
@@ -471,8 +612,12 @@ export interface DerivedAdvisoryInputs {
     serverless?: ServerlessCandidateInput;
     /** Total provisioned RU/s across the account, the materiality denominator for the idle/autoscale-max rules. */
     scopeProvisionedRuTotal?: number;
+    /** Complete positive all-manual offer inventory only; autoscale/unknown inventory cannot quantify regions. */
+    manualRegionalCapacityRu?: number;
     /** Account-level ARM configuration for the config-only advisories (DX-016 / DX-008); absent when unavailable. */
     accountConfig?: AccountConfigInput;
+    /** Optional observed read charge; never gates the configuration-only consistency finding. */
+    consistencyReadRu?: ConsistencyReadRuInput;
     /** Per-container query fan-out shapes (Log Analytics) for the cross-partition + shard-key rules (DX-002 / DX-007). */
     crossPartition?: readonly CrossPartitionInput[];
     /** Per-container write-dominance + throttling (Log Analytics) for the uncontrolled-ingestion rule (DX-010). */

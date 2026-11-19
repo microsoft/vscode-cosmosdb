@@ -4,9 +4,24 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DIAGNOSTIC_POLICY } from './thresholds';
-import { type DerivedAdvisory, type DerivedAdvisorySeverity } from './types';
+import { type DerivedAdvisory, type DerivedAdvisorySeverity, type UtilizationBand } from './types';
+
+export function utilizationBand(value: number, moderateUpperPercent: number): UtilizationBand {
+    return value < DIAGNOSTIC_POLICY.overProvisioning.idleBandPercent
+        ? 'idle'
+        : value < DIAGNOSTIC_POLICY.overProvisioning.lowBandPercent
+          ? 'low'
+          : value < moderateUpperPercent
+            ? 'moderate'
+            : 'ok';
+}
 
 const ADVISORY_SEVERITY_ORDER: Record<DerivedAdvisorySeverity, number> = { High: 0, Medium: 1, Low: 2 };
+
+/** Shared throughput belongs to the database offer; it must never be recovered once per member. */
+export function offerScope(input: { databaseId: string; containerId?: string }): string {
+    return input.containerId === undefined ? input.databaseId : `${input.databaseId}/${input.containerId}`;
+}
 
 /** Sorts advisories by severity (High first), then rule, then scope. Pure. */
 export function compareAdvisories(a: DerivedAdvisory, b: DerivedAdvisory): number {

@@ -7,9 +7,10 @@ import { type MonitorClient } from '@azure/arm-monitor';
 import { querySeries } from '../../ruTrends';
 import {
     containerFilter,
-    escapeODataLiteral,
     parseMonitorTimestamp,
     pickPointValue,
+    requestMetricFilter,
+    throughputOfferFilter,
     type MetricAggregation,
     type RangeConfig,
 } from '../../shared';
@@ -22,7 +23,7 @@ import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 // already fetch. Idle reads 30 days in five-minute buckets so periodic workloads are not mistaken for idle;
 // autoscale/serverless use hourly buckets, while partition-merge reads the most recent six hours.
 // All series are read as `Total`/`Maximum` and folded to per-container (or account-total) shapes the pure
-// evaluators consume. Callers report failed or missing evidence as incomplete coverage, never assumed zero usage.
+// evaluators consume. Failed reads remain incomplete coverage; only DX-004 treats successful empty consumption as idle.
 
 /** Builds the `start/end` ISO-8601 timespan for a diagnostic observation ending now. */
 function advisoryTimespan(observation: RangeConfig, now = Date.now()): string {
@@ -88,18 +89,19 @@ export async function getAccountConsumedRuShape(
 }
 
 /**
- * Reads one known container without wildcard dimensions, so Azure Monitor's series limit cannot omit other
- * containers. Only observed numeric samples count as evidence; an empty response remains unknown, not zero.
+ * Reads known containers without wildcard dimensions, so Azure Monitor's series limit cannot omit other
+ * containers. Shared member buckets are combined before taking the peak. An empty response remains unknown here.
  */
 async function getContainerMetricPeak(
     client: MonitorClient,
     resourceUri: string,
     databaseId: string,
-    containerId: string,
+    containerId: string | undefined,
     metricName: string,
     aggregation: MetricAggregation,
     observation: RangeConfig,
     now: number,
+    sharedContainerIds?: readonly string[],
 ): Promise<number | undefined> {
     const buckets = await querySeries(
         client,
@@ -108,23 +110,28 @@ async function getContainerMetricPeak(
         aggregation,
         advisoryTimespan(observation, now),
         observation.interval,
-        containerFilter(databaseId, containerId),
+        requestMetricFilter(databaseId, containerId, sharedContainerIds),
     );
     return buckets.size > 0 ? Math.max(...buckets.values()) : undefined;
 }
 
 /**
- * Reads a container's peak `TotalRequestUnits` per bucket for the spike-aware idle gate (DX-004).
- * Regional series are summed per bucket before taking the peak.
+ * Reads an offer's peak `TotalRequestUnits` per bucket for the spike-aware idle gate (DX-004).
+ * Shared membership must be explicit. Member and regional series are summed per bucket before taking the peak.
+ * Successful reads without usable samples count as idle; request and embedded metric errors still reject.
  */
 export async function getContainerIdlePeak(
     client: MonitorClient,
     resourceUri: string,
     databaseId: string,
-    containerId: string,
+    containerId: string | undefined,
     now = Date.now(),
-): Promise<number | undefined> {
-    return getContainerMetricPeak(
+    sharedContainerIds?: readonly string[],
+): Promise<number> {
+    if (containerId === undefined && sharedContainerIds === undefined) {
+        throw new Error('Shared-offer idle metrics require authoritative container membership.');
+    }
+    const peak = await getContainerMetricPeak(
         client,
         resourceUri,
         databaseId,
@@ -133,7 +140,9 @@ export async function getContainerIdlePeak(
         'Total',
         DIAGNOSTIC_POLICY.idle.observation,
         now,
+        sharedContainerIds,
     );
+    return peak ?? 0;
 }
 
 /**
@@ -193,8 +202,8 @@ export interface AutoscaleUtilizationSummary {
 }
 
 /**
- * Reads one autoscale container's `AutoscaledRU` (`Maximum`) over the 30-day window, split by
- * `PhysicalPartitionId`, sums the per-partition provisioned value at each timestamp (the container's provisioned
+ * Reads one autoscale offer's `AutoscaledRU` (`Maximum`) over the 30-day window, split by
+ * `PhysicalPartitionId`, sums the per-partition provisioned value at each timestamp (the offer's provisioned
  * value is the sum across partitions), and normalises by the configured max to a 0..100 "how much of the max was
  * provisioned" series. Returns its peak/average duty cycle for DX-011 (peak band) and DX-013 (steady-high read).
  */
@@ -202,13 +211,13 @@ export async function getAutoscaleUtilization(
     client: MonitorClient,
     resourceUri: string,
     databaseId: string,
-    containerId: string,
+    containerId: string | undefined,
     configuredMaxRu: number,
 ): Promise<AutoscaleUtilizationSummary> {
-    if (!(configuredMaxRu > 0)) {
-        return { peakPercent: 0, avgPercent: 0, sampleCount: 0 };
+    if (!Number.isFinite(configuredMaxRu) || configuredMaxRu <= 0) {
+        throw new Error('Autoscale utilization requires a finite positive configured maximum.');
     }
-    const filter = `DatabaseName eq '${escapeODataLiteral(databaseId)}' and CollectionName eq '${escapeODataLiteral(containerId)}' and PhysicalPartitionId eq '*'`;
+    const filter = `${throughputOfferFilter(databaseId, containerId)} and PhysicalPartitionId eq '*'`;
     const observation = DIAGNOSTIC_POLICY.autoscaleUtilization.observation;
     const response = await client.metrics.list(resourceUri, {
         metricnames: 'AutoscaledRU',
@@ -247,4 +256,29 @@ export async function getAutoscaleUtilization(
     const avgPercent = percents.reduce((sum, v) => sum + v, 0) / percents.length;
     const peakPercent = Math.max(...percents);
     return { peakPercent, avgPercent, sampleCount: percents.length };
+}
+
+/** Independently latest populated index/data samples, without summing replicas or imputing missing sizes. */
+export async function getContainerIndexingUsage(
+    client: MonitorClient,
+    resourceUri: string,
+    databaseId: string,
+    containerId: string,
+    now = Date.now(),
+): Promise<{ indexUsageBytes?: number; dataUsageBytes?: number }> {
+    const observation = DIAGNOSTIC_POLICY.indexing.observation;
+    const read = async (metricName: string): Promise<number | undefined> => {
+        const buckets = await querySeries(
+            client,
+            resourceUri,
+            metricName,
+            'Maximum',
+            advisoryTimespan(observation, now),
+            observation.interval,
+            containerFilter(databaseId, containerId),
+        );
+        return buckets.size > 0 ? buckets.get(Math.max(...buckets.keys())) : undefined;
+    };
+    const [indexUsageBytes, dataUsageBytes] = await Promise.all([read('IndexUsage'), read('DataUsage')]);
+    return { indexUsageBytes, dataUsageBytes };
 }

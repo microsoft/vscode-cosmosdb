@@ -9,6 +9,7 @@ import { containerKey } from '../../shared';
 import { Detector, type DetectorContext } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import {
+    type AdvisoryEvaluation,
     type DerivedAdvisory,
     type DerivedAdvisorySeverity,
     type UncontrolledIngestionInput,
@@ -22,16 +23,16 @@ import {
  * The fix is application-side rate control, complementary to DX-005's "add RU/s". Container-scoped. Pure.
  */
 function evaluateUncontrolledIngestion(
-    input: UncontrolledIngestionInput,
+    input: UncontrolledIngestionInput | undefined,
     thresholds: UncontrolledIngestionThresholds,
-): DerivedAdvisory | undefined {
-    if (input.totalRequests < thresholds.minRequests) {
-        return undefined;
+): AdvisoryEvaluation<'UncontrolledIngestion'> {
+    if (!input || input.totalRequests < thresholds.minRequests) {
+        return { rootCause: 'insufficient_data' };
     }
     const writeRuPct = input.totalRu > 0 ? (100 * input.writeRu) / input.totalRu : 0;
     const throttleRate = input.totalRequests > 0 ? (100 * input.throttledRequests) / input.totalRequests : 0;
     if (writeRuPct < thresholds.writeRuPctFloor || throttleRate < thresholds.throttleRatePct) {
-        return undefined;
+        return { rootCause: 'not_uncontrolled' };
     }
     const severity: DerivedAdvisorySeverity = throttleRate >= thresholds.highPct ? 'High' : 'Medium';
     const writePct = Math.round(writeRuPct);
@@ -39,7 +40,7 @@ function evaluateUncontrolledIngestion(
     const client = input.dominantUserAgent
         ? l10n.t(' Dominant client: {client}.', { client: escapeAdvisoryText(input.dominantUserAgent) })
         : '';
-    return {
+    const advisory: DerivedAdvisory = {
         id: `UncontrolledIngestion/${containerKey(input.databaseId, input.containerId)}`,
         rule: 'UncontrolledIngestion',
         severity,
@@ -55,8 +56,11 @@ function evaluateUncontrolledIngestion(
             ) +
                 ' ' +
                 l10n.t(
-                    'Combined with a peak-to-average write burst of `~{burst}×`, this is the signature of uncontrolled ingestion.',
-                    { burst: input.burstFactor.toFixed(1) },
+                    'The peak-to-average write burst is `~{burst}×` over `{interval}` buckets; burstiness is supporting evidence, not a trigger.',
+                    {
+                        burst: input.burstFactor.toFixed(1),
+                        interval: input.requestLogEvidence?.sourceResolution === 'PT5M' ? '5m' : '1m',
+                    },
                 ) +
                 client,
         ),
@@ -78,12 +82,23 @@ function evaluateUncontrolledIngestion(
             writePct: thresholds.writeRuPctFloor,
             throttlePct: thresholds.throttleRatePct,
         }),
+        evidence: {
+            writeRu: input.writeRu,
+            totalRu: input.totalRu,
+            totalRequests: input.totalRequests,
+            throttledRequests: input.throttledRequests,
+            burstFactor: input.burstFactor,
+            ...input.requestLogEvidence,
+        },
     };
+    return { rootCause: 'uncontrolled_ingestion', advisory };
 }
 
 export class UncontrolledIngestionDetector extends Detector {
     readonly rule = 'UncontrolledIngestion' as const;
-    evaluate = evaluateUncontrolledIngestion;
+    evaluateResult = evaluateUncontrolledIngestion;
+    evaluate = (...args: Parameters<typeof evaluateUncontrolledIngestion>) =>
+        evaluateUncontrolledIngestion(...args).advisory;
     run(ctx: DetectorContext): DerivedAdvisory[] {
         const t = ctx.thresholds;
         const out: DerivedAdvisory[] = [];

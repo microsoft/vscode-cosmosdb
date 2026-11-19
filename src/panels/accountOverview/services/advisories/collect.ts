@@ -11,7 +11,6 @@ import {
     type InventoryThroughputOffer,
     type ThroughputMode,
 } from '../inventory';
-import { DEFAULT_HEALTH_THRESHOLDS, getInventoryMetrics } from '../inventoryMetrics';
 import {
     getPartitionHealth,
     getPartitionStorageSeries,
@@ -21,6 +20,7 @@ import {
 import { getContainerCreatedAt, getKnownResourceAgeDays, getSystemCreatedAt } from '../resourceAge';
 import { getRuTrends, getThrottleRate } from '../ruTrends';
 import { classifyUnavailable, containerKey } from '../shared';
+import { offerScope } from './core/helpers';
 import { DIAGNOSTIC_POLICY } from './core/thresholds';
 import {
     type AccountConfigInput,
@@ -53,6 +53,7 @@ import {
     getAccountConsumedRuShape,
     getAutoscaleUtilization,
     getContainerIdlePeak,
+    getContainerIndexingUsage,
     getContainerMergeStoragePeak,
     getContainerPartitionCount,
 } from './fetchers/metrics';
@@ -167,20 +168,12 @@ function isDedicatedContainerOffer(row: InventoryContainerRow): boolean {
     return row.offerLevel === 'container' && row.throughputRU !== undefined && row.throughputRU > 0;
 }
 
-function isDedicatedManualOffer(row: InventoryContainerRow): boolean {
-    return isDedicatedContainerOffer(row) && row.offerThroughputMode === 'manual';
-}
-
-function isDedicatedAutoscaleOffer(row: InventoryContainerRow): boolean {
-    return isDedicatedContainerOffer(row) && row.offerThroughputMode === 'autoscale';
-}
-
 function isServerlessContainer(row: InventoryContainerRow): boolean {
     return row.throughputMode === 'serverless';
 }
 
-function scopeOf(row: Pick<InventoryContainerRow, 'databaseId' | 'containerId'>): string {
-    return containerKey(row.databaseId, row.containerId);
+function scopeOf(row: { databaseId: string; containerId?: string }): string {
+    return offerScope(row);
 }
 
 function rowAgeDays(row: InventoryContainerRow, accountCreatedAt: string | undefined, now: number): number | undefined {
@@ -227,6 +220,7 @@ export async function collectDerivedAdvisories(
     } = params;
 
     const now = Date.now();
+    const effectiveAccountConfig = accountConfig && { ...accountConfig, isServerless };
     const metricFailures: MetricSourceStatus['failures'] = [];
     const accountCreatedAtPromise = capture(getAccountCreatedAt(cosmosClient, resourceGroup, accountName));
 
@@ -245,7 +239,7 @@ export async function collectDerivedAdvisories(
     const accountCreation = await accountCreatedAtPromise;
     const accountCreatedAt = accountCreation.value;
     const dedicatedTargets = rows.filter(isDedicatedContainerOffer);
-    if (accountCreation.reason && dedicatedTargets.length > 0) {
+    if (accountCreation.reason && offers.length > 0) {
         for (const rule of AGE_GATED_RULES) {
             addMetricFailure(metricFailures, rule, accountCreation.reason);
         }
@@ -265,16 +259,47 @@ export async function collectDerivedAdvisories(
             }
         },
     );
-    const manualTargets = dedicatedTargets.filter(isDedicatedManualOffer);
-    const autoscaleTargets = dedicatedTargets.filter(isDedicatedAutoscaleOffer);
+    const uniqueOffers = new Map<string, InventoryThroughputOffer>();
+    const invalidOfferScopes = new Set<string>();
+    for (const offer of offers) {
+        const scope = scopeOf(offer);
+        if (
+            !Number.isFinite(offer.throughputRU) ||
+            offer.throughputRU <= 0 ||
+            uniqueOffers.has(scope) ||
+            invalidOfferScopes.has(scope)
+        ) {
+            uniqueOffers.delete(scope);
+            invalidOfferScopes.add(scope);
+            for (const rule of AGE_GATED_RULES) {
+                addMetricFailure(metricFailures, rule, 'noData', scope);
+            }
+            continue;
+        }
+        uniqueOffers.set(scope, offer);
+    }
+    const offerTargets = [...uniqueOffers.values()];
+    const manualTargets = offerTargets.filter((offer) => offer.offerThroughputMode === 'manual');
+    const autoscaleTargets = offerTargets.filter((offer) => offer.offerThroughputMode === 'autoscale');
     const serverlessTargets = rows.filter(isServerlessContainer);
     const logTargets = rows.filter((row) => isDedicatedContainerOffer(row) || isServerlessContainer(row));
     const rowsByScope = new Map(rows.map((row) => [scopeOf(row), row]));
-    const scopeProvisionedRuTotal =
-        inventory.value?.throughputInventoryComplete === true
-            ? offers.reduce<number | undefined>((sum, offer) => (sum ?? 0) + offer.throughputRU, undefined)
+    const sharedContainerIds = (offer: InventoryThroughputOffer): string[] | undefined =>
+        offer.offerLevel === 'database'
+            ? rows
+                  .filter((row) => row.databaseId === offer.databaseId && row.offerLevel === 'database')
+                  .map((row) => row.containerId)
             : undefined;
-
+    const offerAgeDays = (offer: InventoryThroughputOffer): number | undefined =>
+        getKnownResourceAgeDays(
+            rowsByScope.get(scopeOf(offer))?.resourceCreatedAt ?? offer.resourceCreatedAt,
+            accountCreatedAt,
+            now,
+        );
+    const scopeProvisionedRuTotal =
+        inventory.value?.throughputInventoryComplete !== true || invalidOfferScopes.size > 0
+            ? undefined
+            : offerTargets.reduce((sum, offer) => sum + offer.throughputRU, 0);
     const manualObservation = DIAGNOSTIC_POLICY.overProvisioning.observation;
     const saturationObservation = DIAGNOSTIC_POLICY.partitionSaturation.observation;
     const storageObservation = DIAGNOSTIC_POLICY.storageGrowth.observation;
@@ -290,6 +315,7 @@ export async function collectDerivedAdvisories(
                 row.databaseId,
                 row.containerId,
                 manualObservation,
+                sharedContainerIds(row),
             );
             return { row, result };
         })
@@ -313,15 +339,24 @@ export async function collectDerivedAdvisories(
                       ruPercents,
                       peakPercent: result.peakPercent,
                       provisionedRu: row.throughputRU,
-                      resourceAgeDays: rowAgeDays(row, accountCreatedAt, now),
+                      resourceAgeDays: offerAgeDays(row),
                   },
               ];
     });
 
     const idleContainers: IdleContainerInput[] = (
-        await mapInBatches(dedicatedTargets, async (row) => ({
+        await mapInBatches(offerTargets, async (row) => ({
             row,
-            result: await capture(getContainerIdlePeak(monitorClient, accountId, row.databaseId, row.containerId, now)),
+            result: await capture(
+                getContainerIdlePeak(
+                    monitorClient,
+                    accountId,
+                    row.databaseId,
+                    row.containerId,
+                    now,
+                    sharedContainerIds(row),
+                ),
+            ),
         }))
     ).flatMap(({ row, result }) => {
         if (result.value === undefined) {
@@ -335,42 +370,46 @@ export async function collectDerivedAdvisories(
                 peakRuPerBucket: result.value,
                 throughputMode: row.throughputMode,
                 provisionedRu: row.throughputRU,
-                resourceAgeDays: rowAgeDays(row, accountCreatedAt, now),
+                resourceAgeDays: offerAgeDays(row),
             },
         ];
     });
 
-    const inventoryMetrics =
-        rows.length === 0
-            ? undefined
-            : await getInventoryMetrics(
-                  monitorClient,
-                  accountId,
-                  manualObservation.timeRange,
-                  DEFAULT_HEALTH_THRESHOLDS,
-                  manualObservation,
-                  isServerless,
-              );
-    if (inventoryMetrics && !inventoryMetrics.available) {
-        addMetricFailure(metricFailures, 'IndexingCostRisk', inventoryMetrics.reason ?? 'noData');
-    }
-    const indexing: IndexingUsageInput[] =
-        inventoryMetrics?.available === true
-            ? rows.map((row) => {
-                  const metrics = inventoryMetrics.metrics[scopeOf(row)];
-                  return {
-                      databaseId: row.databaseId,
-                      containerId: row.containerId,
-                      indexUsageBytes:
-                          metrics?.storage.index.status === 'available' ? metrics.storage.index.bytes : undefined,
-                      dataUsageBytes:
-                          metrics?.storage.data.status === 'available' ? metrics.storage.data.bytes : undefined,
-                      userExcludedPathCount: row.userExcludedPathCount,
-                  };
-              })
-            : [];
+    const indexing: IndexingUsageInput[] = (
+        await mapInBatches(
+            rows.filter((row) => row.indexingMode.toLowerCase() !== 'none'),
+            async (row) => ({
+                row,
+                result: await capture(
+                    getContainerIndexingUsage(monitorClient, accountId, row.databaseId, row.containerId, now),
+                ),
+            }),
+        )
+    ).flatMap(({ row, result }) => {
+        if (
+            !result.value ||
+            result.value.indexUsageBytes === undefined ||
+            !Number.isFinite(result.value.indexUsageBytes) ||
+            result.value.indexUsageBytes < 0 ||
+            result.value.dataUsageBytes === undefined ||
+            !Number.isFinite(result.value.dataUsageBytes) ||
+            result.value.dataUsageBytes <= 0
+        ) {
+            addMetricFailure(metricFailures, 'IndexingCostRisk', result.reason ?? 'noData', scopeOf(row));
+            return [];
+        }
+        return [
+            {
+                databaseId: row.databaseId,
+                containerId: row.containerId,
+                ...result.value,
+                userExcludedPathCount: row.userExcludedPathCount,
+                indexingMode: row.indexingMode,
+            },
+        ];
+    });
 
-    const partitionSignals = await mapInBatches(dedicatedTargets, async (row) => {
+    const partitionSignals = await mapInBatches(offerTargets, async (row) => {
         const [partition, throttle, growth, skew] = await Promise.all([
             capture(
                 getPartitionHealth(
@@ -398,28 +437,33 @@ export async function collectDerivedAdvisories(
                     row.databaseId,
                     row.containerId,
                     saturationObservation,
+                    sharedContainerIds(row),
                 ),
             ),
-            capture(
-                getPartitionStorageSeries(
-                    monitorClient,
-                    accountId,
-                    storageObservation.timeRange,
-                    row.databaseId,
-                    row.containerId,
-                    storageObservation,
-                ),
-            ),
-            capture(
-                getPartitionStorageSeries(
-                    monitorClient,
-                    accountId,
-                    storageSkewObservation.timeRange,
-                    row.databaseId,
-                    row.containerId,
-                    storageSkewObservation,
-                ),
-            ),
+            row.containerId === undefined
+                ? undefined
+                : capture(
+                      getPartitionStorageSeries(
+                          monitorClient,
+                          accountId,
+                          storageObservation.timeRange,
+                          row.databaseId,
+                          row.containerId,
+                          storageObservation,
+                      ),
+                  ),
+            row.containerId === undefined
+                ? undefined
+                : capture(
+                      getPartitionStorageSeries(
+                          monitorClient,
+                          accountId,
+                          storageSkewObservation.timeRange,
+                          row.databaseId,
+                          row.containerId,
+                          storageSkewObservation,
+                      ),
+                  ),
         ]);
         return { row, partition, throttle, growth, skew };
     });
@@ -429,7 +473,7 @@ export async function collectDerivedAdvisories(
     const storageSkew: PartitionStorageResult[] = [];
     for (const { row, partition, throttle, growth, skew } of partitionSignals) {
         const scope = scopeOf(row);
-        const ageDays = rowAgeDays(row, accountCreatedAt, now);
+        const ageDays = offerAgeDays(row);
 
         if (partition.reason) {
             addMetricFailure(metricFailures, 'SustainedThrottlingInRegion', partition.reason, scope);
@@ -456,6 +500,9 @@ export async function collectDerivedAdvisories(
             });
         }
 
+        if (row.containerId === undefined || !growth || !skew) {
+            continue;
+        }
         if (growth.reason) {
             addMetricFailure(metricFailures, 'StorageGrowthRisk', growth.reason, scope);
         } else if (!growth.value?.available) {
@@ -501,6 +548,7 @@ export async function collectDerivedAdvisories(
                 actualPartitions: count.value,
                 provisionedRu: row.throughputRU,
                 dataUsageBytes: storage.value,
+                backupPolicy: accountConfig?.backupPolicy,
             },
         ];
     });
@@ -509,7 +557,7 @@ export async function collectDerivedAdvisories(
         await mapInBatches(autoscaleTargets, async (row) => ({
             row,
             result: await capture(
-                getAutoscaleUtilization(monitorClient, accountId, row.databaseId, row.containerId, row.throughputRU!),
+                getAutoscaleUtilization(monitorClient, accountId, row.databaseId, row.containerId, row.throughputRU),
             ),
         }))
     ).flatMap(({ row, result }) => {
@@ -519,7 +567,9 @@ export async function collectDerivedAdvisories(
             addMetricFailure(metricFailures, 'AutoscaleToManualCandidate', result.reason, scope);
             return [];
         }
-        if (!result.value) {
+        if (!result.value || result.value.sampleCount < DIAGNOSTIC_POLICY.autoscaleUtilization.minSamples) {
+            addMetricFailure(metricFailures, 'AutoscaleMaxOverProvisioned', 'noData', scope);
+            addMetricFailure(metricFailures, 'AutoscaleToManualCandidate', 'noData', scope);
             return [];
         }
         return [
@@ -530,7 +580,7 @@ export async function collectDerivedAdvisories(
                 avgPercent: result.value.avgPercent,
                 sampleCount: result.value.sampleCount,
                 configuredMaxRu: row.throughputRU,
-                resourceAgeDays: rowAgeDays(row, accountCreatedAt, now),
+                resourceAgeDays: offerAgeDays(row),
             },
         ];
     });
@@ -581,9 +631,10 @@ export async function collectDerivedAdvisories(
         logsClient,
         accountId,
         logTargets,
-        offers,
+        offerTargets,
         params.onLogsDiagnostic,
         dedicatedTargets,
+        rows.filter((row) => row.offerLevel === 'database'),
     );
 
     const advisories = computeDerivedAdvisories(
@@ -608,12 +659,9 @@ export async function collectDerivedAdvisories(
             weeklyPeakPercent: undefined,
             hasManualThroughput: manualTargets.length > 0,
             manualProvisionedRuTotal:
-                inventory.value?.throughputInventoryComplete === true
-                    ? manualTargets.reduce<number | undefined>(
-                          (sum, row) => (sum ?? 0) + (row.throughputRU ?? 0),
-                          undefined,
-                      )
-                    : undefined,
+                scopeProvisionedRuTotal === undefined
+                    ? undefined
+                    : manualTargets.reduce<number | undefined>((sum, row) => (sum ?? 0) + row.throughputRU, undefined),
             partitions,
             storage: storage.map((result) => ({
                 databaseId: result.databaseId,
@@ -633,7 +681,14 @@ export async function collectDerivedAdvisories(
             autoscaleUtilizations,
             serverless,
             scopeProvisionedRuTotal,
-            accountConfig,
+            manualRegionalCapacityRu:
+                scopeProvisionedRuTotal !== undefined &&
+                manualTargets.length > 0 &&
+                manualTargets.length === offerTargets.length &&
+                !isServerless
+                    ? scopeProvisionedRuTotal
+                    : undefined,
+            accountConfig: effectiveAccountConfig,
             crossPartition: logs.crossPartition,
             ingestion: logs.ingestion,
             sharedThroughput: logs.sharedThroughput,
@@ -666,6 +721,7 @@ export async function collectTier2Logs(
     }[],
     onDiagnostic?: LogsDiagnosticReporter,
     ingestionTargets: readonly { databaseId: string; containerId: string }[] = scanTargets,
+    sharedMembers: readonly { databaseId: string; containerId: string }[] = [],
 ): Promise<Tier2Logs> {
     const empty = { crossPartition: [], ingestion: [], sharedThroughput: [] };
     const failures: NonNullable<LogsSourceStatus['failures']> = [];
@@ -736,7 +792,14 @@ export async function collectTier2Logs(
     return {
         crossPartition: crossPartitionResults.filter((result): result is CrossPartitionInput => result !== undefined),
         ingestion: ingestionResults.filter((result): result is UncontrolledIngestionInput => result !== undefined),
-        sharedThroughput: sharedResults.filter((result): result is SharedThroughputInput => result !== undefined),
+        sharedThroughput: sharedResults
+            .filter((result): result is SharedThroughputInput => result !== undefined)
+            .map((result) => ({
+                ...result,
+                sharedContainerIds: sharedMembers
+                    .filter((member) => member.databaseId === result.databaseId)
+                    .map((member) => member.containerId),
+            })),
         logSource: coverage(),
     };
 }

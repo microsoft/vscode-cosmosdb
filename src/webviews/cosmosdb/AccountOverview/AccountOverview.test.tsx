@@ -2512,6 +2512,32 @@ describe('inventory accessibility', () => {
         onSelectContainer: vi.fn(),
     };
 
+    it('keeps the associated search label visible while typing and clearing the search', async () => {
+        const user = userEvent.setup();
+        render(<InventoryTable {...inventoryProps} rows={rows} />, { wrapper: Wrapper });
+        const searchLabel = 'Search containers or databases';
+        const label = screen.getByText(searchLabel, { selector: 'label' });
+        const search = screen.getByRole('textbox', { name: searchLabel });
+        expect(label).toBeVisible();
+        expect(search).toHaveAccessibleName(searchLabel);
+        await user.click(label);
+        expect(search).toHaveFocus();
+
+        await user.type(search, 'products');
+        expect(search).toHaveValue('products');
+        expect(label).toBeVisible();
+        expect(search).toHaveAccessibleName(searchLabel);
+        expect(within(screen.getByRole('table', { name: 'Containers' })).getAllByRole('row')).toHaveLength(2);
+
+        await user.type(search, '-missing');
+        expect(screen.getByText('No containers match the current filters.')).toBeVisible();
+        expect(label).toBeVisible();
+
+        await user.clear(search);
+        expect(label).toBeVisible();
+        expect(within(screen.getByRole('table', { name: 'Containers' })).getAllByRole('row')).toHaveLength(3);
+    });
+
     it('pins Critical rows before pagination for every column and direction without discarding filters', async () => {
         const user = userEvent.setup();
         const metrics = Object.fromEntries(

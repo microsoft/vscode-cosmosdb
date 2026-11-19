@@ -61,11 +61,32 @@ Inventory `_id` identity and its uniqueness scope, ordered compound indexes and 
 missing versus null, literal dotted names, nested objects/arrays, heterogeneous arrays, and variant
 native types. Use typed path segments, not dot-separated strings. Preserve ObjectId, Decimal128,
 Int64, Binary subtype, BSON Date, timestamp, regex, and other BSON values explicitly; do not round,
-truncate, stringify indiscriminately, or assume JavaScript JSON preserves BSON. The bounded conversion
+truncate, stringify indiscriminately, or assume ordinary JSON preserves BSON type information. The bounded conversion
 helper supports canonical Extended JSON representations; unfamiliar BSON wrappers remain obligations.
 Use explicit recursive subtree conversions when choosing JSON representations for BSON values. For dates used
 in time queries, prefer the bounded ISO UTC date conversion rather than JSON text embedded in a string. Apply the
 same representation consistently instead of retaining both raw subtrees and independently converted projections.
+
+### Choosing JSON representations for BSON values
+
+Ask only when source evidence identifies a path whose mapping could change reads, writes, or queries.
+Keys such as `$date` and `$oid` alone do not prove BSON type. If the source format and field evidence
+cannot distinguish an Extended JSON wrapper from a literal object, preserve the object and flag the path.
+
+- **Date:** Fixed-width ISO UTC strings with millisecond precision sort chronologically within the supported range.
+  Decode as dates.
+- **BSON Timestamp:** Preserve both seconds and increment; converting to Date loses ordering within a second.
+- **Decimal128:** Match required scale, range, and arithmetic. Fixed-scale amounts can use integer minor units
+  if values and sums stay exact; decimal text preserves digits but not numeric query behavior.
+- **Binary/UUID:** Preserve bytes and subtype. Convert legacy UUIDs to text only with known writer byte order.
+- **Int64:** Establish required bounds from validators, writers, contracts, and observed values; samples alone cannot
+  prove bounds. Keep JSON numbers when migration, storage, queries, and readers preserve that range exactly.
+  Reject out-of-range input before conversion. Use decimal strings only if required precision exceeds the numeric
+  path's capability: strings sort as text and lack direct numeric aggregates. If bounds are unknown, record what to verify.
+- **Mixed scalars:** Keep numbers distinct from lookalike strings. If one target type is required, propose reversible
+  canonical Extended JSON text for supported variants. Convert nested values without serializing whole objects or arrays.
+
+Document how the codec restores type and value; test round trips for boundary values and mixed variants.
 
 Review `$set`, `$unset`, `$inc`, array filters, positional updates, upserts, aggregation stages,
 read concerns, write concerns, sessions, transactions, retry behavior, and change-stream dependencies.

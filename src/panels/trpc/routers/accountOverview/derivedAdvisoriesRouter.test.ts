@@ -7,6 +7,7 @@ import { CosmosDBManagementClient, type DatabaseAccountGetResults } from '@azure
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { API } from '../../../../AzureDBExperiences';
+import { ext } from '../../../../extensionVariables';
 import { collectDerivedAdvisories } from '../../../accountOverview/services/advisories';
 import type * as advisories from '../../../accountOverview/services/advisories';
 import { DEFAULT_ADVISORY_THRESHOLDS } from '../../../accountOverview/services/advisories/core/thresholds';
@@ -48,61 +49,72 @@ function metadata(account: DatabaseAccountGetResults = {}) {
 beforeEach(() => vi.clearAllMocks());
 
 describe('account advisory acquisition', () => {
-    it('preserves denied log-client acquisition through real detector coverage without generic duplicates', async () => {
-        const input = metadata();
-        const cosmosClient = new CosmosDBManagementClient({ getToken: async () => null }, 'sub');
-        input.getClient.mockResolvedValue(cosmosClient);
-        const accountRead = vi.spyOn(cosmosClient.databaseAccounts, 'get').mockResolvedValue({});
-        const inventoryRead = vi.spyOn(inventory, 'getSqlInventoryDetails').mockResolvedValue({
-            rows: [
-                {
-                    databaseId: 'private-db',
-                    containerId: 'private-container',
-                    throughputMode: 'dedicated',
-                    throughputRU: 1000,
-                    offerLevel: 'container',
-                    offerThroughputMode: 'manual',
-                    resourceCreatedAt: '2020-01-01T00:00:00Z',
-                    partitionKeyPaths: [],
-                    indexingMode: 'consistent',
-                    excludedPathCount: 0,
-                    userExcludedPathCount: 0,
-                    compositeIndexCount: 0,
-                    health: 'Healthy',
-                },
-            ],
-            offers: [],
-            databases: [],
-        });
-        input.getLogsQueryClient.mockRejectedValue({ statusCode: 403 });
-        vi.mocked(collectDerivedAdvisories).mockImplementationOnce(async (params) => {
-            const actual = await vi.importActual<typeof advisories>('../../../accountOverview/services/advisories');
-            return actual.collectDerivedAdvisories(params);
-        });
-
-        try {
-            const captured = await withReadDiagnostics(() => getDerivedAdvisoriesForAccount(input));
-
-            expect(captured.result.available).toBe(true);
-            expect(captured.result.logSource).toEqual({
-                available: false,
-                reason: 'rbac',
-                failures: [{ operation: 'client', kind: 'accessDenied', reason: 'rbac' }],
+    it.each([403, 'missing'] as const)(
+        'preserves log-client failure coverage and local warnings without duplicates (%s)',
+        async (state) => {
+            const input = metadata();
+            const reason = state === 403 ? 'rbac' : 'noData';
+            const kind = state === 403 ? 'accessDenied' : 'clientUnavailable';
+            const cosmosClient = new CosmosDBManagementClient({ getToken: async () => null }, 'sub');
+            input.getClient.mockResolvedValue(cosmosClient);
+            const accountRead = vi.spyOn(cosmosClient.databaseAccounts, 'get').mockResolvedValue({});
+            const inventoryRead = vi.spyOn(inventory, 'getSqlInventoryDetails').mockResolvedValue({
+                rows: [
+                    {
+                        databaseId: 'private-db',
+                        containerId: 'private-container',
+                        throughputMode: 'dedicated',
+                        throughputRU: 1000,
+                        offerLevel: 'container',
+                        offerThroughputMode: 'manual',
+                        resourceCreatedAt: '2020-01-01T00:00:00Z',
+                        partitionKeyPaths: [],
+                        indexingMode: 'consistent',
+                        excludedPathCount: 0,
+                        userExcludedPathCount: 0,
+                        compositeIndexCount: 0,
+                        health: 'Healthy',
+                    },
+                ],
+                offers: [],
+                databases: [],
             });
-            for (const rule of ['CrossPartitionQuery', 'ShardKeyMisalignment', 'UncontrolledIngestion']) {
-                expect(captured.result.detectorCoverage?.find((entry) => entry.rule === rule)).toMatchObject({
-                    status: 'unavailable',
-                    unavailableReasons: ['rbac'],
+            input.getLogsQueryClient.mockImplementation(async () => {
+                if (state === 'missing') {
+                    return undefined;
+                }
+                throw Object.assign(new Error('private-client-error'), { statusCode: state });
+            });
+            vi.mocked(collectDerivedAdvisories).mockImplementationOnce(async (params) => {
+                const actual = await vi.importActual<typeof advisories>('../../../accountOverview/services/advisories');
+                return actual.collectDerivedAdvisories(params);
+            });
+
+            try {
+                const captured = await withReadDiagnostics(() => getDerivedAdvisoriesForAccount(input));
+
+                expect(captured.result.available).toBe(true);
+                expect(captured.result.logSource).toEqual({
+                    available: false,
+                    reason,
+                    failures: [{ operation: 'client', kind, reason }],
                 });
+                for (const rule of ['CrossPartitionQuery', 'ShardKeyMisalignment', 'UncontrolledIngestion']) {
+                    expect(captured.result.detectorCoverage?.find((entry) => entry.rule === rule)).toMatchObject({
+                        status: 'unavailable',
+                        unavailableReasons: [reason],
+                    });
+                }
+                expect(captured.diagnostics.filter(({ source }) => source === 'logs')).toEqual([
+                    { source: 'logs', kind, reason },
+                ]);
+                expect(ext.outputChannel.warn).toHaveBeenCalled();
+            } finally {
+                inventoryRead.mockRestore();
+                accountRead.mockRestore();
             }
-            expect(captured.diagnostics.filter(({ source }) => source === 'logs')).toEqual([
-                { source: 'logs', kind: 'accessDenied', reason: 'rbac' },
-            ]);
-        } finally {
-            inventoryRead.mockRestore();
-            accountRead.mockRestore();
-        }
-    });
+        },
+    );
 
     it.each(['unsupported', 'noData', 'rbac'] as const)(
         'separates metric and log coverage in the %s configuration-only fallback',

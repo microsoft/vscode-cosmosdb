@@ -126,7 +126,6 @@ export async function getDerivedAdvisoriesForAccount(
             .then((client) => {
                 if (!client) {
                     reportUnavailableClient('logs');
-                    logsClientFailure = { kind: 'clientUnavailable', reason: 'noData' };
                 }
                 return client;
             })

@@ -280,6 +280,63 @@ test('required behavior needs a passing executable check or explicit approved re
     }), { expiresAtSeconds: 150, equivalent: false });
 });
 
+test('batch evidence distinguishes null from missing components without shortening hierarchical keys', () => {
+    for (const [partitionKeys, supported] of [
+        [[[null], [null]], true],
+        [[[missing], [missing]], true],
+        [[[null], [missing]], false],
+        [[['tenant', null, missing], ['tenant', null, missing]], true],
+        [[['tenant', null, missing], ['tenant', missing, null]], false],
+        [[['tenant'], ['tenant', missing]], false],
+    ]) {
+        const example = JSON.parse(JSON.stringify({ operation: 'partition-batch', input: { partitionKeys, payloadBytes: 100 } }));
+        assert.deepEqual(executeBehaviorExample(example), { supported });
+    }
+    for (const component of [undefined, {}, { state: 'missing', value: null }, [], NaN, Infinity]) {
+        assert.throws(() => executeBehaviorExample({
+            operation: 'partition-batch', input: { partitionKeys: [[component]], payloadBytes: 100 },
+        }), /complete routing tuples/u);
+    }
+    assert.throws(() => executeBehaviorExample({
+        operation: 'partition-batch', input: { partitionKeys: [Array(1)], payloadBytes: 100 },
+    }), /complete routing tuples/u);
+});
+
+test('optional nullable document keys pass conversion without strengthening source evidence', t => {
+    const directory = workspace(t);
+    const data = fixture(directory);
+    const field = data.inventory.datasets[0].fields.find(entry => entry.id === 'tenant');
+    field.presence = 'unknown';
+    field.nullable = null;
+    Object.assign(data.entity.attributes.find(attribute => attribute.target === 'tenant'), { optional: true, nullable: true });
+    data.evidence.fieldMappings.find(mapping => mapping.target === 'tenant').examples.push(
+        { inputs: [missing], output: missing },
+        { inputs: [value(null)], output: value(null) },
+    );
+    const decision = data.evidence.documentMappings[0];
+    for (const state of [missing, value(null)]) {
+        const example = structuredClone(decision.examples[0]);
+        if (state.state === 'missing') {
+            delete example.source.tenant;
+            delete example.output.tenant;
+        } else {
+            example.source.tenant = null;
+            example.output.tenant = null;
+        }
+        decision.examples.push(example);
+    }
+    refreshDocumentModel(data);
+    const before = structuredClone(data.inventory);
+    assert.deepEqual(validateConversionEvidence(data.project, data.inventory, data.models, data.root, data.evidence), []);
+    const sampleData = { sampleData: [{ containerName: 'Orders', items: decision.examples.map(example => example.output) }] };
+    assert.deepEqual(validateSampleData(data.root, sampleData, undefined, data.inventory), []);
+    assert.doesNotThrow(() => buildProvisioningArtifacts(data.root, sampleData, data.project, undefined, data.inventory));
+    writeAnalysis(directory, data);
+    const completion = checkPhaseCompletion(directory, 'schema-conversion');
+    assert.equal(completion.complete, true, JSON.stringify(completion));
+    assert.deepEqual(data.inventory, before);
+});
+
 test('v1 resumption validates originals and preserves authority, unknown details, names and ordered keys', t => {
     const directory = workspace(t);
     const project = { version: 1, name: 'legacy', sourceCode: 'parent', phases: { discovery: { status: 'not-started' } } };
@@ -629,7 +686,7 @@ test('preserved whole-document examples still enforce exact item and partition-k
     source.tenant = 'x'.repeat(2048);
     assert.equal(run().tenant.length, 2048);
     source.tenant += 'x';
-    assert.throws(run, /partition key/u);
+    assert.throws(run, /partition-key limit/u);
 });
 
 test('native subtree conversions retain structure and unknown properties while normalizing dates and exact decimals', t => {
@@ -811,6 +868,35 @@ test('shared containers detect identity collisions and can preserve source names
     }
     refreshDocumentModel(data);
     assert.deepEqual(validate(), []);
+
+    data.model.containers[0].partitionKeys = [{ path: '/tenant' }];
+    for (const dataset of data.inventory.datasets) {
+        Object.assign(dataset.fields.find(field => field.id === 'tenant'), { presence: 'optional', nullable: true });
+    }
+    for (const entity of [data.entity, other]) {
+        for (const attribute of entity.attributes) {
+            delete attribute.isPartitionKey;
+            if (attribute.target === 'tenant') Object.assign(attribute, { isPartitionKey: true, optional: true, nullable: true });
+        }
+    }
+    for (const mapping of data.evidence.fieldMappings.filter(entry => entry.target === 'tenant')) {
+        mapping.examples.push({ inputs: [missing], output: missing }, { inputs: [value(null)], output: value(null) });
+    }
+    const [first, second] = data.evidence.documentMappings.map(decision => decision.examples[0]);
+    first.source.tenant = null;
+    first.output.tenant = null;
+    delete second.source.tenant;
+    delete second.output.tenant;
+    refreshDocumentModel(data);
+    assert.deepEqual(validate(), []);
+    second.source.tenant = null;
+    second.output.tenant = null;
+    assert.match(validate()[0].message, /identities collide/u);
+    for (const example of [first, second]) {
+        delete example.source.tenant;
+        delete example.output.tenant;
+    }
+    assert.match(validate()[0].message, /identities collide/u);
 });
 
 test('reference samples resolve a renamed ObjectId key against retained native reference values', t => {

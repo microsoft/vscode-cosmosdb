@@ -9,6 +9,7 @@ import { requireOptionValue } from './cli-arguments.mjs';
 import { showHelp } from './cli-help.mjs';
 import { getProvisioningCapacity } from './generate-provisioning-artifacts.mjs';
 import { readIdentityManifest } from './identity-mapping.mjs';
+import { isPartitionKeyValue, readPartitionKeyValue } from './partition-key-values.mjs';
 import { parseJson, readPhaseEvidence } from './phase-summary.mjs';
 import {
     canonicalStringify,
@@ -202,7 +203,7 @@ function expectedSampleKeys(model, sampleData) {
         return entry.items.map((item) => ({
             containerName: entry.containerName,
             id: item.id,
-            partitionKeyValues: container.partitionKeys.map((partitionKey) => item[partitionKey.path.slice(1)]),
+            partitionKeyValues: container.partitionKeys.map((partitionKey) => readPartitionKeyValue(item, partitionKey.path)),
             found: true,
         }));
     });
@@ -344,6 +345,11 @@ export function validateProvisioningVerification(
         report.sampleItems.forEach((sample, index) => {
             if (!checkObject(sample, `$.sampleItems[${index}]`, SAMPLE_KEYS, errors)) return;
             if (sample.found !== true) addError(errors, `$.sampleItems[${index}].found`, 'must be true');
+            if (!Array.isArray(sample.partitionKeyValues) || !sample.partitionKeyValues.length ||
+                Array.from(sample.partitionKeyValues).some(value => !isPartitionKeyValue(value))) {
+                addError(errors, `$.sampleItems[${index}].partitionKeyValues`,
+                    'must contain ordered scalar/null values or {state:"missing"} for undefined partition components');
+            }
             if (!isObject(sample.document)) {
                 addError(errors, `$.sampleItems[${index}].document`, 'must contain the document returned by the point read');
                 return;

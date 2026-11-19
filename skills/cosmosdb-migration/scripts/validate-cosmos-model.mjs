@@ -479,8 +479,6 @@ function checkEntity(entity, jsonPath, partitionPaths, entityNames, errors) {
             );
             if (matches.length !== 1) {
                 addError(errors, `${jsonPath}.attributes`, `must contain one isPartitionKey=true attribute for "${partitionPath}"`);
-            } else if (matches[0].optional || matches[0].nullable) {
-                addError(errors, `${jsonPath}.attributes`, 'partition routing must be required and non-null');
             }
         }
     }

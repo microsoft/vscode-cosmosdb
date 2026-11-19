@@ -430,6 +430,25 @@ test('canonical model bytes and hashes use code-unit ordering across default str
     assert.deepEqual(model, original);
 });
 
+test('allows optional and nullable partition attributes without relaxing item identity', () => {
+    const model = validModel();
+    for (const entity of model.containers[0].entities) {
+        Object.assign(entity.attributes.find(attribute => attribute.target === 'tenantId'), { optional: true, nullable: true });
+    }
+    const result = validateAndCanonicalize(model);
+    assert.deepEqual(result.errors, []);
+    for (const entity of result.model.containers[0].entities) {
+        const attribute = entity.attributes.find(entry => entry.target === 'tenantId');
+        assert.equal(attribute.optional, true);
+        assert.equal(attribute.nullable, true);
+    }
+    for (const flag of ['optional', 'nullable']) {
+        const invalid = structuredClone(model);
+        invalid.containers[0].entities[0].attributes.find(attribute => attribute.isId)[flag] = true;
+        assert(validateCosmosModel(invalid).some(error => error.message === 'id must be required and non-null'));
+    }
+});
+
 test('rejects missing identity and partition-key alignment', () => {
     const model = validModel();
     model.containers[0].entities[0].idTemplate = undefined;

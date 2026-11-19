@@ -209,7 +209,9 @@ The target schema stays version 1; additions are defined in `schemas/cosmos-mode
   These IDs are catalog references, never source record values or target document properties. In summaries and
   identity decisions, show the native dataset name and human-readable field path alongside the internal references.
 - Attribute `optional` and `nullable` are optional booleans. Missing and null are different.
-  Identity and partition routing remain required/non-null irrespective of optional source fields.
+  Identity inputs remain required/non-null. Partition-key attributes may be optional or nullable
+  when supported by source evidence; preserve these distinctions instead of forcing required values.
+  Null and missing (undefined) route to distinct logical partitions, including within full hierarchical tuples.
 - Standalone entity `identity` is `{kind:"fields",fields:[{dataset,field}],encoding:"typed-hex-v1"|"native-uuid"|"native-string"|"objectid-hex",sourceKey?}`
   or `{kind:"generated-uuid"}`, mutually exclusive with legacy `idTemplate`. Source identity components are preserved
   separately by default. The typed-hex encoding preserves scalar type and component order,
@@ -340,6 +342,9 @@ Required preservation must include a supported bounded executable check:
 `{operation:"partition-batch",input:{partitionKeys:[[...],...],payloadBytes:100},expected:{supported:true}}` or
 `{operation:"ttl-relative",input:{lastModifiedSeconds,ttl,sourceExpiresAtSeconds},
 expected:{expiresAtSeconds,equivalent:true}}`.
+Partition tuples use JSON scalars or null; represent each missing/undefined component as
+`{state:"missing"}`. This evidence marker is not a document value or an SDK request value.
+Keep every configured component in order; a missing component is not a shorter prefix tuple.
 These demonstrate target scope/arithmetic only, not live transactions or asynchronous deletion timing.
 Other required behaviors need an explicit approved replacement/waiver design with verification obligations;
 do not label unexecuted application behavior proven. Missing guidance alone is not a blocker.

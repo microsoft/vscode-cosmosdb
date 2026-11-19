@@ -6,7 +6,12 @@
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
-import { clampRationale, hasMinimumKnownResourceAge, offerScope } from '../core/helpers';
+import {
+    clampRationale,
+    hasCompletePartitionObservations,
+    hasMinimumKnownResourceAge,
+    offerScope,
+} from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import {
     type AdvisoryEvaluation,
@@ -45,10 +50,18 @@ function evaluateHotPartitionRisk(
         return { rootCause: 'insufficient_data' };
     }
     if (input.maxP99 < saturationPercent) {
-        return { rootCause: 'not_saturated' };
+        return {
+            rootCause: hasCompletePartitionObservations(input.partitionCount, input.physicalPartitionCount)
+                ? 'not_saturated'
+                : 'insufficient_data',
+        };
     }
     if (input.minP99 >= headroomPercent) {
-        return { rootCause: 'uniform_saturation' };
+        return {
+            rootCause: hasCompletePartitionObservations(input.partitionCount, input.physicalPartitionCount)
+                ? 'uniform_saturation'
+                : 'insufficient_data',
+        };
     }
     const scope = offerScope(input);
     const name = input.containerId ?? input.databaseId;

@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { API } from '../../../../AzureDBExperiences';
 import * as inventory from '../inventory';
 import * as partitionHealth from '../partitionHealth';
-import { withReadDiagnostics } from '../readDiagnostics';
+import { captureReadDiagnostics, withReadDiagnostics } from '../readDiagnostics';
 import * as resourceAge from '../resourceAge';
 import { GB, iso, mockClient, pdims } from '../testFixtures';
 import { DAY } from '../units';
@@ -66,6 +66,126 @@ function partition(overrides: Partial<PartitionSaturationInput> = {}): Partition
 }
 
 describe('pure detector coverage', () => {
+    const operationTraffic: { statusCounts: Record<string, number>; sufficient: boolean; throttling: boolean }[] = [
+        { statusCounts: { 200: 800, 500: 100, 429: 100 }, sufficient: true, throttling: true },
+        { statusCounts: { 200: 1000 }, sufficient: true, throttling: false },
+        { statusCounts: { 200: 999, 429: 1 }, sufficient: true, throttling: false },
+        { statusCounts: { 200: 899, 429: 100 }, sufficient: false, throttling: true },
+    ];
+    const operationObservations: (Record<string, number> | undefined)[] = [
+        undefined,
+        {},
+        { ' ': 100 },
+        { Create: 0 },
+        { Create: 100 },
+    ];
+
+    it.each(
+        operationTraffic.flatMap((traffic) =>
+            operationObservations.map((throttledOperationCounts) => ({
+                ...traffic,
+                throttledOperationCounts,
+            })),
+        ),
+    )(
+        'requires operation evidence only after throttling gates: %j',
+        ({ statusCounts, sufficient, throttling, throttledOperationCounts }) => {
+            const hasOperation = (throttledOperationCounts?.Create ?? 0) > 0;
+            const insufficient = !sufficient || (throttling && !hasOperation);
+            const matches = sufficient && throttling && hasOperation;
+            const result = analyzeDerivedAdvisories(
+                {
+                    ...emptyInputs,
+                    accountRequests: { statusCounts, throttledOperationCounts },
+                },
+                DEFAULT_ADVISORY_THRESHOLDS,
+            );
+
+            expect(result.detectorCoverage.find(({ rule }) => rule === 'ThrottlingByOperation')).toMatchObject({
+                status: insufficient ? 'insufficientData' : 'evaluated',
+                evaluatedCount: insufficient ? 0 : 1,
+                matchedCount: Number(matches),
+            });
+            expect(result.advisories.filter(({ rule }) => rule === 'ThrottlingByOperation')).toHaveLength(
+                Number(matches),
+            );
+        },
+    );
+
+    it.each(
+        [undefined, 2, 3].flatMap((physicalPartitionCount) =>
+            [
+                { maxP99: 80, minP99: 80 },
+                { maxP99: 80, minP99: 30 },
+                { maxP99: 95, minP99: 80 },
+                { maxP99: 95, minP99: 30 },
+            ].map((observations) => ({ ...observations, physicalPartitionCount })),
+        ),
+    )('classifies conclusive and incomplete partition evidence: %j', (observations) => {
+        const incomplete = observations.physicalPartitionCount === 3;
+        const hotMatch = observations.maxP99 === 95 && observations.minP99 === 30;
+        const underProvisionedMatch = observations.maxP99 === 95 && observations.minP99 === 80;
+        const result = analyzeDerivedAdvisories(
+            { ...emptyInputs, partitions: [partition({ ...observations, partitionCount: 2 })] },
+            DEFAULT_ADVISORY_THRESHOLDS,
+        );
+        const expectations = [
+            {
+                rule: 'HotPartitionRisk',
+                insufficient: incomplete && !hotMatch,
+                matchedCount: Number(hotMatch),
+            },
+            {
+                rule: 'SustainedThrottlingInRegion',
+                insufficient: incomplete && observations.maxP99 < 90 && observations.minP99 >= 70,
+                matchedCount: Number(underProvisionedMatch),
+            },
+        ];
+
+        for (const { rule, insufficient, matchedCount } of expectations) {
+            expect(result.detectorCoverage.find((entry) => entry.rule === rule)).toMatchObject({
+                status: insufficient ? 'insufficientData' : 'evaluated',
+                evaluatedCount: insufficient ? 0 : 1,
+                insufficientDataCount: insufficient ? 1 : 0,
+                matchedCount,
+            });
+            expect(result.advisories.filter((advisory) => advisory.rule === rule)).toHaveLength(matchedCount);
+        }
+    });
+
+    it.each([0, 5])(
+        'does not infer RU observations from request traffic (%s percent throttled)',
+        (throttleRatePercent) => {
+            const result = analyzeDerivedAdvisories(
+                {
+                    ...emptyInputs,
+                    partitions: [
+                        partition({
+                            partitionCount: 0,
+                            physicalPartitionCount: 3,
+                            maxP99: 0,
+                            minP99: 0,
+                            throttleRatePercent,
+                        }),
+                    ],
+                },
+                DEFAULT_ADVISORY_THRESHOLDS,
+            );
+
+            expect(result.detectorCoverage.find(({ rule }) => rule === 'SustainedThrottlingInRegion')).toMatchObject({
+                status: throttleRatePercent === 0 ? 'evaluated' : 'insufficientData',
+                evaluatedCount: throttleRatePercent === 0 ? 1 : 0,
+                matchedCount: 0,
+            });
+            expect(result.detectorCoverage.find(({ rule }) => rule === 'HotPartitionRisk')).toMatchObject({
+                status: 'insufficientData',
+                evaluatedCount: 0,
+                matchedCount: 0,
+            });
+            expect(result.advisories).toEqual([]);
+        },
+    );
+
     it.each([undefined, 1, 2])('requires independent single-partition evidence (%s)', (physicalPartitionCount) => {
         const result = analyzeDerivedAdvisories(
             {
@@ -416,6 +536,91 @@ describe('detector dependency coverage', () => {
                 advisoryThresholds: DEFAULT_ADVISORY_THRESHOLDS,
             };
         }
+
+        it.each(
+            (['single', 'balanced', 'positive', 'empty', 'young'] as const).flatMap((state) =>
+                [false, true].map((countFailed) => ({ state, countFailed })),
+            ),
+        )(
+            'attributes only required physical-count failures ($state, failure: $countFailed)',
+            async ({ state, countFailed }) => {
+                const target = row({
+                    resourceCreatedAt: iso(Date.now() - (state === 'young' ? 0.1 : 30) * DAY),
+                });
+                const params = setup(target);
+                const timeStamp = iso(Date.now());
+                const ru = state === 'balanced' ? [80, 80] : state === 'positive' ? [95, 30] : [95];
+                const sizes = state === 'balanced' ? [GB, GB] : state === 'positive' ? [40 * GB, 5 * GB] : [GB];
+                const getCount = vi.spyOn(metrics, 'getContainerPartitionCount');
+                const needsCount = state === 'single' || state === 'young';
+                const unavailable = needsCount && countFailed;
+                const evaluated = state === 'balanced' || state === 'positive';
+                const monitorClient = mockClient({
+                    NormalizedRUConsumption: {
+                        value: [
+                            {
+                                timeseries: ru.map((maximum, index) => ({
+                                    metadatavalues: pdims(
+                                        target.databaseId,
+                                        target.containerId,
+                                        'PhysicalPartitionId',
+                                        String(index),
+                                    ),
+                                    data: state === 'empty' ? [] : [{ timeStamp, maximum }],
+                                })),
+                            },
+                        ],
+                    },
+                    PhysicalPartitionSizeInfo: {
+                        value: [
+                            {
+                                timeseries: sizes.map((maximum, index) => ({
+                                    metadatavalues: pdims(
+                                        target.databaseId,
+                                        target.containerId,
+                                        'PhysicalPartitionId',
+                                        String(index),
+                                    ),
+                                    data: state === 'empty' ? [] : [{ timeStamp, maximum }],
+                                })),
+                            },
+                        ],
+                    },
+                });
+                const list = monitorClient.metrics.list.bind(monitorClient.metrics);
+
+                vi.spyOn(monitorClient.metrics, 'list').mockImplementation(async (resource, options) => {
+                    if (countFailed && options?.metricnames === 'PhysicalPartitionCount') {
+                        throw Object.assign(new Error('private-count-error'), { statusCode: 403 });
+                    }
+
+                    return list(resource, options);
+                });
+
+                const captured = await captureReadDiagnostics(() =>
+                    collectDerivedAdvisories({ ...params, monitorClient }),
+                );
+
+                for (const rule of ['HotPartitionRisk', 'StorageSkewRisk']) {
+                    expect(captured.result.detectorCoverage.find((entry) => entry.rule === rule)).toMatchObject({
+                        status: unavailable ? 'unavailable' : evaluated ? 'evaluated' : 'insufficientData',
+                        evaluatedCount: evaluated ? 1 : 0,
+                        matchedCount: state === 'positive' ? 1 : 0,
+                        unavailableReasons: unavailable ? ['rbac'] : [],
+                    });
+                    expect(
+                        captured.result.metricSource.failures.some(
+                            (failure) => failure.rule === rule && failure.reason === 'rbac',
+                        ),
+                    ).toBe(unavailable);
+                }
+
+                expect(getCount).toHaveBeenCalledTimes(1);
+                expect(
+                    captured.diagnostics.filter(({ source, reason }) => source === 'metrics' && reason === 'rbac'),
+                ).toHaveLength(countFailed ? 1 : 0);
+            },
+        );
 
         it.each(
             (['missing', 'multiple', 'empty', 'nonfinite', 'valid'] as const).flatMap((state) =>

@@ -53,8 +53,11 @@ export class ThrottlingByOperationDetector extends Detector {
         if (!Number.isFinite(totalRequests) || totalRequests < DIAGNOSTIC_POLICY.accountRequests.minRequests) {
             return { rootCause: 'too_few_requests' };
         }
-        if (!Number.isFinite(rate) || rate < policy.ratePercent || operations.length === 0) {
+        if (!Number.isFinite(rate) || rate < policy.ratePercent) {
             return { rootCause: 'not_throttling' };
+        }
+        if (operations.length === 0) {
+            return { rootCause: 'insufficient_data' };
         }
         const [operation, count] = operations[0];
         const category = operationCategory(operation);

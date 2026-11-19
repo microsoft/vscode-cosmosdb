@@ -161,6 +161,11 @@ export function finiteNumbers(values: readonly number[]): number[] {
     return values.filter((value): value is number => Number.isFinite(value));
 }
 
+/** Usable observations must cover every partition when an independent count is known. Pure. */
+export function hasCompletePartitionObservations(observedCount: number, physicalPartitionCount?: number): boolean {
+    return observedCount > 0 && (physicalPartitionCount === undefined || observedCount >= physicalPartitionCount);
+}
+
 /**
  * Known-young resources are gated out; unknown age is allowed through so missing metadata does not manufacture a
  * false "new resource" abstention. Pure.

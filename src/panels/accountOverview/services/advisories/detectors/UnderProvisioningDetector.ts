@@ -6,7 +6,12 @@
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
-import { clampRationale, hasMinimumKnownResourceAge, offerScope } from '../core/helpers';
+import {
+    clampRationale,
+    hasCompletePartitionObservations,
+    hasMinimumKnownResourceAge,
+    offerScope,
+} from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import {
     type AdvisoryEvaluation,
@@ -41,7 +46,12 @@ function evaluateUnderProvisioning(
     const atCapacity = input.maxP99 >= saturationPercent;
     const uniform = input.minP99 >= headroomPercent;
     if (!throttling || !atCapacity) {
-        return { rootCause: 'not_throttling' };
+        const conclusive =
+            !throttling ||
+            (input.partitionCount > 0 && !uniform) ||
+            hasCompletePartitionObservations(input.partitionCount, input.physicalPartitionCount);
+
+        return { rootCause: conclusive ? 'not_throttling' : 'insufficient_data' };
     }
     if (!uniform) {
         return { rootCause: 'skew_suspected', severity: 'Medium' };

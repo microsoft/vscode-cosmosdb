@@ -32,15 +32,15 @@ export const STORAGE_SKEW_HIGH_BYTES = DIAGNOSTIC_POLICY.storageSkew.highBytes;
 /** Busiest-partition size (≥ 50% of the 50 GiB ceiling) at or above which StorageSkewRisk ranks Medium. */
 export const STORAGE_SKEW_MEDIUM_BYTES = DIAGNOSTIC_POLICY.storageSkew.mediumBytes;
 
+export function hasSingleObservedStoragePartition(input: Pick<ContainerStorageInput, 'partitions'>): boolean {
+    return input.partitions.length === 1 && input.partitions[0].samples.some(({ bytes }) => Number.isFinite(bytes));
+}
+
 /** A finite observation and an independent physical count are both required to establish single-partition storage. */
 export function hasSingleStoragePartition(
     input: Pick<ContainerStorageInput, 'partitions' | 'physicalPartitionCount'>,
 ): boolean {
-    return (
-        input.physicalPartitionCount === 1 &&
-        input.partitions.length === 1 &&
-        input.partitions[0].samples.some(({ bytes }) => Number.isFinite(bytes))
-    );
+    return input.physicalPartitionCount === 1 && hasSingleObservedStoragePartition(input);
 }
 
 /** Latest (newest-timestamp) size in bytes of a partition's series, or undefined when it has no samples. Pure. */

@@ -189,7 +189,7 @@ interface AdvisoryEvaluationResults {
         'insufficient_data' | 'not_throttling' | 'skew_suspected' | 'global_under_provisioning'
     >;
     ThrottlingByOperation:
-        | EvaluationOutcome<'too_few_requests' | 'not_throttling'>
+        | EvaluationOutcome<'insufficient_data' | 'too_few_requests' | 'not_throttling'>
         | EvaluationOutcome<
               'decomposed',
               {

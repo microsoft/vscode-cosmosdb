@@ -149,6 +149,10 @@ A known single physical partition establishes hot-partition and storage-skew ina
 That count comes from the independent `PhysicalPartitionCount` metric, never from the number of sampled RU or storage
 series. The existing partition-count read is reused rather than repeated. Storage inapplicability additionally requires a
 finite sample; the detector and age-dependency filter share that predicate so empty rows cannot hide age-read failures.
+An actual failed physical-count dependency affects single-observation applicability, but remains optional for decisions
+that finish without it. Known missing partition observations cannot establish a negative hot-partition result or the
+absence of global saturation. Below-threshold throttling or an observed cool partition still conclusively rules out
+under-provisioning; positive findings are unchanged.
 Missing throttle observations are never replaced with synthetic values or counted as under-provisioning evaluations.
 Successful empty observations do not create unavailable dependencies; rules retain their existing evidence semantics,
 including empty successful consumption reads establishing idleness. Disabled indexing and a known single physical partition
@@ -157,6 +161,8 @@ Sufficient query traffic with known low fan-out is a completed negative evaluati
 Missing configuration fields remain insufficient evidence, not a failed workload-data dependency.
 Required log-query failures affect only their dependent rules; optional cost, request-charge or consistency-charge
 enrichment does not change detector coverage. No per-container or detector-entry/exit events are emitted.
+Operation-throttling coverage requires a usable breakdown only after sufficient traffic and above-threshold throttling
+are established: successful emptiness is insufficient evidence, and a denied required breakdown is unavailable.
 
 `cosmosDB.accountOverview.webviewError` records subscription failures, render failures and unhandled JavaScript
 errors/rejections with `errorCategory = webview`, `failureKind` and an optional bounded subscription name.

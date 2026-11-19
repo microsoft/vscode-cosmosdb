@@ -49,7 +49,7 @@ import {
 import { enrichAdvisoryCosts } from './costEstimates';
 import { completeDetectorCoverage } from './coverage';
 import { expensiveConsistencyDetector } from './detectors/ExpensiveConsistencyDetector';
-import { hasSingleStoragePartition } from './detectors/storageMath';
+import { hasSingleObservedStoragePartition, hasSingleStoragePartition } from './detectors/storageMath';
 import { analyzeDerivedAdvisories } from './engine';
 import { type CostContext } from './fetchers/costManagement';
 import {
@@ -572,9 +572,19 @@ export async function collectDerivedAdvisories(
         const scope = scopeOf(row);
         const ageDays = offerAgeDays(row);
         const requiredPartitionRead = { ...partition, failures: [...partition.failures, ...throttle.failures] };
-        const physicalPartitionCount = countsByScope.get(scope)?.value;
+        const count = countsByScope.get(scope);
+        const physicalPartitionCount = count?.value;
         const singlePartition =
             physicalPartitionCount === 1 && partition.value?.available === true && partition.value.partitionCount === 1;
+
+        if (count && count.value === undefined && (count.reason || count.failures.length > 0)) {
+            if (partition.value?.available && partition.value.partitionCount === 1) {
+                recordMetricFailure('HotPartitionRisk', count, scope);
+            }
+            if (skew?.value?.available && hasSingleObservedStoragePartition(skew.value)) {
+                recordMetricFailure('StorageSkewRisk', count, scope);
+            }
+        }
 
         if (partition.reason) {
             recordMetricFailure('SustainedThrottlingInRegion', requiredPartitionRead, scope);

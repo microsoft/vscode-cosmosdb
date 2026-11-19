@@ -7,7 +7,7 @@ import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
 import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
-import { clampRationale, hasMinimumKnownResourceAge } from '../core/helpers';
+import { clampRationale, hasCompletePartitionObservations, hasMinimumKnownResourceAge } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import {
     type AdvisoryEvaluation,
@@ -53,7 +53,7 @@ function evaluateStorageSkewRisk(
     const ratio = balanceRatio(sizes);
     const hasCompleteObservations =
         sizes.length === input.partitions.length &&
-        (input.physicalPartitionCount === undefined || sizes.length >= input.physicalPartitionCount);
+        hasCompletePartitionObservations(sizes.length, input.physicalPartitionCount);
 
     if (hasSingleStoragePartition(input)) {
         return { rootCause: 'single_partition' };

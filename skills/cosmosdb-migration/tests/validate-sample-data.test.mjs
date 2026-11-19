@@ -303,8 +303,8 @@ test('preserves precision-sensitive source values as explicit target strings', (
     }
 });
 
-test('explicit null support does not relax identity or partition-key rules', () => {
-    for (const target of ['id', 'tenantId']) {
+test('explicit null support does not relax identity rules', () => {
+    for (const target of ['id', 'orderId']) {
         const definition = model();
         definition.containers[0].entities[0].attributes.find(attribute => attribute.target === target).type = 'null';
         const data = samples();
@@ -578,7 +578,7 @@ test('validates each hierarchical partition-key component independently', () => 
 });
 
 test('preserves numeric and boolean partition-key values', () => {
-    for (const tenantId of [42, true, false]) {
+    for (const tenantId of [0, 42, true, false]) {
         const definition = model();
         definition.containers[0].entities[0].attributes.find((attribute) => attribute.target === 'tenantId').type =
             typeof tenantId;
@@ -586,6 +586,65 @@ test('preserves numeric and boolean partition-key values', () => {
         data.sampleData[0].items[0].tenantId = tenantId;
         assert.deepEqual(validateSampleData(definition, data), []);
     }
+});
+
+test('keeps null and missing partition keys distinct for item and unique-key collisions', () => {
+    for (const hierarchical of [false, true]) {
+        const definition = model();
+        const container = definition.containers[0];
+        const entity = container.entities[0];
+        const tenant = entity.attributes.find(attribute => attribute.target === 'tenantId');
+        Object.assign(tenant, { optional: true, nullable: true });
+        const routes = [{}, { tenantId: null }, { tenantId: 'null' }, { tenantId: 'undefined' }, { tenantId: '' }];
+        if (hierarchical) {
+            container.partitionKeys.push({ path: '/region' });
+            entity.attributes.push({ target: 'region', source: { table: 'Orders', column: 'Region', type: 'varchar' },
+                type: 'string', isPartitionKey: true, optional: true, nullable: true });
+            routes.push({ region: null }, { tenantId: null, region: null });
+        }
+        container.uniqueKeyPolicy = { uniqueKeys: [{ paths: ['/paid'] }] };
+        const data = samples();
+        const { tenantId: _tenantId, ...item } = data.sampleData[0].items[0];
+        const items = data.sampleData[0].items = routes.map(route => ({ ...item, ...route }));
+        const before = structuredClone(data);
+        assert.deepEqual(validateSampleData(definition, data), []);
+        assert.deepEqual(data, before);
+        for (const original of [...items]) {
+            items.push(structuredClone(original));
+            const errors = validateSampleData(definition, data);
+            assert(errors.some(error => error.message.includes('duplicates an id')));
+            assert(errors.some(error => error.message.includes('duplicates unique-key')));
+            Object.assign(items.at(-1), { id: 'order-102', orderId: 102 });
+            const distinctIdErrors = validateSampleData(definition, data);
+            assert(!distinctIdErrors.some(error => error.message.includes('duplicates an id')));
+            assert(distinctIdErrors.some(error => error.message.includes('duplicates unique-key')));
+            items.pop();
+        }
+    }
+});
+
+test('optional nullable routing preserves schema requirements and rejects non-scalar values', () => {
+    const definition = model();
+    const tenant = definition.containers[0].entities[0].attributes.find(attribute => attribute.target === 'tenantId');
+    const data = samples();
+    const item = data.sampleData[0].items[0];
+    Object.assign(tenant, { optional: true, nullable: true });
+    for (const invalid of [{}, [], { state: 'missing' }, undefined, NaN, Infinity, -Infinity]) {
+        item.tenantId = invalid;
+        assert(validateSampleData(definition, data).some(error =>
+            error.path.endsWith('.tenantId') && error.message.includes('partition key')));
+    }
+    delete item.tenantId;
+    tenant.optional = false;
+    assert(validateSampleData(definition, data).some(error =>
+        error.path.endsWith('.tenantId') && error.message.includes('required')));
+    tenant.optional = true;
+    tenant.nullable = false;
+    item.tenantId = null;
+    assert(validateSampleData(definition, data).some(error =>
+        error.path.endsWith('.tenantId') && error.message.includes('JSON type')));
+    tenant.type = 'null';
+    assert.deepEqual(validateSampleData(definition, data), []);
 });
 
 test('treats a generated UUID sample id as durable provisioning data', () => {
@@ -764,7 +823,7 @@ test('validates attributes, JSON types, partition keys, and resolved IDs', () =>
     const errors = validateSampleData(model(), data);
     assert(errors.some((error) => error.path.endsWith('.paid') && error.message.includes('boolean')));
     assert(errors.some((error) => error.path.endsWith('.id') && error.message.includes('idTemplate')));
-    assert(errors.some((error) => error.path.endsWith('.tenantId') && error.message.includes('partition key')));
+    assert(errors.some((error) => error.path.endsWith('.tenantId') && error.message.includes('required')));
 });
 
 test('rejects duplicate logical keys', () => {

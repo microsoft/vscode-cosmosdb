@@ -2,6 +2,7 @@
 
 import { isDeepStrictEqual } from 'node:util';
 import { encodeSourceIdentity, resolveItemId } from './identity-mapping.mjs';
+import { isPartitionKeyValue, readPartitionKeyValue } from './partition-key-values.mjs';
 import { directIdentityField, isFieldPathPrefix, sourceRefs, validateFieldPath } from './source-contract.mjs';
 
 export const DOCUMENT_MAPPING_VERSION = 2;
@@ -233,11 +234,7 @@ export function executeDocumentMapping(inventory, entity, mappings, decision, so
     }
     assertJson(target);
     for (const key of partitionKeys) {
-        const value = target[key.path.slice(1)];
-        if (value === null || !['string', 'number', 'boolean'].includes(typeof value) ||
-            (typeof value === 'string' && Buffer.byteLength(value, 'utf8') > 2048)) {
-            throw new Error('Whole-document example requires a supported scalar partition key within the target byte limit');
-        }
+        readPartitionKeyValue(target, key.path);
     }
     if (Buffer.byteLength(JSON.stringify(target), 'utf8') > 2 * 1024 * 1024) throw new Error('Whole-document example exceeds the target 2 MiB item limit; justify and model a supported split');
     return target;
@@ -279,7 +276,7 @@ function validateDocumentMappings(inventory, models, evidence) {
             });
             if (!isDeepStrictEqual(result, example.output)) throw new Error('Whole-document mapping example loses, duplicates, or changes unaccounted source content');
             if (!entry.entity.isEmbeddedOnly) {
-                const itemKey = JSON.stringify([decision.container, entry.container.partitionKeys.map(key => result[key.path.slice(1)]), result.id]);
+                const itemKey = JSON.stringify([decision.container, entry.container.partitionKeys.map(key => readPartitionKeyValue(result, key.path)), result.id]);
                 const previous = targetIdentities.get(itemKey);
                 if (previous !== undefined && previous !== key) throw new Error('Document identities collide in the same container and partition; preserve source namespace in the identity or routing');
                 targetIdentities.set(itemKey, key);
@@ -294,8 +291,8 @@ export function executeBehaviorExample(example) {
     if (example.operation === 'partition-batch') {
         const keys = example.input?.partitionKeys;
         const bytes = example.input?.payloadBytes;
-        if (!Array.isArray(keys) || !keys.length || keys.some(key => !Array.isArray(key) || !key.length || key.length > 3 ||
-            key.some(component => !['string', 'number', 'boolean'].includes(typeof component))) ||
+        if (!Array.isArray(keys) || !keys.length || Array.from(keys).some(key => !Array.isArray(key) || !key.length || key.length > 3 ||
+            Array.from(key).some(component => !isPartitionKeyValue(component))) ||
             !Number.isSafeInteger(bytes) || bytes < 0) throw new Error('Partition batch example requires complete routing tuples and payloadBytes');
         assertJson(keys);
         return { supported: keys.every(key => isDeepStrictEqual(key, keys[0])) && keys.length <= 100 && bytes <= 2 * 1024 * 1024 };

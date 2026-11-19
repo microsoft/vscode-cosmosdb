@@ -277,7 +277,7 @@ the design but are not another copy of the model.
   source keys, and use the same helper for sample generation and validation. Preserve every relational primary-key
   column separately. A direct, explicitly renamed document key is preserved in `id` itself; other document keys
   remain separately represented.
-- Every standalone entity in a container carries every ordered partition-key path.
+- Every standalone entity models every ordered partition-key path, including allowed null/missing values.
 - Identity conversion does not choose the partition key. Compare `/id` with workload-supported business keys;
   retaining a source ID does not imply `/id` is best. `/id` gives known-ID routing but does not co-locate different
   items for grouped queries or transactional batches. Cosmos enforces uniqueness of `(partition key, id)`,
@@ -312,8 +312,10 @@ not a nullable modifier for another type. Use `nullable:true` to permit null and
 `optional:true` to permit missing properties; these are distinct semantics. Do not use
 labels such as `string?` or arrays such as `["string", "null"]`. Preserve heterogeneous native
 variants through explicit lossless JSON envelopes or conversions and executable examples.
-Identity and partition-key attributes remain required and non-null. Do not replace source nulls
-or declare a field null-only merely to pass validation.
+Identity attributes remain required and non-null. Partition-key attributes may be optional/nullable:
+omitted properties route to undefined, distinct from null, including each hierarchical component.
+Preserve source missing/null semantics and assess concentration in those partitions; neither state
+alone disqualifies a candidate. Do not replace source nulls or declare null-only fields to pass validation.
 
 Choose a lossless representation explicitly. Dates and UUIDs serialized as text use
 `string`; large integers and exact decimals may also require strings, following current
@@ -351,19 +353,21 @@ in the conversion summary.
   separate documents. Transactions across those documents require the same
   container and full partition-key value tuple, including every hierarchical
   level. Co-location does not enable SQL JOINs across documents.
-- Every standalone entity must carry all of the container's ordered partition-key
+- Every standalone entity must model all of the container's ordered partition-key
   paths, with matching attribute names and `isPartitionKey: true`. Explain how
   each type obtains its key values; related documents intended for one transaction
   must resolve to the same complete tuple, not merely use the same field names.
+  Values may be null or missing when the attribute contract allows them; missing
+  represents an undefined component, not omission of that level from the full tuple.
 
-If a secondary entity cannot carry reliable values for every shared partition-key
-component, either embed it in its owning document and set `isEmbeddedOnly: true`,
+If a secondary entity cannot resolve a suitable full shared key, including allowed
+null/missing components, either embed it in its owning document and set `isEmbeddedOnly: true`,
 or place it in a separate container with its own suitable key. Embedding is valid
 only when relationship ownership, bounded size, growth, and update patterns support
 it; do not mark an entity embedded-only just to satisfy validation. Embedded-only
 entities remain represented in the model but are not generated or seeded as
 standalone documents. Never invent constant or placeholder key values to force
-co-location, and never emit standalone documents missing the shared key fields.
+co-location. Preserve allowed null/missing values rather than inventing routing data.
 
 Record the grouping rationale, alternatives, discriminator values, per-type key
 sources, and embed-versus-standalone decisions in the existing domain summary.

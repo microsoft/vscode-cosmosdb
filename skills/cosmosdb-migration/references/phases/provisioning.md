@@ -713,6 +713,12 @@ Each `sampleItems` entry requires `containerName`, `id`, ordered `partitionKeyVa
 Never substitute expected samples or upsert request bodies for read responses.
 Missing, duplicate, extra, or wrong-key observations prevent completion.
 
+In `partitionKeyValues`, preserve JSON scalar types and null; encode each missing/undefined
+component as `{"state":"missing"}`, not null or a string. Include every hierarchical level
+in order. This is a manifest marker only: use the SDK's null/undefined partition-key
+representation for actual point reads, and omit missing properties from stored JSON.
+Never serialize JavaScript undefined array entries directly, which would turn them into null.
+
 Document comparison ignores object-property order and only the top-level service
 properties `_rid`, `_self`, `_etag`, `_attachments`, `_ts`, and `_lsn`. Array order,
 JSON value types, nulls, all application fields, and nested properties remain binding,

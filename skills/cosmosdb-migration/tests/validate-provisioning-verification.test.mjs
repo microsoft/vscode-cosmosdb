@@ -63,6 +63,38 @@ function inputs() {
     return { model, sampleData, project, report };
 }
 
+test('readback binds null and missing partition components to distinct sample keys and payloads', () => {
+    const { model, sampleData, project, report } = inputs();
+    const container = model.containers[0];
+    const entity = container.entities[0];
+    Object.assign(entity.attributes.find(attribute => attribute.target === 'tenantId'), { optional: true, nullable: true });
+    container.partitionKeys.push({ path: '/region' });
+    entity.attributes.push({ target: 'region', source: { table: 'Items', column: 'Region', type: 'varchar' },
+        type: 'string', isPartitionKey: true, optional: true, nullable: true });
+    const { tenantId: _tenantId, ...item } = sampleData.sampleData[0].items[0];
+    sampleData.sampleData[0].items = [{ ...item, tenantId: null }, { ...item, region: null }, { ...item }];
+    report.modelSha256 = modelSha256(model);
+    report.containers[0].partitionKeys = ['/tenantId', '/region'];
+    const keys = [[null, { state: 'missing' }], [{ state: 'missing' }, null], [{ state: 'missing' }, { state: 'missing' }]];
+    report.sampleItems = sampleData.sampleData[0].items.map((document, index) => ({
+        containerName: 'Items', id: document.id, partitionKeyValues: keys[index], found: true, document: structuredClone(document),
+    }));
+    assert.deepEqual(validateProvisioningVerification(model, sampleData, project, JSON.parse(JSON.stringify(report))), []);
+    for (const wrong of [null, 'undefined', undefined, {}, { state: 'missing', value: null }]) {
+        const changed = structuredClone(report);
+        changed.sampleItems[0].partitionKeyValues[1] = wrong;
+        assert(validateProvisioningVerification(model, sampleData, project, changed).some(error => error.path === '$.sampleItems'));
+    }
+    const changed = structuredClone(report);
+    changed.sampleItems[0].document = structuredClone(report.sampleItems[1].document);
+    assert(validateProvisioningVerification(model, sampleData, project, changed).some(error =>
+        error.path === '$.sampleItems[0].document'));
+    const invalidNull = structuredClone(report);
+    invalidNull.sampleItems[0].partitionKeyValues[0] = undefined;
+    assert(validateProvisioningVerification(model, sampleData, project, invalidNull).some(error =>
+        error.path === '$.sampleItems[0].partitionKeyValues'));
+});
+
 test('verifies an alternate target without changing model identity or accepting previous-target evidence', () => {
     for (const type of ['azure', 'provision', 'emulator']) {
         const { model, sampleData, project, report } = inputs();

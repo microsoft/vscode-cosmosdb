@@ -7,6 +7,7 @@ import { requireOptionValue } from './cli-arguments.mjs';
 import { isMainModule } from './cli-entrypoint.mjs';
 import { showHelp } from './cli-help.mjs';
 import { objectIdHex, readIdentityManifest, resolveItemId, validateIdentityManifest } from './identity-mapping.mjs';
+import { readPartitionKeyValue } from './partition-key-values.mjs';
 import { parseJson } from './phase-summary.mjs';
 import { isObjectIdSourceType, splitIndexPathParts, validateCosmosModel } from './validate-cosmos-model.mjs';
 import { createSourceResolver, readSourceInventory, resolveForeignKey } from './validate-source-evidence.mjs';
@@ -17,7 +18,6 @@ const ENTRY_KEYS = new Set(['containerName', 'items']);
 const UNRESOLVED_VALUE = /(?:\{[^{}]+\}|<value>|\bTBD\b|\bREPLACE[_ -]?ME\b|\bTODO\b)/iu;
 const MAX_ITEM_BYTES = 2 * 1024 * 1024;
 const MAX_NESTING_DEPTH = 128;
-const MAX_PARTITION_KEY_BYTES = 2048;
 
 function isObject(value) {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -402,21 +402,13 @@ function validateItem(item, container, entityByDocType, jsonPath, uniqueKeys, co
     const partitionValues = [];
     for (const partitionKey of container.partitionKeys) {
         const target = partitionKey.path.slice(1);
-        const value = item[target];
-        if (!Object.hasOwn(item, target) || value === null || !['string', 'number', 'boolean'].includes(typeof value)) {
-            addError(errors, `${jsonPath}.${target}`, `must provide a scalar value for partition key ${partitionKey.path}`);
-        } else if (typeof value === 'string') {
-            const byteLength = Buffer.byteLength(value, 'utf8');
-            if (byteLength > MAX_PARTITION_KEY_BYTES) {
-                addError(
-                    errors,
-                    `${jsonPath}.${target}`,
-                    `exceeds the ${MAX_PARTITION_KEY_BYTES}-byte partition-key limit (${byteLength} UTF-8 bytes)`,
-                );
-            }
+        try {
+            partitionValues.push(readPartitionKeyValue(item, partitionKey.path));
+        } catch (error) {
+            addError(errors, `${jsonPath}.${target}`, error.message);
         }
-        partitionValues.push(value);
     }
+    if (partitionValues.length !== container.partitionKeys.length) return;
     if (typeof item.id === 'string') {
         const uniqueKey = JSON.stringify([partitionValues, item.id]);
         if (uniqueKeys.has(uniqueKey)) addError(errors, jsonPath, 'duplicates an id within the same logical partition');

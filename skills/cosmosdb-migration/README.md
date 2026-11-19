@@ -542,6 +542,7 @@ These modules support the executable helpers and have no command-line entry poin
 | [validate-source-evidence.mjs](./scripts/validate-source-evidence.mjs) | Completion and provisioning validators: inventory, hashes, source identity |
 | [source-contract.mjs](./scripts/source-contract.mjs) | Common inventory, validated legacy views, typed paths, readable field IDs via `sourceFieldId(path)`, field references, and dataset ownership |
 | [mapping-examples.mjs](./scripts/mapping-examples.mjs) | Bounded executable JSON/BSON conversion, identity examples, and approved behavior decisions; never executes hooks |
+| [partition-key-values.mjs](./scripts/partition-key-values.mjs) | Mapping/sample/readback validation: `readPartitionKeyValue(item, path)` preserves scalar/null keys or `{state:"missing"}` evidence; `isPartitionKeyValue(value)` validates evidence components. The marker is never stored in documents or sent as an SDK key. |
 | [cli-help.mjs](./scripts/cli-help.mjs) | All executable helpers: side-effect-free help dispatch |
 | [cli-arguments.mjs](./scripts/cli-arguments.mjs) | Option-taking helpers: reject missing values before reading inputs or performing work |
 | [cli-entrypoint.mjs](./scripts/cli-entrypoint.mjs) | All executable helpers: detect direct or symlinked CLI launches without rejecting imports when the host launcher path is absent |

@@ -20,17 +20,20 @@ import {
     FlashRegular,
     SearchRegular,
     TaskListSquareLtrRegular,
+    WarningRegular,
 } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { useId, type ReactNode } from 'react';
+import { Fragment, useId, type ReactNode } from 'react';
 import { ContainerIcon } from '../../../icons/ContainerIcon';
 import { AssessmentIcon } from '../components/AssessmentIcon';
 import { MythBox } from '../components/primitives';
 import { type ContainerModel, type DataGrowth, type ItemsPerPartition, type WriteDistribution } from '../models';
+import { type ContainerTab } from './ContainerPage';
 
 /**
  * Review step. Shows the selected workload with a Change link, one summary card per container (laid out in a
- * horizontal row that wraps on narrow surfaces) with an Edit shortcut, and the rules the analysis evaluates.
+ * horizontal row that wraps on narrow surfaces) with an Edit shortcut, and the rules the analysis evaluates. Container
+ * configuration sections not yet visited appear as warning links in each card so defaults are not accepted unnoticed.
  * Editing jumps back via the provided callbacks so the page stays decoupled from the wizard mechanism.
  */
 
@@ -84,6 +87,21 @@ const useStyles = makeStyles({
     },
     validationFix: {
         flexShrink: 0,
+    },
+    reviewWarning: {
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: tokens.spacingHorizontalS,
+        color: tokens.colorStatusWarningForeground1,
+        fontSize: tokens.fontSizeBase200,
+    },
+    reviewWarningIcon: {
+        flexShrink: 0,
+        fontSize: '16px',
+    },
+    reviewWarningText: {
+        margin: 0,
+        overflowWrap: 'anywhere',
     },
     cards: {
         display: 'grid',
@@ -201,8 +219,30 @@ export interface ReviewPageProps {
     /** Issues listed with Fix buttons that do not block recommendation requests. */
     validationWarnings?: ReviewValidationIssue[];
     onFixIssue?: (issue: ReviewValidationIssue) => void;
+    /** Container tabs visited this session, keyed by container id; unvisited tabs are listed as links. */
+    visitedTabs?: ReadonlyMap<string, ReadonlySet<ContainerTab>>;
+    onOpenContainerTab?: (containerId: string, tab: ContainerTab) => void;
     onEditWorkload: () => void;
     onEditContainer: (containerId: string) => void;
+}
+
+const CONTAINER_TABS: readonly ContainerTab[] = ['data', 'queries', 'scale'];
+
+function containerTabLabel(tab: ContainerTab): string {
+    switch (tab) {
+        case 'data':
+            return l10n.t('Data');
+        case 'queries':
+            return l10n.t('Queries');
+        case 'scale':
+            return l10n.t('Scale');
+    }
+}
+
+interface ActionRow {
+    key: string;
+    message: string;
+    onClick: () => void;
 }
 
 const formatNumber = (value: number) => new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(value);
@@ -226,9 +266,21 @@ function SummaryItem({ icon, iconLabel, children }: { icon: ReactNode; iconLabel
     );
 }
 
-function ContainerCard({ container, onEdit }: { container: ContainerModel; onEdit: () => void }) {
+function ContainerCard({
+    container,
+    onEdit,
+    visitedTabs,
+    onOpenContainerTab,
+}: {
+    container: ContainerModel;
+    onEdit: () => void;
+    visitedTabs?: ReviewPageProps['visitedTabs'];
+    onOpenContainerTab?: ReviewPageProps['onOpenContainerTab'];
+}) {
     const styles = useStyles();
+    const headingId = useId();
     const editLabel = l10n.t('Edit {name}', { name: container.entity });
+    const unvisitedTabs = visitedTabs ? CONTAINER_TABS.filter((tab) => !visitedTabs.get(container.id)?.has(tab)) : [];
 
     const itemsLabel: Record<ItemsPerPartition, string> = {
         low: l10n.t('Low'),
@@ -260,7 +312,7 @@ function ContainerCard({ container, onEdit }: { container: ContainerModel; onEdi
                     <ContainerIcon />
                 </span>
                 <div className={styles.cardTitleBlock}>
-                    <h3 className={styles.cardTitle}>
+                    <h3 id={headingId} className={styles.cardTitle}>
                         {l10n.t('Container:')} {container.entity}
                     </h3>
                 </div>
@@ -295,6 +347,30 @@ function ContainerCard({ container, onEdit }: { container: ContainerModel; onEdi
                     })}
                 </SummaryItem>
             </ul>
+            {unvisitedTabs.length > 0 ? (
+                <div className={styles.reviewWarning}>
+                    <WarningRegular className={styles.reviewWarningIcon} aria-hidden="true" />
+                    <p className={styles.reviewWarningText}>
+                        {l10n.t('Please review configuration:')}{' '}
+                        {unvisitedTabs.map((tab, index) => (
+                            <Fragment key={tab}>
+                                {index > 0 ? ', ' : null}
+                                {onOpenContainerTab ? (
+                                    <Link
+                                        as="button"
+                                        aria-describedby={headingId}
+                                        onClick={() => onOpenContainerTab(container.id, tab)}
+                                    >
+                                        {containerTabLabel(tab)}
+                                    </Link>
+                                ) : (
+                                    containerTabLabel(tab)
+                                )}
+                            </Fragment>
+                        ))}
+                    </p>
+                </div>
+            ) : null}
         </li>
     );
 }
@@ -305,6 +381,8 @@ export function ReviewPage({
     validationErrors = [],
     validationWarnings = [],
     onFixIssue,
+    visitedTabs,
+    onOpenContainerTab,
     onEditWorkload,
     onEditContainer,
 }: ReviewPageProps) {
@@ -323,25 +401,43 @@ export function ReviewPage({
         l10n.t('Hierarchical PK assessment'),
     ];
 
-    const issueList = (issues: ReviewValidationIssue[], kind: 'issue' | 'warning') => (
+    const actionList = (
+        rows: ActionRow[],
+        kind: 'issue' | 'warning',
+        actionLabel: string,
+        appearance: 'primary' | 'secondary',
+        showAction = true,
+    ) => (
         <ul className={styles.validationList}>
-            {issues.map((issue, index) => (
-                <li key={index} className={styles.validationItem}>
-                    <span id={`${rulesHeadingId}-${kind}-${index}`}>{issue.message}</span>
-                    {onFixIssue ? (
+            {rows.map((row, index) => (
+                <li key={row.key} className={styles.validationItem}>
+                    <span id={`${rulesHeadingId}-${kind}-${index}`}>{row.message}</span>
+                    {showAction ? (
                         <Button
                             className={styles.validationFix}
-                            appearance="primary"
+                            appearance={appearance}
                             aria-describedby={`${rulesHeadingId}-${kind}-${index}`}
-                            onClick={() => onFixIssue(issue)}
+                            onClick={row.onClick}
                         >
-                            {l10n.t('Fix')}
+                            {actionLabel}
                         </Button>
                     ) : null}
                 </li>
             ))}
         </ul>
     );
+    const issueList = (issues: ReviewValidationIssue[], kind: 'issue' | 'warning') =>
+        actionList(
+            issues.map((issue, index) => ({
+                key: String(index),
+                message: issue.message,
+                onClick: () => onFixIssue?.(issue),
+            })),
+            kind,
+            l10n.t('Fix'),
+            'primary',
+            !!onFixIssue,
+        );
     return (
         <div className={styles.page}>
             <div className={styles.intro}>
@@ -389,6 +485,8 @@ export function ReviewPage({
                         key={container.id}
                         container={container}
                         onEdit={() => onEditContainer(container.id)}
+                        visitedTabs={visitedTabs}
+                        onOpenContainerTab={onOpenContainerTab}
                     />
                 ))}
             </ul>

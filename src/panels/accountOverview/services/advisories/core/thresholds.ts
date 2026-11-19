@@ -176,6 +176,24 @@ export const DIAGNOSTIC_POLICY = {
     multiRegionWrite: {
         minWriteRegions: 2,
     },
+    // CODA's proposed DX-020/021/023 ranking policies, explicitly adopted for native advisories.
+    accountRequests: {
+        minRequests: 1000,
+        observation: { windowMs: 7 * DAY, interval: 'PT1H', bucketMs: HOUR } satisfies RangeConfig,
+    },
+    nonThrottlingErrors: {
+        ratePercent: 1,
+        mediumPercent: 5,
+        highPercent: 10,
+    },
+    throttlingByOperation: {
+        ratePercent: 1,
+        mediumPercent: 5,
+        highPercent: 20,
+    },
+    reservedCapacity: {
+        minBaselineRu: 3000,
+    },
 } as const;
 
 /** Flat detector inputs derived only from the internal policy, never from VS Code settings. */

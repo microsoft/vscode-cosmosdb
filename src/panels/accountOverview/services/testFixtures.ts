@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type MonitorClient } from '@azure/arm-monitor';
+import { type MetadataValue, type MonitorClient } from '@azure/arm-monitor';
 
 // Shared test fixtures for the Account Overview service suites. These helpers build the minimal
 // Azure Monitor payload shapes the pure service functions consume, plus mock clients that dispatch
@@ -38,8 +38,8 @@ export type Point = {
 export type Series = { metadatavalues?: Meta[]; data?: Point[] };
 
 /** Builds the database/collection (and optional status-code) dimension metadata for a series. */
-export function dims(database: string, collection: string, statusCode?: string): Meta[] {
-    const meta: Meta[] = [
+export function dims(database: string, collection: string, statusCode?: string): MetadataValue[] {
+    const meta: MetadataValue[] = [
         { name: { value: 'DatabaseName' }, value: database },
         { name: { value: 'CollectionName' }, value: collection },
     ];
@@ -50,7 +50,7 @@ export function dims(database: string, collection: string, statusCode?: string):
 }
 
 /** Builds the database/collection plus a partition dimension (e.g. PartitionKeyRangeId) metadata. */
-export function pdims(database: string, collection: string, dimension: string, partitionId: string): Meta[] {
+export function pdims(database: string, collection: string, dimension: string, partitionId: string): MetadataValue[] {
     return [
         { name: { value: 'DatabaseName' }, value: database },
         { name: { value: 'CollectionName' }, value: collection },

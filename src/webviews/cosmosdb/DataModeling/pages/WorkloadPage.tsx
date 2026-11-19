@@ -11,18 +11,43 @@ import {
     makeStyles,
     shorthands,
     tokens,
+    useAnnounce,
 } from '@fluentui/react-components';
 import { CheckmarkRegular, SearchRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { Fragment, type KeyboardEvent, useId, useMemo, useRef, useState } from 'react';
 import { SelectableCard } from '../components/SelectableCard';
 import { type ScenarioId } from '../models';
-import { getScenarioList, type ScenarioBadge, type ScenarioTag } from '../scenarios';
+import { getScenarioList, type ScenarioBadge, type ScenarioListItem, type ScenarioTag } from '../scenarios';
 
 /** The fallback scenario has no trait chip and stays visible regardless of the text or trait filters. */
 const FALLBACK_SCENARIO: ScenarioId = 'other';
 /** Chips are grouped by color so related traits sit together: access patterns, write pressure, read scaling. */
 const TONE_ORDER: ScenarioBadge['tone'][] = ['info', 'warn', 'success'];
+/** Shared batch so a newer result summary replaces one still queued from a previous keystroke or click. */
+const RESULTS_ANNOUNCEMENT = 'workload-results';
+
+function filterScenarios(scenarios: ScenarioListItem[], filter: string, tags: ScenarioTag[]): ScenarioListItem[] {
+    const q = filter.trim().toLowerCase();
+    return scenarios.filter(
+        (s) =>
+            s.id === FALLBACK_SCENARIO ||
+            ((tags.length === 0 || tags.includes(s.badge.tag)) &&
+                (!q ||
+                    s.title.toLowerCase().includes(q) ||
+                    s.description.toLowerCase().includes(q) ||
+                    s.searchTerms.includes(q))),
+    );
+}
+
+function summarizeResults(visible: ScenarioListItem[]): string {
+    const matchCount = visible.filter((s) => s.id !== FALLBACK_SCENARIO).length;
+    return matchCount === 0
+        ? l10n.t('No scenarios match your filter. You can still choose a custom workload.')
+        : matchCount === 1
+          ? l10n.t('1 matching scenario')
+          : l10n.t('{count} matching scenarios', { count: matchCount });
+}
 
 /**
  * Step 1 — Workload. Self-contained: it only needs the currently selected
@@ -132,6 +157,7 @@ export interface WorkloadPageProps {
 export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
     const styles = useStyles();
     const groupName = useId();
+    const { announce } = useAnnounce();
     const [filter, setFilter] = useState('');
     const [tags, setTags] = useState<ScenarioTag[]>([]);
     // Roving tabindex: the chip row is one Tab stop; arrow keys move between chips.
@@ -162,27 +188,27 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
     }, [scenarios]);
     const chipCount = traitGroups.reduce((count, group) => count + group.options.length, 0);
 
-    const visible = useMemo(() => {
-        const q = filter.trim().toLowerCase();
-        return scenarios.filter(
-            (s) =>
-                s.id === FALLBACK_SCENARIO ||
-                ((tags.length === 0 || tags.includes(s.badge.tag)) &&
-                    (!q ||
-                        s.title.toLowerCase().includes(q) ||
-                        s.description.toLowerCase().includes(q) ||
-                        s.searchTerms.includes(q))),
-        );
-    }, [filter, tags, scenarios]);
-    const matchCount = visible.filter((s) => s.id !== FALLBACK_SCENARIO).length;
+    const visible = useMemo(() => filterScenarios(scenarios, filter, tags), [filter, tags, scenarios]);
+    const resultSummary = summarizeResults(visible);
+
+    // Typing, trait chips, and Clear all share this path.
+    // A search edit is always announced, even when the count text is unchanged (e.g. "iot" -> "clickstream").
+    // Chips already report their pressed state, so they only add a changed count.
+    const applyFilters = (nextFilter: string, nextTags: ScenarioTag[]) => {
+        const nextSummary = summarizeResults(filterScenarios(scenarios, nextFilter, nextTags));
+        setFilter(nextFilter);
+        setTags(nextTags);
+        if (nextFilter !== filter || nextSummary !== resultSummary) {
+            announce(nextSummary, { polite: true, batchId: RESULTS_ANNOUNCEMENT });
+        }
+    };
 
     const toggleTag = (tag: ScenarioTag) =>
-        setTags((previous) => (previous.includes(tag) ? previous.filter((t) => t !== tag) : [...previous, tag]));
+        applyFilters(filter, tags.includes(tag) ? tags.filter((t) => t !== tag) : [...tags, tag]);
 
     // The button unmounts once nothing is filtered, so hand focus to the search box instead of losing it.
     const clearFilters = () => {
-        setFilter('');
-        setTags([]);
+        applyFilters('', []);
         searchRef.current?.focus();
     };
 
@@ -222,7 +248,7 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
                     aria-label={l10n.t('Filter scenarios…')}
                     aria-description={l10n.t('Scenarios filter as you type.')}
                     value={filter}
-                    onChange={(_, data) => setFilter(data.value)}
+                    onChange={(_, data) => applyFilters(data.value, tags)}
                 />
                 <div
                     className={styles.traits}
@@ -275,14 +301,8 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
                     {l10n.t('Clear all')}
                 </Link>
             </div>
-            {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- Status live region recommended by #3590. */}
-            <div className={styles.resultStatus} role="status" aria-atomic={true}>
-                {matchCount === 0
-                    ? l10n.t('No scenarios match your filter. You can still choose a custom workload.')
-                    : matchCount === 1
-                      ? l10n.t('1 matching scenario')
-                      : l10n.t('{count} matching scenarios', { count: matchCount })}
-            </div>
+            {/* Not a live region: applyFilters() announces it, so screen readers hear each result only once. */}
+            <div className={styles.resultStatus}>{resultSummary}</div>
             <div className={styles.list} role="radiogroup" aria-label={l10n.t('Workload scenarios')}>
                 {visible.map((s) => (
                     <SelectableCard

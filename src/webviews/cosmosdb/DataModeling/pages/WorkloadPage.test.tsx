@@ -5,13 +5,22 @@
 
 // @vitest-environment jsdom
 
+import type * as FluentUI from '@fluentui/react-components';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { type ScenarioId } from '../models';
 import { getScenarioList, TRAIT_TONE } from '../scenarios';
 import { WorkloadPage } from './WorkloadPage';
+
+const announce = vi.hoisted(() => vi.fn());
+vi.mock('@fluentui/react-components', async (importOriginal) => ({
+    ...(await importOriginal<typeof FluentUI>()),
+    useAnnounce: () => ({ announce }),
+}));
+
+beforeEach(() => announce.mockClear());
 
 function Workload({
     initialScenario,
@@ -40,44 +49,68 @@ const firstChip = () => toolbar().getAllByRole('button')[0];
 const clearButton = () => screen.getByRole('button', { name: 'Clear all' });
 
 describe('WorkloadPage result status', () => {
-    it('exposes matching counts and no-match feedback in a persistent live region without moving focus', async () => {
+    const allMatching = () => `${getScenarioList().length - 1} matching scenarios`;
+    // The visible count and the announcement come from the same edit, with no delay in between.
+    const expectResult = (message: string) => {
+        expect(screen.getByText(message)).toBeVisible();
+        expect(announce).toHaveBeenLastCalledWith(message, expect.objectContaining({ polite: true }));
+    };
+
+    it('shows the matching count without a live region and announces every search edit', async () => {
         const user = userEvent.setup();
-        render(<Workload />);
+        const { container } = render(<Workload />);
         const search = screen.getByRole('textbox', { name: 'Filter scenarios…' });
         expect(search).toHaveAccessibleName('Filter scenarios…');
         expect(search).toHaveAccessibleDescription('Scenarios filter as you type.');
-        const status = screen.getByRole('status');
-        expect(status).toHaveAttribute('aria-atomic', 'true');
-        expect(status.textContent).toBe(`${getScenarioList().length - 1} matching scenarios`);
+        // The visible summary is not a live region, so only the explicit announcement is spoken.
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        expect(container.querySelector('[aria-live]')).toBeNull();
+        expect(screen.getByText(allMatching())).toBeVisible();
         await user.click(search);
+        expect(announce).not.toHaveBeenCalled();
 
         fireEvent.change(search, { target: { value: 'transactions' } });
-        expect(status.textContent).toBe('2 matching scenarios');
+        expectResult('2 matching scenarios');
+        fireEvent.change(search, { target: { value: 'iot' } });
+        expectResult('1 matching scenario');
+        announce.mockClear();
+        // Same count, different card: the new search still gets feedback.
         fireEvent.change(search, { target: { value: 'clickstream' } });
-        expect(status.textContent).toBe('1 matching scenario');
+        expect(announce).toHaveBeenCalledExactlyOnceWith('1 matching scenario', expect.anything());
+        expectResult('1 matching scenario');
+
         fireEvent.change(search, { target: { value: 'no matching workload' } });
-        expect(status).toHaveTextContent('No scenarios match your filter. You can still choose a custom workload.');
-        expect(status).toBeVisible();
+        expectResult('No scenarios match your filter. You can still choose a custom workload.');
         expect(screen.getAllByRole('radio')).toHaveLength(1);
-        expect(screen.getByRole('status')).toBe(status);
         expect(search).toHaveFocus();
     });
 
-    it('updates the status for trait filters, combined filters, and Clear all', async () => {
+    it('announces trait chips and Clear all only when the count changes', async () => {
         const user = userEvent.setup();
         render(<Workload />);
-        const status = screen.getByRole('status');
         const trait = toolbar().getByRole('button', { name: 'Write-heavy' });
         await user.click(trait);
-        expect(status.textContent).toBe('2 matching scenarios');
+        expectResult('2 matching scenarios');
         expect(trait).toHaveFocus();
 
         const search = screen.getByRole('textbox', { name: 'Filter scenarios…' });
         await user.type(search, 'clickstream');
-        expect(status.textContent).toBe('1 matching scenario');
+        expectResult('1 matching scenario');
+        // Toggling the chip off and on keeps the count, so the pressed state alone is the feedback.
+        const announced = announce.mock.calls.length;
+        await user.click(trait);
+        expect(trait).toHaveAttribute('aria-pressed', 'false');
+        await user.click(trait);
+        expect(trait).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByText('1 matching scenario')).toBeVisible();
+        expect(announce).toHaveBeenCalledTimes(announced);
+
         await user.click(clearButton());
-        expect(status.textContent).toBe(`${getScenarioList().length - 1} matching scenarios`);
+        expectResult(allMatching());
         expect(search).toHaveFocus();
+        // One batch for every source, so a newer summary replaces a stale one still waiting to be read.
+        const batches = new Set(announce.mock.calls.map(([, options]) => (options as { batchId?: string }).batchId));
+        expect([...batches]).toEqual([expect.any(String)]);
     });
 });
 

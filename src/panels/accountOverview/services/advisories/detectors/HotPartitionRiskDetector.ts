@@ -6,12 +6,7 @@
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
-import {
-    clampRationale,
-    hasCompletePartitionObservations,
-    hasMinimumKnownResourceAge,
-    offerScope,
-} from '../core/helpers';
+import { clampRationale, hasMinimumKnownResourceAge, offerScope } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import {
     type AdvisoryEvaluation,
@@ -34,11 +29,7 @@ function evaluateHotPartitionRisk(
     headroomPercent: number,
     throttleThresholdPercent: number,
 ): AdvisoryEvaluation<'HotPartitionRisk'> {
-    if (input.partitionCount === 1) {
-        return { rootCause: input.physicalPartitionCount === 1 ? 'single_partition' : 'insufficient_data' };
-    }
     if (
-        input.throttleRatePercent === undefined ||
         !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.partitionSaturation.minResourceAgeDays) ||
         input.partitionCount === 0 ||
         !Number.isFinite(input.maxP99) ||
@@ -47,21 +38,16 @@ function evaluateHotPartitionRisk(
         return { rootCause: 'insufficient_data' };
     }
     if (input.partitionCount < DIAGNOSTIC_POLICY.partitionSaturation.minHotPartitions) {
+        return { rootCause: 'single_partition' };
+    }
+    if (input.throttleRatePercent === undefined) {
         return { rootCause: 'insufficient_data' };
     }
     if (input.maxP99 < saturationPercent) {
-        return {
-            rootCause: hasCompletePartitionObservations(input.partitionCount, input.physicalPartitionCount)
-                ? 'not_saturated'
-                : 'insufficient_data',
-        };
+        return { rootCause: 'not_saturated' };
     }
     if (input.minP99 >= headroomPercent) {
-        return {
-            rootCause: hasCompletePartitionObservations(input.partitionCount, input.physicalPartitionCount)
-                ? 'uniform_saturation'
-                : 'insufficient_data',
-        };
+        return { rootCause: 'uniform_saturation' };
     }
     const scope = offerScope(input);
     const name = input.containerId ?? input.databaseId;

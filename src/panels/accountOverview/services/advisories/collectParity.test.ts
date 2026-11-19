@@ -317,6 +317,55 @@ describe('collectDerivedAdvisories parity wiring', () => {
         });
     });
 
+    it('attributes redundant scoped age failures with a linear number of identity reads', async () => {
+        const engine = await vi.importActual<typeof EngineModule>('./engine');
+        const count = 64;
+        let identityReads = 0;
+        const identities = Array.from({ length: count }, (_, index) => ({
+            databaseId: 'private-db',
+            get containerId() {
+                identityReads++;
+                return `private-container-${index}`;
+            },
+        }));
+        const rows = identities.map((identity) => ({
+            ...inventoryRow({ resourceCreatedAt: undefined }),
+            get containerId() {
+                return identity.containerId;
+            },
+        }));
+        const offers = identities.map((identity) => ({
+            databaseId: identity.databaseId,
+            get containerId() {
+                return identity.containerId;
+            },
+            offerLevel: 'container' as const,
+            throughputMode: 'dedicated' as const,
+            offerThroughputMode: 'manual' as const,
+            throughputRU: 1000,
+        }));
+
+        vi.mocked(analyzeDerivedAdvisories).mockImplementation(engine.analyzeDerivedAdvisories);
+        vi.mocked(getSqlInventoryDetails).mockResolvedValue({
+            rows,
+            offers,
+            databases: ['private-db'],
+            throughputInventoryComplete: true,
+        });
+        vi.spyOn(resourceAge, 'getContainerCreatedAt').mockRejectedValue({ statusCode: 503 });
+        vi.mocked(getContainerIdlePeak).mockResolvedValue(0);
+
+        const result = await collectDerivedAdvisories(params({ logsClient: undefined }));
+
+        expect(result.detectorCoverage.find(({ rule }) => rule === 'IdleContainer')).toMatchObject({
+            status: 'evaluated',
+            evaluatedCount: count,
+            unavailableReasons: [],
+        });
+        expect(result.metricSource.failures.filter(({ rule }) => rule === 'IdleContainer')).toHaveLength(count);
+        expect(identityReads).toBeLessThan(128 * count);
+    });
+
     it('preserves denied inventory as backup cost access denial', async () => {
         const engine = await vi.importActual<typeof EngineModule>('./engine');
         vi.mocked(analyzeDerivedAdvisories).mockImplementation(engine.analyzeDerivedAdvisories);

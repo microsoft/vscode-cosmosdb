@@ -819,43 +819,55 @@ export async function collectDerivedAdvisories(
         advisoryThresholds,
     );
 
-    // Preserve source failures even when a target's own timestamp or an account fallback supplies its age.
-    for (const failure of ageFailures) {
-        const targets =
-            failure.rule === 'OverProvisioning' || failure.rule === 'AutoscaleCandidate'
-                ? manualTargets
-                : failure.rule === 'AutoscaleMaxOverProvisioned' || failure.rule === 'AutoscaleToManualCandidate'
-                  ? autoscaleTargets
-                  : offerTargets;
-        const needsAge =
-            failure.rule === 'StorageSkewRisk'
-                ? dedicatedTargets.some(
-                      (row) =>
-                          (failure.scope === undefined || failure.scope === scopeOf(row)) &&
-                          !storageSkew.some(
-                              (input) => scopeOf(input) === scopeOf(row) && hasSingleStoragePartition(input),
-                          ) &&
-                          rowAgeDays(row, accountCreatedAt, now) === undefined,
-                  )
-                : targets.some(
-                      (offer) =>
-                          (failure.scope === undefined || failure.scope === scopeOf(offer)) &&
-                          !(
-                              failure.rule === 'HotPartitionRisk' &&
-                              partitions.some(
-                                  (input) =>
-                                      scopeOf(input) === scopeOf(offer) &&
-                                      input.partitionCount === 1 &&
-                                      input.physicalPartitionCount === 1,
-                              )
-                          ) &&
-                          offerAgeDays(offer) === undefined,
-                  );
+    if (ageFailures.length > 0) {
+        const unknownOfferAges = new Set(
+            offerTargets.filter((offer) => offerAgeDays(offer) === undefined).map(scopeOf),
+        );
+        const unknownManualAges = new Set(
+            manualTargets.map(scopeOf).filter((scope) => unknownOfferAges.has(scope)),
+        );
+        const unknownAutoscaleAges = new Set(
+            autoscaleTargets.map(scopeOf).filter((scope) => unknownOfferAges.has(scope)),
+        );
+        const unknownHotPartitionAges = new Set(unknownOfferAges);
+        const unknownStorageAges = new Set(
+            dedicatedTargets.filter((row) => rowAgeDays(row, accountCreatedAt, now) === undefined).map(scopeOf),
+        );
 
-        if (needsAge) {
-            addMetricFailure(metricCoverageFailures, failure.rule, failure.reason, failure.scope);
+        if (unknownStorageAges.size > 0) {
+            for (const input of storageSkew) {
+                if (hasSingleStoragePartition(input)) {
+                    unknownStorageAges.delete(scopeOf(input));
+                }
+            }
         }
-        addMetricFailure(metricFailures, failure.rule, failure.reason, failure.scope);
+        if (unknownHotPartitionAges.size > 0) {
+            for (const input of partitions) {
+                if (input.partitionCount === 1 && input.physicalPartitionCount === 1) {
+                    unknownHotPartitionAges.delete(scopeOf(input));
+                }
+            }
+        }
+
+        // Preserve source failures even when the target's timestamp or an account fallback supplies its age.
+        for (const failure of ageFailures) {
+            const unknownAges =
+                failure.rule === 'StorageSkewRisk'
+                    ? unknownStorageAges
+                    : failure.rule === 'HotPartitionRisk'
+                      ? unknownHotPartitionAges
+                      : failure.rule === 'OverProvisioning' || failure.rule === 'AutoscaleCandidate'
+                        ? unknownManualAges
+                        : failure.rule === 'AutoscaleMaxOverProvisioned' || failure.rule === 'AutoscaleToManualCandidate'
+                          ? unknownAutoscaleAges
+                          : unknownOfferAges;
+            const needsAge = failure.scope === undefined ? unknownAges.size > 0 : unknownAges.has(failure.scope);
+
+            if (needsAge) {
+                addMetricFailure(metricCoverageFailures, failure.rule, failure.reason, failure.scope);
+            }
+            addMetricFailure(metricFailures, failure.rule, failure.reason, failure.scope);
+        }
     }
 
     const metricSource = { available: metricFailures.length === 0, failures: metricFailures };

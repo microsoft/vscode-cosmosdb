@@ -121,8 +121,7 @@ describe('pure detector coverage', () => {
                 { maxP99: 95, minP99: 30 },
             ].map((observations) => ({ ...observations, physicalPartitionCount })),
         ),
-    )('classifies conclusive and incomplete partition evidence: %j', (observations) => {
-        const incomplete = observations.physicalPartitionCount === 3;
+    )('preserves CODA classifications independently of physical-count metadata: %j', (observations) => {
         const hotMatch = observations.maxP99 === 95 && observations.minP99 === 30;
         const underProvisionedMatch = observations.maxP99 === 95 && observations.minP99 === 80;
         const result = analyzeDerivedAdvisories(
@@ -132,21 +131,19 @@ describe('pure detector coverage', () => {
         const expectations = [
             {
                 rule: 'HotPartitionRisk',
-                insufficient: incomplete && !hotMatch,
                 matchedCount: Number(hotMatch),
             },
             {
                 rule: 'SustainedThrottlingInRegion',
-                insufficient: incomplete && observations.maxP99 < 90 && observations.minP99 >= 70,
                 matchedCount: Number(underProvisionedMatch),
             },
         ];
 
-        for (const { rule, insufficient, matchedCount } of expectations) {
+        for (const { rule, matchedCount } of expectations) {
             expect(result.detectorCoverage.find((entry) => entry.rule === rule)).toMatchObject({
-                status: insufficient ? 'insufficientData' : 'evaluated',
-                evaluatedCount: insufficient ? 0 : 1,
-                insufficientDataCount: insufficient ? 1 : 0,
+                status: 'evaluated',
+                evaluatedCount: 1,
+                insufficientDataCount: 0,
                 matchedCount,
             });
             expect(result.advisories.filter((advisory) => advisory.rule === rule)).toHaveLength(matchedCount);
@@ -154,7 +151,7 @@ describe('pure detector coverage', () => {
     });
 
     it.each([0, 5])(
-        'does not infer RU observations from request traffic (%s percent throttled)',
+        'preserves CODA empty-RU classifications without inventing observations (%s percent throttled)',
         (throttleRatePercent) => {
             const result = analyzeDerivedAdvisories(
                 {
@@ -173,8 +170,8 @@ describe('pure detector coverage', () => {
             );
 
             expect(result.detectorCoverage.find(({ rule }) => rule === 'SustainedThrottlingInRegion')).toMatchObject({
-                status: throttleRatePercent === 0 ? 'evaluated' : 'insufficientData',
-                evaluatedCount: throttleRatePercent === 0 ? 1 : 0,
+                status: 'evaluated',
+                evaluatedCount: 1,
                 matchedCount: 0,
             });
             expect(result.detectorCoverage.find(({ rule }) => rule === 'HotPartitionRisk')).toMatchObject({
@@ -186,7 +183,7 @@ describe('pure detector coverage', () => {
         },
     );
 
-    it.each([undefined, 1, 2])('requires independent single-partition evidence (%s)', (physicalPartitionCount) => {
+    it.each([undefined, 1, 2])('uses CODA observed singleton classification (%s)', (physicalPartitionCount) => {
         const result = analyzeDerivedAdvisories(
             {
                 ...emptyInputs,
@@ -206,8 +203,8 @@ describe('pure detector coverage', () => {
 
         for (const rule of ['HotPartitionRisk', 'StorageSkewRisk']) {
             expect(result.detectorCoverage.find((entry) => entry.rule === rule)).toMatchObject({
-                status: physicalPartitionCount === 1 ? 'notApplicable' : 'insufficientData',
-                notApplicableCount: physicalPartitionCount === 1 ? 1 : 0,
+                status: 'notApplicable',
+                notApplicableCount: 1,
                 matchedCount: 0,
             });
         }
@@ -215,7 +212,8 @@ describe('pure detector coverage', () => {
         expect(result.advisories).toEqual([]);
     });
 
-    it.each([undefined, 0.1, 30])('does not require age for a known single partition (%s days)', (resourceAgeDays) => {
+    it.each([undefined, 0.1, 30])('applies the CODA age gate before singleton classification (%s days)', (resourceAgeDays) => {
+        const young = resourceAgeDays === 0.1;
         const result = analyzeDerivedAdvisories(
             {
                 ...emptyInputs,
@@ -235,8 +233,9 @@ describe('pure detector coverage', () => {
 
         for (const rule of ['HotPartitionRisk', 'StorageSkewRisk']) {
             expect(result.detectorCoverage.find((entry) => entry.rule === rule)).toMatchObject({
-                status: 'notApplicable',
-                notApplicableCount: 1,
+                status: young ? 'insufficientData' : 'notApplicable',
+                notApplicableCount: young ? 0 : 1,
+                insufficientDataCount: young ? 1 : 0,
                 evaluatedCount: 0,
                 unavailableReasons: [],
             });
@@ -404,9 +403,9 @@ describe('pure detector coverage', () => {
         { rule: 'StorageGrowthRisk', sizes: [[10, 10.1], []], status: 'insufficientData', matches: 0 },
         { rule: 'StorageGrowthRisk', sizes: [[30, 30], [0.5]], status: 'evaluated', matches: 0 },
         { rule: 'StorageGrowthRisk', sizes: [[45, 46], []], status: 'evaluated', matches: 1 },
-        { rule: 'StorageSkewRisk', sizes: [[30], [30], []], status: 'insufficientData', matches: 0 },
-        { rule: 'StorageSkewRisk', sizes: [[0.5], [0.1], []], status: 'insufficientData', matches: 0 },
-        { rule: 'StorageSkewRisk', sizes: [[30], []], status: 'insufficientData', matches: 0 },
+        { rule: 'StorageSkewRisk', sizes: [[30], [30], []], status: 'evaluated', matches: 0 },
+        { rule: 'StorageSkewRisk', sizes: [[0.5], [0.1], []], status: 'evaluated', matches: 0 },
+        { rule: 'StorageSkewRisk', sizes: [[30], []], status: 'notApplicable', matches: 0 },
         { rule: 'StorageSkewRisk', sizes: [[30], [30]], status: 'evaluated', matches: 0 },
         { rule: 'StorageSkewRisk', sizes: [[30]], status: 'notApplicable', matches: 0 },
         { rule: 'StorageSkewRisk', sizes: [[40], [5], []], status: 'evaluated', matches: 1 },

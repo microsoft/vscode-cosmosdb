@@ -145,17 +145,16 @@ Failed or incomplete inventory never implies zero targets, and missing-resource 
 Completed checks remain partial when incomplete throughput inventory leaves other targets potentially eligible.
 Age-read failures affect detector coverage only when an eligible target still lacks its required age evidence;
 redundant failures remain in source diagnostics without reducing completed detector coverage.
-A known single physical partition establishes hot-partition and storage-skew inapplicability before age gates.
-That count comes from the independent `PhysicalPartitionCount` metric, never from the number of sampled RU or storage
-series. The existing partition-count read is reused rather than repeated. Storage inapplicability additionally requires a
-finite sample; the detector and age-dependency filter share that predicate so empty rows cannot hide age-read failures.
-An actual failed physical-count dependency affects single-observation applicability, but remains optional for decisions
-that finish without it. Known missing partition observations cannot establish a negative hot-partition result or the
-absence of global saturation. Below-threshold throttling or an observed cool partition still conclusively rules out
-under-provisioning; positive findings are unchanged.
+Detector root causes follow pinned CODA's observed-series contract, including `single_partition`, `not_saturated`,
+`uniform_saturation`, `uniform_storage`, `too_small` and the nonsaturated `not_throttling` outcome.
+Independent `PhysicalPartitionCount` evidence is retained for acquisition diagnostics and is never substituted for
+the number of usable observations or used to rewrite a CODA classification. Known-young age gates still apply.
+The existing count read is reused rather than repeated. Failed count reads and unresolved age reads remain separately
+visible in source/coverage diagnostics; a negative classifier result is not proof that every physical partition was read.
+Age dependency attribution indexes only unresolved scopes and scans observations at most once, without nested scope searches.
 Missing throttle observations are never replaced with synthetic values or counted as under-provisioning evaluations.
 Successful empty observations do not create unavailable dependencies; rules retain their existing evidence semantics,
-including empty successful consumption reads establishing idleness. Disabled indexing and a known single physical partition
+including empty successful consumption reads establishing idleness. Disabled indexing and a single observed partition
 can establish inapplicability without otherwise-required metric reads; user-excluded paths do not suppress indexing checks.
 Sufficient query traffic with known low fan-out is a completed negative evaluation, not proof of container inapplicability.
 Missing configuration fields remain insufficient evidence, not a failed workload-data dependency.

@@ -7,7 +7,7 @@ import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
 import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
-import { clampRationale, hasCompletePartitionObservations, hasMinimumKnownResourceAge } from '../core/helpers';
+import { clampRationale, hasMinimumKnownResourceAge } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import {
     type AdvisoryEvaluation,
@@ -18,7 +18,6 @@ import {
 import {
     balanceRatio,
     GIB,
-    hasSingleStoragePartition,
     PARTITION_STORAGE_LIMIT_BYTES,
     STORAGE_SKEW_HIGH_BYTES,
     STORAGE_SKEW_MEDIUM_BYTES,
@@ -39,7 +38,10 @@ function evaluateStorageSkewRisk(
     input: ContainerStorageInput,
     balanceThreshold: number,
 ): AdvisoryEvaluation<'StorageSkewRisk'> {
-    if (balanceThreshold <= 0) {
+    if (
+        balanceThreshold <= 0 ||
+        !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.storageSkew.minResourceAgeDays)
+    ) {
         return { rootCause: 'insufficient_data' };
     }
     const sizes = input.partitions
@@ -51,25 +53,15 @@ function evaluateStorageSkewRisk(
         })
         .filter((bytes): bytes is number => bytes !== undefined);
     const ratio = balanceRatio(sizes);
-    const hasCompleteObservations =
-        sizes.length === input.partitions.length &&
-        hasCompletePartitionObservations(sizes.length, input.physicalPartitionCount);
-
-    if (hasSingleStoragePartition(input)) {
-        return { rootCause: 'single_partition' };
-    }
-    if (
-        sizes.length === 0 ||
-        !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.storageSkew.minResourceAgeDays)
-    ) {
+    if (sizes.length === 0) {
         return { rootCause: 'insufficient_data' };
     }
     if (sizes.length === 1) {
-        return { rootCause: 'insufficient_data' };
+        return { rootCause: 'single_partition' };
     }
     const busiestBytes = Math.max(...sizes);
     if (busiestBytes < STORAGE_SKEW_MIN_BUSIEST_BYTES) {
-        return { rootCause: hasCompleteObservations ? 'too_small' : 'insufficient_data' };
+        return { rootCause: 'too_small' };
     }
     if (ratio === undefined || ratio >= balanceThreshold) {
         return { rootCause: 'uniform_storage' };

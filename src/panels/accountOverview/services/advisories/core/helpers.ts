@@ -14,6 +14,19 @@ import {
     type UtilizationBand,
 } from './types';
 
+export function roundMonthlySavings(amount: number): number {
+    const rounded = amount.toFixed(2);
+
+    // Match Python round(amount, 2): exact binary half-cent ties occur at odd eighth-unit values.
+    if (amount % 0.25 !== 0.125) {
+        return Number(rounded);
+    }
+
+    const lastDigit = Number(rounded.at(-1));
+
+    return lastDigit % 2 === 0 ? Number(rounded) : Number(rounded.slice(0, -1) + String(lastDigit - 1));
+}
+
 export function utilizationBand(value: number, moderateUpperPercent: number): UtilizationBand {
     return value < DIAGNOSTIC_POLICY.overProvisioning.idleBandPercent
         ? 'idle'

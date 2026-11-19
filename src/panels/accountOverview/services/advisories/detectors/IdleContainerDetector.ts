@@ -88,7 +88,12 @@ function evaluateIdleContainer(
         rule: 'IdleContainer',
         severity,
         title: l10n.t('Provisioned offer looks idle'),
-        evidence: { provisionedRu: input.provisionedRu, recoverableRu, peakRuPerBucket: input.peakRuPerBucket },
+        evidence: {
+            provisionedRu: input.provisionedRu,
+            recoverableRu,
+            peakRuPerBucket: input.peakRuPerBucket,
+            throughputMode: isAutoscale ? 'autoscale' : 'manual',
+        },
         rationale: clampRationale(rationale),
         suggestedAction:
             input.containerId === undefined

@@ -589,6 +589,67 @@ failed/unavailable enrichment records `unavailable`, while the ARM configuration
 Observed read RU and half that amount as a theoretical upper bound are separate evidence: diagnostic logs do
 not identify per-request consistency overrides. Neither value establishes measured or monetary savings.
 
+**Financial enrichment:** after detection and supersession, positive recoverable capacity from manual
+over-provisioning, idle offers, autoscale maximum over-provisioning (idle-floor RU), and quantified removable
+extra-region capacity can receive optional monetary estimates. An account-filtered subscription-scope Cost Management
+`AmortizedCost` query per analysis filters the exact account `ResourceId`, aggregates `Cost` and `UsageQuantity`,
+and groups by `MeterCategory` and `Meter`. Its observation is the preceding 30 UTC days, ending at today's
+midnight. Only `Azure Cosmos DB` meters ending in `RU/s` contribute; storage, serverless, transfer and Defender
+meters do not. Responses require unique typed columns, complete rows, one currency, finite
+cost/usage and positive totals. Signed billing adjustments participate in those totals, as in CODA.
+Pagination is rejected rather than treating a first page as a complete rate.
+The native client reuses the authenticated ARM pipeline and configured cloud endpoint, including bounded
+SDK retries; it does not acquire credentials, add dependencies or change role assignments.
+
+The blended rate is `(amortizedCost / billed100RuHours) / 100 * 730`; the estimate is the detector's
+positive recoverable RU/s times that rate, matching the pinned CODA implementation. No additional regional,
+autoscale or zone billing multiplier is applied. Already regionalized `removableExtraRegionRu` is unchanged.
+Amounts use CODA's two-decimal, ties-to-even rounding; a positive amount that rounds to zero is not emitted.
+Billed usage, not configured capacity times window duration, is the divisor.
+Currency, contributing meters, cost, billed usage, window, rate and its scope remain in structured provenance.
+As in CODA, a successful account query with no usable positive rate permits one subscription-wide bill query.
+This fallback is explicitly labeled `subscription_fallback`; it is a blended subscription rate, not account
+attribution. Authentication, access, service, timeout and invalid-response failures never broaden the query.
+Estimates do not alter findings, severity, thresholds or supersession. Superseded, blocked, unquantified,
+zero-capacity and unrelated findings receive no throughput estimate. The UI explicitly describes the rate as
+blended and savings as modeled, not a guaranteed invoice reduction; reservations, commitments and future demand
+can prevent realization. There is no monetary rollup because actions can overlap across findings.
+
+Paid continuous-backup findings use a **separate USD retail-price scenario**, not the customer-bill rate.
+Only the public Azure cloud is supported for this source. Every configured account region must resolve
+unambiguously through subscription location metadata, and ARM container inventory must have completed.
+Accepted region aliases resolve separately to the canonical retail key and the Monitor display name.
+Storage filters, dimension validation and provenance use the resolved display name, not the caller's alias.
+`DataUsageV2` (`Total`, bytes, five-minute grain, last 24 hours) is read per known logical container in one
+reference region. The newest complete common timestamp must contain every inventory container exactly once,
+with correct resource/region dimensions, finite nonnegative bytes, age at most six hours and future skew at
+most five minutes. Missing/duplicate series and partial inventories never become zero storage. Observed zero
+bytes are valid. No time buckets or replicated-region storage copies are added together.
+
+Unauthenticated Azure Retail Prices requests accept no redirects and follow only bounded, non-looping
+pagination on the fixed HTTPS endpoint. Every configured region needs exactly one current primary consumption
+record for `Azure Cosmos DB - PITR` / `Backup` / `Cont 30D Bckp Continuous Backup`, unit `1 GB`, base tier and USD.
+Restore meters, other tiers, duplicate current records, invalid prices/dates and currency mismatches cannot
+produce an estimate. Decimal logical GB times the sum of regional monthly prices gives the scenario amount,
+rounded to two decimals with CODA's ties-to-even rule. Unlike throughput savings, an observed zero amount is retained.
+Snapshot timestamp/reference region, container count, byte total, regional prices, meter IDs and effective
+dates remain inspectable provenance. Discounts, restore charges and future storage changes are excluded;
+the qualitative recovery-policy review is retained even when this enrichment fails.
+
+Optional cost coverage has its own categorized notice, independent of metric/log detector coverage.
+A billing HTTP 204 No Content response means unavailable data; an empty HTTP 200 response remains invalid evidence.
+Throughput estimates do not require a separate regional footprint or write-mode setting once a detector has
+produced eligible recoverable capacity. These inputs are not quantity gates in CODA's bill-derived model.
+Any future billing-model correction must be coordinated with CODA's versioned contract and shared fixtures;
+the extension does not independently reinterpret the pinned model.
+Denied inventory retains `backup/accessDenied` rather than becoming missing storage data.
+Unsupported-cost guidance covers both account API restrictions and cloud restrictions.
+Authentication, access denial, rate limiting, timeouts, service/query errors, invalid/incomplete evidence,
+unsupported clouds and no usable data stay distinguishable without forwarding raw service errors or billing
+rows. Missing access or data means no monetary figure, never fabricated zero. No billing query runs without
+an eligible capacity finding, and no backup storage/pricing query runs without a paid-backup finding.
+Azure Advisor's separately supplied savings remain Azure-authored.
+
 Per-container idle/merge queries MUST target known containers, not discover them through wildcard metric series or a larger `top`.
 Shared-offer throughput utilization/saturation queries select the database offer's empty `CollectionName` dimension,
 not the database-wide aggregate that also includes dedicated offers. Shared-offer idle consumption and throttling
@@ -697,7 +758,9 @@ not entries in the derived-detector registry.
 The proposed CODA DX-020/021/023 thresholds above were explicitly adopted for native advisories.
 They remain ranking heuristics, separate from Account Health and user settings.
 DX-019 advises reviewing seven-day continuous retention only if recovery requirements allow losing older restore
-points; it never recommends switching to Periodic. Monetary estimates are not collected.
+points; it never recommends switching to Periodic. An optional USD storage/retail-price estimate requires
+a complete common-timestamp storage snapshot and current prices for every configured region; otherwise the
+qualitative finding remains without a monetary figure.
 DX-020 uses the most frequent individual hard-error status. Only dominant 404/409 map to
 `sdk-conditional-create-etag`, only 412 maps to `sdk-etag-concurrency`; other statuses map to null.
 These are conditional investigations, not proof of existence-check-before-create, a missing ETag or a hot item.

@@ -18,6 +18,7 @@ import {
     DEFAULT_PARTITION_THRESHOLDS,
     type PartitionStorageResult,
 } from '../partitionHealth';
+import { reportUncaughtReadFailure, type ReadSource } from '../readDiagnostics';
 import { getContainerCreatedAt, getKnownResourceAgeDays, getSystemCreatedAt } from '../resourceAge';
 import { getRuTrends, getThrottleRate } from '../ruTrends';
 import { classifyUnavailable, containerKey } from '../shared';
@@ -155,10 +156,11 @@ async function mapInBatches<TItem, TResult>(
     return results;
 }
 
-async function capture<T>(work: Promise<T>): Promise<CollectResult<T>> {
+async function capture<T>(work: Promise<T>, source: ReadSource = 'metrics'): Promise<CollectResult<T>> {
     try {
         return { value: await work };
     } catch (error) {
+        reportUncaughtReadFailure(source, error);
         return { reason: classifyUnavailable(error) };
     }
 }
@@ -228,11 +230,14 @@ export async function collectDerivedAdvisories(
 
     const now = Date.now();
     const metricFailures: MetricSourceStatus['failures'] = [];
-    const accountCreatedAtPromise = capture(getAccountCreatedAt(cosmosClient, resourceGroup, accountName));
+    const accountCreatedAtPromise = capture(getAccountCreatedAt(cosmosClient, resourceGroup, accountName), 'account');
 
     let rows: InventoryContainerRow[] = [];
     let offers: InventoryThroughputOffer[] = [];
-    const inventory = await capture(getSqlInventoryDetails(cosmosClient, resourceGroup, accountName, isServerless));
+    const inventory = await capture(
+        getSqlInventoryDetails(cosmosClient, resourceGroup, accountName, isServerless),
+        'inventory',
+    );
     if (inventory.value) {
         rows = inventory.value.rows;
         offers = inventory.value.offers;

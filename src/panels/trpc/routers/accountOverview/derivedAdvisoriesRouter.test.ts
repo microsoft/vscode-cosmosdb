@@ -10,6 +10,7 @@ import { API } from '../../../../AzureDBExperiences';
 import { collectDerivedAdvisories } from '../../../accountOverview/services/advisories';
 import type * as advisories from '../../../accountOverview/services/advisories';
 import { DEFAULT_ADVISORY_THRESHOLDS } from '../../../accountOverview/services/advisories/core/thresholds';
+import { withReadDiagnostics } from '../../../accountOverview/services/readDiagnostics';
 import { mockClient } from '../../../accountOverview/services/testFixtures';
 import { getDerivedAdvisoriesForAccount } from './derivedAdvisoriesRouter';
 
@@ -46,6 +47,61 @@ function metadata(account: DatabaseAccountGetResults = {}) {
 beforeEach(() => vi.clearAllMocks());
 
 describe('account advisory acquisition', () => {
+    it('observes denied acquisition without changing the existing configuration-only fallback', async () => {
+        const input = metadata();
+
+        input.getMonitorClient.mockRejectedValue({ statusCode: 403 });
+
+        const captured = await withReadDiagnostics(() => getDerivedAdvisoriesForAccount(input));
+
+        expect(captured.result.advisories).toEqual([expect.objectContaining({ rule: 'ExpensiveConsistency' })]);
+        expect(captured.result.metricSource?.failures.every(({ reason }) => reason === 'rbac')).toBe(true);
+        expect(captured.result).not.toHaveProperty('detectorCoverage');
+        expect(captured.result).not.toHaveProperty('diagnostics');
+        expect(captured.diagnostics).toEqual([{ source: 'metrics', kind: 'accessDenied', reason: 'rbac' }]);
+    });
+
+    it.each([false, true])(
+        'preserves log fallback and collection payload while observing failures (acquisition: %s)',
+        async (acquisitionFailed) => {
+            const input = metadata();
+            const collected = {
+                advisories: [],
+                metricSource: { available: true, failures: [] },
+                logSource: { available: false, reason: 'noData' },
+            } satisfies Awaited<ReturnType<typeof collectDerivedAdvisories>>;
+
+            if (acquisitionFailed) {
+                input.getLogsQueryClient.mockRejectedValue({ statusCode: 403 });
+            }
+            vi.mocked(collectDerivedAdvisories).mockImplementationOnce(async ({ onLogsDiagnostic }) => {
+                onLogsDiagnostic?.({
+                    operation: acquisitionFailed ? 'client' : 'crossPartition',
+                    kind: acquisitionFailed ? 'clientUnavailable' : 'partialFailure',
+                    reason: acquisitionFailed ? 'noData' : 'rbac',
+                    codes: [],
+                    messages: ['private-diagnostic'],
+                });
+
+                return collected;
+            });
+
+            const captured = await withReadDiagnostics(() => getDerivedAdvisoriesForAccount(input));
+            const params = vi.mocked(collectDerivedAdvisories).mock.calls[0][0];
+
+            expect(captured.result).toEqual({ available: true, ...collected, generatedAt: expect.any(Number) });
+            expect(params).not.toHaveProperty('logsClientFailure');
+            expect(captured.diagnostics).toEqual([
+                {
+                    source: 'logs',
+                    kind: acquisitionFailed ? 'accessDenied' : 'partialFailure',
+                    reason: 'rbac',
+                },
+            ]);
+            expect(JSON.stringify(captured.diagnostics)).not.toContain('private-');
+        },
+    );
+
     it.each(['unsupported', 'noData', 'rbac'] as const)(
         'separates metric and log coverage in the %s configuration-only fallback',
         async (reason) => {

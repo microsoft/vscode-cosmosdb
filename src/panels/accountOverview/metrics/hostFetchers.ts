@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type MonitorClient } from '@azure/arm-monitor';
+import { readMetrics, reportReadFailure } from '../services/readDiagnostics';
 import { querySeries, queryThrottlingWindows } from '../services/ruTrends';
 import {
     metricFailureReason,
@@ -183,6 +184,7 @@ function genericSeries(metric: MetricKey): MetricFetcher {
                 ),
             );
         } catch (error) {
+            reportReadFailure('metrics', error);
             return { ...base, reason: metricFailureReason(error) };
         }
         const buckets = mergeBuckets(maps, combine);
@@ -270,7 +272,8 @@ function withThrottling(metric: MetricKey): MetricFetcher {
                 config.bucketMs,
                 filter,
             );
-        } catch {
+        } catch (error) {
+            reportReadFailure('metrics', error);
             // Overlay is best-effort; keep the primary series even if it fails.
         }
         const points = result.points.map((p) => ({ ...p, throttled: throttled.has(p.timestamp) }));
@@ -345,7 +348,7 @@ function documentCountFetcher(): MetricFetcher {
 
         let response: Awaited<ReturnType<MonitorClient['metrics']['list']>>;
         try {
-            response = await client.metrics.list(resourceUri, {
+            response = await readMetrics(client, resourceUri, {
                 metricnames: spec.metricNames[0],
                 aggregation: spec.aggregation,
                 timespan,
@@ -353,6 +356,7 @@ function documentCountFetcher(): MetricFetcher {
                 filter,
             });
         } catch (error) {
+            reportReadFailure('metrics', error);
             return { ...base, reason: metricFailureReason(error) };
         }
 

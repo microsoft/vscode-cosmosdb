@@ -13,6 +13,7 @@ import {
     RestError,
 } from '@azure/core-rest-pipeline';
 import { z } from 'zod';
+import { reportReadFailure, reportUnavailableClient } from './readDiagnostics';
 import { classifyUnavailable, type UnavailableReason } from './shared';
 
 export { escalateAccountHealth, type AccountHealthSignals } from '../overviewHealthModel';
@@ -119,6 +120,7 @@ export async function getActiveAlertSummary(
         generatedAt,
     });
     if (!client) {
+        reportUnavailableClient('alertCounts');
         return unavailable('noData');
     }
     try {
@@ -170,6 +172,7 @@ export async function getActiveAlertSummary(
         }
         return { available: true, ...counts, generatedAt };
     } catch (error) {
+        reportReadFailure('alertCounts', error);
         return unavailable(classifyUnavailable(error));
     }
 }
@@ -338,6 +341,7 @@ export async function getAlerts(
             });
         }
     } catch (error) {
+        reportReadFailure('alerts', error);
         return {
             available: false,
             reason: classifyUnavailable(error),
@@ -421,6 +425,7 @@ export async function getRecommendations(
     try {
         all = await listSubscriptionRecommendations(client, subscriptionId, now);
     } catch (error) {
+        reportReadFailure('advisor', error);
         return {
             available: false,
             reason: classifyUnavailable(error),

@@ -1,0 +1,248 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+import { describe, expect, expectTypeOf, it, vi } from 'vitest';
+import { createArmTestContext } from '../../cosmosdb/armTestUtils';
+import { fetchMetricSeries } from './metrics/hostFetchers';
+import { LOGS_FAILURE_KINDS } from './services/advisories/fetchers/logsDiagnostics';
+import { READ_SOURCES, type ReadFailure } from './services/readDiagnostics';
+import { UNAVAILABLE_REASONS } from './services/shared';
+import { mockClient } from './services/testFixtures';
+import { reportOverviewResultTelemetry } from './telemetry';
+import {
+    overviewAdvisoryResultSchema,
+    overviewErrorSchema,
+    overviewEventSchema,
+    overviewReadResultSchema,
+    type OverviewReadResult,
+} from './telemetryContract';
+
+vi.mock('@microsoft/vscode-azext-utils', () => ({ callWithTelemetryAndErrorHandling: vi.fn() }));
+vi.mock('../../utils/azureClients', () => ({}));
+
+describe('Account Overview telemetry summaries', () => {
+    it.each(['DataUsage', 'IndexUsage', 'both'] as const)(
+        'reports successful storage reads with an empty component as partial (%s)',
+        async (observed) => {
+            const response = {
+                value: [{ timeseries: [{ data: [{ timeStamp: '2026-01-01T00:00:00Z', maximum: 100 }] }] }],
+            };
+            const client = mockClient({
+                ...(observed !== 'IndexUsage' && { DataUsage: response }),
+                ...(observed !== 'DataUsage' && { IndexUsage: response }),
+            });
+            const context = createArmTestContext();
+            const result = await fetchMetricSeries('dataIndexUsage', client, 'private-account', {}, '24H');
+            const snapshot = structuredClone(result);
+
+            reportOverviewResultTelemetry(context, result);
+
+            expect(result.available).toBe(true);
+            expect(context.telemetry.properties).toEqual({ dataResult: observed === 'both' ? 'complete' : 'partial' });
+            expect(context.telemetry.measurements).toEqual({ readFailureCount: 0 });
+            expect(result).toEqual(snapshot);
+        },
+    );
+
+    it('keeps telemetry diagnostic types identical to the shared domain types', () => {
+        expectTypeOf<OverviewReadResult['diagnostics']>().toEqualTypeOf<ReadFailure[] | undefined>();
+    });
+
+    it('reports existing finding counts without requiring or emitting detector internals', () => {
+        const context = createArmTestContext();
+        const result = {
+            available: true,
+            advisories: [{ evidence: { query: 'private-query' }, scope: 'private-db/private-container' }],
+            detectorCoverage: [{ rule: 'private-rule', observations: { privateValue: 123 } }],
+        };
+        const snapshot = structuredClone(result);
+
+        reportOverviewResultTelemetry(context, result);
+
+        expect(overviewAdvisoryResultSchema.parse(result)).toEqual({ advisories: result.advisories });
+        expect(context.telemetry.properties).toEqual({ dataResult: 'complete' });
+        expect(context.telemetry.measurements).toEqual({
+            readFailureCount: 0,
+            advisoryCount: 1,
+        });
+        expect(result).toEqual(snapshot);
+        expect(JSON.stringify(context.telemetry)).not.toMatch(/private|123/);
+    });
+
+    it.each(READ_SOURCES)('accepts the shared read source %s', (source) => {
+        const diagnostics = [{ source, kind: 'unknown', reason: 'noData' }] satisfies ReadFailure[];
+        expect(overviewReadResultSchema.parse({ available: true, diagnostics }).diagnostics).toEqual(diagnostics);
+    });
+
+    it.each(LOGS_FAILURE_KINDS)('accepts the shared read failure kind %s', (kind) => {
+        const diagnostics = [{ source: 'logs', kind, reason: 'noData' }] satisfies ReadFailure[];
+        expect(overviewReadResultSchema.parse({ available: true, diagnostics }).diagnostics).toEqual(diagnostics);
+    });
+
+    it.each(UNAVAILABLE_REASONS)(
+        'accepts the shared unavailable reason %s in both result and event contracts',
+        (reason) => {
+            const diagnostics = [{ source: 'logs', kind: 'unknown', reason }] satisfies ReadFailure[];
+            expect(overviewReadResultSchema.parse({ available: true, diagnostics }).diagnostics).toEqual(diagnostics);
+            expect(
+                overviewEventSchema.parse({ eventName: 'analyzerSkipped', properties: { reason } }).properties?.reason,
+            ).toBe(reason);
+        },
+    );
+
+    it.each([
+        [{ available: true }, 'complete'],
+        [{ available: false, reason: 'noData' }, 'unavailable'],
+        [{ available: false, reason: 'unsupported' }, 'unavailable'],
+    ])('does not turn a successful empty/inapplicable read into an exception: %j', (result, dataResult) => {
+        const context = createArmTestContext();
+        reportOverviewResultTelemetry(context, result);
+        expect(context.telemetry.properties).toEqual({ dataResult });
+        expect(context.telemetry.measurements).toEqual({ readFailureCount: 0 });
+    });
+
+    it.each([{ available: true }, { available: false }])(
+        'records caught failures independently of the fallback: %j',
+        (result) => {
+            const context = createArmTestContext();
+            reportOverviewResultTelemetry(context, {
+                ...result,
+                diagnostics: [
+                    { source: 'metrics', kind: 'accessDenied', reason: 'rbac' },
+                    { source: 'logs', kind: 'partialFailure', reason: 'rbac' },
+                    { source: 'metrics', kind: 'transient', reason: 'noData' },
+                ],
+            });
+            expect(context.telemetry.properties).toEqual({
+                dataResult: result.available ? 'partial' : 'unavailable',
+                errorCategory: 'infrastructure',
+                readFailureSources: 'logs,metrics',
+                readFailureKinds: 'accessDenied,partialFailure,transient',
+                readFailureReasons: 'noData,rbac',
+            });
+            expect(context.telemetry.measurements).toEqual({ readFailureCount: 3 });
+        },
+    );
+
+    it('reports coverage without copying finding evidence, metric scopes or billing payloads', () => {
+        const context = createArmTestContext();
+        reportOverviewResultTelemetry(context, {
+            available: true,
+            generatedAt: 0,
+            advisories: [],
+            metricSource: {
+                available: false,
+                failures: [{ rule: 'IdleContainer', scope: 'private-db/private-container', reason: 'rbac' }],
+            },
+            logSource: { available: false, reason: 'rbac' },
+            costSource: { available: false, failures: [{ operation: 'throughput', kind: 'accessDenied' }] },
+        });
+        expect(context.telemetry.properties).toEqual({
+            dataResult: 'partial',
+            metricCoverage: 'false',
+            logCoverage: 'false',
+        });
+
+        expect(context.telemetry.measurements).toEqual({
+            readFailureCount: 0,
+            advisoryCount: 0,
+            skippedMetricCheckCount: 1,
+            failedLogCheckCount: 0,
+        });
+        expect(JSON.stringify(context.telemetry)).not.toContain('private-');
+    });
+
+    it.each([
+        [false, false],
+        [false, true],
+        [true, false],
+        [true, true],
+    ])('uses advisory source availability without inventing exceptions (%s, %s)', (metric, logs) => {
+        const context = createArmTestContext();
+        const result = {
+            available: true,
+            advisories: [],
+            metricSource: { available: metric, failures: [] },
+            logSource: { available: logs },
+        };
+        const snapshot = structuredClone(result);
+
+        reportOverviewResultTelemetry(context, result);
+
+        expect(context.telemetry.properties).toEqual({
+            dataResult: metric && logs ? 'complete' : 'partial',
+            metricCoverage: String(metric),
+            logCoverage: String(logs),
+        });
+        expect(context.telemetry.measurements.readFailureCount).toBe(0);
+        expect(context.telemetry.properties.errorCategory).toBeUndefined();
+        expect(result).toEqual(snapshot);
+    });
+
+    it.each([
+        undefined,
+        null,
+        true,
+        'private-query',
+        { accountName: 'private-account' },
+        { available: 'private-value' },
+        {
+            available: true,
+            diagnostics: [{ source: 'private-source', kind: 'accessDenied', reason: 'rbac' }],
+        },
+        {
+            available: true,
+            diagnostics: [{ source: 'logs', kind: 'private-kind', reason: 'rbac' }],
+        },
+        {
+            available: true,
+            diagnostics: [{ source: 'logs', kind: 'accessDenied', reason: 'private-reason' }],
+        },
+    ])('does not interpret other result shapes or unbounded values as read telemetry: %j', (result) => {
+        const context = createArmTestContext();
+        reportOverviewResultTelemetry(context, result);
+        expect(context.telemetry.properties).toEqual({});
+        expect(context.telemetry.measurements).toEqual({});
+    });
+
+    it('ignores financial enrichment absent from main without emitting its payload', () => {
+        const context = createArmTestContext();
+        reportOverviewResultTelemetry(context, {
+            available: true,
+            advisories: [],
+            costSource: { available: false, failures: [{ kind: 'private-error-message' }] },
+        });
+        expect(context.telemetry.properties).toEqual({ dataResult: 'complete' });
+        expect(context.telemetry.measurements).toEqual({ readFailureCount: 0, advisoryCount: 0 });
+    });
+
+    it('accepts only bounded telemetry values and drops arbitrary payload fields', () => {
+        expect(
+            overviewEventSchema.parse({
+                eventName: 'tabViewed',
+                properties: { tab: 'monitoring', accountName: 'private-account' },
+                measurements: { privateValue: 123 },
+            }),
+        ).toEqual({ eventName: 'tabViewed', properties: { tab: 'monitoring' } });
+        expect(overviewEventSchema.safeParse({ eventName: 'private-account' }).success).toBe(false);
+        expect(
+            overviewEventSchema.safeParse({
+                eventName: 'tabViewed',
+                properties: { tab: 'private-database' },
+            }).success,
+        ).toBe(false);
+        expect(
+            overviewErrorSchema.parse({
+                kind: 'render',
+                message: 'private-query',
+                stack: 'private-path',
+            }),
+        ).toEqual({ kind: 'render' });
+        expect(overviewErrorSchema.safeParse({ kind: 'subscription', operation: 'private-resource' }).success).toBe(
+            false,
+        );
+        expect(overviewErrorSchema.safeParse({ kind: 'rpc', operation: 'getAlerts' }).success).toBe(false);
+    });
+});

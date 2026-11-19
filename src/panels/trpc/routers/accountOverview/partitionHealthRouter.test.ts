@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { describe, expect, it, vi } from 'vitest';
-import { armTestSubscription } from '../../../../cosmosdb/armTestUtils';
+import { armTestSubscription, createArmTestContext } from '../../../../cosmosdb/armTestUtils';
 import { AzureResourceMetadata } from '../../../../cosmosdb/AzureResourceMetadata';
 import { iso, mockClient, pdims, throwingClient } from '../../../accountOverview/services/testFixtures';
 import { type AccountOverviewRouterContext } from '../../appRouter';
@@ -46,6 +46,7 @@ function createCaller(metadata: TestMetadata) {
     }).createCaller({
         webviewName: 'cosmosDbAccountOverview',
         metadata,
+        actionContext: createArmTestContext(),
         getInitialization: () => ({ type: 'navigate', target: 'overview', revision: 0 }),
         onNavigation: () => ({ dispose() {} }),
     });

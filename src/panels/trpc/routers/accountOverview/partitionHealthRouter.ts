@@ -10,11 +10,9 @@ import { getMetricApplicability, type MetricUnavailableReason } from '../../../a
 import {
     DEFAULT_PARTITION_THRESHOLDS,
     getPartitionHealth,
-    type PartitionDistributionMode,
     type PartitionHealthResult,
-    type TimeRange,
 } from '../../../accountOverview/services';
-import { type AccountOverviewRouterContext } from '../../appRouter';
+import { reportUnavailableClient } from '../../../accountOverview/services/readDiagnostics';
 import { accountOverviewProcedure } from '../../trpc';
 import { readPartitionThresholds } from './thresholds';
 
@@ -34,57 +32,50 @@ export const partitionHealthProcedures = {
                 mode: z.enum(['ru', 'storage']),
             }),
         )
-        .query(
-            async ({
-                ctx,
-                input,
-            }: {
-                ctx: AccountOverviewRouterContext;
-                input: {
-                    timeRange: TimeRange;
-                    databaseId: string;
-                    containerId: string;
-                    mode: PartitionDistributionMode;
-                };
-            }): Promise<PartitionHealthResult> => {
-                const { metadata } = ctx;
-                const mode =
-                    getMetricApplicability('normalizedRu', metadata.isServerless).status === 'notApplicable'
-                        ? 'storage'
-                        : input.mode;
-                const unavailable = (reason: MetricUnavailableReason): PartitionHealthResult => ({
-                    available: false,
-                    reason,
-                    mode,
-                    databaseId: input.databaseId,
-                    containerId: input.containerId,
-                    tiles: [],
-                    skewScore: 0,
-                    topPartitionShare: 0,
-                    partitionCount: 0,
-                    topN: DEFAULT_PARTITION_THRESHOLDS.topN,
-                    generatedAt: Date.now(),
-                });
+        .query(async ({ ctx, input }): Promise<PartitionHealthResult> => {
+            const { metadata } = ctx;
+            const { properties } = ctx.actionContext.telemetry;
+            const mode =
+                getMetricApplicability('normalizedRu', metadata.isServerless).status === 'notApplicable'
+                    ? 'storage'
+                    : input.mode;
 
-                const experience = tryGetExperience(metadata.databaseAccount as DatabaseAccountGetResults);
-                if (experience && experience.api !== API.Core) {
-                    return unavailable('unsupported');
-                }
+            properties.mode = mode;
+            properties.timeRange = input.timeRange;
 
-                const client = await metadata.getMonitorClient();
-                if (!client) {
-                    return unavailable('error');
-                }
+            const unavailable = (reason: MetricUnavailableReason): PartitionHealthResult => ({
+                available: false,
+                reason,
+                mode,
+                databaseId: input.databaseId,
+                containerId: input.containerId,
+                tiles: [],
+                skewScore: 0,
+                topPartitionShare: 0,
+                partitionCount: 0,
+                topN: DEFAULT_PARTITION_THRESHOLDS.topN,
+                generatedAt: Date.now(),
+            });
 
-                return getPartitionHealth(
-                    client,
-                    metadata.accountId,
-                    mode,
-                    input.timeRange,
-                    input.databaseId,
-                    input.containerId,
-                    readPartitionThresholds(),
-                );
-            },
-        ),
+            const experience = tryGetExperience(metadata.databaseAccount as DatabaseAccountGetResults);
+            if (experience && experience.api !== API.Core) {
+                return unavailable('unsupported');
+            }
+
+            const client = await metadata.getMonitorClient();
+            if (!client) {
+                reportUnavailableClient('metrics');
+                return unavailable('error');
+            }
+
+            return getPartitionHealth(
+                client,
+                metadata.accountId,
+                mode,
+                input.timeRange,
+                input.databaseId,
+                input.containerId,
+                readPartitionThresholds(),
+            );
+        }),
 };

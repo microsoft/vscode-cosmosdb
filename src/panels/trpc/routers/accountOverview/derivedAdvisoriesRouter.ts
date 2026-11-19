@@ -15,6 +15,12 @@ import {
 } from '../../../accountOverview/services/advisories';
 import { DEFAULT_ADVISORY_THRESHOLDS } from '../../../accountOverview/services/advisories/core/thresholds';
 import { DETECTORS } from '../../../accountOverview/services/advisories/registry';
+import {
+    readRequest,
+    recordReadDiagnostic,
+    reportUncaughtReadFailure,
+    reportUnavailableClient,
+} from '../../../accountOverview/services/readDiagnostics';
 import { classifyUnavailable, type UnavailableReason } from '../../../accountOverview/services/shared';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';
@@ -88,23 +94,37 @@ export async function getDerivedAdvisoriesForAccount(
     }
 
     try {
-        const monitorClient = await metadata.getMonitorClient();
-        const cosmosClient = await metadata.getClient();
+        const monitorClient = await readRequest('metrics', () => metadata.getMonitorClient());
+        const cosmosClient = await readRequest('inventory', () => metadata.getClient());
         if (!monitorClient || !cosmosClient) {
+            if (!monitorClient) {
+                reportUnavailableClient('metrics');
+            }
+            if (!cosmosClient) {
+                reportUnavailableClient('inventory');
+            }
             return configOnly('noData');
         }
         // A failed optional log client must not suppress metric-backed or configuration checks.
-        const logsClient = await metadata.getLogsQueryClient().catch((error: unknown) => {
+        let logsClientFailed = false;
+        const logsClient = await readRequest('logs', () => metadata.getLogsQueryClient()).catch((error: unknown) => {
+            logsClientFailed = true;
             ext.outputChannel.warn(
                 `[Account Overview] Log Analytics client unavailable: ${classifyUnavailable(error)}.`,
             );
             return undefined;
         });
+        const outputReporter = createLogsOutputReporter((message) => ext.outputChannel.warn(message));
         const collected = await collectDerivedAdvisories({
             monitorClient,
             cosmosClient,
             logsClient,
-            onLogsDiagnostic: createLogsOutputReporter((message) => ext.outputChannel.warn(message)),
+            onLogsDiagnostic: (diagnostic) => {
+                if (!logsClientFailed || diagnostic.operation !== 'client') {
+                    recordReadDiagnostic('logs', diagnostic);
+                }
+                outputReporter(diagnostic);
+            },
             accountId: metadata.accountId,
             resourceGroup: metadata.resourceGroup,
             accountName: metadata.accountName,
@@ -114,6 +134,7 @@ export async function getDerivedAdvisoriesForAccount(
         });
         return { available: true, ...collected, generatedAt: Date.now() };
     } catch (error) {
+        reportUncaughtReadFailure('account', error);
         return configOnly(classifyUnavailable(error));
     }
 }

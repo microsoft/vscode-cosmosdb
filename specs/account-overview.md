@@ -146,6 +146,9 @@ Completed checks remain partial when incomplete throughput inventory leaves othe
 Age-read failures affect detector coverage only when an eligible target still lacks its required age evidence;
 redundant failures remain in source diagnostics without reducing completed detector coverage.
 A known single physical partition establishes hot-partition and storage-skew inapplicability before age gates.
+That count comes from the independent `PhysicalPartitionCount` metric, never from the number of sampled RU or storage
+series. The existing partition-count read is reused rather than repeated. Storage inapplicability additionally requires a
+finite sample; the detector and age-dependency filter share that predicate so empty rows cannot hide age-read failures.
 Missing throttle observations are never replaced with synthetic values or counted as under-provisioning evaluations.
 Successful empty observations do not create unavailable dependencies; rules retain their existing evidence semantics,
 including empty successful consumption reads establishing idleness. Disabled indexing and a known single physical partition

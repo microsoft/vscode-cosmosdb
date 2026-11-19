@@ -30,7 +30,7 @@ function evaluateHotPartitionRisk(
     throttleThresholdPercent: number,
 ): AdvisoryEvaluation<'HotPartitionRisk'> {
     if (input.partitionCount === 1) {
-        return { rootCause: 'single_partition' };
+        return { rootCause: input.physicalPartitionCount === 1 ? 'single_partition' : 'insufficient_data' };
     }
     if (
         input.throttleRatePercent === undefined ||
@@ -42,7 +42,7 @@ function evaluateHotPartitionRisk(
         return { rootCause: 'insufficient_data' };
     }
     if (input.partitionCount < DIAGNOSTIC_POLICY.partitionSaturation.minHotPartitions) {
-        return { rootCause: 'single_partition' };
+        return { rootCause: 'insufficient_data' };
     }
     if (input.maxP99 < saturationPercent) {
         return { rootCause: 'not_saturated' };

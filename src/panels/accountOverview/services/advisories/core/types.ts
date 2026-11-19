@@ -454,7 +454,10 @@ export interface PartitionSaturationInput {
     maxP99: number;
     /** Coolest physical partition's p99 utilization (% of provisioned). */
     minP99: number;
+    /** Number of partitions with usable RU observations, not an inventory count. */
     partitionCount: number;
+    /** Independently read PhysicalPartitionCount, when available. */
+    physicalPartitionCount?: number;
     /** Container 429 rate (`sum(429)/sum(total)`, %), absent when the throttle read failed. */
     throttleRatePercent?: number;
     /** Total requests over the window; absent when unavailable, below the abstain gate too noisy to judge. */
@@ -483,6 +486,8 @@ export interface ContainerStorageInput {
     resourceAgeDays?: number;
     databaseId: string;
     containerId: string;
+    /** Independently read PhysicalPartitionCount, not the number of returned storage series. */
+    physicalPartitionCount?: number;
     partitions: readonly StoragePartitionSeries[];
 }
 

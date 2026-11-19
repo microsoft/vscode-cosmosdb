@@ -10,7 +10,7 @@ import * as inventory from '../inventory';
 import * as partitionHealth from '../partitionHealth';
 import { withReadDiagnostics } from '../readDiagnostics';
 import * as resourceAge from '../resourceAge';
-import { GB, mockClient } from '../testFixtures';
+import { GB, iso, mockClient, pdims } from '../testFixtures';
 import { DAY } from '../units';
 import { collectDerivedAdvisories } from './collect';
 import { DEFAULT_ADVISORY_THRESHOLDS } from './core/thresholds';
@@ -66,16 +66,46 @@ function partition(overrides: Partial<PartitionSaturationInput> = {}): Partition
 }
 
 describe('pure detector coverage', () => {
+    it.each([undefined, 1, 2])('requires independent single-partition evidence (%s)', (physicalPartitionCount) => {
+        const result = analyzeDerivedAdvisories(
+            {
+                ...emptyInputs,
+                partitions: [partition({ partitionCount: 1, physicalPartitionCount })],
+                storage: [
+                    {
+                        databaseId: 'private-db',
+                        containerId: 'private-container',
+                        resourceAgeDays: 30,
+                        physicalPartitionCount,
+                        partitions: [{ partitionId: '0', samples: [{ timestamp: 0, bytes: GB }] }],
+                    },
+                ],
+            },
+            DEFAULT_ADVISORY_THRESHOLDS,
+        );
+
+        for (const rule of ['HotPartitionRisk', 'StorageSkewRisk']) {
+            expect(result.detectorCoverage.find((entry) => entry.rule === rule)).toMatchObject({
+                status: physicalPartitionCount === 1 ? 'notApplicable' : 'insufficientData',
+                notApplicableCount: physicalPartitionCount === 1 ? 1 : 0,
+                matchedCount: 0,
+            });
+        }
+
+        expect(result.advisories).toEqual([]);
+    });
+
     it.each([undefined, 0.1, 30])('does not require age for a known single partition (%s days)', (resourceAgeDays) => {
         const result = analyzeDerivedAdvisories(
             {
                 ...emptyInputs,
-                partitions: [partition({ partitionCount: 1, resourceAgeDays })],
+                partitions: [partition({ partitionCount: 1, physicalPartitionCount: 1, resourceAgeDays })],
                 storage: [
                     {
                         databaseId: 'private-db',
                         containerId: 'private-container',
                         resourceAgeDays,
+                        physicalPartitionCount: 1,
                         partitions: [{ partitionId: '0', samples: [{ timestamp: 0, bytes: GB }] }],
                     },
                 ],
@@ -190,7 +220,7 @@ describe('pure detector coverage', () => {
             partitions: [
                 partition(),
                 partition({ maxP99: 50 }),
-                partition({ partitionCount: 1 }),
+                partition({ partitionCount: 1, physicalPartitionCount: 1 }),
                 partition({ resourceAgeDays: 0.5 }),
             ],
         };
@@ -274,6 +304,7 @@ describe('pure detector coverage', () => {
                         databaseId: 'private-db',
                         containerId: 'private-container',
                         resourceAgeDays: 30,
+                        physicalPartitionCount: sizes.length,
                         partitions: sizes.map((values, index) => ({
                             partitionId: String(index),
                             samples: values.map((value, day) => ({ timestamp: day * DAY, bytes: value * GB })),
@@ -386,6 +417,125 @@ describe('detector dependency coverage', () => {
             };
         }
 
+        it.each(
+            (['missing', 'multiple', 'empty', 'nonfinite', 'valid'] as const).flatMap((state) =>
+                [false, true].map((ageFailed) => ({ state, ageFailed })),
+            ),
+        )(
+            'preserves physical-count and required-age evidence ($state, age failure: $ageFailed)',
+            async ({ state, ageFailed }) => {
+                const target = row({ resourceCreatedAt: undefined });
+                const params = setup(target);
+                const timeStamp = iso(Date.now());
+                const rejected = Object.assign(new Error('private-age-error'), { statusCode: 403 });
+                const getCount = vi.spyOn(metrics, 'getContainerPartitionCount');
+
+                params.monitorClient = mockClient({
+                    PhysicalPartitionCount: {
+                        value: [{ timeseries: [{ data: [{ timeStamp, maximum: state === 'multiple' ? 2 : 1 }] }] }],
+                    },
+                    NormalizedRUConsumption: {
+                        value: [
+                            {
+                                timeseries: [
+                                    {
+                                        metadatavalues: pdims(
+                                            target.databaseId,
+                                            target.containerId,
+                                            'PhysicalPartitionId',
+                                            '0',
+                                        ),
+                                        data: [{ timeStamp, maximum: 95 }],
+                                    },
+                                    ...(state === 'missing' || state === 'multiple'
+                                        ? [
+                                              {
+                                                  metadatavalues: pdims(
+                                                      target.databaseId,
+                                                      target.containerId,
+                                                      'PhysicalPartitionId',
+                                                      '1',
+                                                  ),
+                                                  data: [],
+                                              },
+                                          ]
+                                        : []),
+                                ],
+                            },
+                        ],
+                    },
+                    PhysicalPartitionSizeInfo: {
+                        value: [
+                            {
+                                timeseries: [
+                                    {
+                                        metadatavalues: pdims(
+                                            target.databaseId,
+                                            target.containerId,
+                                            'PhysicalPartitionId',
+                                            '0',
+                                        ),
+                                        data:
+                                            state === 'empty'
+                                                ? []
+                                                : [{ timeStamp, maximum: state === 'nonfinite' ? NaN : GB }],
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                });
+                vi.mocked(params.cosmosClient.databaseAccounts.get).mockImplementation(async () => {
+                    if (ageFailed) {
+                        throw rejected;
+                    }
+
+                    return { systemData: { createdAt: new Date('2020-01-01T00:00:00Z') } };
+                });
+                vi.spyOn(resourceAge, 'getContainerCreatedAt').mockImplementation(async () => {
+                    if (ageFailed) {
+                        throw rejected;
+                    }
+
+                    return undefined;
+                });
+
+                if (state === 'missing') {
+                    getCount.mockResolvedValue(undefined);
+                }
+
+                const result = await collectDerivedAdvisories(params);
+                const coverage = result.detectorCoverage.find(({ rule }) => rule === 'StorageSkewRisk');
+
+                expect(coverage).toMatchObject({
+                    status: state === 'valid' ? 'notApplicable' : ageFailed ? 'unavailable' : 'insufficientData',
+                    notApplicableCount: state === 'valid' ? 1 : 0,
+                    evaluatedCount: 0,
+                    matchedCount: 0,
+                    unavailableReasons: state === 'valid' || !ageFailed ? [] : ['rbac'],
+                });
+                expect(
+                    result.metricSource.failures.some(
+                        ({ rule, reason }) => rule === 'StorageSkewRisk' && reason === 'rbac',
+                    ),
+                ).toBe(ageFailed);
+                expect(result.detectorCoverage.find(({ rule }) => rule === 'HotPartitionRisk')).toMatchObject({
+                    status:
+                        state === 'missing' || state === 'multiple'
+                            ? ageFailed
+                                ? 'unavailable'
+                                : 'insufficientData'
+                            : 'notApplicable',
+                    notApplicableCount: state === 'missing' || state === 'multiple' ? 0 : 1,
+                    evaluatedCount: 0,
+                    matchedCount: 0,
+                    unavailableReasons: ageFailed && (state === 'missing' || state === 'multiple') ? ['rbac'] : [],
+                });
+                expect(getCount).toHaveBeenCalledTimes(1);
+                expect(result.advisories.map(({ rule }) => rule)).toEqual(['IdleContainer']);
+            },
+        );
+
         it.each([1, 2])(
             'keeps applicability separate from failed throttle and age reads (%s partitions)',
             async (count) => {
@@ -418,6 +568,7 @@ describe('detector dependency coverage', () => {
                         samples: [{ timestamp: 0, bytes: GB }],
                     })),
                 });
+                vi.spyOn(metrics, 'getContainerPartitionCount').mockResolvedValue(count);
                 vi.spyOn(params.monitorClient.metrics, 'list').mockImplementation(async (_resource, options) => {
                     if (options?.metricnames === 'TotalRequests') {
                         throw rejected;

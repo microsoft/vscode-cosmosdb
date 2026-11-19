@@ -18,6 +18,7 @@ import {
 import {
     balanceRatio,
     GIB,
+    hasSingleStoragePartition,
     PARTITION_STORAGE_LIMIT_BYTES,
     STORAGE_SKEW_HIGH_BYTES,
     STORAGE_SKEW_MEDIUM_BYTES,
@@ -50,9 +51,11 @@ function evaluateStorageSkewRisk(
         })
         .filter((bytes): bytes is number => bytes !== undefined);
     const ratio = balanceRatio(sizes);
-    const hasCompleteObservations = sizes.length === input.partitions.length;
+    const hasCompleteObservations =
+        sizes.length === input.partitions.length &&
+        (input.physicalPartitionCount === undefined || sizes.length >= input.physicalPartitionCount);
 
-    if (sizes.length === 1 && hasCompleteObservations) {
+    if (hasSingleStoragePartition(input)) {
         return { rootCause: 'single_partition' };
     }
     if (

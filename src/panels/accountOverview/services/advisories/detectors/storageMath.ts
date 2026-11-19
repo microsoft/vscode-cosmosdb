@@ -7,7 +7,7 @@ import { type PartitionStorageSample } from '../../partitionHealth';
 import { DAY, GIB } from '../../units';
 import { mean } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
-import { type StoragePartitionSeries } from '../core/types';
+import { type ContainerStorageInput, type StoragePartitionSeries } from '../core/types';
 
 export { GIB } from '../../units';
 export const MS_PER_DAY = DAY;
@@ -31,6 +31,17 @@ export const STORAGE_SKEW_MIN_BUSIEST_BYTES = DIAGNOSTIC_POLICY.storageSkew.minB
 export const STORAGE_SKEW_HIGH_BYTES = DIAGNOSTIC_POLICY.storageSkew.highBytes;
 /** Busiest-partition size (≥ 50% of the 50 GiB ceiling) at or above which StorageSkewRisk ranks Medium. */
 export const STORAGE_SKEW_MEDIUM_BYTES = DIAGNOSTIC_POLICY.storageSkew.mediumBytes;
+
+/** A finite observation and an independent physical count are both required to establish single-partition storage. */
+export function hasSingleStoragePartition(
+    input: Pick<ContainerStorageInput, 'partitions' | 'physicalPartitionCount'>,
+): boolean {
+    return (
+        input.physicalPartitionCount === 1 &&
+        input.partitions.length === 1 &&
+        input.partitions[0].samples.some(({ bytes }) => Number.isFinite(bytes))
+    );
+}
 
 /** Latest (newest-timestamp) size in bytes of a partition's series, or undefined when it has no samples. Pure. */
 export function latestBytes(series: StoragePartitionSeries): number | undefined {

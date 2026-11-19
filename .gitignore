@@ -281,6 +281,9 @@ bundle-analysis/
 .agents/
 skills-lock.json
 
+# Private pinned CODA checkout and conformance reports
+.coda/
+
 plans/
 
 # Vitest JUnit reporter output (CI uploads it as an artifact; we don't commit it)

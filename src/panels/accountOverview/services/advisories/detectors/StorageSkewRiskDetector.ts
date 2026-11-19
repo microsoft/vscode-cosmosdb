@@ -59,12 +59,12 @@ function evaluateStorageSkewRisk(
     if (sizes.length === 1) {
         return { rootCause: 'single_partition' };
     }
-    if (ratio === undefined || ratio >= balanceThreshold) {
-        return { rootCause: 'uniform_storage' };
-    }
     const busiestBytes = Math.max(...sizes);
     if (busiestBytes < STORAGE_SKEW_MIN_BUSIEST_BYTES) {
         return { rootCause: 'too_small' };
+    }
+    if (ratio === undefined || ratio >= balanceThreshold) {
+        return { rootCause: 'uniform_storage' };
     }
 
     const severity: DerivedAdvisorySeverity =

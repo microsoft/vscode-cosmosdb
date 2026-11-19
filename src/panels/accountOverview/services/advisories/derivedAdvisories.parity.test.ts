@@ -608,6 +608,19 @@ describe('CODA parity — DX-017 StorageGrowthRisk (test_storage_growth.py)', ()
 // -------------------------------------------------------------------------------------------------
 
 describe('CODA parity — DX-015 StorageSkewRisk (test_storage_skew.py)', () => {
+    it.each([
+        { histories: [[], []], rootCause: 'insufficient_data' },
+        { histories: [[0.2]], rootCause: 'single_partition' },
+        { histories: [[0.2], [0.2]], rootCause: 'too_small' },
+        { histories: [[0], [0]], rootCause: 'too_small' },
+        { histories: [[30], [30], []], rootCause: 'uniform_storage' },
+        { histories: [[30], []], rootCause: 'single_partition' },
+    ])('preserves observed-series precedence: $histories -> $rootCause', ({ histories, rootCause }) => {
+        const input = storageContainer(histories.map((values, index) => storageSeries(String(index), values)));
+
+        expect(new StorageSkewRiskDetector().evaluateResult(input, 0.7).rootCause).toBe(rootCause);
+    });
+
     it('imbalanced but small is a Low early warning (test_imbalanced_small_is_low_early_warning)', () => {
         const v = evaluateStorageSkewRisk(storageContainer([storageSeries('0', [2]), storageSeries('1', [0.2])]), 0.7);
         expect(v?.rule).toBe('StorageSkewRisk');
@@ -866,6 +879,14 @@ function cpInput(shapes: QueryShapeInput[]): CrossPartitionInput {
 }
 
 describe('DX-002 cross-partition query fan-out parity', () => {
+    it('preserves the CODA root for a sufficient workload whose widest fan-out is one', () => {
+        const input = cpInput([shape('SELECT * FROM c WHERE c.pk=@p', 800, 1, 1)]);
+
+        expect(new CrossPartitionQueryDetector().evaluateResult(input, CP_THRESHOLDS)).toEqual({
+            rootCause: 'single_partition_container',
+        });
+    });
+
     it('flags Low for a two-partition workload above the fan-out rate floor', () => {
         const v = evaluateCrossPartitionQuery(
             cpInput([

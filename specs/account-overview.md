@@ -628,6 +628,11 @@ not entries in the derived-detector registry.
 | AO-D21 `ServerlessThrottling` / DX-018        | Serverless container; >=1,000 requests; rate >=1%; no normalized-RU prerequisite                                                                                                      | High rate >=20%; Medium >=5%; otherwise Low                          |
 | AO-D3 `StorageSkewRisk` / DX-015              | Age not known <1 day; >=2 valid non-negative partition peaks; busiest >=1 GiB; coolest/busiest <0.7                                                                                   | High busiest >=40 GiB; Medium >=25 GiB; otherwise Low                |
 
+**Storage-skew classification:** match CODA's observed-data ordering: no usable histories is
+`insufficient_data`; one usable history is `single_partition`; multiple histories below the 1 GiB
+materiality floor are `too_small` before testing balance. Only material balanced observations are
+`uniform_storage`. Missing histories are excluded, not replaced with zero-byte partitions.
+
 **Capacity materiality M:** with positive known account offer total, High if recoverable/total >=5%,
 Medium if >=1%, otherwise Low. Without that total, High if recoverable >=5,000 RU/s,
 Medium if >=1,000 RU/s, otherwise Low. These are capacity heuristics, not money saved.
@@ -668,9 +673,10 @@ Horizon and 30/90-day severity comparisons use the fitted slope's arithmetic rou
 minimum-slope gate. Presentation rounding must not decide eligibility or severity. A material partition without
 two distinct finite observations produces `insufficient_data`, not `stable`, when no other partition establishes
 a finding; already-at-limit and qualifying-growth findings remain available despite another partition's missing history.
-A valid latest observation of zero bytes is evidence below the materiality floor and produces `too_small` when
-all partitions are observed and immaterial. An empty partition list or a partition without usable history remains
-`insufficient_data` when no other partition establishes a finding.
+As in CODA, a largest current observation of zero bytes produces `insufficient_data`, not `too_small`.
+Positive observations below the materiality floor remain `too_small` when all histories are usable.
+An empty partition list or a partition without usable history remains `insufficient_data` when no other partition
+establishes a finding. Observed zero bytes are retained as data, not replaced with a missing-series sentinel.
 
 **Index exclusions:** ignore only exact root strings `/_etag/?` and `/"_etag"/?` when counting exclusions.
 Nested `_etag`, differently cased, other paths and unknown path entries are not implicitly system exclusions.

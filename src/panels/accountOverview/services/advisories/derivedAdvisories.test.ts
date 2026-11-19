@@ -578,19 +578,19 @@ describe('evaluateStorageGrowthRisk', () => {
     });
 
     it.each([{ gib: [0] }, { gib: [0, 0] }, { gib: [2, 0] }])(
-        'classifies an observed zero-byte partition as too small ($gib GiB history)',
+        'preserves CODA insufficient_data for an observed zero-byte partition ($gib GiB history)',
         ({ gib }) => {
             const result = new StorageGrowthRiskDetector().evaluateResult(container([storageSeries('0', gib)]), 180);
-            expect(result).toEqual({ rootCause: 'too_small' });
+            expect(result).toEqual({ rootCause: 'insufficient_data' });
         },
     );
 
-    it('classifies multiple observed zero-byte partitions as too small', () => {
+    it('preserves CODA insufficient_data for multiple observed zero-byte partitions', () => {
         const result = new StorageGrowthRiskDetector().evaluateResult(
             container([storageSeries('0', [0]), storageSeries('1', [0])]),
             180,
         );
-        expect(result).toEqual({ rootCause: 'too_small' });
+        expect(result).toEqual({ rootCause: 'insufficient_data' });
     });
 
     it('reports an empty partition list as insufficient data', () => {

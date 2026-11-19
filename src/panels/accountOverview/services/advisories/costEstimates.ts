@@ -7,7 +7,8 @@ import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { type MonitorClient } from '@azure/arm-monitor';
 import { type InventoryContainerRow } from '../inventory';
 import { type UnavailableReason } from '../shared';
-import { type AdvisoryCostEstimate, type CostSourceStatus, type DerivedAdvisory } from './core/types';
+import { roundMonthlySavings } from './core/helpers';
+import { type CostSourceStatus, type DerivedAdvisory } from './core/types';
 import { getBackupCostEstimate } from './fetchers/backupCost';
 import { classifyCostFailure, CostEvidenceError, getThroughputRate, type CostContext } from './fetchers/costManagement';
 
@@ -61,91 +62,31 @@ export async function enrichAdvisoryCosts(params: {
         if (!context) {
             failures.push({ operation: 'throughput', kind: 'notConfigured' });
         } else {
-            const regions = context.locationNames.map((name) => name.replace(/\s+/g, '').toLowerCase());
-            const regionCount =
-                regions.length > 0 && regions.every(Boolean) && new Set(regions).size === regions.length
-                    ? regions.length
-                    : undefined;
-            const regionalCapacity = capacity
-                .map(({ advisory, ru }) => {
-                    const throughputMode =
-                        advisory.rule === 'IdleContainer'
-                            ? advisory.evidence?.throughputMode
-                            : advisory.rule === 'AutoscaleMaxOverProvisioned'
-                              ? 'autoscale'
-                              : 'manual';
-                    if (throughputMode !== 'manual' && throughputMode !== 'autoscale') {
-                        return undefined;
+            try {
+                const rate = await getThroughputRate(cosmosClient, context, accountId, now);
+
+                for (const { advisory, ru } of capacity) {
+                    const amount = ru * rate.perRuMonth;
+                    if (!Number.isFinite(amount)) {
+                        if (!failures.some((failure) => failure.operation === 'throughput')) {
+                            failures.push({ operation: 'throughput', kind: 'invalidData' });
+                        }
+                        continue;
                     }
-                    const writes = context.multiRegionWritesEnabled;
-                    const quantityMultiplier: 1 | 1.5 | undefined =
-                        throughputMode === 'manual' || writes === true ? 1 : writes === false ? 1.5 : undefined;
-                    const regionalFootprint =
-                        advisory.rule === 'MultiRegionWriteAntipattern'
-                            ? null
-                            : regionCount === undefined
-                              ? undefined
-                              : { regionCount, recoverableRuPerRegion: ru };
-                    if (quantityMultiplier === undefined || regionalFootprint === undefined) {
-                        return undefined;
-                    }
-                    const regionalRu = ru * (regionalFootprint?.regionCount ?? 1);
-                    return {
-                        advisory,
-                        ru: regionalRu,
-                        regionalFootprint,
-                        billingConversion: {
-                            throughputMode,
-                            multiRegionWritesEnabled: writes ?? null,
-                            quantityMultiplier,
-                            billedEquivalentRu: regionalRu * quantityMultiplier,
-                        } satisfies Extract<
-                            AdvisoryCostEstimate,
-                            { basis: 'customerAmortizedBill' }
-                        >['billingConversion'],
-                    };
-                })
-                .filter((item) => item !== undefined);
-            if (regionalCapacity.length < capacity.length) {
-                failures.push({ operation: 'throughput', kind: 'noData' });
-            }
-            if (regionalCapacity.length > 0) {
-                try {
-                    if (
-                        regionalCapacity.some(
-                            ({ ru, billingConversion }) =>
-                                !Number.isFinite(ru) || !Number.isFinite(billingConversion.billedEquivalentRu),
-                        )
-                    ) {
-                        throw new CostEvidenceError('invalidData');
-                    }
-                    const rate = await getThroughputRate(cosmosClient, context, accountId, now);
-                    const amounts = regionalCapacity.map(
-                        ({ billingConversion }) => billingConversion.billedEquivalentRu * rate.perRuMonth,
-                    );
-                    if (amounts.some((amount) => !Number.isFinite(amount) || amount <= 0)) {
-                        throw new CostEvidenceError('invalidData');
-                    }
-                    for (const [
-                        index,
-                        { advisory, ru, regionalFootprint, billingConversion },
-                    ] of regionalCapacity.entries()) {
+
+                    const monthlyAmount = roundMonthlySavings(amount);
+                    if (monthlyAmount > 0) {
                         advisory.costEstimate = {
                             basis: 'customerAmortizedBill',
-                            monthlyAmount: amounts[index],
+                            monthlyAmount,
                             currency: rate.currency,
                             recoverableRu: ru,
-                            billingConversion,
-                            regionalFootprint,
                             rate,
                         };
                     }
-                } catch (error) {
-                    const kind = classifyCostFailure(error);
-                    if (!failures.some((failure) => failure.operation === 'throughput' && failure.kind === kind)) {
-                        failures.push({ operation: 'throughput', kind });
-                    }
                 }
+            } catch (error) {
+                failures.push({ operation: 'throughput', kind: classifyCostFailure(error) });
             }
         }
     }

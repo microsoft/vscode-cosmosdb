@@ -919,8 +919,15 @@ const CostEstimateDetails = ({ estimate }: { estimate: NonNullable<DerivedAdviso
             <Text weight="semibold">{l10n.t('Estimated capacity savings: {amount}', { amount })}</Text>
             <Text>
                 {l10n.t(
-                    'Modeled at this account’s blended amortized throughput rate, using 730 hours per month. This is not a guaranteed bill reduction; reservations, commitments and future demand affect realization. Estimates can overlap and must not be added together.',
+                    'Modeled at a blended amortized throughput rate, using 730 hours per month. This is not a guaranteed bill reduction; reservations, commitments and future demand affect realization. Estimates can overlap and must not be added together.',
                 )}
+            </Text>
+            <Text>
+                {estimate.rate.scope === 'account'
+                    ? l10n.t('Rate scope: account.')
+                    : l10n.t(
+                          'Rate scope: subscription fallback after a successful account query returned no usable rate. This blended rate is not account-attributed.',
+                      )}
             </Text>
             <Text>
                 {l10n.t(
@@ -936,24 +943,14 @@ const CostEstimateDetails = ({ estimate }: { estimate: NonNullable<DerivedAdviso
             </Text>
             <Text>
                 {l10n.t(
-                    'Model: {ru} regional RU/s at a {multiplier} billing multiplier: {billedRu} billed-equivalent RU/s at {rate} {currency} per billed-equivalent RU/s-month.',
+                    'Model: {ru} recoverable RU/s at {rate} {currency} per RU/s-month, without additional region, autoscale or zone multipliers.',
                     {
                         ru: format(estimate.recoverableRu),
-                        multiplier: estimate.billingConversion.quantityMultiplier.toLocaleString(),
-                        billedRu: format(estimate.billingConversion.billedEquivalentRu),
                         rate: estimate.rate.perRuMonth.toLocaleString(undefined, { maximumSignificantDigits: 6 }),
                         currency: estimate.currency,
                     },
                 )}
             </Text>
-            {estimate.regionalFootprint && (
-                <Text>
-                    {l10n.t('Regional footprint: {ru} RU/s per region across {regions} regions.', {
-                        ru: format(estimate.regionalFootprint.recoverableRuPerRegion),
-                        regions: estimate.regionalFootprint.regionCount.toLocaleString(),
-                    })}
-                </Text>
-            )}
             <Text>{l10n.t('Contributing meters: {meters}', { meters: estimate.rate.meters.join(', ') })}</Text>
         </>
     ) : (

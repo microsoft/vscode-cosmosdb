@@ -591,27 +591,25 @@ not identify per-request consistency overrides. Neither value establishes measur
 
 **Financial enrichment:** after detection and supersession, positive recoverable capacity from manual
 over-provisioning, idle offers, autoscale maximum over-provisioning (idle-floor RU), and quantified removable
-extra-region capacity can receive optional monetary estimates. One subscription-scope Cost Management
+extra-region capacity can receive optional monetary estimates. An account-filtered subscription-scope Cost Management
 `AmortizedCost` query per analysis filters the exact account `ResourceId`, aggregates `Cost` and `UsageQuantity`,
 and groups by `MeterCategory` and `Meter`. Its observation is the preceding 30 UTC days, ending at today's
 midnight. Only `Azure Cosmos DB` meters ending in `RU/s` contribute; storage, serverless, transfer and Defender
-meters do not. Responses require unique typed columns, complete rows, one currency, finite nonnegative
-cost/usage and positive totals. Pagination is rejected rather than treating a first page as a complete rate.
+meters do not. Responses require unique typed columns, complete rows, one currency, finite
+cost/usage and positive totals. Signed billing adjustments participate in those totals, as in CODA.
+Pagination is rejected rather than treating a first page as a complete rate.
 The native client reuses the authenticated ARM pipeline and configured cloud endpoint, including bounded
 SDK retries; it does not acquire credentials, add dependencies or change role assignments.
 
-The account's blended rate is `(amortizedCost / billed100RuHours) / 100 * 730`; the estimate is positive
-recoverable regional RU/s times that rate. Offer-level manual/idle and autoscale idle-floor capacity is
-multiplied by the number of distinct regions in the complete, nonempty ARM location list. Missing names or
-case/spacing-equivalent duplicate regions withhold offer-level estimates, not the qualitative findings.
-Already regionalized `removableExtraRegionRu` is not multiplied again. The estimate retains the per-region
-capacity and region count as provenance and displays them alongside the global recoverable capacity.
+The blended rate is `(amortizedCost / billed100RuHours) / 100 * 730`; the estimate is the detector's
+positive recoverable RU/s times that rate, matching the pinned CODA implementation. No additional regional,
+autoscale or zone billing multiplier is applied. Already regionalized `removableExtraRegionRu` is unchanged.
+Amounts use CODA's two-decimal, ties-to-even rounding; a positive amount that rounds to zero is not emitted.
 Billed usage, not configured capacity times window duration, is the divisor.
-Azure bills configured throughput in each region; see
-[geo-replication billing](https://learn.microsoft.com/en-us/azure/cosmos-db/understand-your-bill#billing-examples-with-geo-replication).
-Currency, contributing meters, cost, billed usage, window and rate remain in structured provenance. Unlike
-CODA's optional subscription fallback, missing account attribution does **not** substitute a subscription-wide
-rate: mixed account modes, regions and discounts may be incompatible. Unknown regional footprints are not assumed to be one.
+Currency, contributing meters, cost, billed usage, window, rate and its scope remain in structured provenance.
+As in CODA, a successful account query with no usable positive rate permits one subscription-wide bill query.
+This fallback is explicitly labeled `subscription_fallback`; it is a blended subscription rate, not account
+attribution. Authentication, access, service, timeout and invalid-response failures never broaden the query.
 Estimates do not alter findings, severity, thresholds or supersession. Superseded, blocked, unquantified,
 zero-capacity and unrelated findings receive no throughput estimate. The UI explicitly describes the rate as
 blended and savings as modeled, not a guaranteed invoice reduction; reservations, commitments and future demand
@@ -632,18 +630,18 @@ Unauthenticated Azure Retail Prices requests accept no redirects and follow only
 pagination on the fixed HTTPS endpoint. Every configured region needs exactly one current primary consumption
 record for `Azure Cosmos DB - PITR` / `Backup` / `Cont 30D Bckp Continuous Backup`, unit `1 GB`, base tier and USD.
 Restore meters, other tiers, duplicate current records, invalid prices/dates and currency mismatches cannot
-produce an estimate. Decimal logical GB times the sum of regional monthly prices gives the scenario amount.
+produce an estimate. Decimal logical GB times the sum of regional monthly prices gives the scenario amount,
+rounded to two decimals with CODA's ties-to-even rule. Unlike throughput savings, an observed zero amount is retained.
 Snapshot timestamp/reference region, container count, byte total, regional prices, meter IDs and effective
 dates remain inspectable provenance. Discounts, restore charges and future storage changes are excluded;
 the qualitative recovery-policy review is retained even when this enrichment fails.
 
 Optional cost coverage has its own categorized notice, independent of metric/log detector coverage.
 A billing HTTP 204 No Content response means unavailable data; an empty HTTP 200 response remains invalid evidence.
-Physical regional capacity is converted to billed-equivalent RU/s before applying the observed meter rate.
-Single-write autoscale uses a 1.5 quantity multiplier; manual offers and multi-write autoscale use 1.
-Unknown idle-offer mode or unknown autoscale write configuration withholds the affected estimate, not the finding.
-Physical capacity, offer mode, known write configuration, multiplier and billed-equivalent capacity remain provenance.
-See [autoscale billing quantities](https://learn.microsoft.com/en-us/azure/cosmos-db/autoscale-faq#how-does-autoscale-show-up-on-my-bill).
+Throughput estimates do not require a separate regional footprint or write-mode setting once a detector has
+produced eligible recoverable capacity. These inputs are not quantity gates in CODA's bill-derived model.
+Any future billing-model correction must be coordinated with CODA's versioned contract and shared fixtures;
+the extension does not independently reinterpret the pinned model.
 Denied inventory retains `backup/accessDenied` rather than becoming missing storage data.
 Unsupported-cost guidance covers both account API restrictions and cloud restrictions.
 Authentication, access denial, rate limiting, timeouts, service/query errors, invalid/incomplete evidence,

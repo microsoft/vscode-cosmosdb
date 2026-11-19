@@ -41,7 +41,7 @@ function setup(properties: unknown = { columns, rows: [row()] }, status = 200) {
     return { client, send };
 }
 
-describe('account-attributed throughput billing', () => {
+describe('CODA account-first throughput billing', () => {
     it.each([
         [204, '', 'noData'],
         [204, undefined, 'noData'],
@@ -107,35 +107,107 @@ describe('account-attributed throughput billing', () => {
         expect(rate.perRuMonth).toBeCloseTo((24 / 2000 / 100) * 730, 12);
     });
 
-    it.each([{ rows: [row(0, 1000)] }, { rows: [row(8, 0)] }, { rows: [] }, { rows: [row(1, 1, 'USD', '1M RUs')] }])(
-        'does not fabricate a rate or broaden scope without positive throughput cost/usage: %j',
+    it.each([
+        { rows: [row(0, 1000)] },
+        { rows: [row(8, 0)] },
+        { rows: [row(-1)] },
+        { rows: [row(8, -1)] },
+        { rows: [] },
+        { rows: [row(1, 1, 'USD', '1M RUs')] },
+        { rows: [row(Number.MAX_VALUE), row(Number.MAX_VALUE)] },
+        { rows: [row(1, Number.MIN_VALUE)] },
+    ])(
+        'reports no data when neither account nor subscription has positive throughput cost/usage: %j',
         async ({ rows }) => {
             const { client, send } = setup({ columns, rows });
             await expect(getThroughputRate(client, context, accountId, now)).rejects.toMatchObject({ kind: 'noData' });
-            expect(send).toHaveBeenCalledOnce();
+            expect(send).toHaveBeenCalledTimes(2);
         },
     );
+
+    it('includes signed billing adjustments in the positive aggregate, matching CODA', async () => {
+        const { client, send } = setup({ columns, rows: [row(12, 1200), row(-4, -200)] });
+        const rate = await getThroughputRate(client, context, accountId, now);
+
+        expect(rate).toMatchObject({ scope: 'account', cost: 8, usage100RuHours: 1000 });
+        expect(rate.perRuMonth).toBeCloseTo(0.0584, 12);
+        expect(send).toHaveBeenCalledOnce();
+    });
+
+    it.each([
+        { accountRows: [] },
+        { accountRows: [row(0, 1000)] },
+        { accountRows: [row(-1)] },
+        { accountRows: [row(Number.MAX_VALUE), row(Number.MAX_VALUE)] },
+    ])(
+        'uses a labeled subscription rate only after a successful unusable account response: %j',
+        async ({ accountRows }) => {
+            const { client, send } = setup();
+
+            send.mockImplementationOnce(async (_http, request) => ({
+                request,
+                status: 200,
+                headers: createHttpHeaders(),
+                bodyAsText: JSON.stringify({ properties: { columns, rows: accountRows } }),
+            }));
+
+            expect(await getThroughputRate(client, context, accountId, now)).toMatchObject({
+                scope: 'subscription_fallback',
+                cost: 8,
+                usage100RuHours: 1000,
+            });
+            expect(send).toHaveBeenCalledTimes(2);
+            expect(JSON.parse(String(send.mock.calls[0][1].body))).toHaveProperty('dataset.filter');
+            expect(JSON.parse(String(send.mock.calls[1][1].body))).not.toHaveProperty('dataset.filter');
+            expect(send.mock.calls[1][1].url).toBe(send.mock.calls[0][1].url);
+        },
+    );
+
+    it('retains a rate that underflows to zero without broadening the account query', async () => {
+        const { client, send } = setup({ columns, rows: [row(Number.MIN_VALUE, Number.MAX_VALUE)] });
+
+        expect(await getThroughputRate(client, context, accountId, now)).toMatchObject({
+            scope: 'account',
+            perRuMonth: 0,
+        });
+        expect(send).toHaveBeenCalledOnce();
+    });
+
+    it('surfaces a subscription fallback failure without trying another query', async () => {
+        const { client, send } = setup(undefined, 403);
+
+        send.mockImplementationOnce(async (_http, request) => ({
+            request,
+            status: 200,
+            headers: createHttpHeaders(),
+            bodyAsText: JSON.stringify({ properties: { columns, rows: [] } }),
+        }));
+
+        const error: unknown = await getThroughputRate(client, context, accountId, now).catch(
+            (failure: unknown) => failure,
+        );
+
+        expect(classifyCostFailure(error)).toBe('accessDenied');
+        expect(send).toHaveBeenCalledTimes(2);
+    });
 
     it.each([
         { columns: [...columns, columns[0]], rows: [] },
         { columns: columns.slice(1), rows: [row()] },
         { columns: columns.map((col) => ({ ...col, type: 'String' })), rows: [row()] },
         { columns, rows: [[...row(), 'extra']] },
-        { columns, rows: [row(-1)] },
-        { columns, rows: [row(8, -1)] },
         { columns, rows: [row(8, 1000, '')] },
         { columns, rows: [row(8, 1000, 'EUR'), row(8, 1000, 'USD')] },
         { columns, rows: [row(8, 1000), [1000, null, 'EUR', 8, 'Azure Cosmos DB']] },
         { columns, rows: [row('8')] },
         { columns, rows: [row(8, '1000')] },
         { columns, rows: [row()], nextLink: 'https://management.azure.com/next' },
-        { columns, rows: [row(Number.MAX_VALUE), row(Number.MAX_VALUE)] },
-        { columns, rows: [row(1, Number.MIN_VALUE)] },
     ])('rejects invalid or incomplete billing evidence: %j', async (properties) => {
-        const { client } = setup(properties);
+        const { client, send } = setup(properties);
         await expect(getThroughputRate(client, context, accountId, now)).rejects.toMatchObject({
             kind: 'invalidData',
         });
+        expect(send).toHaveBeenCalledOnce();
     });
 
     it('rejects non-finite numeric cells without silently defaulting them', async () => {

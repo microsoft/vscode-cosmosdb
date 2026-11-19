@@ -9,6 +9,7 @@ import { RestError } from '@azure/core-rest-pipeline';
 import { z } from 'zod';
 import { type InventoryContainerRow } from '../../inventory';
 import { containerFilter, DAY, escapeODataLiteral, HOUR, MINUTE, parseMonitorTimestamp } from '../../shared';
+import { roundMonthlySavings } from '../core/helpers';
 import { type AdvisoryCostEstimate, type BackupPrice } from '../core/types';
 import { CostEvidenceError, readCostArmJson, type CostContext } from './costManagement';
 
@@ -289,7 +290,7 @@ export async function getBackupCostEstimate(
     }
     return {
         basis: 'azureRetailPrice',
-        monthlyAmount,
+        monthlyAmount: roundMonthlySavings(monthlyAmount),
         currency: CURRENCY,
         storageBytes: snapshot.bytes,
         snapshotAt: new Date(snapshot.timestamp).toISOString(),

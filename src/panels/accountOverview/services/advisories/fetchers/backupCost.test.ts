@@ -107,6 +107,26 @@ afterEach(() => {
 });
 
 describe('paid continuous-backup retail scenario', () => {
+    it.each([
+        [125_000_000, 0.12],
+        [375_000_000, 0.38],
+        [2_675_000_000, 2.67],
+        [0, 0],
+        [1_000_000, 0],
+    ])('matches CODA cent rounding and retains zero for %i bytes', async (bytes, monthlyAmount) => {
+        const { read, list, fetchMock } = setup();
+
+        list.mockResolvedValue(metric([storageSeries('items', bytes)]));
+        fetchMock.mockResolvedValue(
+            new Response(JSON.stringify(page([retailItem('eastus', { retailPrice: 1 })]))),
+        );
+
+        expect(await read({ locationNames: ['East US'] }, [rows[0]])).toMatchObject({
+            storageBytes: bytes,
+            monthlyAmount,
+        });
+    });
+
     it.each(['eastus', 'EASTUS', 'East US'])(
         'uses the resolved Monitor display name for the accepted alias %s',
         async (alias) => {

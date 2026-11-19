@@ -98,13 +98,33 @@ const responseSchema = z.object({
     }),
 });
 
-/** Account-attributed amortized provisioned-throughput rate, never a subscription or retail-price substitute. */
+/** CODA's account-first bill rate; only a successful unusable account response permits subscription fallback. */
 export async function getThroughputRate(
     client: CosmosDBManagementClient,
     context: CostContext,
     accountId: string,
     now: number,
 ): Promise<ThroughputRate> {
+    const accountRate = await queryThroughputRate(client, context, accountId, now, 'account');
+    if (accountRate) {
+        return accountRate;
+    }
+
+    const subscriptionRate = await queryThroughputRate(client, context, accountId, now, 'subscription_fallback');
+    if (!subscriptionRate) {
+        throw new CostEvidenceError('noData');
+    }
+
+    return subscriptionRate;
+}
+
+async function queryThroughputRate(
+    client: CosmosDBManagementClient,
+    context: CostContext,
+    accountId: string,
+    now: number,
+    scope: ThroughputRate['scope'],
+): Promise<ThroughputRate | undefined> {
     const end = new Date(now);
     end.setUTCHours(0, 0, 0, 0);
     const observationEnd = end.toISOString();
@@ -127,7 +147,9 @@ export async function getThroughputRate(
                     { type: 'Dimension', name: 'MeterCategory' },
                     { type: 'Dimension', name: 'Meter' },
                 ],
-                filter: { dimensions: { name: 'ResourceId', operator: 'In', values: [accountId] } },
+                ...(scope === 'account'
+                    ? { filter: { dimensions: { name: 'ResourceId', operator: 'In', values: [accountId] } } }
+                    : {}),
             },
         },
     );
@@ -141,7 +163,7 @@ export async function getThroughputRate(
         throw new CostEvidenceError('invalidData');
     }
     if (rows.length === 0) {
-        throw new CostEvidenceError('noData');
+        return undefined;
     }
     const indexOf = (name: string, type: string): number => {
         const index = indexes.get(name);
@@ -174,10 +196,8 @@ export async function getThroughputRate(
         if (
             typeof rowCost !== 'number' ||
             !Number.isFinite(rowCost) ||
-            rowCost < 0 ||
             typeof rowUsage !== 'number' ||
             !Number.isFinite(rowUsage) ||
-            rowUsage < 0 ||
             typeof rowCurrency !== 'string' ||
             !/^[A-Z]{3}$/.test(rowCurrency) ||
             (currency !== undefined && currency !== rowCurrency)
@@ -189,19 +209,16 @@ export async function getThroughputRate(
         currency = rowCurrency;
         meters.add(meter.trim());
     }
-    if (!Number.isFinite(cost) || !Number.isFinite(usage)) {
-        throw new CostEvidenceError('invalidData');
-    }
-    if (cost <= 0 || usage <= 0 || currency === undefined) {
-        throw new CostEvidenceError('noData');
+    if (!Number.isFinite(cost) || !Number.isFinite(usage) || cost <= 0 || usage <= 0 || currency === undefined) {
+        return undefined;
     }
     const perRuMonth = (cost / usage / 100) * 730;
-    if (!Number.isFinite(perRuMonth) || perRuMonth <= 0) {
-        throw new CostEvidenceError('invalidData');
+    if (!Number.isFinite(perRuMonth)) {
+        return undefined;
     }
     return {
         source: 'customerAmortizedBill',
-        scope: 'account',
+        scope,
         currency,
         cost,
         usage100RuHours: usage,

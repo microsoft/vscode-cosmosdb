@@ -32,7 +32,7 @@ function advisory(rule: DerivedAdvisoryRule, overrides: Partial<DerivedAdvisory>
     };
 }
 
-function setup(currency = 'EUR') {
+function setup(currency = 'EUR', cost = 8, usage = 1000) {
     const cosmosClient = new CosmosDBManagementClient({ getToken: async () => null }, 'sub');
     const monitorClient = new MonitorClient({ getToken: async () => null }, 'sub');
     const send = vi.spyOn(cosmosClient.pipeline, 'sendRequest').mockImplementation(async (_http, request) => ({
@@ -48,7 +48,7 @@ function setup(currency = 'EUR') {
                     { name: 'Meter', type: 'String' },
                     { name: 'Currency', type: 'String' },
                 ],
-                rows: [[8, 1000, 'Azure Cosmos DB', '100 RU/s', currency]],
+                rows: [[cost, usage, 'Azure Cosmos DB', '100 RU/s', currency]],
             },
         }),
     }));
@@ -71,11 +71,31 @@ afterEach(() => vi.restoreAllMocks());
 
 describe('optional financial enrichment', () => {
     it.each([
-        ['IdleContainer', true, 1],
-        ['IdleContainer', false, 1.5],
-        ['AutoscaleMaxOverProvisioned', true, 1],
-        ['AutoscaleMaxOverProvisioned', false, 1.5],
-    ] as const)('uses the billed quantity for %s with multi-write=%s', async (rule, writes, multiplier) => {
+        { cost: 50, usage: 1, recoverableRu: 0.125, monthlyAmount: 45.62 },
+        { cost: 50, usage: 1, recoverableRu: 0.375, monthlyAmount: 136.88 },
+        { cost: 9.8377, usage: 4137.5, recoverableRu: 600, monthlyAmount: 10.41 },
+    ])('matches actual CODA Python monetary vectors: %j', async ({ cost, usage, recoverableRu, monthlyAmount }) => {
+        const { enrich } = setup('USD', cost, usage);
+        const finding = advisory('IdleContainer', { evidence: { recoverableRu } });
+
+        expect(await enrich([finding])).toEqual({ available: true, failures: [] });
+        expect(finding.costEstimate?.monthlyAmount).toBe(monthlyAmount);
+    });
+
+    it('omits positive throughput savings that round to zero, matching CODA', async () => {
+        const { enrich } = setup('USD', 50, 1);
+        const finding = advisory('IdleContainer', { evidence: { recoverableRu: 0.000001 } });
+
+        expect(await enrich([finding])).toEqual({ available: true, failures: [] });
+        expect(finding.costEstimate).toBeUndefined();
+    });
+
+    it.each([
+        ['IdleContainer', true],
+        ['IdleContainer', false],
+        ['AutoscaleMaxOverProvisioned', true],
+        ['AutoscaleMaxOverProvisioned', false],
+    ] as const)('matches CODA bill-derived savings for %s with multi-write=%s', async (rule, writes) => {
         const { enrich } = setup('USD');
         const finding = advisory(rule, {
             evidence: { recoverableRu: 1000, recoverableIdleFloorRu: 1000, throughputMode: 'autoscale' },
@@ -91,72 +111,71 @@ describe('optional financial enrichment', () => {
             failures: [],
         });
         expect(finding.costEstimate).toMatchObject({
-            monthlyAmount: expect.closeTo(116.8 * multiplier, 8),
-            recoverableRu: 2000,
-            billingConversion: { quantityMultiplier: multiplier, billedEquivalentRu: 2000 * multiplier },
+            monthlyAmount: expect.closeTo(58.4, 8),
+            recoverableRu: 1000,
         });
+        expect(finding.costEstimate).not.toHaveProperty('billingConversion');
+        expect(finding.costEstimate).not.toHaveProperty('regionalFootprint');
     });
 
     it.each(['IdleContainer', 'AutoscaleMaxOverProvisioned'] as const)(
-        'withholds %s billing without known write configuration',
+        'prices %s without an extra write-configuration gate, matching CODA',
         async (rule) => {
             const { enrich, send } = setup();
             const finding = advisory(rule, {
                 evidence: { recoverableRu: 1000, recoverableIdleFloorRu: 1000, throughputMode: 'autoscale' },
             });
             expect(await enrich([finding], { ...context, multiRegionWritesEnabled: undefined })).toEqual({
-                available: false,
-                failures: [{ operation: 'throughput', kind: 'noData' }],
+                available: true,
+                failures: [],
             });
-            expect(finding.costEstimate).toBeUndefined();
-            expect(send).not.toHaveBeenCalled();
+            expect(finding.costEstimate?.monthlyAmount).toBe(58.4);
+            expect(send).toHaveBeenCalledOnce();
         },
     );
 
     it.each([undefined, 'unknown', 'serverless'])(
-        'withholds idle billing for unknown or ineligible mode %s',
+        'does not reinterpret quantified idle capacity using mode %s',
         async (mode) => {
             const { enrich, send } = setup();
             const finding = advisory('IdleContainer', {
                 evidence: { recoverableRu: 1000, ...(mode === undefined ? {} : { throughputMode: mode }) },
             });
             expect(await enrich([finding])).toEqual({
-                available: false,
-                failures: [{ operation: 'throughput', kind: 'noData' }],
+                available: true,
+                failures: [],
             });
-            expect(finding.costEstimate).toBeUndefined();
-            expect(send).not.toHaveBeenCalled();
+            expect(finding.costEstimate?.monthlyAmount).toBe(58.4);
+            expect(send).toHaveBeenCalledOnce();
         },
     );
 
-    it('rejects billing-quantity overflow before querying cost evidence', async () => {
-        const { enrich, send } = setup();
+    it('reports monetary overflow without losing another finding at the same rate', async () => {
+        const { enrich, send } = setup('USD', 1000, 1);
         const finding = advisory('IdleContainer', {
             evidence: { recoverableRu: Number.MAX_VALUE, throughputMode: 'autoscale' },
         });
-        expect(await enrich([finding])).toEqual({
+        const finite = advisory('OverProvisioning', { evidence: { recoverableRu: 1 } });
+
+        expect(await enrich([finding, finite])).toEqual({
             available: false,
             failures: [{ operation: 'throughput', kind: 'invalidData' }],
         });
-        expect(send).not.toHaveBeenCalled();
+        expect(finding.costEstimate).toBeUndefined();
+        expect(finite.costEstimate?.monthlyAmount).toBe(7300);
+        expect(send).toHaveBeenCalledOnce();
     });
 
-    it('converts single-write autoscale idle capacity to billed-equivalent units', async () => {
+    it('keeps single-write autoscale idle savings equal to CODA without a premium multiplier', async () => {
         const { enrich } = setup('USD');
         const finding = advisory('IdleContainer', {
             evidence: { provisionedRu: 10000, recoverableRu: 1000, throughputMode: 'autoscale' },
         });
         await enrich([finding], { ...context, multiRegionWritesEnabled: false });
-        expect(finding.costEstimate?.monthlyAmount).toBeCloseTo(87.6, 8);
+        expect(finding.costEstimate?.monthlyAmount).toBe(58.4);
         expect(finding.costEstimate).toMatchObject({
             currency: 'USD',
             recoverableRu: 1000,
-            billingConversion: {
-                throughputMode: 'autoscale',
-                multiRegionWritesEnabled: false,
-                quantityMultiplier: 1.5,
-                billedEquivalentRu: 1500,
-            },
         });
     });
 
@@ -165,7 +184,7 @@ describe('optional financial enrichment', () => {
         { regions: ['East US', 'West US'] },
         { regions: ['East US', 'West US', 'North Europe'] },
     ])(
-        'includes every configured region when estimating offer-level recoverable capacity ($regions)',
+        'matches CODA without multiplying offer-level capacity by configured regions ($regions)',
         async ({ regions }) => {
             const { enrich, send } = setup();
             const findings = [
@@ -182,18 +201,13 @@ describe('optional financial enrichment', () => {
             });
             for (const finding of findings.slice(0, 3)) {
                 expect(finding.costEstimate).toMatchObject({
-                    monthlyAmount: expect.closeTo(
-                        (finding.rule === 'AutoscaleMaxOverProvisioned' ? 87.6 : 58.4) * regions.length,
-                        8,
-                    ),
-                    recoverableRu: 1000 * regions.length,
-                    regionalFootprint: { regionCount: regions.length, recoverableRuPerRegion: 1000 },
+                    monthlyAmount: 58.4,
+                    recoverableRu: 1000,
                 });
             }
             expect(findings[3].costEstimate).toMatchObject({
                 monthlyAmount: expect.closeTo(116.8, 8),
                 recoverableRu: 2000,
-                regionalFootprint: null,
             });
             expect(send).toHaveBeenCalledOnce();
         },
@@ -205,19 +219,18 @@ describe('optional financial enrichment', () => {
         { regions: ['   '] },
         { regions: ['East US', 'EAST US'] },
         { regions: ['East US', 'eastus'] },
-    ])('withholds offer-level estimates without a valid regional footprint ($regions)', async ({ regions }) => {
+    ])('does not require a separate regional footprint for CODA savings ($regions)', async ({ regions }) => {
         const { enrich, send } = setup();
         const finding = advisory('IdleContainer', { evidence: { recoverableRu: 1000, throughputMode: 'manual' } });
-        const before = structuredClone(finding);
         expect(await enrich([finding], { ...context, locationNames: regions })).toEqual({
-            available: false,
-            failures: [{ operation: 'throughput', kind: 'noData' }],
+            available: true,
+            failures: [],
         });
-        expect(finding).toEqual(before);
-        expect(send).not.toHaveBeenCalled();
+        expect(finding.costEstimate?.monthlyAmount).toBe(58.4);
+        expect(send).toHaveBeenCalledOnce();
     });
 
-    it('retains independently regionalized capacity when an offer footprint is unavailable', async () => {
+    it('prices detector capacity unchanged when regional metadata is unavailable', async () => {
         const { enrich, send } = setup();
         const findings = [
             advisory('IdleContainer', { evidence: { recoverableRu: 1000, throughputMode: 'manual' } }),
@@ -226,28 +239,28 @@ describe('optional financial enrichment', () => {
             }),
         ];
         expect(await enrich(findings, { ...context, locationNames: [] })).toEqual({
-            available: false,
-            failures: [{ operation: 'throughput', kind: 'noData' }],
+            available: true,
+            failures: [],
         });
-        expect(findings[0].costEstimate).toBeUndefined();
+        expect(findings[0].costEstimate?.monthlyAmount).toBe(58.4);
         expect(findings[1].costEstimate).toMatchObject({
             monthlyAmount: expect.closeTo(116.8, 8),
-            regionalFootprint: null,
         });
         expect(send).toHaveBeenCalledOnce();
     });
 
-    it('rejects a regional capacity overflow before querying billing', async () => {
+    it('does not introduce regional-capacity overflow absent from CODA', async () => {
         const { enrich, send } = setup();
         const finding = advisory('IdleContainer', {
             evidence: { recoverableRu: Number.MAX_VALUE, throughputMode: 'manual' },
         });
         expect(await enrich([finding], { ...context, locationNames: ['East US', 'West US'] })).toEqual({
-            available: false,
-            failures: [{ operation: 'throughput', kind: 'invalidData' }],
+            available: true,
+            failures: [],
         });
-        expect(finding.costEstimate).toBeUndefined();
-        expect(send).not.toHaveBeenCalled();
+        expect(Number.isFinite(finding.costEstimate?.monthlyAmount)).toBe(true);
+        expect(finding.costEstimate).toMatchObject({ recoverableRu: Number.MAX_VALUE });
+        expect(send).toHaveBeenCalledOnce();
     });
 
     it('queries billing once and enriches only eligible active capacity findings without changing decisions or copy', async () => {
@@ -279,7 +292,7 @@ describe('optional financial enrichment', () => {
         expect(findings.slice(0, 4).map((finding) => finding.costEstimate?.monthlyAmount)).toEqual([
             expect.closeTo(23.36, 8),
             expect.closeTo(58.4, 8),
-            expect.closeTo(35.04, 8),
+            expect.closeTo(23.36, 8),
             expect.closeTo(116.8, 8),
         ]);
         expect(findings.slice(4).every((finding) => finding.costEstimate === undefined)).toBe(true);
@@ -287,7 +300,6 @@ describe('optional financial enrichment', () => {
             basis: 'customerAmortizedBill',
             currency: 'EUR',
             recoverableRu: 400,
-            regionalFootprint: { regionCount: 1, recoverableRuPerRegion: 400 },
             rate: { source: 'customerAmortizedBill', scope: 'account', cost: 8, usage100RuHours: 1000 },
         });
     });

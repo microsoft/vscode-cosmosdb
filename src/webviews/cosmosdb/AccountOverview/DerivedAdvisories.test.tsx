@@ -283,9 +283,9 @@ describe('metric coverage and actionable findings', () => {
         );
     });
 
-    it.each([1, 1.5] as const)(
-        'exposes billing multiplier %s in keyboard-accessible resource details',
-        async (multiplier) => {
+    it.each(['account', 'subscription_fallback'] as const)(
+        'exposes CODA rate scope %s in keyboard-accessible resource details',
+        async (scope) => {
             const user = userEvent.setup();
             showCoverage(
                 { available: true },
@@ -303,18 +303,11 @@ describe('metric coverage and actionable findings', () => {
                             costEstimate: {
                                 basis: 'customerAmortizedBill',
                                 currency: 'EUR',
-                                monthlyAmount: 116.8 * multiplier,
-                                recoverableRu: 2000,
-                                billingConversion: {
-                                    throughputMode: multiplier === 1.5 ? 'autoscale' : 'manual',
-                                    multiRegionWritesEnabled: false,
-                                    quantityMultiplier: multiplier,
-                                    billedEquivalentRu: 2000 * multiplier,
-                                },
-                                regionalFootprint: { regionCount: 2, recoverableRuPerRegion: 1000 },
+                                monthlyAmount: 58.4,
+                                recoverableRu: 1000,
                                 rate: {
                                     source: 'customerAmortizedBill',
-                                    scope: 'account',
+                                    scope,
                                     currency: 'EUR',
                                     cost: 8,
                                     usage100RuHours: 1000,
@@ -339,12 +332,15 @@ describe('metric coverage and actionable findings', () => {
             await user.keyboard('{Enter}');
             const detail = within(dialog).getByRole('region', { name: 'db/items' });
             expect(detail).toHaveTextContent(
-                `Estimated capacity savings: ${multiplier === 1.5 ? '175.20' : '116.80'} EUR per month`,
+                'Estimated capacity savings: 58.40 EUR per month',
             );
             expect(detail).toHaveTextContent(
-                `Model: 2,000.00 regional RU/s at a ${multiplier} billing multiplier: ${multiplier === 1.5 ? '3,000.00' : '2,000.00'} billed-equivalent RU/s`,
+                'Model: 1,000.00 recoverable RU/s at 0.0584 EUR per RU/s-month, without additional region, autoscale or zone multipliers.',
             );
-            expect(detail).toHaveTextContent('Regional footprint: 1,000.00 RU/s per region across 2 regions.');
+            expect(detail).toHaveTextContent(
+                scope === 'account' ? 'Rate scope: account.' : 'Rate scope: subscription fallback',
+            );
+            expect(detail).not.toHaveTextContent('billing multiplier:');
             expect(detail).toHaveTextContent('not a guaranteed bill reduction');
             expect(detail).toHaveTextContent('Estimates can overlap and must not be added together.');
             expect(detail).toHaveTextContent('Contributing meters: 100 RU/s');

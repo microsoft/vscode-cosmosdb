@@ -784,17 +784,22 @@ export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPa
                                 {...numberInput('maxItems')}
                             />
                         </Field>
-                        <Text>{l10n.t('Array update pattern')}</Text>
-                        <Select
-                            value={active.arrays.updatePattern}
-                            onChange={(_, data) => patchArrays({ updatePattern: data.value as ArrayUpdatePattern })}
+                        <Field
+                            className={styles.kvField}
+                            orientation="horizontal"
+                            label={l10n.t('Array update pattern')}
                         >
-                            {arrayOptions.map((o) => (
-                                <option key={o.value} value={o.value}>
-                                    {o.label}
-                                </option>
-                            ))}
-                        </Select>
+                            <Select
+                                value={active.arrays.updatePattern}
+                                onChange={(_, data) => patchArrays({ updatePattern: data.value as ArrayUpdatePattern })}
+                            >
+                                {arrayOptions.map((o) => (
+                                    <option key={o.value} value={o.value}>
+                                        {o.label}
+                                    </option>
+                                ))}
+                            </Select>
+                        </Field>
                     </div>
                 ) : null}
             </SubPanel>

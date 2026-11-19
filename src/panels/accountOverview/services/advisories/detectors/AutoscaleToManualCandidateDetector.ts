@@ -5,7 +5,7 @@
 
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale, hasMinimumKnownResourceAge, offerScope } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import { type AdvisoryEvaluation, type AutoscaleUtilizationInput, type DerivedAdvisory } from '../core/types';
@@ -72,19 +72,14 @@ export class AutoscaleToManualCandidateDetector extends Detector {
     evaluateResult = evaluateAutoscaleToManualCandidate;
     evaluate = (...args: Parameters<typeof evaluateAutoscaleToManualCandidate>) =>
         evaluateAutoscaleToManualCandidate(...args).advisory;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
-        const out: DerivedAdvisory[] = [];
-        for (const util of ctx.inputs.autoscaleUtilizations ?? []) {
-            const a = this.evaluate(
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
+        return (ctx.inputs.autoscaleUtilizations ?? []).map((util) =>
+            this.evaluateResult(
                 util,
                 ctx.thresholds.autoscaleToManualAvgPercent,
                 ctx.thresholds.autoscaleToManualPeakToAvgRatio,
-            );
-            if (a) {
-                out.push(a);
-            }
-        }
-        return out;
+            ),
+        );
     }
 }
 

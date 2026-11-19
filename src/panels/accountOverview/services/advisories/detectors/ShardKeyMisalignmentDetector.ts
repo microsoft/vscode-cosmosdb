@@ -5,7 +5,7 @@
 
 import * as l10n from '@vscode/l10n';
 import { containerKey } from '../../shared';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import {
@@ -34,7 +34,7 @@ function evaluateShardKeyMisalignment(
         return { rootCause: 'insufficient_data' };
     }
     const { totalQueries, containerPartitions, crossPartitionPct, crossQueriesPerSecond, worst } = stats;
-    if (totalQueries < minQueries) {
+    if (totalQueries < minQueries || containerPartitions <= 0) {
         return { rootCause: 'insufficient_data' };
     }
     if (
@@ -100,11 +100,11 @@ export class ShardKeyMisalignmentDetector extends Detector {
     evaluateResult = evaluateShardKeyMisalignment;
     evaluate = (...args: Parameters<typeof evaluateShardKeyMisalignment>) =>
         evaluateShardKeyMisalignment(...args).advisory;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
         const t = ctx.thresholds;
-        const out: DerivedAdvisory[] = [];
-        for (const input of ctx.inputs.crossPartition ?? []) {
-            const a = this.evaluate(
+
+        return (ctx.inputs.crossPartition ?? []).map((input) =>
+            this.evaluateResult(
                 input,
                 {
                     structuralPct: t.shardKeyStructuralPct,
@@ -112,12 +112,8 @@ export class ShardKeyMisalignmentDetector extends Detector {
                 },
                 t.crossPartitionFanoutThreshold,
                 t.crossPartitionMinQueries,
-            );
-            if (a) {
-                out.push(a);
-            }
-        }
-        return out;
+            ),
+        );
     }
 }
 

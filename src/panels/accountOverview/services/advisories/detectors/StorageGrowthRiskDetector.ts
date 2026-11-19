@@ -6,7 +6,7 @@
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import {
     type AdvisoryEvaluation,
@@ -190,15 +190,10 @@ export class StorageGrowthRiskDetector extends Detector {
     readonly rule = 'StorageGrowthRisk' as const;
     evaluateResult = evaluateStorageGrowthRisk;
     evaluate = (...args: Parameters<typeof evaluateStorageGrowthRisk>) => evaluateStorageGrowthRisk(...args).advisory;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
-        const out: DerivedAdvisory[] = [];
-        for (const storage of ctx.inputs.storage) {
-            const a = this.evaluate(storage, ctx.thresholds.storageGrowthHorizonDays);
-            if (a) {
-                out.push(a);
-            }
-        }
-        return out;
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
+        return ctx.inputs.storage.map((storage) =>
+            this.evaluateResult(storage, ctx.thresholds.storageGrowthHorizonDays),
+        );
     }
 }
 

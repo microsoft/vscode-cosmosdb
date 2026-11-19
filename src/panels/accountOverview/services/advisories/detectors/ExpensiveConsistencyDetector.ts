@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import {
@@ -138,15 +138,16 @@ function evaluateExpensiveConsistency(
 
 export class ExpensiveConsistencyDetector extends Detector {
     readonly rule = 'ExpensiveConsistency' as const;
+    protected readonly notApplicableRootCauses = ['default_or_relaxed', 'single_region'];
     evaluateResult = evaluateExpensiveConsistency;
     evaluate = (...args: Parameters<typeof evaluateExpensiveConsistency>) =>
         evaluateExpensiveConsistency(...args).advisory;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
         if (!ctx.inputs.accountConfig) {
             return [];
         }
-        const advisory = this.evaluate(ctx.inputs.accountConfig, ctx.inputs.consistencyReadRu);
-        return advisory ? [advisory] : [];
+
+        return [this.evaluateResult(ctx.inputs.accountConfig, ctx.inputs.consistencyReadRu)];
     }
 }
 

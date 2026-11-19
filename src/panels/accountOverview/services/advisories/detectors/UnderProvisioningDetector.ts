@@ -5,7 +5,7 @@
 
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale, hasMinimumKnownResourceAge, offerScope } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import {
@@ -30,6 +30,8 @@ function evaluateUnderProvisioning(
     throttleThresholdPercent: number,
 ): AdvisoryEvaluation<'SustainedThrottlingInRegion'> {
     if (
+        input.totalRequests === undefined ||
+        input.throttleRatePercent === undefined ||
         input.totalRequests < DIAGNOSTIC_POLICY.underProvisioning.minRequests ||
         !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.partitionSaturation.minResourceAgeDays)
     ) {
@@ -118,16 +120,14 @@ export class UnderProvisioningDetector extends Detector {
     readonly rule = 'SustainedThrottlingInRegion' as const;
     evaluateResult = evaluateUnderProvisioning;
     evaluate = (...args: Parameters<typeof evaluateUnderProvisioning>) => evaluateUnderProvisioning(...args).advisory;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
         const t = ctx.thresholds;
-        const out: DerivedAdvisory[] = [];
-        for (const p of ctx.inputs.partitions) {
-            const a = this.evaluate(p, t.partitionSaturationPercent, t.partitionHeadroomPercent, t.throttleRatePercent);
-            if (a) {
-                out.push(a);
-            }
-        }
-        return out;
+
+        return ctx.inputs.partitions
+            .filter((p) => p.totalRequests !== undefined && p.throttleRatePercent !== undefined)
+            .map((p) =>
+                this.evaluateResult(p, t.partitionSaturationPercent, t.partitionHeadroomPercent, t.throttleRatePercent),
+            );
     }
 }
 

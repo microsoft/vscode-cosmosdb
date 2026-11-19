@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import {
@@ -75,20 +75,22 @@ function evaluateServerlessCandidate(
 
 export class ServerlessCandidateDetector extends Detector {
     readonly rule = 'ServerlessCandidate' as const;
+    protected readonly notApplicableRootCauses = ['already_serverless'];
     evaluateResult = evaluateServerlessCandidate;
     evaluate = (...args: Parameters<typeof evaluateServerlessCandidate>) =>
         evaluateServerlessCandidate(...args).advisory;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
         const { inputs, thresholds } = ctx;
         if (!inputs.serverless) {
             return [];
         }
-        const advisory = this.evaluate(inputs.serverless, {
-            sporadicRatio: thresholds.serverlessSporadicRatio,
-            peakFloorRuPerSec: thresholds.serverlessPeakFloorRuPerSec,
-            peakCeilingRuPerSec: thresholds.serverlessPeakCeilingRuPerSec,
-        });
-        return advisory ? [advisory] : [];
+        return [
+            this.evaluateResult(inputs.serverless, {
+                sporadicRatio: thresholds.serverlessSporadicRatio,
+                peakFloorRuPerSec: thresholds.serverlessPeakFloorRuPerSec,
+                peakCeilingRuPerSec: thresholds.serverlessPeakCeilingRuPerSec,
+            }),
+        ];
     }
 }
 

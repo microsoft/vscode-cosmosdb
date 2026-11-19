@@ -237,7 +237,14 @@ describe('native DX-021 throttled operation investigation', () => {
             statusCounts: { 200: 900, 429: 100 },
             throttledOperationCounts: { Query: 50 },
         });
+
         expect(result?.evidence).toMatchObject({ querySharePercent: 50, dominantSharePercent: 50 });
+    });
+
+    it('preserves the CODA not_throttling root when no operation breakdown is available', () => {
+        expect(throttlingByOperationDetector.evaluateResult({ statusCounts: { 200: 900, 429: 100 } })).toEqual({
+            rootCause: 'not_throttling',
+        });
     });
 
     it('requires 1,000 requests and escapes literal operation markup', () => {

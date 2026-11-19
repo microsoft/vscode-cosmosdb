@@ -6,9 +6,11 @@
 import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import { useEffect, useState } from 'react';
 import { type AccountOverviewAppRouter, type AccountOverviewNavigation } from '../../api/types';
+import { useOverviewTelemetry } from './useOverviewTelemetry';
 
 export function useOverviewNavigation() {
     const client = useTrpcClient<AccountOverviewAppRouter>();
+    const { reportError } = useOverviewTelemetry();
     const [navigation, setNavigation] = useState<AccountOverviewNavigation>();
     const [failed, setFailed] = useState(false);
     const [attempt, setAttempt] = useState(0);
@@ -25,6 +27,7 @@ export function useOverviewNavigation() {
             },
             onError: () => {
                 if (active) {
+                    reportError({ kind: 'subscription', operation: 'navigation' });
                     setFailed(true);
                 }
             },
@@ -33,7 +36,7 @@ export function useOverviewNavigation() {
             active = false;
             subscription.unsubscribe();
         };
-    }, [client, attempt]);
+    }, [client, attempt, reportError]);
 
     return { navigation, failed, retry: () => setAttempt((value) => value + 1) };
 }

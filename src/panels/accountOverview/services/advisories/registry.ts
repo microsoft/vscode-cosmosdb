@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type Detector } from './core/Detector';
+import { type DerivedAdvisoryRule } from './core/types';
 import { autoscaleCandidateDetector } from './detectors/AutoscaleCandidateDetector';
 import { autoscaleMaxOverProvisionedDetector } from './detectors/AutoscaleMaxOverProvisionedDetector';
 import { autoscaleToManualCandidateDetector } from './detectors/AutoscaleToManualCandidateDetector';
@@ -28,6 +29,14 @@ import { storageSkewRiskDetector } from './detectors/StorageSkewRiskDetector';
 import { throttlingByOperationDetector } from './detectors/ThrottlingByOperationDetector';
 import { uncontrolledIngestionDetector } from './detectors/UncontrolledIngestionDetector';
 import { underProvisioningDetector } from './detectors/UnderProvisioningDetector';
+
+/** These rules evaluate the existing ARM snapshot without requiring workload or log collection. */
+export const CONFIGURATION_ONLY_RULES: readonly DerivedAdvisoryRule[] = [
+    'ExpensiveConsistency',
+    'MultiRegionWriteAntipattern',
+    'PaidContinuousBackup',
+    'PerRegionAutoscaleCandidate',
+];
 
 /**
  * Every derived-advisory detector, in evaluation order. Supersession (ShardKeyMisalignment supersedes

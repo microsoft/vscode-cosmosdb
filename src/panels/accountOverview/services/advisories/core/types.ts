@@ -21,31 +21,58 @@ import { type OperationCategory } from './requestMetrics';
 // the fetching and calls computeDerivedAdvisories.
 
 /** The derived-advisory rules this engine implements (P0 + best-effort). */
-export type DerivedAdvisoryRule =
-    | 'HotPartitionRisk'
-    | 'SustainedThrottlingInRegion'
-    | 'OverProvisioning'
-    | 'AutoscaleCandidate'
-    | 'StorageGrowthRisk'
-    | 'StorageSkewRisk'
-    | 'IndexingCostRisk'
-    | 'ExpensiveConsistency'
-    | 'MultiRegionWriteAntipattern'
-    | 'IdleContainer'
-    | 'PartitionMergeCandidate'
-    | 'AutoscaleMaxOverProvisioned'
-    | 'AutoscaleToManualCandidate'
-    | 'ServerlessCandidate'
-    | 'ServerlessThrottling'
-    | 'CrossPartitionQuery'
-    | 'ShardKeyMisalignment'
-    | 'UncontrolledIngestion'
-    | 'SharedThroughputStarvation'
-    | 'PaidContinuousBackup'
-    | 'NonThrottlingErrors'
-    | 'ThrottlingByOperation'
-    | 'PerRegionAutoscaleCandidate'
-    | 'ReservedCapacityCandidate';
+export const DERIVED_ADVISORY_RULES = [
+    'HotPartitionRisk',
+    'SustainedThrottlingInRegion',
+    'OverProvisioning',
+    'AutoscaleCandidate',
+    'StorageGrowthRisk',
+    'StorageSkewRisk',
+    'IndexingCostRisk',
+    'ExpensiveConsistency',
+    'MultiRegionWriteAntipattern',
+    'IdleContainer',
+    'PartitionMergeCandidate',
+    'AutoscaleMaxOverProvisioned',
+    'AutoscaleToManualCandidate',
+    'ServerlessCandidate',
+    'ServerlessThrottling',
+    'CrossPartitionQuery',
+    'ShardKeyMisalignment',
+    'UncontrolledIngestion',
+    'SharedThroughputStarvation',
+    'PaidContinuousBackup',
+    'NonThrottlingErrors',
+    'ThrottlingByOperation',
+    'PerRegionAutoscaleCandidate',
+    'ReservedCapacityCandidate',
+] as const;
+
+export type DerivedAdvisoryRule = (typeof DERIVED_ADVISORY_RULES)[number];
+
+export const DETECTOR_COVERAGE_STATUSES = [
+    'evaluated',
+    'notApplicable',
+    'insufficientData',
+    'unavailable',
+    'partial',
+] as const;
+
+/** Counts actual input evaluations, never inferred missing resources. Contains no scope identities or evidence. */
+export interface DetectorCoverage {
+    rule: DerivedAdvisoryRule;
+    status: (typeof DETECTOR_COVERAGE_STATUSES)[number];
+    evaluatedCount: number;
+    matchedCount: number;
+    notApplicableCount: number;
+    insufficientDataCount: number;
+    unavailableReasons: UnavailableReason[];
+}
+
+export interface DerivedAdvisoryAnalysis {
+    advisories: DerivedAdvisory[];
+    detectorCoverage: DetectorCoverage[];
+}
 
 export type DerivedAdvisorySeverity = 'High' | 'Medium' | 'Low';
 
@@ -162,7 +189,7 @@ interface AdvisoryEvaluationResults {
         'insufficient_data' | 'not_throttling' | 'skew_suspected' | 'global_under_provisioning'
     >;
     ThrottlingByOperation:
-        | EvaluationOutcome<'too_few_requests' | 'not_throttling'>
+        | EvaluationOutcome<'insufficient_data' | 'too_few_requests' | 'not_throttling'>
         | EvaluationOutcome<
               'decomposed',
               {
@@ -251,17 +278,20 @@ export type AdvisoryCostEstimate = {
       }
 );
 
-export type CostFailureKind =
-    | 'notConfigured'
-    | 'authentication'
-    | 'accessDenied'
-    | 'rateLimited'
-    | 'timeout'
-    | 'serviceError'
-    | 'queryError'
-    | 'invalidData'
-    | 'noData'
-    | 'unsupported';
+export const COST_FAILURE_KINDS = [
+    'notConfigured',
+    'authentication',
+    'accessDenied',
+    'rateLimited',
+    'timeout',
+    'serviceError',
+    'queryError',
+    'invalidData',
+    'noData',
+    'unsupported',
+] as const;
+
+export type CostFailureKind = (typeof COST_FAILURE_KINDS)[number];
 
 /** Optional financial coverage is separate from detector coverage. No raw service errors or billing rows. */
 export interface CostSourceStatus {
@@ -304,6 +334,7 @@ export interface DerivedAdvisoriesResult extends ReadDiagnosticsResult {
     logSource?: LogsSourceStatus;
     metricSource?: MetricSourceStatus;
     costSource?: CostSourceStatus;
+    detectorCoverage?: DetectorCoverage[];
     /** Epoch milliseconds when the server produced this snapshot. */
     generatedAt: number;
 }
@@ -423,11 +454,14 @@ export interface PartitionSaturationInput {
     maxP99: number;
     /** Coolest physical partition's p99 utilization (% of provisioned). */
     minP99: number;
+    /** Number of partitions with usable RU observations, not an inventory count. */
     partitionCount: number;
-    /** Container 429 rate (`sum(429)/sum(total)`, %). */
-    throttleRatePercent: number;
-    /** Total requests over the window; below the abstain gate the rate is too noisy to judge. */
-    totalRequests: number;
+    /** Independently read PhysicalPartitionCount, when available. */
+    physicalPartitionCount?: number;
+    /** Container 429 rate (`sum(429)/sum(total)`, %), absent when the throttle read failed. */
+    throttleRatePercent?: number;
+    /** Total requests over the window; absent when unavailable, below the abstain gate too noisy to judge. */
+    totalRequests?: number;
     /** Throughput mode, so the under-provisioning remediation can say "raise the max" vs "raise RU/s". */
     throughputMode: ThroughputMode;
     /** Provisioned RU/s, quoted in the under-provisioning remediation when known. */
@@ -452,6 +486,8 @@ export interface ContainerStorageInput {
     resourceAgeDays?: number;
     databaseId: string;
     containerId: string;
+    /** Independently read PhysicalPartitionCount, not the number of returned storage series. */
+    physicalPartitionCount?: number;
     partitions: readonly StoragePartitionSeries[];
 }
 
@@ -590,7 +626,7 @@ export interface QueryShapeInput {
     executions: number;
     /** Average distinct physical partitions touched per execution (`avg(dcount(PartitionKeyRangeId))`). */
     avgFanout: number;
-    /** Widest fan-out observed for this shape, the container's estimated physical-partition count. */
+    /** Widest observed query fan-out; a lower bound, not an inventory count of physical partitions. */
     maxFanout: number;
     /** Mean logical-query RU only when every execution/activity matched valid raw request charges. Not savings. */
     avgRu?: number;

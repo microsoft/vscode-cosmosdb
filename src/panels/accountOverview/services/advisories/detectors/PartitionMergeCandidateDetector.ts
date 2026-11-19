@@ -6,7 +6,7 @@
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { containerKey } from '../../shared';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { clampRationale } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import {
@@ -42,6 +42,9 @@ function neededPartitions(provisionedRu: number, storageBytes: number): number {
 function evaluatePartitionMergeCandidate(input: PartitionMergeInput): AdvisoryEvaluation<'PartitionMergeCandidate'> {
     const actual = input.actualPartitions;
     // 0 ⇒ no partition reading (insufficient data); 1 ⇒ single partition can never be merged.
+    if (actual === 1) {
+        return { rootCause: 'single_partition' };
+    }
     if (
         !Number.isInteger(actual) ||
         actual < 1 ||
@@ -53,9 +56,6 @@ function evaluatePartitionMergeCandidate(input: PartitionMergeInput): AdvisoryEv
         input.dataUsageBytes < 0
     ) {
         return { rootCause: 'insufficient_data' };
-    }
-    if (actual === 1) {
-        return { rootCause: 'single_partition' };
     }
     const provisionedRu = input.provisionedRu;
     const storageBytes = input.dataUsageBytes;
@@ -146,18 +146,12 @@ function evaluatePartitionMergeCandidate(input: PartitionMergeInput): AdvisoryEv
 
 export class PartitionMergeCandidateDetector extends Detector {
     readonly rule = 'PartitionMergeCandidate' as const;
+    protected readonly notApplicableRootCauses = ['single_partition'];
     evaluateResult = evaluatePartitionMergeCandidate;
     evaluate = (...args: Parameters<typeof evaluatePartitionMergeCandidate>) =>
         evaluatePartitionMergeCandidate(...args).advisory;
-    run(ctx: DetectorContext): DerivedAdvisory[] {
-        const out: DerivedAdvisory[] = [];
-        for (const merge of ctx.inputs.partitionMerges ?? []) {
-            const a = this.evaluate(merge);
-            if (a) {
-                out.push(a);
-            }
-        }
-        return out;
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
+        return (ctx.inputs.partitionMerges ?? []).map((merge) => this.evaluateResult(merge));
     }
 }
 

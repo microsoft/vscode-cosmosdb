@@ -99,6 +99,88 @@ The feedback mutation waits for the browser launch; both a refused launch (`fals
 to that notification route rather than completing successfully. The survey helper does not display a duplicate notification.
 No Overview usage scoring, additional questionnaire or automatic survey prompt is introduced.
 
+### Extension telemetry
+
+`cosmosDB.accountOverview.webview.tabViewed` records `tab = monitoring | databases | advisories` and
+`trigger = initial | user | navigation`. The initial event waits until the dashboard can render its tabs and the webview
+document is visible. Loads and navigation in a hidden retained webview remain pending until `visibilitychange` reveals it;
+only the latest pending destination is reported, without refetching data.
+A changed selection emits once; selecting the current tab, rerendering, refreshing, or changing filters does not.
+An explicit Explorer navigation emits once for the resulting tab, including reopening the same destination.
+All Overview RPCs and webview events share the in-memory random `panelId` used by the panel's `opened` and `closed` events.
+It is not derived from account identity.
+
+Existing `cosmosDB.rpc.<type>.accountOverview.<procedure>` events retain their timing and thrown-error handling.
+A dedicated Account Overview middleware runs inside the existing RPC telemetry scope. It registers account and
+sensitive input masks before validation or service work, then enriches that same event from the completed read result.
+Resolvers reuse these masks; newly acquired credentials and separate nested telemetry contexts register their own masks.
+Read helpers and advisory collection do not receive telemetry contexts or reporting callbacks.
+The shared telemetry adapter propagates a required `actionContext` through tRPC's context override typing.
+The Overview middleware requires that enriched context, so removing or reordering its telemetry prerequisite is a
+compile-time error rather than a runtime assertion failure.
+Read RPCs additionally report `dataResult = complete | partial | unavailable`, a numeric `readFailureCount`
+(distinct source/kind/reason combinations), and sorted, deduplicated `readFailureSources`, `readFailureKinds`
+and `readFailureReasons` when failures exist. These failures have `errorCategory = infrastructure`.
+Canceled invocations retain the outer runner's `result = Canceled` classification without an infrastructure error category.
+Diagnostics include caught failures, optional-client failures and partial Log Analytics responses observed before the
+read completes, even when the RPC returns a usable fallback. Unfinished sibling reads never delay that fallback;
+their later failures remain in sanitized local Output and do not mutate the completed result or emitted telemetry.
+Successful empty reads have zero failures, not an exception.
+Advisory results with an unavailable metric or log source report partial data even when a configuration-only fallback
+remains available; this does not create an exception or an artificial read failure.
+Storage reads with an unavailable data or index component also report partial data without inventing read failures.
+Metric reads attach only the metric enum, time-range enum and account/database/container scope kind;
+partition reads attach the effective RU/storage mode and time range. Account actions attach the bounded action enum.
+Advisory collection reports finding/check counts, per-tier coverage booleans and cost-failure categories,
+never finding evidence, metric values, billing amounts or scoped identifiers.
+
+Each registered detector also returns a pure coverage summary; it does not receive telemetry contexts or callbacks.
+The existing advisory RPC event reports `detector<Rule>Status` as `evaluated`, `notApplicable`, `insufficientData`,
+`unavailable` or `partial`. `EvaluatedCount` and `MatchedCount` are numeric measurements under the same prefix;
+nonzero `NotApplicableCount` and `InsufficientDataCount` are also measurements. Counts describe actual input evaluations,
+not inferred missing resources. Matches are counted before supersession or UI dismissal.
+Source failures add sorted, deduplicated `detector<Rule>UnavailableReasons` from the shared unavailable-reason enum.
+Known targets without observations remain insufficient/partial; a known empty eligible target set is not applicable.
+Failed or incomplete inventory never implies zero targets, and missing-resource counts are not fabricated.
+Completed checks remain partial when incomplete throughput inventory leaves other targets potentially eligible.
+Age-read failures affect detector coverage only when an eligible target still lacks its required age evidence;
+redundant failures remain in source diagnostics without reducing completed detector coverage.
+Detector root causes follow pinned CODA's observed-series contract, including `single_partition`, `not_saturated`,
+`uniform_saturation`, `uniform_storage`, `too_small` and the nonsaturated `not_throttling` outcome.
+Independent `PhysicalPartitionCount` evidence is retained for acquisition diagnostics and is never substituted for
+the number of usable observations or used to rewrite a CODA classification. Known-young age gates still apply.
+The existing count read is reused rather than repeated. Failed count reads and unresolved age reads remain separately
+visible in source/coverage diagnostics; a negative classifier result is not proof that every physical partition was read.
+Age dependency attribution indexes only unresolved scopes and scans observations at most once, without nested scope searches.
+Missing throttle observations are never replaced with synthetic values or counted as under-provisioning evaluations.
+Successful empty observations do not create unavailable dependencies; rules retain their existing evidence semantics,
+including empty successful consumption reads establishing idleness. Disabled indexing and a single observed partition
+can establish inapplicability without otherwise-required metric reads; user-excluded paths do not suppress indexing checks.
+DX-021 retains CODA's `not_throttling` root when there is no usable operation breakdown, even when status counts contain 429s.
+This does not discard acquisition failures: denied operation reads remain separately visible in source/coverage diagnostics.
+Sufficient query traffic with known low fan-out is a completed negative evaluation, not proof of container inapplicability.
+Missing configuration fields remain insufficient evidence, not a failed workload-data dependency.
+Required log-query failures affect only their dependent rules; optional cost, request-charge or consistency-charge
+enrichment does not change detector coverage. No per-container or detector-entry/exit events are emitted.
+Operation-throttling coverage requires a usable breakdown only after sufficient traffic and above-threshold throttling
+are established: successful emptiness is insufficient evidence, and a denied required breakdown is unavailable.
+
+`cosmosDB.accountOverview.webviewError` records subscription failures, render failures and unhandled JavaScript
+errors/rejections with `errorCategory = webview`, `failureKind` and an optional bounded subscription name.
+It deliberately omits original messages, stacks and rejection payloads. Query/mutation errors are reported only by
+the existing host RPC middleware, not again by a client RPC observer. Global webview error/rejection handlers also
+exclude tRPC client errors. Telemetry failures are caught locally and excluded from recursive reporting.
+There is no additional client RPC telemetry middleware: tab visits depend on visible React state, while ErrorBoundary,
+global handlers and subscription callbacks cover failures outside ordinary query/mutation execution.
+
+The host validates webview telemetry names and property values against a bounded schema and drops unknown fields.
+Webview event and read-result schemas live in the telemetry contract; diagnostic categories share one runtime list
+with their domain types rather than maintaining separate telemetry enums.
+No account/resource identities, database/container names, partition keys, URLs, queries, error payloads or deterministic
+hashes are added as telemetry fields. Detailed sanitized diagnostics remain in local Output.
+Background reads and best-effort telemetry suppress native notifications. Existing inline errors and the single native
+notification owner for explicit auxiliary actions remain unchanged; ordinary RPC failures still reach their caller.
+
 ### Refresh dependency matrix
 
 | Trigger                                       | Reads or state changes                                                                                                                                                                                     |

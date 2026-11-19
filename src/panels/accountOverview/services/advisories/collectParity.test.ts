@@ -30,7 +30,7 @@ vi.mock('../ruTrends', async (importOriginal) => ({
 }));
 
 vi.mock('./engine', () => ({
-    computeDerivedAdvisories: vi.fn(),
+    analyzeDerivedAdvisories: vi.fn(),
 }));
 
 vi.mock('./fetchers/logs', () => ({
@@ -60,12 +60,13 @@ import { MonitorClient, type Response as MetricsResponse } from '@azure/arm-moni
 import { createHttpHeaders } from '@azure/core-rest-pipeline';
 import { getSqlInventoryDetails } from '../inventory';
 import { getPartitionHealth, getPartitionStorageSeries } from '../partitionHealth';
+import * as resourceAge from '../resourceAge';
 import { getRuTrends, getThrottleRate } from '../ruTrends';
 import { GB, pagedItems } from '../testFixtures';
 import { collectDerivedAdvisories } from './collect';
 import { DEFAULT_ADVISORY_THRESHOLDS, DIAGNOSTIC_POLICY } from './core/thresholds';
 import { type DerivedAdvisory, type DerivedAdvisoryRule } from './core/types';
-import { computeDerivedAdvisories } from './engine';
+import { analyzeDerivedAdvisories } from './engine';
 import {
     fetchConsistencyReadRu,
     fetchCrossPartitionShapes,
@@ -92,8 +93,30 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+    vi.restoreAllMocks();
     vi.resetAllMocks();
 });
+
+function inventoryRow(
+    overrides: Partial<InventoryModule.InventoryContainerRow> = {},
+): InventoryModule.InventoryContainerRow {
+    return {
+        databaseId: 'private-db',
+        containerId: 'private-container',
+        throughputMode: 'dedicated',
+        throughputRU: 1000,
+        offerLevel: 'container',
+        offerThroughputMode: 'manual',
+        resourceCreatedAt: '2020-01-01T00:00:00.000Z',
+        partitionKeyPaths: [],
+        indexingMode: 'consistent',
+        excludedPathCount: 0,
+        userExcludedPathCount: 0,
+        compositeIndexCount: 0,
+        health: 'Healthy',
+        ...overrides,
+    };
+}
 
 function advisory(rule: DerivedAdvisoryRule, scope?: string): DerivedAdvisory {
     return {
@@ -138,9 +161,222 @@ function params(overrides: Partial<Parameters<typeof collectDerivedAdvisories>[0
 }
 
 describe('collectDerivedAdvisories parity wiring', () => {
+    it('keeps known offer checks partial when throughput inventory contains an unknown row', async () => {
+        const engine = await vi.importActual<typeof EngineModule>('./engine');
+        const known = inventoryRow();
+        const unknown = inventoryRow({
+            containerId: 'private-unknown',
+            throughputMode: 'unknown',
+            throughputRU: undefined,
+            offerLevel: 'none',
+            offerThroughputMode: 'unknown',
+            indexingMode: 'none',
+        });
+
+        vi.mocked(analyzeDerivedAdvisories).mockImplementation(engine.analyzeDerivedAdvisories);
+        vi.mocked(getSqlInventoryDetails).mockResolvedValue({
+            rows: [known, unknown],
+            offers: [
+                {
+                    databaseId: known.databaseId,
+                    containerId: known.containerId,
+                    offerLevel: 'container',
+                    throughputMode: 'dedicated',
+                    offerThroughputMode: 'manual',
+                    throughputRU: 1000,
+                    resourceCreatedAt: known.resourceCreatedAt,
+                },
+            ],
+            databases: [known.databaseId],
+            throughputInventoryComplete: false,
+        });
+        vi.mocked(getContainerIdlePeak).mockResolvedValue(0);
+        vi.mocked(getContainerIndexingUsage).mockResolvedValue({ indexUsageBytes: 10, dataUsageBytes: 100 });
+        vi.mocked(getRuTrends).mockResolvedValue({
+            available: false,
+            reason: 'noData',
+            points: [],
+            provisionedPercent: 100,
+            timeRange: '7D',
+            generatedAt: 0,
+        });
+
+        const result = await collectDerivedAdvisories(params({ logsClient: undefined }));
+
+        expect(result.detectorCoverage).toHaveLength(24);
+        expect(result.detectorCoverage.find(({ rule }) => rule === 'IdleContainer')).toMatchObject({
+            status: 'partial',
+            evaluatedCount: 1,
+            matchedCount: 1,
+            insufficientDataCount: 0,
+            unavailableReasons: [],
+        });
+        expect(result.detectorCoverage.find(({ rule }) => rule === 'IndexingCostRisk')).toMatchObject({
+            status: 'evaluated',
+            evaluatedCount: 1,
+            unavailableReasons: [],
+        });
+        expect(result.advisories.some(({ rule }) => rule === 'IdleContainer')).toBe(true);
+        expect(JSON.stringify(result.detectorCoverage)).not.toContain('private-');
+    });
+
+    it.each([
+        'containerDate',
+        'offerDate',
+        'discoveredDate',
+        'accountFallback',
+        'sharedOfferDate',
+        'unknown',
+        'idleFailure',
+    ] as const)('attributes age failures to the actual offer and container dependencies (%s)', async (state) => {
+        const engine = await vi.importActual<typeof EngineModule>('./engine');
+        const cosmosClient = new CosmosDBManagementClient({ getToken: async () => null }, 'sub');
+        const createdAt = '2020-01-01T00:00:00.000Z';
+        const shared = state === 'sharedOfferDate';
+        const row = inventoryRow({
+            throughputMode: shared ? 'shared' : 'dedicated',
+            offerLevel: shared ? 'database' : 'container',
+            resourceCreatedAt: state === 'containerDate' || state === 'idleFailure' ? createdAt : undefined,
+            offerCreatedAt: state === 'offerDate' ? createdAt : undefined,
+        });
+        const getAccount = vi.spyOn(cosmosClient.databaseAccounts, 'get');
+        const getContainerAge = vi.spyOn(resourceAge, 'getContainerCreatedAt');
+
+        vi.mocked(analyzeDerivedAdvisories).mockImplementation(engine.analyzeDerivedAdvisories);
+        vi.mocked(getSqlInventoryDetails).mockResolvedValue({
+            rows: [row],
+            offers: [
+                {
+                    databaseId: row.databaseId,
+                    containerId: shared ? undefined : row.containerId,
+                    offerLevel: shared ? 'database' : 'container',
+                    throughputMode: shared ? 'shared' : 'dedicated',
+                    offerThroughputMode: 'manual',
+                    throughputRU: 1000,
+                    resourceCreatedAt: state === 'offerDate' || shared ? createdAt : undefined,
+                },
+            ],
+            databases: [row.databaseId],
+            throughputInventoryComplete: true,
+        });
+        if (state === 'accountFallback') {
+            getAccount.mockResolvedValue({ systemData: { createdAt: new Date(createdAt) } });
+        } else {
+            getAccount.mockRejectedValue(Object.assign(new Error('private-age-error'), { statusCode: 403 }));
+        }
+        if (state === 'accountFallback') {
+            getContainerAge.mockRejectedValue(
+                Object.assign(new Error('private-container-age-error'), { statusCode: 503 }),
+            );
+        } else {
+            getContainerAge.mockResolvedValue(state === 'discoveredDate' ? createdAt : undefined);
+        }
+        if (state === 'idleFailure') {
+            vi.mocked(getContainerIdlePeak).mockRejectedValue(
+                Object.assign(new Error('private-idle-error'), { statusCode: 403 }),
+            );
+        } else {
+            vi.mocked(getContainerIdlePeak).mockResolvedValue(0);
+        }
+        vi.mocked(getRuTrends).mockResolvedValue({
+            available: false,
+            reason: 'noData',
+            points: [],
+            provisionedPercent: 100,
+            timeRange: '7D',
+            generatedAt: 0,
+        });
+        vi.mocked(getPartitionStorageSeries).mockResolvedValue({
+            available: true,
+            databaseId: row.databaseId,
+            containerId: row.containerId,
+            partitions: ['0', '1'].map((partitionId) => ({
+                partitionId,
+                samples: [{ timestamp: 0, bytes: 20 * GB }],
+            })),
+            generatedAt: 0,
+        });
+
+        const result = await collectDerivedAdvisories(params({ cosmosClient, logsClient: undefined }));
+
+        expect(result.detectorCoverage.find(({ rule }) => rule === 'IdleContainer')).toMatchObject({
+            status: state === 'unknown' ? 'partial' : state === 'idleFailure' ? 'unavailable' : 'evaluated',
+            evaluatedCount: state === 'idleFailure' ? 0 : 1,
+            unavailableReasons: state === 'unknown' || state === 'idleFailure' ? ['rbac'] : [],
+        });
+        expect(result.detectorCoverage.find(({ rule }) => rule === 'StorageSkewRisk')).toMatchObject({
+            status: shared ? 'notApplicable' : state === 'unknown' ? 'partial' : 'evaluated',
+            evaluatedCount: shared ? 0 : 1,
+            unavailableReasons: state === 'unknown' ? ['rbac'] : [],
+        });
+        expect(result.metricSource.available).toBe(false);
+        expect(result.metricSource.failures).toContainEqual({
+            rule: 'IdleContainer',
+            reason: state === 'accountFallback' ? 'noData' : 'rbac',
+            scope: state === 'accountFallback' ? 'private-db/private-container' : undefined,
+        });
+    });
+
+    it('attributes redundant scoped age failures with a linear number of identity reads', async () => {
+        const engine = await vi.importActual<typeof EngineModule>('./engine');
+        const count = 64;
+        let identityReads = 0;
+        const identities = Array.from({ length: count }, (_, index) => ({
+            databaseId: 'private-db',
+            get containerId() {
+                identityReads++;
+                return `private-container-${index}`;
+            },
+        }));
+        const rows = identities.map((identity) => ({
+            ...inventoryRow({ resourceCreatedAt: undefined }),
+            get containerId() {
+                return identity.containerId;
+            },
+        }));
+        const offers = identities.map((identity) => ({
+            databaseId: identity.databaseId,
+            get containerId() {
+                return identity.containerId;
+            },
+            offerLevel: 'container' as const,
+            throughputMode: 'dedicated' as const,
+            offerThroughputMode: 'manual' as const,
+            throughputRU: 1000,
+        }));
+
+        vi.mocked(analyzeDerivedAdvisories).mockImplementation(engine.analyzeDerivedAdvisories);
+        vi.mocked(getSqlInventoryDetails).mockResolvedValue({
+            rows,
+            offers,
+            databases: ['private-db'],
+            throughputInventoryComplete: true,
+        });
+        vi.spyOn(resourceAge, 'getContainerCreatedAt').mockRejectedValue({ statusCode: 503 });
+        vi.mocked(getContainerIdlePeak).mockResolvedValue(0);
+        vi.mocked(getRuTrends).mockResolvedValue({
+            available: false,
+            reason: 'noData',
+            points: [],
+            provisionedPercent: 100,
+            timeRange: '7D',
+            generatedAt: 0,
+        });
+
+        const result = await collectDerivedAdvisories(params({ logsClient: undefined }));
+
+        expect(result.detectorCoverage.find(({ rule }) => rule === 'IdleContainer')).toMatchObject({
+            status: 'evaluated',
+            evaluatedCount: count,
+            unavailableReasons: [],
+        });
+        expect(result.metricSource.failures.filter(({ rule }) => rule === 'IdleContainer')).toHaveLength(count);
+        expect(identityReads).toBeLessThan(128 * count);
+    });
+
     it('preserves denied inventory as backup cost access denial', async () => {
         const engine = await vi.importActual<typeof EngineModule>('./engine');
-        vi.mocked(computeDerivedAdvisories).mockImplementation(engine.computeDerivedAdvisories);
+        vi.mocked(analyzeDerivedAdvisories).mockImplementation(engine.analyzeDerivedAdvisories);
         vi.mocked(getSqlInventoryDetails).mockRejectedValue({ statusCode: 403 });
         const defaults = params();
         const result = await collectDerivedAdvisories(
@@ -165,19 +401,77 @@ describe('collectDerivedAdvisories parity wiring', () => {
             available: false,
             failures: [{ operation: 'backup', kind: 'accessDenied' }],
         });
+        expect(result.detectorCoverage).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    rule: 'HotPartitionRisk',
+                    status: 'unavailable',
+                    evaluatedCount: 0,
+                    matchedCount: 0,
+                    unavailableReasons: ['rbac'],
+                }),
+                expect.objectContaining({
+                    rule: 'PaidContinuousBackup',
+                    status: 'evaluated',
+                    evaluatedCount: 1,
+                    matchedCount: 1,
+                    unavailableReasons: [],
+                }),
+            ]),
+        );
     });
+
+    it.each(['empty', 'incomplete', 'denied'] as const)(
+        'preserves the meaning of %s inventory in detector coverage',
+        async (inventoryState) => {
+            const engine = await vi.importActual<typeof EngineModule>('./engine');
+
+            vi.mocked(analyzeDerivedAdvisories).mockImplementation(engine.analyzeDerivedAdvisories);
+            if (inventoryState === 'denied') {
+                vi.mocked(getSqlInventoryDetails).mockRejectedValue({ statusCode: 403 });
+            } else {
+                vi.mocked(getSqlInventoryDetails).mockResolvedValue({
+                    databases: [],
+                    rows: [],
+                    offers: [],
+                    throughputInventoryComplete: inventoryState === 'empty',
+                });
+            }
+
+            const result = await collectDerivedAdvisories(params({ isServerless: true, logsClient: undefined }));
+            const coverage = result.detectorCoverage.find(({ rule }) => rule === 'HotPartitionRisk');
+
+            expect(coverage).toMatchObject({
+                status:
+                    inventoryState === 'empty'
+                        ? 'notApplicable'
+                        : inventoryState === 'denied'
+                          ? 'unavailable'
+                          : 'insufficientData',
+                evaluatedCount: 0,
+                matchedCount: 0,
+                notApplicableCount: 0,
+                insufficientDataCount: 0,
+                unavailableReasons: inventoryState === 'denied' ? ['rbac'] : [],
+            });
+            expect(result.detectorCoverage.find(({ rule }) => rule === 'ServerlessCandidate')).toMatchObject({
+                status: 'notApplicable',
+                evaluatedCount: 0,
+            });
+        },
+    );
 
     it.each([true, false])(
         'reports reservation inventory failure only for provisioned accounts (serverless=%s)',
         async (isServerless) => {
             vi.mocked(getSqlInventoryDetails).mockRejectedValue({ statusCode: 403 });
-            vi.mocked(computeDerivedAdvisories).mockReturnValue([]);
+            vi.mocked(analyzeDerivedAdvisories).mockReturnValue({ advisories: [], detectorCoverage: [] });
             const result = await collectDerivedAdvisories(params({ isServerless, logsClient: undefined }));
             const failures = result.metricSource.failures.filter(
                 (failure) => failure.rule === 'ReservedCapacityCandidate',
             );
             expect(failures).toEqual(isServerless ? [] : [{ rule: 'ReservedCapacityCandidate', reason: 'rbac' }]);
-            expect(vi.mocked(computeDerivedAdvisories).mock.calls[0][0].scopeProvisionedRuTotal).toBeUndefined();
+            expect(vi.mocked(analyzeDerivedAdvisories).mock.calls[0][0].scopeProvisionedRuTotal).toBeUndefined();
         },
     );
 
@@ -199,7 +493,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
                 ],
                 throughputInventoryComplete,
             });
-            vi.mocked(computeDerivedAdvisories).mockReturnValue([]);
+            vi.mocked(analyzeDerivedAdvisories).mockReturnValue({ advisories: [], detectorCoverage: [] });
             vi.mocked(getRuTrends).mockResolvedValue({
                 available: false,
                 reason: 'noData',
@@ -209,7 +503,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
                 generatedAt: 0,
             });
             await collectDerivedAdvisories(params({ logsClient: undefined }));
-            const inputs = vi.mocked(computeDerivedAdvisories).mock.calls[0][0];
+            const inputs = vi.mocked(analyzeDerivedAdvisories).mock.calls[0][0];
             expect(inputs.scopeProvisionedRuTotal).toBe(throughputInventoryComplete ? 6000 : undefined);
             expect(inputs.manualProvisionedRuTotal === undefined || throughputInventoryComplete).toBe(true);
         },
@@ -236,7 +530,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
         'quantifies regional capacity only for complete all-manual offers ($name)',
         async ({ complete, sharedAutoscale, dedicatedAutoscale, capacity }) => {
             const engine = await vi.importActual<typeof EngineModule>('./engine');
-            vi.mocked(computeDerivedAdvisories).mockImplementation(engine.computeDerivedAdvisories);
+            vi.mocked(analyzeDerivedAdvisories).mockImplementation(engine.analyzeDerivedAdvisories);
             const offers: InventoryModule.InventoryThroughputOffer[] = [
                 {
                     databaseId: 'db',
@@ -298,7 +592,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
                 }),
             );
 
-            const inputs = vi.mocked(computeDerivedAdvisories).mock.calls[0][0];
+            const inputs = vi.mocked(analyzeDerivedAdvisories).mock.calls[0][0];
             expect(inputs.scopeProvisionedRuTotal).toBe(complete ? 7000 : undefined);
             expect(inputs.manualRegionalCapacityRu).toBe(capacity);
             const finding = result.advisories.find((item) => item.rule === 'MultiRegionWriteAntipattern');
@@ -325,7 +619,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
         'preserves production supersession and capacity findings with billing HTTP $status, autoscale=$autoscale',
         async ({ status, autoscale }) => {
             const engine = await vi.importActual<typeof EngineModule>('./engine');
-            vi.mocked(computeDerivedAdvisories).mockImplementation(engine.computeDerivedAdvisories);
+            vi.mocked(analyzeDerivedAdvisories).mockImplementation(engine.analyzeDerivedAdvisories);
             const row = {
                 databaseId: 'db',
                 containerId: 'items',
@@ -420,7 +714,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
 
     it('passes optional read-charge evidence through the production collector to the configuration finding', async () => {
         const engine = await vi.importActual<typeof EngineModule>('./engine');
-        vi.mocked(computeDerivedAdvisories).mockImplementation(engine.computeDerivedAdvisories);
+        vi.mocked(analyzeDerivedAdvisories).mockImplementation(engine.analyzeDerivedAdvisories);
         vi.mocked(getSqlInventoryDetails).mockResolvedValue({
             rows: [],
             offers: [],
@@ -464,7 +758,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
                 databases: [],
                 throughputInventoryComplete: true,
             });
-            vi.mocked(computeDerivedAdvisories).mockReturnValue([]);
+            vi.mocked(analyzeDerivedAdvisories).mockReturnValue({ advisories: [], detectorCoverage: [] });
             const base = params();
             await collectDerivedAdvisories({
                 ...base,
@@ -476,7 +770,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
 
     it('shares one account status read between DX-020/021 even when inventory is denied', async () => {
         const engine = await vi.importActual<typeof EngineModule>('./engine');
-        vi.mocked(computeDerivedAdvisories).mockImplementation(engine.computeDerivedAdvisories);
+        vi.mocked(analyzeDerivedAdvisories).mockImplementation(engine.analyzeDerivedAdvisories);
         vi.mocked(getSqlInventoryDetails).mockRejectedValue({ statusCode: 403 });
         vi.mocked(getAccountRequestStatusCounts).mockResolvedValue({ 200: 800, 404: 100, 429: 100 });
         vi.mocked(getThrottledOperationCounts).mockResolvedValue({ Create: 100 });
@@ -504,7 +798,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
             throughputInventoryComplete: true,
         });
         vi.mocked(getAccountRequestStatusCounts).mockResolvedValue(statusCounts);
-        vi.mocked(computeDerivedAdvisories).mockReturnValue([]);
+        vi.mocked(analyzeDerivedAdvisories).mockReturnValue({ advisories: [], detectorCoverage: [] });
         await collectDerivedAdvisories(params({ logsClient: undefined }));
         expect(getThrottledOperationCounts).not.toHaveBeenCalled();
     });
@@ -513,7 +807,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
         'preserves errors while reporting %s throttled-operation evidence as incomplete',
         async (scenario) => {
             const engine = await vi.importActual<typeof EngineModule>('./engine');
-            vi.mocked(computeDerivedAdvisories).mockImplementation(engine.computeDerivedAdvisories);
+            vi.mocked(analyzeDerivedAdvisories).mockImplementation(engine.analyzeDerivedAdvisories);
             vi.mocked(getSqlInventoryDetails).mockResolvedValue({
                 rows: [],
                 offers: [],
@@ -533,6 +827,13 @@ describe('collectDerivedAdvisories parity wiring', () => {
                 reason: scenario === 'denied' ? 'rbac' : 'noData',
                 scope: undefined,
             });
+            expect(result.detectorCoverage.find(({ rule }) => rule === 'ThrottlingByOperation')).toMatchObject({
+                status: scenario === 'denied' ? 'partial' : 'evaluated',
+                evaluatedCount: 1,
+                matchedCount: 0,
+                insufficientDataCount: 0,
+                unavailableReasons: scenario === 'denied' ? ['rbac'] : [],
+            });
         },
     );
 
@@ -544,7 +845,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
             throughputInventoryComplete: true,
         });
         vi.mocked(getAccountRequestStatusCounts).mockRejectedValue({ statusCode: 403 });
-        vi.mocked(computeDerivedAdvisories).mockReturnValue([]);
+        vi.mocked(analyzeDerivedAdvisories).mockReturnValue({ advisories: [], detectorCoverage: [] });
         const result = await collectDerivedAdvisories(params({ logsClient: undefined }));
         expect(result.metricSource.failures).toEqual([
             { rule: 'NonThrottlingErrors', reason: 'rbac', scope: undefined },
@@ -557,7 +858,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
         'uses one authoritative shared offer for reservation review; duplicate=%s',
         async (duplicate) => {
             const engine = await vi.importActual<typeof EngineModule>('./engine');
-            vi.mocked(computeDerivedAdvisories).mockImplementation(engine.computeDerivedAdvisories);
+            vi.mocked(analyzeDerivedAdvisories).mockImplementation(engine.analyzeDerivedAdvisories);
             const offer = {
                 databaseId: 'db',
                 throughputRU: 3000,
@@ -582,7 +883,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
             const result = await collectDerivedAdvisories(params({ logsClient: undefined }));
             const reservations = result.advisories.filter((item) => item.rule === 'ReservedCapacityCandidate');
             expect(reservations).toHaveLength(duplicate ? 0 : 1);
-            const inputs = vi.mocked(computeDerivedAdvisories).mock.calls[0][0];
+            const inputs = vi.mocked(analyzeDerivedAdvisories).mock.calls[0][0];
             expect(inputs.scopeProvisionedRuTotal).toBe(duplicate ? undefined : 3000);
             expect(inputs.manualRegionalCapacityRu).toBe(duplicate ? undefined : 3000);
             expect(result.metricSource.failures.some((failure) => failure.rule === 'ReservedCapacityCandidate')).toBe(
@@ -618,7 +919,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
         const inventory = await vi.importActual<typeof InventoryModule>('../inventory');
         const engine = await vi.importActual<typeof EngineModule>('./engine');
         vi.mocked(getSqlInventoryDetails).mockImplementation(inventory.getSqlInventoryDetails);
-        vi.mocked(computeDerivedAdvisories).mockImplementation(engine.computeDerivedAdvisories);
+        vi.mocked(analyzeDerivedAdvisories).mockImplementation(engine.analyzeDerivedAdvisories);
         const missingOffer = Object.assign(new Error('Not found'), { statusCode: 404 });
         const cosmosClient = new CosmosDBManagementClient({ getToken: async () => null }, 'sub');
         vi.spyOn(cosmosClient.databaseAccounts, 'get').mockResolvedValue({
@@ -690,7 +991,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
         );
         const collectedInventory = await vi.mocked(getSqlInventoryDetails).mock.results[0].value;
         expect(collectedInventory.throughputInventoryComplete).toBe(total !== undefined);
-        const inputs = vi.mocked(computeDerivedAdvisories).mock.calls[0][0];
+        const inputs = vi.mocked(analyzeDerivedAdvisories).mock.calls[0][0];
         expect(inputs.scopeProvisionedRuTotal).toBe(total);
         expect(inputs.manualProvisionedRuTotal).toBe(total);
         expect(inputs.manualRegionalCapacityRu).toBe(total);
@@ -721,7 +1022,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
             const inventory = await vi.importActual<typeof InventoryModule>('../inventory');
             const engine = await vi.importActual<typeof EngineModule>('./engine');
             vi.mocked(getSqlInventoryDetails).mockImplementation(inventory.getSqlInventoryDetails);
-            vi.mocked(computeDerivedAdvisories).mockImplementation(engine.computeDerivedAdvisories);
+            vi.mocked(analyzeDerivedAdvisories).mockImplementation(engine.analyzeDerivedAdvisories);
             const cosmosClient = new CosmosDBManagementClient({ getToken: async () => null }, 'sub');
             vi.spyOn(cosmosClient.databaseAccounts, 'get').mockResolvedValue({});
             vi.spyOn(cosmosClient.sqlResources, 'listSqlDatabases').mockImplementation(() =>
@@ -740,24 +1041,25 @@ describe('collectDerivedAdvisories parity wiring', () => {
             expect(result.metricSource.failures.filter((failure) => failure.rule === 'IndexingCostRisk')).toEqual([]);
             expect(getContainerIndexingUsage).not.toHaveBeenCalled();
             expect(result.advisories.filter((item) => item.rule === 'IndexingCostRisk')).toEqual([]);
-            expect(vi.mocked(computeDerivedAdvisories).mock.calls[0][0].indexing).toEqual([]);
+            expect(vi.mocked(analyzeDerivedAdvisories).mock.calls[0][0].indexing).toEqual([]);
         },
     );
 
-    it.each<{ indexingMode: string | undefined; outcome: 'positive' | 'empty' | 'denied' }>([
+    it.each<{ indexingMode: string | undefined; outcome: 'positive' | 'empty' | 'denied' | 'transient' }>([
         { indexingMode: 'consistent', outcome: 'positive' },
         { indexingMode: 'lazy', outcome: 'positive' },
         { indexingMode: undefined, outcome: 'positive' },
         { indexingMode: 'unknown', outcome: 'positive' },
         { indexingMode: 'consistent', outcome: 'empty' },
         { indexingMode: 'consistent', outcome: 'denied' },
+        { indexingMode: 'consistent', outcome: 'transient' },
     ])(
         'preserves DX-024 $outcome results for $indexingMode indexing beside a disabled container',
         async ({ indexingMode, outcome }) => {
             const inventory = await vi.importActual<typeof InventoryModule>('../inventory');
             const engine = await vi.importActual<typeof EngineModule>('./engine');
             vi.mocked(getSqlInventoryDetails).mockImplementation(inventory.getSqlInventoryDetails);
-            vi.mocked(computeDerivedAdvisories).mockImplementation(engine.computeDerivedAdvisories);
+            vi.mocked(analyzeDerivedAdvisories).mockImplementation(engine.analyzeDerivedAdvisories);
             const cosmosClient = new CosmosDBManagementClient({ getToken: async () => null }, 'sub');
             vi.spyOn(cosmosClient.databaseAccounts, 'get').mockResolvedValue({});
             vi.spyOn(cosmosClient.sqlResources, 'listSqlDatabases').mockImplementation(() =>
@@ -770,8 +1072,10 @@ describe('collectDerivedAdvisories parity wiring', () => {
                 ]),
             );
             vi.mocked(getThrottleRate).mockResolvedValue({ ratePercent: 0, totalRequests: 0 });
-            if (outcome === 'denied') {
-                vi.mocked(getContainerIndexingUsage).mockRejectedValue({ statusCode: 403 });
+            if (outcome === 'denied' || outcome === 'transient') {
+                vi.mocked(getContainerIndexingUsage).mockRejectedValue({
+                    statusCode: outcome === 'denied' ? 403 : 503,
+                });
             } else {
                 vi.mocked(getContainerIndexingUsage).mockResolvedValue(
                     outcome === 'positive' ? { indexUsageBytes: 60, dataUsageBytes: 100 } : {},
@@ -802,6 +1106,13 @@ describe('collectDerivedAdvisories parity wiring', () => {
                           },
                       ],
             );
+            expect(result.detectorCoverage.find(({ rule }) => rule === 'IndexingCostRisk')).toMatchObject({
+                status: outcome === 'positive' ? 'evaluated' : outcome === 'empty' ? 'insufficientData' : 'unavailable',
+                evaluatedCount: outcome === 'positive' ? 1 : 0,
+                matchedCount: outcome === 'positive' ? 1 : 0,
+                unavailableReasons:
+                    outcome === 'positive' || outcome === 'empty' ? [] : [outcome === 'denied' ? 'rbac' : 'noData'],
+            });
         },
     );
 
@@ -827,7 +1138,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
             const inventory = await vi.importActual<typeof InventoryModule>('../inventory');
             const engine = await vi.importActual<typeof EngineModule>('./engine');
             vi.mocked(getSqlInventoryDetails).mockImplementation(inventory.getSqlInventoryDetails);
-            vi.mocked(computeDerivedAdvisories).mockImplementation(engine.computeDerivedAdvisories);
+            vi.mocked(analyzeDerivedAdvisories).mockImplementation(engine.analyzeDerivedAdvisories);
             const indexingPolicy = {
                 indexingMode: 'consistent',
                 includedPaths: [{ path: '/*' }],
@@ -890,13 +1201,13 @@ describe('collectDerivedAdvisories parity wiring', () => {
         'collects idle and merge metrics for all twelve active containers without wildcard truncation: %s',
         async (scenario) => {
             const metrics = await vi.importActual<typeof MetricsModule>('./fetchers/metrics');
-            const { computeDerivedAdvisories: evaluate } = await vi.importActual<{
-                computeDerivedAdvisories: typeof computeDerivedAdvisories;
+            const { analyzeDerivedAdvisories: evaluate } = await vi.importActual<{
+                analyzeDerivedAdvisories: typeof analyzeDerivedAdvisories;
             }>('./engine');
             vi.mocked(getContainerIdlePeak).mockImplementation(metrics.getContainerIdlePeak);
             vi.mocked(getContainerPartitionCount).mockImplementation(metrics.getContainerPartitionCount);
             vi.mocked(getContainerMergeStoragePeak).mockImplementation(metrics.getContainerMergeStoragePeak);
-            vi.mocked(computeDerivedAdvisories).mockImplementation(evaluate);
+            vi.mocked(analyzeDerivedAdvisories).mockImplementation(evaluate);
             const rows = Array.from({ length: 12 }, (_, index) => ({
                 databaseId: `db${Math.floor(index / 6)}`,
                 containerId: `c${index % 6}`,
@@ -1003,7 +1314,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
             const options = params({ monitorClient, logsClient: undefined });
             options.accountConfig = { ...options.accountConfig, backupPolicy };
             const result = await collectDerivedAdvisories(options);
-            const inputs = vi.mocked(computeDerivedAdvisories).mock.calls[0][0];
+            const inputs = vi.mocked(analyzeDerivedAdvisories).mock.calls[0][0];
             const missingIdle = scenario === 'access denied';
             const missingMerge =
                 scenario === 'missing partition count' ||
@@ -1078,10 +1389,10 @@ describe('collectDerivedAdvisories parity wiring', () => {
     );
 
     it('evaluates more than ten dedicated offers and excludes a known-young container in the real engine', async () => {
-        const { computeDerivedAdvisories: evaluate } = await vi.importActual<{
-            computeDerivedAdvisories: typeof computeDerivedAdvisories;
+        const { analyzeDerivedAdvisories: evaluate } = await vi.importActual<{
+            analyzeDerivedAdvisories: typeof analyzeDerivedAdvisories;
         }>('./engine');
-        vi.mocked(computeDerivedAdvisories).mockImplementation(evaluate);
+        vi.mocked(analyzeDerivedAdvisories).mockImplementation(evaluate);
         const rows = Array.from({ length: 12 }, (_, index) => ({
             databaseId: 'db',
             containerId: `c${index}`,
@@ -1297,14 +1608,14 @@ describe('collectDerivedAdvisories parity wiring', () => {
             sharedRu,
             collections: [],
         }));
-        vi.mocked(computeDerivedAdvisories).mockReturnValue([]);
+        vi.mocked(analyzeDerivedAdvisories).mockReturnValue({ advisories: [], detectorCoverage: [] });
 
         vi.mocked(getContainerMergeStoragePeak).mockImplementation(async (_client, _resource, databaseId) =>
             databaseId === 'db-manual' ? 100 : 200,
         );
 
         const result = await collectDerivedAdvisories(params());
-        const inputs = vi.mocked(computeDerivedAdvisories).mock.calls[0][0];
+        const inputs = vi.mocked(analyzeDerivedAdvisories).mock.calls[0][0];
         expect(getPartitionHealth).toHaveBeenCalledWith(
             expect.anything(),
             expect.any(String),
@@ -1431,12 +1742,12 @@ describe('collectDerivedAdvisories parity wiring', () => {
             sharedRu: 1000,
             collections: [],
         });
-        vi.mocked(computeDerivedAdvisories).mockReturnValue([]);
+        vi.mocked(analyzeDerivedAdvisories).mockReturnValue({ advisories: [], detectorCoverage: [] });
 
         vi.mocked(getContainerMergeStoragePeak).mockRejectedValue(new Error('merge failed'));
 
         const result = await collectDerivedAdvisories(params());
-        const inputs = vi.mocked(computeDerivedAdvisories).mock.calls[0][0];
+        const inputs = vi.mocked(analyzeDerivedAdvisories).mock.calls[0][0];
 
         expect(inputs.idleContainers).toEqual([]);
         expect(inputs.partitions).toEqual([]);
@@ -1472,7 +1783,10 @@ describe('collectDerivedAdvisories parity wiring', () => {
             sharedRu: 1000,
             collections: [],
         });
-        vi.mocked(computeDerivedAdvisories).mockReturnValue([advisory('ExpensiveConsistency')]);
+        vi.mocked(analyzeDerivedAdvisories).mockReturnValue({
+            advisories: [advisory('ExpensiveConsistency')],
+            detectorCoverage: [],
+        });
 
         const result = await collectDerivedAdvisories(params({ logsClient: undefined }));
 

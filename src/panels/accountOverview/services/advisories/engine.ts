@@ -5,7 +5,13 @@
 
 import { type DetectorContext } from './core/Detector';
 import { compareAdvisories } from './core/helpers';
-import { type DerivedAdvisory, type DerivedAdvisoryInputs, type DerivedAdvisoryThresholds } from './core/types';
+import {
+    type DerivedAdvisory,
+    type DerivedAdvisoryAnalysis,
+    type DerivedAdvisoryInputs,
+    type DerivedAdvisoryThresholds,
+    type DetectorCoverage,
+} from './core/types';
 import { DETECTORS } from './registry';
 
 /**
@@ -17,21 +23,38 @@ export function computeDerivedAdvisories(
     inputs: DerivedAdvisoryInputs,
     thresholds: DerivedAdvisoryThresholds,
 ): DerivedAdvisory[] {
+    return analyzeDerivedAdvisories(inputs, thresholds).advisories;
+}
+
+/** Evaluates each rule once and retains coverage before finding suppression. Pure. */
+export function analyzeDerivedAdvisories(
+    inputs: DerivedAdvisoryInputs,
+    thresholds: DerivedAdvisoryThresholds,
+): DerivedAdvisoryAnalysis {
     const ctx: DetectorContext = { inputs, thresholds };
     const supersessions = new Map<string, string>();
     const collected: DerivedAdvisory[] = [];
+    const detectorCoverage: DetectorCoverage[] = [];
+
     for (const detector of DETECTORS) {
-        for (const advisory of detector.run(ctx)) {
+        const analysis = detector.analyze(ctx);
+
+        detectorCoverage.push(analysis.coverage);
+        for (const advisory of analysis.advisories) {
             collected.push(advisory);
             for (const rule of detector.supersedes) {
                 supersessions.set(`${rule}::${advisory.scope ?? ''}`, advisory.rule);
             }
         }
     }
+
     const result = collected.map((advisory) => {
         const supersededBy = supersessions.get(`${advisory.rule}::${advisory.scope ?? ''}`);
+
         return supersededBy && supersededBy !== advisory.rule ? { ...advisory, supersededBy } : advisory;
     });
+
     result.sort(compareAdvisories);
-    return result;
+
+    return { advisories: result, detectorCoverage };
 }

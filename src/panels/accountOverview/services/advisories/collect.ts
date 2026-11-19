@@ -17,7 +17,7 @@ import {
     DEFAULT_PARTITION_THRESHOLDS,
     type PartitionStorageResult,
 } from '../partitionHealth';
-import { readRequest } from '../readDiagnostics';
+import { captureReadDiagnostics, readRequest } from '../readDiagnostics';
 import { getContainerCreatedAt, getKnownResourceAgeDays, getSystemCreatedAt } from '../resourceAge';
 import { getRuTrends, getThrottleRate } from '../ruTrends';
 import { classifyUnavailable, containerKey } from '../shared';
@@ -26,6 +26,7 @@ import { summarizeRequestStatuses } from './core/requestMetrics';
 import { DIAGNOSTIC_POLICY } from './core/thresholds';
 import {
     type AccountConfigInput,
+    type ContainerStorageInput,
     type AccountRequestMetricsInput,
     type CrossPartitionInput,
     type ConsistencyReadRuInput,
@@ -33,6 +34,7 @@ import {
     type DerivedAdvisory,
     type DerivedAdvisoryRule,
     type DerivedAdvisoryThresholds,
+    type DetectorCoverage,
     type IdleContainerInput,
     type IndexingUsageInput,
     type LogsSourceStatus,
@@ -45,8 +47,10 @@ import {
     type UncontrolledIngestionInput,
 } from './core/types';
 import { enrichAdvisoryCosts } from './costEstimates';
+import { completeDetectorCoverage } from './coverage';
 import { expensiveConsistencyDetector } from './detectors/ExpensiveConsistencyDetector';
-import { computeDerivedAdvisories } from './engine';
+import { hasSingleObservedStoragePartition, hasSingleStoragePartition } from './detectors/storageMath';
+import { analyzeDerivedAdvisories } from './engine';
 import { type CostContext } from './fetchers/costManagement';
 import {
     fetchConsistencyReadRu,
@@ -108,6 +112,7 @@ const INVENTORY_DEPENDENT_RULES: readonly DerivedAdvisoryRule[] = [
 interface CollectResult<T> {
     value?: T;
     reason?: MetricSourceStatus['failures'][number]['reason'];
+    failures: readonly MetricSourceStatus['failures'][number]['reason'][];
 }
 
 /** Everything {@link collectDerivedAdvisories} needs, gathered by the router as data preparation. */
@@ -141,6 +146,7 @@ export interface CollectedDerivedAdvisories {
     logSource: LogsSourceStatus;
     metricSource: MetricSourceStatus;
     costSource?: CostSourceStatus;
+    detectorCoverage: DetectorCoverage[];
 }
 
 /** The Tier-2 inputs gathered from Log Analytics plus the coverage status the card surfaces. */
@@ -176,12 +182,16 @@ async function mapInBatches<TItem, TResult>(
     return results;
 }
 
-async function capture<T>(work: Promise<T>): Promise<CollectResult<T>> {
-    try {
-        return { value: await work };
-    } catch (error) {
-        return { reason: classifyUnavailable(error) };
-    }
+async function capture<T>(work: () => Promise<T>): Promise<CollectResult<T>> {
+    const captured = await captureReadDiagnostics(async () => {
+        try {
+            return { value: await work() };
+        } catch (error) {
+            return { reason: classifyUnavailable(error) };
+        }
+    });
+
+    return { ...captured.result, failures: captured.diagnostics.map(({ reason }) => reason) };
 }
 
 function isDedicatedContainerOffer(row: InventoryContainerRow): boolean {
@@ -226,7 +236,7 @@ async function getAccountCreatedAt(
 /**
  * Gathers the telemetry the derived-advisory rules need — authoritative offer inventory, per-offer/manual RU history,
  * per-container partition/storage signals, account-level serverless shape, and Tier-2 Log Analytics evidence — then
- * runs {@link computeDerivedAdvisories}. Failures degrade to per-rule coverage rather than blanking config-only checks.
+ * runs {@link analyzeDerivedAdvisories}. Failures degrade to per-rule coverage rather than blanking config-only checks.
  */
 export async function collectDerivedAdvisories(
     params: CollectDerivedAdvisoriesParams,
@@ -246,18 +256,41 @@ export async function collectDerivedAdvisories(
     const now = Date.now();
     const effectiveAccountConfig = accountConfig && { ...accountConfig, isServerless };
     const metricFailures = configurationFailures(effectiveAccountConfig);
-    const accountCreatedAtPromise = capture(getAccountCreatedAt(cosmosClient, resourceGroup, accountName));
-    const accountRequestsPromise = capture(getAccountRequestStatusCounts(monitorClient, accountId, now));
+    const ageFailures: MetricSourceStatus['failures'] = [];
+    const metricCoverageFailures: MetricSourceStatus['failures'] = [];
+    const accountCreatedAtPromise = capture(() => getAccountCreatedAt(cosmosClient, resourceGroup, accountName));
+    const accountRequestsPromise = capture(() => getAccountRequestStatusCounts(monitorClient, accountId, now));
+
+    function recordMetricFailure(
+        rule: DerivedAdvisoryRule,
+        read: CollectResult<unknown>,
+        scope?: string,
+        reason = read.reason ?? 'noData',
+        required = true,
+    ): void {
+        addMetricFailure(metricFailures, rule, reason, scope);
+        if (required) {
+            const reasons = [...read.failures, ...(read.reason ? [read.reason] : [])];
+            if (reason !== 'noData') {
+                reasons.push(reason);
+            }
+            for (const failure of reasons) {
+                addMetricFailure(metricCoverageFailures, rule, failure, scope);
+            }
+        }
+    }
 
     let rows: InventoryContainerRow[] = [];
     let offers: InventoryThroughputOffer[] = [];
-    const inventory = await capture(getSqlInventoryDetails(cosmosClient, resourceGroup, accountName, isServerless));
+    const inventory = await capture(() =>
+        getSqlInventoryDetails(cosmosClient, resourceGroup, accountName, isServerless),
+    );
     if (inventory.value) {
         rows = inventory.value.rows;
         offers = inventory.value.offers;
     } else if (inventory.reason) {
         for (const rule of INVENTORY_DEPENDENT_RULES) {
-            addMetricFailure(metricFailures, rule, inventory.reason);
+            recordMetricFailure(rule, inventory);
         }
     }
 
@@ -266,18 +299,18 @@ export async function collectDerivedAdvisories(
     const dedicatedTargets = rows.filter(isDedicatedContainerOffer);
     if (accountCreation.reason && offers.length > 0) {
         for (const rule of AGE_GATED_RULES) {
-            addMetricFailure(metricFailures, rule, accountCreation.reason);
+            addMetricFailure(ageFailures, rule, accountCreation.reason);
         }
     }
     await mapInBatches(
         dedicatedTargets.filter((row) => !row.resourceCreatedAt),
         async (row) => {
-            const creation = await capture(
+            const creation = await capture(() =>
                 getContainerCreatedAt(monitorClient, accountId, row.databaseId, row.containerId, now),
             );
             if (creation.reason) {
                 for (const rule of AGE_GATED_RULES) {
-                    addMetricFailure(metricFailures, rule, creation.reason, scopeOf(row));
+                    addMetricFailure(ageFailures, rule, creation.reason, scopeOf(row));
                 }
             } else if (creation.value) {
                 row.resourceCreatedAt = creation.value;
@@ -326,7 +359,7 @@ export async function collectDerivedAdvisories(
             ? undefined
             : offerTargets.reduce((sum, offer) => sum + offer.throughputRU, 0);
     if (!isServerless && scopeProvisionedRuTotal === undefined) {
-        addMetricFailure(metricFailures, 'ReservedCapacityCandidate', inventory.reason ?? 'noData');
+        recordMetricFailure('ReservedCapacityCandidate', inventory, undefined, inventory.reason ?? 'noData');
     }
 
     const statusResult = await accountRequestsPromise;
@@ -334,7 +367,7 @@ export async function collectDerivedAdvisories(
     let accountRequests: AccountRequestMetricsInput | undefined;
     if (!statusResult.value || !statuses || !Number.isFinite(statuses.totalRequests) || statuses.totalRequests === 0) {
         for (const rule of ['NonThrottlingErrors', 'ThrottlingByOperation'] as const) {
-            addMetricFailure(metricFailures, rule, statusResult.reason ?? 'noData');
+            recordMetricFailure(rule, statusResult);
         }
     } else {
         accountRequests = { statusCounts: statusResult.value };
@@ -343,9 +376,9 @@ export async function collectDerivedAdvisories(
             (100 * statuses.totalThrottled) / statuses.totalRequests >=
                 DIAGNOSTIC_POLICY.throttlingByOperation.ratePercent
         ) {
-            const operations = await capture(getThrottledOperationCounts(monitorClient, accountId, now));
+            const operations = await capture(() => getThrottledOperationCounts(monitorClient, accountId, now));
             if (!operations.value || Object.keys(operations.value).length === 0) {
-                addMetricFailure(metricFailures, 'ThrottlingByOperation', operations.reason ?? 'noData');
+                recordMetricFailure('ThrottlingByOperation', operations);
             } else {
                 accountRequests.throttledOperationCounts = operations.value;
             }
@@ -360,23 +393,27 @@ export async function collectDerivedAdvisories(
 
     const manualThroughput = (
         await mapInBatches(manualTargets, async (row) => {
-            const result = await getRuTrends(
-                monitorClient,
-                accountId,
-                manualObservation.timeRange,
-                row.databaseId,
-                row.containerId,
-                manualObservation,
-                sharedContainerIds(row),
+            const captured = await captureReadDiagnostics(
+                () =>
+                    getRuTrends(
+                        monitorClient,
+                        accountId,
+                        manualObservation.timeRange,
+                        row.databaseId,
+                        row.containerId,
+                        manualObservation,
+                        sharedContainerIds(row),
+                    ),
+                ['NormalizedRUConsumption'],
             );
-            return { row, result };
+            return { row, result: captured.result, failures: captured.diagnostics.map(({ reason }) => reason) };
         })
-    ).flatMap(({ row, result }) => {
+    ).flatMap(({ row, result, failures }) => {
         const scope = scopeOf(row);
         if (!result.available) {
             const reason = result.reason ?? 'noData';
-            addMetricFailure(metricFailures, 'OverProvisioning', reason, scope);
-            addMetricFailure(metricFailures, 'AutoscaleCandidate', reason, scope);
+            recordMetricFailure('OverProvisioning', { failures }, scope, reason);
+            recordMetricFailure('AutoscaleCandidate', { failures }, scope, reason);
             return [];
         }
         const ruPercents = result.points
@@ -399,7 +436,7 @@ export async function collectDerivedAdvisories(
     const idleContainers: IdleContainerInput[] = (
         await mapInBatches(offerTargets, async (row) => ({
             row,
-            result: await capture(
+            result: await capture(() =>
                 getContainerIdlePeak(
                     monitorClient,
                     accountId,
@@ -412,7 +449,7 @@ export async function collectDerivedAdvisories(
         }))
     ).flatMap(({ row, result }) => {
         if (result.value === undefined) {
-            addMetricFailure(metricFailures, 'IdleContainer', result.reason ?? 'noData', scopeOf(row));
+            recordMetricFailure('IdleContainer', result, scopeOf(row));
             return [];
         }
         return [
@@ -432,7 +469,7 @@ export async function collectDerivedAdvisories(
             rows.filter((row) => row.indexingMode.toLowerCase() !== 'none'),
             async (row) => ({
                 row,
-                result: await capture(
+                result: await capture(() =>
                     getContainerIndexingUsage(monitorClient, accountId, row.databaseId, row.containerId, now),
                 ),
             }),
@@ -447,7 +484,7 @@ export async function collectDerivedAdvisories(
             !Number.isFinite(result.value.dataUsageBytes) ||
             result.value.dataUsageBytes <= 0
         ) {
-            addMetricFailure(metricFailures, 'IndexingCostRisk', result.reason ?? 'noData', scopeOf(row));
+            recordMetricFailure('IndexingCostRisk', result, scopeOf(row));
             return [];
         }
         return [
@@ -461,9 +498,17 @@ export async function collectDerivedAdvisories(
         ];
     });
 
+    const partitionCounts = await mapInBatches(dedicatedTargets, async (row) => ({
+        row,
+        count: await capture(() =>
+            getContainerPartitionCount(monitorClient, accountId, row.databaseId, row.containerId, now),
+        ),
+    }));
+    const countsByScope = new Map(partitionCounts.map(({ row, count }) => [scopeOf(row), count]));
     const partitionSignals = await mapInBatches(offerTargets, async (row) => {
+        const { containerId } = row;
         const [partition, throttle, growth, skew] = await Promise.all([
-            capture(
+            capture(() =>
                 getPartitionHealth(
                     monitorClient,
                     accountId,
@@ -481,7 +526,7 @@ export async function collectDerivedAdvisories(
                     DIAGNOSTIC_POLICY.partitionSaturation.percentile,
                 ),
             ),
-            capture(
+            capture(() =>
                 getThrottleRate(
                     monitorClient,
                     accountId,
@@ -492,27 +537,27 @@ export async function collectDerivedAdvisories(
                     sharedContainerIds(row),
                 ),
             ),
-            row.containerId === undefined
+            containerId === undefined
                 ? undefined
-                : capture(
+                : capture(() =>
                       getPartitionStorageSeries(
                           monitorClient,
                           accountId,
                           storageObservation.timeRange,
                           row.databaseId,
-                          row.containerId,
+                          containerId,
                           storageObservation,
                       ),
                   ),
-            row.containerId === undefined
+            containerId === undefined
                 ? undefined
-                : capture(
+                : capture(() =>
                       getPartitionStorageSeries(
                           monitorClient,
                           accountId,
                           storageSkewObservation.timeRange,
                           row.databaseId,
-                          row.containerId,
+                          containerId,
                           storageSkewObservation,
                       ),
                   ),
@@ -522,30 +567,46 @@ export async function collectDerivedAdvisories(
 
     const partitions: PartitionSaturationInput[] = [];
     const storage: PartitionStorageResult[] = [];
-    const storageSkew: PartitionStorageResult[] = [];
+    const storageSkew: ContainerStorageInput[] = [];
     for (const { row, partition, throttle, growth, skew } of partitionSignals) {
         const scope = scopeOf(row);
         const ageDays = offerAgeDays(row);
+        const requiredPartitionRead = { ...partition, failures: [...partition.failures, ...throttle.failures] };
+        const count = countsByScope.get(scope);
+        const physicalPartitionCount = count?.value;
+        const singlePartition =
+            physicalPartitionCount === 1 && partition.value?.available === true && partition.value.partitionCount === 1;
+
+        if (count && count.value === undefined && (count.reason || count.failures.length > 0)) {
+            if (partition.value?.available && partition.value.partitionCount === 1) {
+                recordMetricFailure('HotPartitionRisk', count, scope);
+            }
+            if (skew?.value?.available && hasSingleObservedStoragePartition(skew.value)) {
+                recordMetricFailure('StorageSkewRisk', count, scope);
+            }
+        }
 
         if (partition.reason) {
-            addMetricFailure(metricFailures, 'SustainedThrottlingInRegion', partition.reason, scope);
-            addMetricFailure(metricFailures, 'HotPartitionRisk', partition.reason, scope);
+            recordMetricFailure('SustainedThrottlingInRegion', requiredPartitionRead, scope);
+            recordMetricFailure('HotPartitionRisk', requiredPartitionRead, scope);
         } else if (!partition.value?.available) {
             const reason = partition.value?.reason === 'error' ? 'noData' : (partition.value?.reason ?? 'noData');
-            addMetricFailure(metricFailures, 'SustainedThrottlingInRegion', reason, scope);
-            addMetricFailure(metricFailures, 'HotPartitionRisk', reason, scope);
+            recordMetricFailure('SustainedThrottlingInRegion', requiredPartitionRead, scope, reason);
+            recordMetricFailure('HotPartitionRisk', requiredPartitionRead, scope, reason);
         } else if (throttle.reason) {
-            addMetricFailure(metricFailures, 'SustainedThrottlingInRegion', throttle.reason, scope);
-            addMetricFailure(metricFailures, 'HotPartitionRisk', throttle.reason, scope);
-        } else if (throttle.value) {
+            recordMetricFailure('SustainedThrottlingInRegion', throttle, scope);
+            recordMetricFailure('HotPartitionRisk', throttle, scope, throttle.reason, !singlePartition);
+        }
+        if (partition.value?.available && (throttle.value || singlePartition)) {
             partitions.push({
                 databaseId: row.databaseId,
                 containerId: row.containerId,
                 maxP99: partition.value.maxSaturationPercent ?? partition.value.topPartitionShare,
                 minP99: partition.value.minSaturationPercent ?? 0,
                 partitionCount: partition.value.partitionCount,
-                throttleRatePercent: throttle.value.ratePercent,
-                totalRequests: throttle.value.totalRequests,
+                physicalPartitionCount,
+                throttleRatePercent: throttle.value?.ratePercent,
+                totalRequests: throttle.value?.totalRequests,
                 throughputMode: row.throughputMode,
                 provisionedRu: row.throughputRU,
                 resourceAgeDays: ageDays,
@@ -556,41 +617,45 @@ export async function collectDerivedAdvisories(
             continue;
         }
         if (growth.reason) {
-            addMetricFailure(metricFailures, 'StorageGrowthRisk', growth.reason, scope);
+            recordMetricFailure('StorageGrowthRisk', growth, scope);
         } else if (!growth.value?.available) {
-            addMetricFailure(metricFailures, 'StorageGrowthRisk', growth.value?.reason ?? 'noData', scope);
+            recordMetricFailure('StorageGrowthRisk', growth, scope, growth.value?.reason ?? 'noData');
         } else {
             storage.push(growth.value);
         }
 
         if (skew.reason) {
-            addMetricFailure(metricFailures, 'StorageSkewRisk', skew.reason, scope);
+            recordMetricFailure('StorageSkewRisk', skew, scope);
         } else if (!skew.value?.available) {
-            addMetricFailure(metricFailures, 'StorageSkewRisk', skew.value?.reason ?? 'noData', scope);
+            recordMetricFailure('StorageSkewRisk', skew, scope, skew.value?.reason ?? 'noData');
         } else {
-            storageSkew.push(skew.value);
+            storageSkew.push({ ...skew.value, physicalPartitionCount });
         }
     }
 
     const partitionMerges: PartitionMergeInput[] = (
-        await mapInBatches(dedicatedTargets, async (row) => ({
+        await mapInBatches(partitionCounts, async ({ row, count }) => ({
             row,
-            count: await capture(
-                getContainerPartitionCount(monitorClient, accountId, row.databaseId, row.containerId, now),
-            ),
-            storage: await capture(
+            count,
+            storage: await capture(() =>
                 getContainerMergeStoragePeak(monitorClient, accountId, row.databaseId, row.containerId, now),
             ),
         }))
     ).flatMap(({ row, count, storage }) => {
         const scope = scopeOf(row);
         if (count.value === undefined) {
-            addMetricFailure(metricFailures, 'PartitionMergeCandidate', count.reason ?? 'noData', scope);
+            recordMetricFailure('PartitionMergeCandidate', count, scope);
         }
         if (storage.value === undefined) {
-            addMetricFailure(metricFailures, 'PartitionMergeCandidate', storage.reason ?? 'noData', scope);
+            recordMetricFailure(
+                'PartitionMergeCandidate',
+                storage,
+                scope,
+                storage.reason ?? 'noData',
+                count.value !== 1,
+            );
         }
-        if (count.value === undefined || storage.value === undefined) {
+        if (count.value === undefined || (storage.value === undefined && count.value !== 1)) {
             return [];
         }
         return [
@@ -608,15 +673,15 @@ export async function collectDerivedAdvisories(
     const autoscaleUtilizations = (
         await mapInBatches(autoscaleTargets, async (row) => ({
             row,
-            result: await capture(
+            result: await capture(() =>
                 getAutoscaleUtilization(monitorClient, accountId, row.databaseId, row.containerId, row.throughputRU),
             ),
         }))
     ).flatMap(({ row, result }) => {
         const scope = scopeOf(row);
         if (result.reason) {
-            addMetricFailure(metricFailures, 'AutoscaleMaxOverProvisioned', result.reason, scope);
-            addMetricFailure(metricFailures, 'AutoscaleToManualCandidate', result.reason, scope);
+            recordMetricFailure('AutoscaleMaxOverProvisioned', result, scope);
+            recordMetricFailure('AutoscaleToManualCandidate', result, scope);
             return [];
         }
         if (!result.value || result.value.sampleCount < DIAGNOSTIC_POLICY.autoscaleUtilization.minSamples) {
@@ -640,7 +705,7 @@ export async function collectDerivedAdvisories(
     const serverlessThrottling = (
         await mapInBatches(serverlessTargets, async (row) => ({
             row,
-            result: await capture(
+            result: await capture(() =>
                 getThrottleRate(
                     monitorClient,
                     accountId,
@@ -654,7 +719,7 @@ export async function collectDerivedAdvisories(
     ).flatMap(({ row, result }) => {
         const scope = scopeOf(row);
         if (result.reason) {
-            addMetricFailure(metricFailures, 'ServerlessThrottling', result.reason, scope);
+            recordMetricFailure('ServerlessThrottling', result, scope);
             return [];
         }
         return result.value
@@ -671,9 +736,9 @@ export async function collectDerivedAdvisories(
 
     const serverlessShape = isServerless
         ? undefined
-        : await capture(getAccountConsumedRuShape(monitorClient, accountId));
+        : await capture(() => getAccountConsumedRuShape(monitorClient, accountId));
     if (serverlessShape?.reason) {
-        addMetricFailure(metricFailures, 'ServerlessCandidate', serverlessShape.reason);
+        recordMetricFailure('ServerlessCandidate', serverlessShape);
     }
     const serverless: ServerlessCandidateInput | undefined = serverlessShape?.value
         ? { ...serverlessShape.value, isServerless }
@@ -692,13 +757,14 @@ export async function collectDerivedAdvisories(
         params.logsClientFailure,
     );
 
-    const advisories = computeDerivedAdvisories(
+    const { advisories, detectorCoverage } = analyzeDerivedAdvisories(
         {
             manualThroughput,
             serverlessThrottling,
             storageSkew: storageSkew.map((result) => ({
                 databaseId: result.databaseId,
                 containerId: result.containerId,
+                physicalPartitionCount: result.physicalPartitionCount,
                 partitions: result.partitions,
                 resourceAgeDays: lookupRowAgeDays(
                     rowsByScope,
@@ -753,6 +819,82 @@ export async function collectDerivedAdvisories(
         advisoryThresholds,
     );
 
+    if (ageFailures.length > 0) {
+        const unknownOfferAges = new Set(
+            offerTargets.filter((offer) => offerAgeDays(offer) === undefined).map(scopeOf),
+        );
+        const unknownManualAges = new Set(manualTargets.map(scopeOf).filter((scope) => unknownOfferAges.has(scope)));
+        const unknownAutoscaleAges = new Set(
+            autoscaleTargets.map(scopeOf).filter((scope) => unknownOfferAges.has(scope)),
+        );
+        const unknownHotPartitionAges = new Set(unknownOfferAges);
+        const unknownStorageAges = new Set(
+            dedicatedTargets.filter((row) => rowAgeDays(row, accountCreatedAt, now) === undefined).map(scopeOf),
+        );
+
+        if (unknownStorageAges.size > 0) {
+            for (const input of storageSkew) {
+                if (hasSingleStoragePartition(input)) {
+                    unknownStorageAges.delete(scopeOf(input));
+                }
+            }
+        }
+        if (unknownHotPartitionAges.size > 0) {
+            for (const input of partitions) {
+                if (input.partitionCount === 1 && input.physicalPartitionCount === 1) {
+                    unknownHotPartitionAges.delete(scopeOf(input));
+                }
+            }
+        }
+
+        // Preserve source failures even when the target's timestamp or an account fallback supplies its age.
+        for (const failure of ageFailures) {
+            const unknownAges =
+                failure.rule === 'StorageSkewRisk'
+                    ? unknownStorageAges
+                    : failure.rule === 'HotPartitionRisk'
+                      ? unknownHotPartitionAges
+                      : failure.rule === 'OverProvisioning' || failure.rule === 'AutoscaleCandidate'
+                        ? unknownManualAges
+                        : failure.rule === 'AutoscaleMaxOverProvisioned' ||
+                            failure.rule === 'AutoscaleToManualCandidate'
+                          ? unknownAutoscaleAges
+                          : unknownOfferAges;
+            const needsAge = failure.scope === undefined ? unknownAges.size > 0 : unknownAges.has(failure.scope);
+
+            if (needsAge) {
+                addMetricFailure(metricCoverageFailures, failure.rule, failure.reason, failure.scope);
+            }
+            addMetricFailure(metricFailures, failure.rule, failure.reason, failure.scope);
+        }
+    }
+
+    const metricSource = { available: metricFailures.length === 0, failures: metricFailures };
+    const inventoryTargetsKnown =
+        inventory.value?.throughputInventoryComplete === true && invalidOfferScopes.size === 0;
+    const targetCounts: Partial<Record<DerivedAdvisoryRule, number>> = {
+        ServerlessCandidate: isServerless ? 0 : 1,
+        ...(inventory.value && {
+            IndexingCostRisk: rows.filter((row) => row.indexingMode.toLowerCase() !== 'none').length,
+        }),
+        ...(inventoryTargetsKnown && {
+            HotPartitionRisk: offerTargets.length,
+            SustainedThrottlingInRegion: offerTargets.length,
+            OverProvisioning: manualTargets.length,
+            AutoscaleCandidate: manualTargets.length,
+            IdleContainer: offerTargets.length,
+            StorageGrowthRisk: offerTargets.filter((offer) => offer.containerId !== undefined).length,
+            StorageSkewRisk: offerTargets.filter((offer) => offer.containerId !== undefined).length,
+            PartitionMergeCandidate: dedicatedTargets.length,
+            AutoscaleMaxOverProvisioned: autoscaleTargets.length,
+            AutoscaleToManualCandidate: autoscaleTargets.length,
+            ServerlessThrottling: serverlessTargets.length,
+            CrossPartitionQuery: logTargets.length,
+            ShardKeyMisalignment: logTargets.length,
+            UncontrolledIngestion: dedicatedTargets.length,
+            SharedThroughputStarvation: offerTargets.filter((offer) => offer.offerLevel === 'database').length,
+        }),
+    };
     const costSource = await enrichAdvisoryCosts({
         advisories,
         cosmosClient,
@@ -763,10 +905,20 @@ export async function collectDerivedAdvisories(
         inventoryFailureReason: inventory.reason,
         now,
     });
+
     return {
         advisories,
         logSource: logs.logSource,
-        metricSource: { available: metricFailures.length === 0, failures: metricFailures },
+        metricSource,
+        detectorCoverage: completeDetectorCoverage(detectorCoverage, {
+            metricSource: { available: metricCoverageFailures.length === 0, failures: metricCoverageFailures },
+            logSource: logs.logSource,
+            targetCounts,
+            uncertainTargetRules:
+                inventory.value && !inventoryTargetsKnown
+                    ? INVENTORY_DEPENDENT_RULES.filter((rule) => rule !== 'IndexingCostRisk')
+                    : undefined,
+        }),
         ...(costSource && { costSource }),
     };
 }

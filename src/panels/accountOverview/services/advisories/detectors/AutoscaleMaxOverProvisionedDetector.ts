@@ -5,7 +5,7 @@
 
 import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import {
     capacityMaterialitySeverity,
     clampRationale,
@@ -140,19 +140,10 @@ export class AutoscaleMaxOverProvisionedDetector extends Detector {
     ): DerivedAdvisory | undefined => {
         return this.evaluateResult(input, bandPercent, scopeProvisionedRu).advisory;
     };
-    run(ctx: DetectorContext): DerivedAdvisory[] {
-        const out: DerivedAdvisory[] = [];
-        for (const util of ctx.inputs.autoscaleUtilizations ?? []) {
-            const a = this.evaluate(
-                util,
-                ctx.thresholds.overProvisioningBandPercent,
-                ctx.inputs.scopeProvisionedRuTotal,
-            );
-            if (a) {
-                out.push(a);
-            }
-        }
-        return out;
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
+        return (ctx.inputs.autoscaleUtilizations ?? []).map((util) =>
+            this.evaluateResult(util, ctx.thresholds.overProvisioningBandPercent, ctx.inputs.scopeProvisionedRuTotal),
+        );
     }
 }
 

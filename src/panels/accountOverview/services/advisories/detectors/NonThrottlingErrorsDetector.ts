@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { summarizeRequestStatuses } from '../core/requestMetrics';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import { type AccountRequestMetricsInput, type DerivedAdvisory, type RequestErrorEvaluation } from '../core/types';
@@ -83,9 +83,8 @@ export class NonThrottlingErrorsDetector extends Detector {
         return this.evaluateResult(input).advisory;
     }
 
-    run(ctx: DetectorContext): DerivedAdvisory[] {
-        const finding = ctx.inputs.accountRequests && this.evaluate(ctx.inputs.accountRequests);
-        return finding ? [finding] : [];
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
+        return ctx.inputs.accountRequests ? [this.evaluateResult(ctx.inputs.accountRequests)] : [];
     }
 }
 

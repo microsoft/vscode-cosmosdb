@@ -8,12 +8,22 @@ import {
     type DerivedAdvisoryInputs,
     type DerivedAdvisoryRule,
     type DerivedAdvisoryThresholds,
+    type DetectorCoverage,
+    type UtilizationBand,
 } from './types';
 
 /** The already-fetched telemetry + configured thresholds every detector evaluates against. */
 export interface DetectorContext {
     inputs: DerivedAdvisoryInputs;
     thresholds: DerivedAdvisoryThresholds;
+}
+
+/** Only classifications and the optional finding are needed to summarize an evaluation. */
+export type DetectorEvaluation = { advisory?: DerivedAdvisory } & ({ rootCause: string } | { band: UtilizationBand });
+
+export interface DetectorAnalysis {
+    advisories: DerivedAdvisory[];
+    coverage: DetectorCoverage;
 }
 
 /**
@@ -29,6 +39,58 @@ export abstract class Detector {
      * The engine retains their advisories with supersededBy set.
      */
     readonly supersedes: readonly DerivedAdvisoryRule[] = [];
-    /** Runs the detector over the full context and returns every advisory it fires. */
-    abstract run(ctx: DetectorContext): DerivedAdvisory[];
+    protected readonly notApplicableRootCauses: readonly string[] = [];
+
+    protected abstract evaluateInputs(ctx: DetectorContext): readonly DetectorEvaluation[];
+
+    /** Preserves the finding-only API for callers that do not need coverage. */
+    run(ctx: DetectorContext): DerivedAdvisory[] {
+        return this.analyze(ctx).advisories;
+    }
+
+    /** Pure per-input coverage; source failures and target availability are added by the collector. */
+    analyze(ctx: DetectorContext): DetectorAnalysis {
+        const evaluations = this.evaluateInputs(ctx);
+        const advisories: DerivedAdvisory[] = [];
+        const coverage: DetectorCoverage = {
+            rule: this.rule,
+            status: 'insufficientData',
+            evaluatedCount: 0,
+            matchedCount: 0,
+            notApplicableCount: 0,
+            insufficientDataCount: 0,
+            unavailableReasons: [],
+        };
+
+        for (const evaluation of evaluations) {
+            const classification = 'rootCause' in evaluation ? evaluation.rootCause : evaluation.band;
+            if (evaluation.advisory) {
+                advisories.push(evaluation.advisory);
+                coverage.matchedCount++;
+                coverage.evaluatedCount++;
+            } else if (
+                classification === 'insufficient_data' ||
+                classification === 'unknown' ||
+                classification === 'unknown_continuous_tier' ||
+                classification === 'too_few_requests'
+            ) {
+                coverage.insufficientDataCount++;
+            } else if (classification && this.notApplicableRootCauses.includes(classification)) {
+                coverage.notApplicableCount++;
+            } else {
+                coverage.evaluatedCount++;
+            }
+        }
+
+        if (coverage.insufficientDataCount > 0) {
+            coverage.status =
+                coverage.evaluatedCount > 0 || coverage.notApplicableCount > 0 ? 'partial' : 'insufficientData';
+        } else if (coverage.evaluatedCount > 0) {
+            coverage.status = 'evaluated';
+        } else if (coverage.notApplicableCount > 0) {
+            coverage.status = 'notApplicable';
+        }
+
+        return { advisories, coverage };
+    }
 }

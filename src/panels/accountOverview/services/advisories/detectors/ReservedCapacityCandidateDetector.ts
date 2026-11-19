@@ -4,12 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
-import { Detector, type DetectorContext } from '../core/Detector';
+import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import { type AdvisoryEvaluation, type DerivedAdvisory } from '../core/types';
 
 export class ReservedCapacityCandidateDetector extends Detector {
     readonly rule = 'ReservedCapacityCandidate' as const;
+    protected readonly notApplicableRootCauses = ['serverless'];
 
     evaluateResult = (
         provisionedRu: number | undefined,
@@ -52,9 +53,8 @@ export class ReservedCapacityCandidateDetector extends Detector {
     evaluate = (provisionedRu: number | undefined, isServerless: boolean | undefined) =>
         this.evaluateResult(provisionedRu, isServerless).advisory;
 
-    run(ctx: DetectorContext): DerivedAdvisory[] {
-        const finding = this.evaluate(ctx.inputs.scopeProvisionedRuTotal, ctx.inputs.accountConfig?.isServerless);
-        return finding ? [finding] : [];
+    protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
+        return [this.evaluateResult(ctx.inputs.scopeProvisionedRuTotal, ctx.inputs.accountConfig?.isServerless)];
     }
 }
 

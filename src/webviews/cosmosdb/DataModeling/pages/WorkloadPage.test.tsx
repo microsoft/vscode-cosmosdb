@@ -5,7 +5,7 @@
 
 // @vitest-environment jsdom
 
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -38,6 +38,49 @@ function Workload({
 const toolbar = () => within(screen.getByRole('toolbar', { name: 'Filter by workload trait' }));
 const firstChip = () => toolbar().getAllByRole('button')[0];
 const clearButton = () => screen.getByRole('button', { name: 'Clear all' });
+
+describe('WorkloadPage result status', () => {
+    it('exposes matching counts and no-match feedback in a persistent live region without moving focus', async () => {
+        const user = userEvent.setup();
+        render(<Workload />);
+        const search = screen.getByRole('textbox', { name: 'Filter scenarios…' });
+        expect(search).toHaveAccessibleName('Filter scenarios…');
+        expect(search).toHaveAccessibleDescription('Scenarios filter as you type.');
+        const status = screen.getByRole('status');
+        expect(status).toHaveAttribute('aria-atomic', 'true');
+        expect(status.textContent).toBe(`${getScenarioList().length - 1} matching scenarios`);
+        await user.click(search);
+
+        fireEvent.change(search, { target: { value: 'transactions' } });
+        expect(status.textContent).toBe('2 matching scenarios');
+        fireEvent.change(search, { target: { value: 'clickstream' } });
+        expect(status.textContent).toBe('1 matching scenario');
+        fireEvent.change(search, { target: { value: 'no matching workload' } });
+        expect(status).toHaveTextContent('No scenarios match your filter. You can still choose a custom workload.');
+        expect(status).toBeVisible();
+        expect(screen.getAllByRole('radio')).toHaveLength(1);
+        expect(screen.getByRole('status')).toBe(status);
+        expect(search).toHaveFocus();
+    });
+
+    it('updates the status for trait filters, combined filters, and Clear all', async () => {
+        const user = userEvent.setup();
+        render(<Workload />);
+        const status = screen.getByRole('status');
+        const trait = toolbar().getByRole('button', { name: 'Write-heavy' });
+        await user.click(trait);
+        expect(status.textContent).toBe('2 matching scenarios');
+        expect(trait).toHaveFocus();
+
+        const search = screen.getByRole('textbox', { name: 'Filter scenarios…' });
+        await user.type(search, 'clickstream');
+        expect(status.textContent).toBe('1 matching scenario');
+        await user.click(clearButton());
+        expect(status.textContent).toBe(`${getScenarioList().length - 1} matching scenarios`);
+        expect(search).toHaveFocus();
+    });
+});
+
 describe('WorkloadPage native radio cards', () => {
     it('provides a single Tab entry with arrow navigation, wrapping, and Space selection', async () => {
         const user = userEvent.setup();

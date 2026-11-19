@@ -54,6 +54,7 @@ import {
     fetchUncontrolledIngestion,
     logWindow,
     probeCdbLogs,
+    requestLogEvidence,
     requestLogWindow,
     selectDataPlaneSource,
     type LogsQueryExecutor,
@@ -817,11 +818,23 @@ export async function collectTier2Logs(
 
     const now = Date.now();
     const timespan = logWindow(now);
-    const [dataPlaneSource, queryRuntime] = await Promise.all([
+    const [dataPlane, queryRuntime] = await Promise.all([
         selectDataPlaneSource(logsClient, accountId, timespan, report),
         probeCdbLogs(logsClient, accountId, timespan, { onDiagnostic: report, table: 'CDBQueryRuntimeStatistics' }),
     ]);
+    const dataPlaneSource = dataPlane?.source;
+    const hasRequestData = dataPlane?.hasData === true;
+    const hasQueryData = queryRuntime.available && queryRuntime.hasData;
     const dataPlaneTimespan = dataPlaneSource ? requestLogWindow(dataPlaneSource, now) : timespan;
+    const emptyReadCharge: ConsistencyReadRuInput | undefined =
+        includeConsistencyReadRu && dataPlaneSource && !hasRequestData
+            ? {
+                  ...requestLogEvidence(dataPlaneSource, dataPlaneTimespan),
+                  status: 'noObservations',
+                  readRequests: 0,
+                  readRu: 0,
+              }
+            : undefined;
 
     const sharedDatabases = new Map<string, number>();
     for (const row of rows) {
@@ -834,7 +847,7 @@ export async function collectTier2Logs(
     }
 
     const [crossPartitionResults, ingestionResults, sharedResults, consistencyReadRu] = await Promise.all([
-        mapInBatches(queryRuntime.available ? scanTargets : [], (row) =>
+        mapInBatches(hasQueryData ? scanTargets : [], (row) =>
             fetchCrossPartitionShapes(
                 logsClient,
                 accountId,
@@ -842,10 +855,10 @@ export async function collectTier2Logs(
                 row.containerId,
                 timespan,
                 report,
-                true,
+                dataPlaneSource !== 'CDBDataPlaneRequests' || hasRequestData,
             ).catch(() => undefined),
         ),
-        mapInBatches(dataPlaneSource ? ingestionTargets : [], (row) =>
+        mapInBatches(hasRequestData ? ingestionTargets : [], (row) =>
             fetchUncontrolledIngestion(
                 logsClient,
                 accountId,
@@ -856,7 +869,7 @@ export async function collectTier2Logs(
                 dataPlaneSource,
             ).catch(() => undefined),
         ),
-        mapInBatches(dataPlaneSource ? [...sharedDatabases] : [], ([databaseId, sharedRu]) =>
+        mapInBatches(hasRequestData ? [...sharedDatabases] : [], ([databaseId, sharedRu]) =>
             fetchSharedThroughputTraffic(
                 logsClient,
                 accountId,
@@ -867,11 +880,11 @@ export async function collectTier2Logs(
                 dataPlaneSource,
             ).catch(() => undefined),
         ),
-        includeConsistencyReadRu && dataPlaneSource
+        includeConsistencyReadRu && dataPlaneSource && hasRequestData
             ? fetchConsistencyReadRu(logsClient, accountId, dataPlaneTimespan, report, dataPlaneSource).catch(
                   () => undefined,
               )
-            : undefined,
+            : emptyReadCharge,
     ]);
 
     return {

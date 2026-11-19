@@ -61,6 +61,7 @@ export interface CopilotRecommendationStatusProps {
     status: RecommendationStatus;
     error?: string;
     onRetry: () => void;
+    retryDisabledReason?: string;
     onEditModel: () => void;
     onStopWaiting: () => Promise<void>;
 }
@@ -74,6 +75,7 @@ export function CopilotRecommendation({
     status,
     error,
     onRetry,
+    retryDisabledReason,
     onEditModel,
     onStopWaiting,
 }: CopilotRecommendationStatusProps) {
@@ -138,11 +140,11 @@ export function CopilotRecommendation({
                     ref={actionRef}
                     className={styles.action}
                     appearance={status === 'idle' || status === 'stopped' ? 'primary' : 'secondary'}
-                    disabled={status === 'waiting' && stopping}
+                    disabled={status === 'waiting' ? stopping : !!retryDisabledReason}
                     aria-description={
                         status === 'waiting'
                             ? l10n.t('This only resets local tracking; it does not stop the agent in Chat.')
-                            : undefined
+                            : retryDisabledReason
                     }
                     onClick={() => {
                         if (status === 'waiting') {
@@ -156,6 +158,8 @@ export function CopilotRecommendation({
                     {actionLabel}
                 </Button>
             </div>
+
+            {status !== 'waiting' && retryDisabledReason ? <Text>{retryDisabledReason}</Text> : null}
 
             {status === 'idle' ? (
                 <div className={styles.row}>

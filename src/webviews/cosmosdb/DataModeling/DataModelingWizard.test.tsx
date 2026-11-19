@@ -1294,6 +1294,20 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         await userEvent.click(screen.getByRole('radio', { name: /Chat & Sessions/ }));
         await userEvent.click(screen.getByRole('button', { name: 'Start' }));
         expect(screen.getByRole('tab', { name: 'Data' })).toHaveAttribute('aria-selected', 'true');
+        for (const container of applyScenario(createInitialSnapshot().wizard, 'chat').dataModel.containers) {
+            expect(screen.getByRole('button', { name: `Edit ${container.entity}` })).toBeVisible();
+            await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+            await answerConfirmation('Configure queries and scale?', false);
+        }
+        const recommendationButton = screen.getByRole('button', { name: 'Get Recommendation' });
+        const disabledReason = 'Retry loading the saved data model before requesting a recommendation.';
+        expect(recommendationButton).toBeDisabled();
+        expect(recommendationButton).toHaveTextContent('Get Recommendation');
+        expect(recommendationButton).toHaveAccessibleName('Get Recommendation');
+        expect(recommendationButton).toHaveAccessibleDescription(disabledReason);
+        expect(screen.getByText(disabledReason)).toBeVisible();
+        await userEvent.click(recommendationButton);
+        expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
         const retry = screen.getByRole('button', { name: 'Retry loading' });
         expect(retry).toHaveTextContent('Retry loading');
@@ -1306,6 +1320,11 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             target: { value: '2' },
         });
         await waitFor(() => expect(lastSave().wizard.dataModel.containers[0].document.avgSizeKb).toBe(2));
+        await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+        await answerConfirmation('Configure queries and scale?', false);
+        await confirmAdvance();
+        expect(screen.getByRole('button', { name: 'Get Recommendation' })).toBeEnabled();
+        expect(screen.queryByText(disabledReason)).not.toBeInTheDocument();
     });
 
     it('surfaces a failed edit save and retries the updated state', async () => {

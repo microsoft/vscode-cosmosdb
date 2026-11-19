@@ -306,20 +306,34 @@ describe('DataModelerProjectService', () => {
         },
     );
 
-    it('opens even if removing the failed file is denied, and reports the cleanup failure', async () => {
+    it('rejects cleanup failures and invalidates a prior load until cleanup succeeds on retry', async () => {
+        await service.loadState();
         files.set(service.projectUri.toString(), Buffer.from('{}'));
         vi.mocked(vscode.workspace.fs.delete).mockRejectedValueOnce(vscode.FileSystemError.NoPermissions());
-        expect(await service.loadState()).toBeNull();
-        expect(vscode.window.showWarningMessage).toHaveBeenCalledOnce();
+        await expect(service.loadState()).rejects.toThrow(vscode.FileSystemError);
+        expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
         expect(ext.outputChannel.warn).toHaveBeenCalledWith(
-            'Could not remove the failed saved data model. Saving may still fail.',
+            'Could not remove the failed saved data model. Retry loading is required.',
         );
-        await expect(service.saveState(snapshot())).rejects.toThrow('invalid format');
+        await expect(service.saveState(snapshot())).rejects.toThrow('Load the saved data model');
         expect(Buffer.from(files.get(service.projectUri.toString())!).toString()).toBe('{}');
         expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
         expect(await service.loadState()).toBeNull();
+        expect(vscode.window.showWarningMessage).toHaveBeenCalledOnce();
         await service.saveState(snapshot());
         expect(files.size).toBe(1);
+    });
+
+    it('allows saving when an invalid file disappears before cleanup', async () => {
+        files.set(service.projectUri.toString(), Buffer.from('{}'));
+        vi.mocked(vscode.workspace.fs.delete).mockImplementationOnce(async (uri) => {
+            files.delete(uri.toString());
+            throw vscode.FileSystemError.FileNotFound(uri);
+        });
+        expect(await service.loadState()).toBeNull();
+        const state = snapshot();
+        await service.saveState(state);
+        expect(await service.loadState()).toEqual(state);
     });
 
     it('rejects and preserves a project from a newer version, blocking saves', async () => {

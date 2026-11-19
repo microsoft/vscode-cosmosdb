@@ -125,8 +125,9 @@ Each recommendation request starts a new Copilot Chat rather than adding to your
 
 Work is saved locally per account so you can resume later; saved sessions expire 30 days after their last save.
 If a saved model contains invalid JSON or an invalid state, Data Modeler warns you, discards it, and starts a new model on
-the Workload page. Read failures and unsupported saved-model versions leave the file unchanged and open a temporary model
-whose changes are not saved. **Retry loading** restores the saved model and discards temporary changes after a successful load.
+the Workload page. Read failures, invalid-file cleanup failures, and unsupported saved-model versions open a temporary model
+whose changes are not saved. Recommendation actions are disabled until loading succeeds.
+**Retry loading** retries cleanup for invalid files or restores the saved model, discarding temporary changes after a successful load.
 To permanently clear local Data Modeler data for every account, run **Cosmos DB: Delete All Data Modeler Data**
 from the Command Palette and confirm. This closes all Data Modeler tabs and removes saved sessions, including legacy
 data. It does not delete deployed databases or containers, saved container schemas, or query history.

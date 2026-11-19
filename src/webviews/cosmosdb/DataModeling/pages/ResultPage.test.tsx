@@ -45,6 +45,38 @@ describe('ResultPage', () => {
         vi.clearAllMocks();
     });
 
+    it.each(['idle', 'stopped', 'error'] as const)(
+        'disables the %s recommendation action with a reason until loading recovers',
+        async (recommendationStatus) => {
+            const onRetryRecommendation = vi.fn();
+            const reason = 'Retry loading the saved data model before requesting a recommendation.';
+            const props: ResultPageProps = {
+                recommendationStatus,
+                recommendationDisabledReason: reason,
+                onRetryRecommendation,
+                onEditModel: vi.fn(),
+                onStopWaitingRecommendation: vi.fn(),
+            };
+            const { rerender } = render(<ResultPage {...props} />);
+            const label = recommendationStatus === 'idle' ? 'Get Recommendation' : 'Retry';
+            const action = screen.getByRole('button', { name: label });
+            expect(action).toBeDisabled();
+            expect(action).toHaveTextContent(label);
+            expect(action).toHaveAccessibleName(label);
+            expect(action).toHaveAccessibleDescription(reason);
+            expect(screen.getByText(reason)).toBeVisible();
+            await userEvent.click(action);
+            expect(onRetryRecommendation).not.toHaveBeenCalled();
+
+            rerender(<ResultPage {...props} recommendationDisabledReason={undefined} />);
+            expect(action).toBeEnabled();
+            expect(action).not.toHaveAttribute('aria-description');
+            expect(screen.queryByText(reason)).not.toBeInTheDocument();
+            await userEvent.click(action);
+            expect(onRetryRecommendation).toHaveBeenCalledOnce();
+        },
+    );
+
     it('keeps recovery actions in the same header slot across status changes', async () => {
         const onStopWaitingRecommendation = vi.fn().mockResolvedValue(undefined);
         const onRetryRecommendation = vi.fn();

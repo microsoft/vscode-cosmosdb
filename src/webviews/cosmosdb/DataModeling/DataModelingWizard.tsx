@@ -290,6 +290,7 @@ export const DataModelingWizard = () => {
                 snapshot={persistence.snapshot}
                 setSnapshot={persistence.setSnapshot}
                 flush={persistence.flush}
+                loadFailed={persistence.loadFailed}
             />
         </div>
     );
@@ -299,7 +300,8 @@ const HydratedDataModelingWizard = ({
     snapshot,
     setSnapshot: commitSnapshot,
     flush,
-}: Pick<ReturnType<typeof useModelingAdvisorPersistence>, 'snapshot' | 'setSnapshot' | 'flush'>) => {
+    loadFailed,
+}: Pick<ReturnType<typeof useModelingAdvisorPersistence>, 'snapshot' | 'setSnapshot' | 'flush' | 'loadFailed'>) => {
     const styles = useStyles();
     const [previewBadgeWidth, setPreviewBadgeWidth] = useState(0);
     const viewportStyles = useViewportStyles();
@@ -950,7 +952,11 @@ const HydratedDataModelingWizard = ({
     }, [visible, isResult, recommendationStatus, recommendation, report]);
 
     const selectedScenario = pendingScenario ?? state.scenario;
-    const canAdvance = (!isWorkload || !!selectedScenario) && (!isReview || workloadErrors.length === 0);
+    const recommendationDisabledReason = loadFailed
+        ? l10n.t('Retry loading the saved data model before requesting a recommendation.')
+        : undefined;
+    const canAdvance =
+        (!isWorkload || !!selectedScenario) && (!isReview || (!loadFailed && workloadErrors.length === 0));
     const nextLabel = isWorkload ? l10n.t('Start') : isReview ? l10n.t('Get Recommendation') : l10n.t('Next');
 
     const resetModel = (nextSnapshot: typeof snapshot) => {
@@ -1217,6 +1223,7 @@ const HydratedDataModelingWizard = ({
                     appearance="primary"
                     icon={isReview ? <SparkleRegular aria-hidden="true" /> : undefined}
                     disabled={!canAdvance}
+                    aria-description={isReview ? recommendationDisabledReason : undefined}
                     onClick={() => {
                         report({
                             type: 'control',
@@ -1443,6 +1450,7 @@ const HydratedDataModelingWizard = ({
                             onEditWorkload={() => goToStep(1)}
                             onEditContainer={goToContainer}
                         />
+                        {recommendationDisabledReason ? <Text>{recommendationDisabledReason}</Text> : null}
                     </WizardStep>
 
                     <WizardStep
@@ -1457,6 +1465,7 @@ const HydratedDataModelingWizard = ({
                             recommendation={recommendation}
                             recommendationError={recommendationError}
                             onRetryRecommendation={requestRecommendation}
+                            recommendationDisabledReason={recommendationDisabledReason}
                             onEditModel={() => onStepChange(REVIEW_STEP)}
                             onStopWaitingRecommendation={stopWaitingForRecommendation}
                             feedback={selectedFeedback}

@@ -113,8 +113,8 @@ export class DataModelerProjectService {
     }
 
     /**
-     * Invalid saved models are discarded. Read failures and newer versions preserve the file, block saves until a
-     * successful load, and reject so the webview can offer Retry loading.
+     * Invalid saved models are discarded. Read or cleanup failures and newer versions block saves until a successful
+     * load and reject so the webview can offer Retry loading.
      */
     public loadState(): Promise<ModelingAdvisorSnapshot | null> {
         return DataModelerProjectService.enqueue(async () => {
@@ -132,7 +132,11 @@ export class DataModelerProjectService {
                     await vscode.workspace.fs.delete(this.projectUri, { recursive: false, useTrash: false });
                 } catch (error) {
                     if (!isFileNotFound(error)) {
-                        ext.outputChannel.warn('Could not remove the failed saved data model. Saving may still fail.');
+                        this.loadedRevision = undefined;
+                        ext.outputChannel.warn(
+                            'Could not remove the failed saved data model. Retry loading is required.',
+                        );
+                        throw error;
                     }
                 }
                 void vscode.window.showWarningMessage(

@@ -19,6 +19,7 @@ import {
     type RecommendationsResult,
     type UnavailableReason,
 } from '../../../accountOverview/services';
+import { reportUnavailableClient } from '../../../accountOverview/services/readDiagnostics';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';
 
@@ -85,6 +86,7 @@ export const alertsRecommendationsProcedures = {
 
                 const client = await metadata.getAlertsClient();
                 if (!client) {
+                    reportUnavailableClient('alerts');
                     return unavailable('noData');
                 }
 
@@ -125,6 +127,7 @@ export const alertsRecommendationsProcedures = {
 
             const client = await metadata.getAdvisorClient();
             if (!client) {
+                reportUnavailableClient('advisor');
                 return unavailable('noData');
             }
 

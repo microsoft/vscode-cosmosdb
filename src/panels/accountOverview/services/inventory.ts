@@ -9,6 +9,7 @@ import {
     type SqlDatabaseGetResults,
     type ThroughputSettingsGetResults,
 } from '@azure/arm-cosmosdb';
+import { reportReadFailure } from './readDiagnostics';
 import { getSystemCreatedAt } from './resourceAge';
 import { classifyUnavailable, type UnavailableReason } from './shared';
 
@@ -261,6 +262,7 @@ export async function getInventoryResult(
         const { rows, databases } = await getSqlInventoryDetails(client, resourceGroup, accountName, isServerless);
         return { available: true, rows, databases };
     } catch (error) {
+        reportReadFailure('inventory', error);
         return { available: false, reason: classifyUnavailable(error), rows: [], databases: [] };
     }
 }

@@ -7,10 +7,8 @@
  * Cosmosdb-specific {@link TelemetryRunner} implementation backed by
  * `@microsoft/vscode-azext-utils`'s `callWithTelemetryAndErrorHandling`.
  *
- * This is the **only** place in the trpc layer that imports azext-utils.
- * The framework-level `telemetryMiddlewareBody` (from
- * `@microsoft/vscode-ext-webview/host`) calls into this runner and stays
- * dependency-free, keeping azext-utils out of the transport layer.
+ * The typed telemetry middleware in `trpc.ts` calls into this runner,
+ * keeping telemetry scope and error handling separate from tRPC context typing.
  *
  * The runner contributes a single field to the procedure ctx:
  *
@@ -30,9 +28,8 @@ import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microso
 import { getInvocationSignal, type ProcedureErrorLike, type TelemetryRunner } from '@microsoft/vscode-ext-webview/host';
 
 /**
- * Shape this runner injects into the procedure ctx. Application context
- * types extend `BaseRouterContext` with this field so procedures can
- * read `ctx.actionContext` without casts (see `CosmosDBRouterContext`).
+ * Shape this runner injects into the procedure ctx. The typed telemetry
+ * middleware makes this field required for subsequent middleware and procedures.
  */
 export interface AzextTelemetryEnrichment {
     actionContext: IActionContext;

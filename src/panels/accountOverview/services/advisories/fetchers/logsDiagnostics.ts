@@ -15,14 +15,17 @@ export type LogsOperation =
     | 'sharedThroughput'
     | 'client';
 
-export type LogsFailureKind =
-    | 'accessDenied'
-    | 'missingTable'
-    | 'queryError'
-    | 'partialFailure'
-    | 'transient'
-    | 'unknown'
-    | 'clientUnavailable';
+export const LOGS_FAILURE_KINDS = [
+    'accessDenied',
+    'missingTable',
+    'queryError',
+    'partialFailure',
+    'transient',
+    'unknown',
+    'clientUnavailable',
+] as const;
+
+export type LogsFailureKind = (typeof LOGS_FAILURE_KINDS)[number];
 
 /** Sanitized LOCAL OUTPUT ONLY. Never attach these fields to telemetry or an error sent to telemetry. */
 export interface LogsDiagnostic {

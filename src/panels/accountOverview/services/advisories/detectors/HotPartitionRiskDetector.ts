@@ -29,7 +29,11 @@ function evaluateHotPartitionRisk(
     headroomPercent: number,
     throttleThresholdPercent: number,
 ): AdvisoryEvaluation<'HotPartitionRisk'> {
+    if (input.partitionCount === 1) {
+        return { rootCause: 'single_partition' };
+    }
     if (
+        input.throttleRatePercent === undefined ||
         !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.partitionSaturation.minResourceAgeDays) ||
         input.partitionCount === 0 ||
         !Number.isFinite(input.maxP99) ||

@@ -38,10 +38,7 @@ function evaluateStorageSkewRisk(
     input: ContainerStorageInput,
     balanceThreshold: number,
 ): AdvisoryEvaluation<'StorageSkewRisk'> {
-    if (
-        balanceThreshold <= 0 ||
-        !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.storageSkew.minResourceAgeDays)
-    ) {
+    if (balanceThreshold <= 0) {
         return { rootCause: 'insufficient_data' };
     }
     const sizes = input.partitions
@@ -55,11 +52,17 @@ function evaluateStorageSkewRisk(
     const ratio = balanceRatio(sizes);
     const hasCompleteObservations = sizes.length === input.partitions.length;
 
-    if (sizes.length === 0) {
+    if (sizes.length === 1 && hasCompleteObservations) {
+        return { rootCause: 'single_partition' };
+    }
+    if (
+        sizes.length === 0 ||
+        !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.storageSkew.minResourceAgeDays)
+    ) {
         return { rootCause: 'insufficient_data' };
     }
     if (sizes.length === 1) {
-        return { rootCause: hasCompleteObservations ? 'single_partition' : 'insufficient_data' };
+        return { rootCause: 'insufficient_data' };
     }
     const busiestBytes = Math.max(...sizes);
     if (busiestBytes < STORAGE_SKEW_MIN_BUSIEST_BYTES) {

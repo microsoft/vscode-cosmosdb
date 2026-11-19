@@ -6,6 +6,7 @@
 import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { createArmTestContext } from '../../cosmosdb/armTestUtils';
 import { READ_SOURCES, type ReadFailure } from './accessRequirements';
+import { fetchMetricSeries } from './metrics/hostFetchers';
 import {
     COST_FAILURE_KINDS,
     DERIVED_ADVISORY_RULES,
@@ -15,6 +16,7 @@ import {
 } from './services/advisories/core/types';
 import { LOGS_FAILURE_KINDS } from './services/advisories/fetchers/logsDiagnostics';
 import { UNAVAILABLE_REASONS } from './services/shared';
+import { mockClient } from './services/testFixtures';
 import { reportOverviewResultTelemetry } from './telemetry';
 import {
     overviewAdvisoryResultSchema,
@@ -29,6 +31,29 @@ vi.mock('@microsoft/vscode-azext-utils', () => ({ callWithTelemetryAndErrorHandl
 vi.mock('../../utils/azureClients', () => ({}));
 
 describe('Account Overview telemetry summaries', () => {
+    it.each(['DataUsage', 'IndexUsage', 'both'] as const)(
+        'reports successful storage reads with an empty component as partial (%s)',
+        async (observed) => {
+            const response = {
+                value: [{ timeseries: [{ data: [{ timeStamp: '2026-01-01T00:00:00Z', maximum: 100 }] }] }],
+            };
+            const client = mockClient({
+                ...(observed !== 'IndexUsage' && { DataUsage: response }),
+                ...(observed !== 'DataUsage' && { IndexUsage: response }),
+            });
+            const context = createArmTestContext();
+            const result = await fetchMetricSeries('dataIndexUsage', client, 'private-account', {}, '24H');
+            const snapshot = structuredClone(result);
+
+            reportOverviewResultTelemetry(context, result);
+
+            expect(result.available).toBe(true);
+            expect(context.telemetry.properties).toEqual({ dataResult: observed === 'both' ? 'complete' : 'partial' });
+            expect(context.telemetry.measurements).toEqual({ readFailureCount: 0 });
+            expect(result).toEqual(snapshot);
+        },
+    );
+
     it('keeps telemetry diagnostic types identical to the shared domain types', () => {
         expectTypeOf<OverviewReadResult['diagnostics']>().toEqualTypeOf<ReadFailure[] | undefined>();
         expectTypeOf<

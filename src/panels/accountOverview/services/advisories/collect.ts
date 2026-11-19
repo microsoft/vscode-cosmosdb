@@ -563,6 +563,7 @@ export async function collectDerivedAdvisories(
         const scope = scopeOf(row);
         const ageDays = offerAgeDays(row);
         const requiredPartitionRead = { ...partition, failures: [...partition.failures, ...throttle.failures] };
+        const singlePartition = partition.value?.available === true && partition.value.partitionCount === 1;
 
         if (partition.reason) {
             recordMetricFailure('SustainedThrottlingInRegion', requiredPartitionRead, scope);
@@ -573,16 +574,17 @@ export async function collectDerivedAdvisories(
             recordMetricFailure('HotPartitionRisk', requiredPartitionRead, scope, reason);
         } else if (throttle.reason) {
             recordMetricFailure('SustainedThrottlingInRegion', throttle, scope);
-            recordMetricFailure('HotPartitionRisk', throttle, scope);
-        } else if (throttle.value) {
+            recordMetricFailure('HotPartitionRisk', throttle, scope, throttle.reason, !singlePartition);
+        }
+        if (partition.value?.available && (throttle.value || singlePartition)) {
             partitions.push({
                 databaseId: row.databaseId,
                 containerId: row.containerId,
                 maxP99: partition.value.maxSaturationPercent ?? partition.value.topPartitionShare,
                 minP99: partition.value.minSaturationPercent ?? 0,
                 partitionCount: partition.value.partitionCount,
-                throttleRatePercent: throttle.value.ratePercent,
-                totalRequests: throttle.value.totalRequests,
+                throttleRatePercent: throttle.value?.ratePercent,
+                totalRequests: throttle.value?.totalRequests,
                 throughputMode: row.throughputMode,
                 provisionedRu: row.throughputRU,
                 resourceAgeDays: ageDays,
@@ -809,11 +811,20 @@ export async function collectDerivedAdvisories(
                 ? dedicatedTargets.some(
                       (row) =>
                           (failure.scope === undefined || failure.scope === scopeOf(row)) &&
+                          !storageSkew.some(
+                              (input) => scopeOf(input) === scopeOf(row) && input.partitions.length === 1,
+                          ) &&
                           rowAgeDays(row, accountCreatedAt, now) === undefined,
                   )
                 : targets.some(
                       (offer) =>
                           (failure.scope === undefined || failure.scope === scopeOf(offer)) &&
+                          !(
+                              failure.rule === 'HotPartitionRisk' &&
+                              partitions.some(
+                                  (input) => scopeOf(input) === scopeOf(offer) && input.partitionCount === 1,
+                              )
+                          ) &&
                           offerAgeDays(offer) === undefined,
                   );
 

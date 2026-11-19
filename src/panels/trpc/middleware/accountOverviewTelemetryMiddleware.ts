@@ -3,7 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type MiddlewareResultLike, type ProcedureInvocation } from '@microsoft/vscode-ext-webview/host';
+import {
+    getInvocationSignal,
+    type MiddlewareResultLike,
+    type ProcedureInvocation,
+} from '@microsoft/vscode-ext-webview/host';
 import { getAccountOverviewMaskedValues, getResourceMaskedValues } from '../../accountOverview/resourceMasking';
 import { reportOverviewResultTelemetry } from '../../accountOverview/telemetry';
 import { type AccountOverviewRouterContext } from '../appRouter';
@@ -37,6 +41,9 @@ export async function accountOverviewTelemetryMiddleware<TResult extends Middlew
         context.telemetry.properties.panelId = ctx.panelId;
     }
     const result = await next();
+    if (getInvocationSignal(ctx)?.aborted) {
+        return result;
+    }
     if (!result.ok) {
         context.telemetry.properties.errorCategory = 'infrastructure';
     } else if (type === 'query' && 'data' in result) {

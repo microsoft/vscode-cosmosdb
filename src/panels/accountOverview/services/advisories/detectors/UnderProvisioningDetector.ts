@@ -30,6 +30,8 @@ function evaluateUnderProvisioning(
     throttleThresholdPercent: number,
 ): AdvisoryEvaluation<'SustainedThrottlingInRegion'> {
     if (
+        input.totalRequests === undefined ||
+        input.throttleRatePercent === undefined ||
         input.totalRequests < DIAGNOSTIC_POLICY.underProvisioning.minRequests ||
         !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.partitionSaturation.minResourceAgeDays)
     ) {
@@ -121,9 +123,11 @@ export class UnderProvisioningDetector extends Detector {
     protected evaluateInputs(ctx: DetectorContext): DetectorEvaluation[] {
         const t = ctx.thresholds;
 
-        return ctx.inputs.partitions.map((p) =>
-            this.evaluateResult(p, t.partitionSaturationPercent, t.partitionHeadroomPercent, t.throttleRatePercent),
-        );
+        return ctx.inputs.partitions
+            .filter((p) => p.totalRequests !== undefined && p.throttleRatePercent !== undefined)
+            .map((p) =>
+                this.evaluateResult(p, t.partitionSaturationPercent, t.partitionHeadroomPercent, t.throttleRatePercent),
+            );
     }
 }
 

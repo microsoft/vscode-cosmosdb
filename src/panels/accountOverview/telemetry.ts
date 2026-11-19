@@ -8,6 +8,7 @@ import { type ReadFailure } from './accessRequirements';
 import {
     overviewAdvisoryResultSchema,
     overviewReadResultSchema,
+    overviewStorageResultSchema,
     type OverviewAdvisoryResult,
 } from './telemetryContract';
 
@@ -19,13 +20,17 @@ export function reportOverviewResultTelemetry(context: IActionContext, result: u
         return;
     }
     const advisory = overviewAdvisoryResultSchema.safeParse(result);
+    const storage = overviewStorageResultSchema.safeParse(result);
 
     reportOverviewReadTelemetry(
         context,
         read.data.diagnostics ?? [],
         read.data.available,
-        advisory.success &&
-            (advisory.data.metricSource?.available === false || advisory.data.logSource?.available === false),
+        (advisory.success &&
+            (advisory.data.metricSource?.available === false || advisory.data.logSource?.available === false)) ||
+            (storage.success &&
+                (storage.data.storage.data.status === 'unavailable' ||
+                    storage.data.storage.index.status === 'unavailable')),
     );
     if (advisory.success) {
         reportOverviewAdvisoryTelemetry(context, advisory.data);

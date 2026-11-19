@@ -158,6 +158,8 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
     const styles = useStyles();
     const groupName = useId();
     const { announce } = useAnnounce();
+    const resultSummaryId = useId();
+    const searchHintId = useId();
     const [filter, setFilter] = useState('');
     const [tags, setTags] = useState<ScenarioTag[]>([]);
     // Roving tabindex: the chip row is one Tab stop; arrow keys move between chips.
@@ -191,7 +193,7 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
     const visible = useMemo(() => filterScenarios(scenarios, filter, tags), [filter, tags, scenarios]);
     const resultSummary = summarizeResults(visible);
 
-    // Typing, trait chips, and Clear all share this path.
+    // Typing and trait chips share this path.
     // A search edit is always announced, even when the count text is unchanged (e.g. "iot" -> "clickstream").
     // Chips already report their pressed state, so they only add a changed count.
     const applyFilters = (nextFilter: string, nextTags: ScenarioTag[]) => {
@@ -206,10 +208,14 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
     const toggleTag = (tag: ScenarioTag) =>
         applyFilters(filter, tags.includes(tag) ? tags.filter((t) => t !== tag) : [...tags, tag]);
 
-    // The button unmounts once nothing is filtered, so hand focus to the search box instead of losing it.
+    // Clear all hides itself, so focus returns to the search box. A separate announcement would be cut off by that
+    // focus move, so the search box is described by the result summary, which is read as part of the focus change.
     const clearFilters = () => {
-        applyFilters('', []);
+        // Focus leaves the button before the cleared state hides it, since hiding a focused button gets it re-read.
+        // The browser reports the focus change after this handler's render, so the description read is current.
         searchRef.current?.focus();
+        setFilter('');
+        setTags([]);
     };
 
     const onChipKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -245,11 +251,14 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
                     className={styles.search}
                     contentBefore={<SearchRegular />}
                     placeholder={l10n.t('Filter scenarios…')}
-                    aria-label={l10n.t('Filter scenarios…')}
-                    aria-description={l10n.t('Scenarios filter as you type.')}
+                    aria-describedby={`${resultSummaryId} ${searchHintId}`}
                     value={filter}
                     onChange={(_, data) => applyFilters(data.value, tags)}
                 />
+                {/* `hidden` keeps the hint out of layout, so it cannot pull a screen reader's cursor off-screen. */}
+                <span id={searchHintId} hidden>
+                    {l10n.t('Scenarios filter as you type.')}
+                </span>
                 <div
                     className={styles.traits}
                     role="toolbar"
@@ -301,8 +310,10 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
                     {l10n.t('Clear all')}
                 </Link>
             </div>
-            {/* Not a live region: applyFilters() announces it, so screen readers hear each result only once. */}
-            <div className={styles.resultStatus}>{resultSummary}</div>
+            {/* Not a live region: edits announce it explicitly, and the search box reads it as its description. */}
+            <div id={resultSummaryId} className={styles.resultStatus}>
+                {resultSummary}
+            </div>
             <div className={styles.list} role="radiogroup" aria-label={l10n.t('Workload scenarios')}>
                 {visible.map((s) => (
                     <SelectableCard

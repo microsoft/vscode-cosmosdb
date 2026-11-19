@@ -20,7 +20,7 @@ vi.mock('@fluentui/react-components', async (importOriginal) => ({
     useAnnounce: () => ({ announce }),
 }));
 
-beforeEach(() => announce.mockClear());
+beforeEach(() => announce.mockReset());
 
 function Workload({
     initialScenario,
@@ -47,6 +47,7 @@ function Workload({
 const toolbar = () => within(screen.getByRole('toolbar', { name: 'Filter by workload trait' }));
 const firstChip = () => toolbar().getAllByRole('button')[0];
 const clearButton = () => screen.getByRole('button', { name: 'Clear all' });
+const searchBox = () => screen.getByPlaceholderText('Filter scenarios…');
 
 describe('WorkloadPage result status', () => {
     const allMatching = () => `${getScenarioList().length - 1} matching scenarios`;
@@ -59,9 +60,12 @@ describe('WorkloadPage result status', () => {
     it('shows the matching count without a live region and announces every search edit', async () => {
         const user = userEvent.setup();
         const { container } = render(<Workload />);
-        const search = screen.getByRole('textbox', { name: 'Filter scenarios…' });
-        expect(search).toHaveAccessibleName('Filter scenarios…');
-        expect(search).toHaveAccessibleDescription('Scenarios filter as you type.');
+        const search = searchBox();
+        // Named by its placeholder alone (jsdom cannot compute that name), so screen readers read the label once.
+        expect(search).not.toHaveAttribute('aria-label');
+        expect(search).not.toHaveAttribute('aria-labelledby');
+        // The current result is part of the description, so focusing the box reads it.
+        expect(search).toHaveAccessibleDescription(`${allMatching()} Scenarios filter as you type.`);
         // The visible summary is not a live region, so only the explicit announcement is spoken.
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
         expect(container.querySelector('[aria-live]')).toBeNull();
@@ -85,7 +89,7 @@ describe('WorkloadPage result status', () => {
         expect(search).toHaveFocus();
     });
 
-    it('announces trait chips and Clear all only when the count changes', async () => {
+    it('announces trait chips only when the count changes and Clear all through the focused search box', async () => {
         const user = userEvent.setup();
         render(<Workload />);
         const trait = toolbar().getByRole('button', { name: 'Write-heavy' });
@@ -93,7 +97,7 @@ describe('WorkloadPage result status', () => {
         expectResult('2 matching scenarios');
         expect(trait).toHaveFocus();
 
-        const search = screen.getByRole('textbox', { name: 'Filter scenarios…' });
+        const search = searchBox();
         await user.type(search, 'clickstream');
         expectResult('1 matching scenario');
         // Toggling the chip off and on keeps the count, so the pressed state alone is the feedback.
@@ -103,11 +107,20 @@ describe('WorkloadPage result status', () => {
         await user.click(trait);
         expect(trait).toHaveAttribute('aria-pressed', 'true');
         expect(screen.getByText('1 matching scenario')).toBeVisible();
-        expect(announce).toHaveBeenCalledTimes(announced);
-
-        await user.click(clearButton());
-        expectResult(allMatching());
+        // A separate announcement would be cut off by the focus move, so the search box's description carries the
+        // result instead. Focus must leave Clear all while it is still visible: hiding a focused button makes screen
+        // readers read it again.
+        const clear = clearButton();
+        let clearVisibilityOnFocus = '';
+        search.addEventListener('focus', () => {
+            clearVisibilityOnFocus = clear.style.visibility;
+        });
+        await user.click(clear);
+        expect(clearVisibilityOnFocus).toBe('visible');
         expect(search).toHaveFocus();
+        expect(search).toHaveAccessibleDescription(`${allMatching()} Scenarios filter as you type.`);
+        expect(screen.getByText(allMatching())).toBeVisible();
+        expect(announce).toHaveBeenCalledTimes(announced);
         // One batch for every source, so a newer summary replaces a stale one still waiting to be read.
         const batches = new Set(announce.mock.calls.map(([, options]) => (options as { batchId?: string }).batchId));
         expect([...batches]).toEqual([expect.any(String)]);
@@ -125,7 +138,7 @@ describe('WorkloadPage native radio cards', () => {
         expect(radios.every((radio) => !radio.hasAttribute('tabindex'))).toBe(true);
         expect(group.queryAllByRole('radio', { checked: true })).toHaveLength(0);
         await user.tab();
-        expect(screen.getByRole('textbox', { name: 'Filter scenarios…' })).toHaveFocus();
+        expect(searchBox()).toHaveFocus();
         await user.tab();
         expect(firstChip()).toHaveFocus();
         await user.tab();
@@ -153,7 +166,7 @@ describe('WorkloadPage native radio cards', () => {
         await user.tab({ shift: true });
         expect(firstChip()).toHaveFocus();
         await user.tab({ shift: true });
-        expect(screen.getByRole('textbox', { name: 'Filter scenarios…' })).toHaveFocus();
+        expect(searchBox()).toHaveFocus();
     });
 
     it('enters at the selected option and exposes titles, descriptions, badges, and hints', async () => {
@@ -163,6 +176,10 @@ describe('WorkloadPage native radio cards', () => {
         render(<Workload initialScenario="iot" onPick={onPick} />);
         const radio = screen.getByRole('radio', { name: scenario.title });
         expect(screen.getByText(scenario.title)).toBeVisible();
+        // The radio alone speaks the card; the visible text it references is hidden so it is not read twice.
+        expect(screen.getByText(scenario.title).closest('[aria-hidden="true"]')).toContainElement(
+            screen.getByText(scenario.hint),
+        );
         expect(radio).toHaveAccessibleName(scenario.title);
         expect(radio).toHaveAccessibleDescription(`${scenario.description} ${scenario.badge.text} ${scenario.hint}`);
         await user.tab();
@@ -182,7 +199,7 @@ describe('WorkloadPage native radio cards', () => {
         const user = userEvent.setup();
         const onPick = vi.fn();
         render(<Workload initialScenario="chat" onPick={onPick} />);
-        const filter = screen.getByRole('textbox', { name: 'Filter scenarios…' });
+        const filter = searchBox();
         await user.type(filter, 'transactions');
         const group = within(screen.getByRole('radiogroup', { name: 'Workload scenarios' }));
         const radios = group.getAllByRole('radio');
@@ -213,7 +230,7 @@ describe('WorkloadPage native radio cards', () => {
         const user = userEvent.setup();
         const onPick = vi.fn();
         render(<Workload initialScenario="chat" onPick={onPick} />);
-        const filter = screen.getByRole('textbox', { name: 'Filter scenarios…' });
+        const filter = searchBox();
         await user.type(filter, 'no matching workload');
         const custom = getScenarioList().find((item) => item.id === 'other')!;
         const customRadio = screen.getByRole('radio', { name: custom.title });
@@ -251,7 +268,7 @@ describe('WorkloadPage trait filter', () => {
 
     it('sits beside the search box and groups one chip per trait by color, excluding the fallback', () => {
         render(<Workload />);
-        const search = screen.getByRole('textbox', { name: 'Filter scenarios…' });
+        const search = searchBox();
         expect(search.closest('div')).toContainElement(firstChip());
         const groups = toolbar().getAllByRole('group');
         expect(groups.map((group) => group.getAttribute('aria-label'))).toEqual([
@@ -311,7 +328,7 @@ describe('WorkloadPage trait filter', () => {
         const onPick = vi.fn();
         render(<Workload onPick={onPick} />);
         await user.click(chip('Write-heavy'));
-        const search = screen.getByRole('textbox', { name: 'Filter scenarios…' });
+        const search = searchBox();
         await user.type(search, 'clickstream');
         expect(shownIds()).toEqual(['analytics', 'other']);
         await user.clear(search);
@@ -365,7 +382,7 @@ describe('WorkloadPage trait filter', () => {
         const user = userEvent.setup();
         const onPick = vi.fn();
         render(<Workload initialScenario="iot" onPick={onPick} />);
-        const search = screen.getByRole('textbox', { name: 'Filter scenarios…' });
+        const search = searchBox();
         await user.click(chip('Read-heavy'));
         await user.type(search, 'articles');
         expect(shownIds()).toEqual(['cms', 'other']);
@@ -387,7 +404,7 @@ describe('WorkloadPage trait filter', () => {
     it('clears from the keyboard and restores the catalog when only the custom workload matches', async () => {
         const user = userEvent.setup();
         render(<Workload />);
-        const search = screen.getByRole('textbox', { name: 'Filter scenarios…' });
+        const search = searchBox();
         await user.type(search, 'no matching workload');
         expect(shownIds()).toEqual(['other']);
         await user.tab();
@@ -395,6 +412,7 @@ describe('WorkloadPage trait filter', () => {
         expect(clearButton()).toHaveFocus();
         await user.keyboard('{Enter}');
         expect(search).toHaveFocus();
+        expect(search).toHaveValue('');
         expect(screen.getAllByRole('radio')).toHaveLength(getScenarioList().length);
     });
 });

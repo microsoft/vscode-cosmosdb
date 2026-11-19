@@ -48,13 +48,13 @@ describe('WorkloadPage result status', () => {
         expect(search).toHaveAccessibleDescription('Scenarios filter as you type.');
         const status = screen.getByRole('status');
         expect(status).toHaveAttribute('aria-atomic', 'true');
-        expect(status).toHaveTextContent(`${getScenarioList().length - 1} matching scenarios.`);
+        expect(status.textContent).toBe(`${getScenarioList().length - 1} matching scenarios`);
         await user.click(search);
 
         fireEvent.change(search, { target: { value: 'transactions' } });
-        expect(status).toHaveTextContent('2 matching scenarios.');
+        expect(status.textContent).toBe('2 matching scenarios');
         fireEvent.change(search, { target: { value: 'clickstream' } });
-        expect(status).toHaveTextContent('1 matching scenario.');
+        expect(status.textContent).toBe('1 matching scenario');
         fireEvent.change(search, { target: { value: 'no matching workload' } });
         expect(status).toHaveTextContent('No scenarios match your filter. You can still choose a custom workload.');
         expect(status).toBeVisible();
@@ -69,14 +69,14 @@ describe('WorkloadPage result status', () => {
         const status = screen.getByRole('status');
         const trait = toolbar().getByRole('button', { name: 'Write-heavy' });
         await user.click(trait);
-        expect(status).toHaveTextContent('2 matching scenarios.');
+        expect(status.textContent).toBe('2 matching scenarios');
         expect(trait).toHaveFocus();
 
         const search = screen.getByRole('textbox', { name: 'Filter scenarios…' });
         await user.type(search, 'clickstream');
-        expect(status).toHaveTextContent('1 matching scenario.');
+        expect(status.textContent).toBe('1 matching scenario');
         await user.click(clearButton());
-        expect(status).toHaveTextContent(`${getScenarioList().length - 1} matching scenarios.`);
+        expect(status.textContent).toBe(`${getScenarioList().length - 1} matching scenarios`);
         expect(search).toHaveFocus();
     });
 });

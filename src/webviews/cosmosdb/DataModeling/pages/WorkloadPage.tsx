@@ -280,8 +280,8 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
                 {matchCount === 0
                     ? l10n.t('No scenarios match your filter. You can still choose a custom workload.')
                     : matchCount === 1
-                      ? l10n.t('1 matching scenario.')
-                      : l10n.t('{count} matching scenarios.', { count: matchCount })}
+                      ? l10n.t('1 matching scenario')
+                      : l10n.t('{count} matching scenarios', { count: matchCount })}
             </div>
             <div className={styles.list} role="radiogroup" aria-label={l10n.t('Workload scenarios')}>
                 {visible.map((s) => (

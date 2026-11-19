@@ -45,7 +45,7 @@ function evaluateCrossPartitionQuery(
         return { rootCause: 'insufficient_data' };
     }
     if (containerPartitions <= 1) {
-        return { rootCause: 'mostly_single_partition' };
+        return { rootCause: 'single_partition_container' };
     }
     if (crossPartitionPct < thresholds.medPct || worst === undefined) {
         return { rootCause: 'mostly_single_partition' };

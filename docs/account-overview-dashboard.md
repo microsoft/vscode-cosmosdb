@@ -65,11 +65,15 @@ Tab warning icons point to the **source** of a problem, not a copy of the overal
 
 - **Monitoring:** sustained account-wide throttling.
 - **Databases and Containers:** critical or warning container health.
-- **Advisories:** active alert severity or qualifying Azure Advisor recommendations.
+- **Advisories:** active alert severity, High/Medium-impact Azure Advisor recommendations in any category,
+  or visible High/Medium-severity Derived Advisories.
 
 A Critical container gives its tab a red indicator but raises the account only to Needs Attention.
 Warning-only containers give a yellow indicator without raising account health.
 Informational alerts and the extension's Derived Advisories do not escalate account health.
+The Advisories tab uses a yellow indicator for significant recommendations even when Health remains Healthy or Unknown.
+Low-impact/severity recommendations, superseded derived findings and session-dismissed findings do not add an indicator.
+Only High-impact Performance/Cost Advisor recommendations affect Health; the broader tab indication does not change that rule.
 
 ### Health and Status are different
 

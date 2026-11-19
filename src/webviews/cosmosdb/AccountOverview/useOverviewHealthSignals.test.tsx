@@ -110,6 +110,28 @@ describe('useOverviewHealthSignals', () => {
         expect(result.current.activeAlertsUnavailable).toBe(false);
     });
 
+    it('keeps previous alert problems while exposing the latest permission failure, then clears it on recovery', async () => {
+        const source = createClient();
+        const critical = { ...clear, totalCount: 1, criticalCount: 1 };
+        source.alerts.mockResolvedValueOnce(critical);
+        const { result } = renderHook(() => useOverviewHealthSignals(source.client, vi.fn()));
+        await waitFor(() => expect(result.current.activeAlerts).toEqual(critical));
+        const diagnostics = [
+            { source: 'alertCounts' as const, kind: 'accessDenied' as const, reason: 'rbac' as const },
+        ];
+        source.alerts.mockResolvedValueOnce({ ...clear, available: false, reason: 'rbac', diagnostics });
+        await act(async () => {
+            await result.current.refresh();
+        });
+        expect(result.current.activeAlerts).toMatchObject({ totalCount: 1, criticalCount: 1, diagnostics });
+        expect(result.current.activeAlertsUnavailable).toBe(true);
+        await act(async () => {
+            await result.current.refresh();
+        });
+        expect(result.current.activeAlerts).toEqual(clear);
+        expect(result.current.activeAlertsUnavailable).toBe(false);
+    });
+
     it('ignores superseded initial responses and errors after a newer refresh', async () => {
         const source = createClient();
         const oldAccount = deferred<AccountHealthResult>();

@@ -23,6 +23,7 @@ import {
     type PartitionDistributionMode,
     type PartitionHealthResult,
     type RecommendationsResult,
+    type ReadDiagnosticsResult,
     type TimeRange,
     type UnavailableReason,
 } from '../../api/types';
@@ -36,6 +37,7 @@ import { InventoryTable } from './InventoryTable';
 import { type ContainerRef, type MetricScope, METRIC_ORDER } from './metrics/descriptors';
 import { MetricsSection } from './metrics/MetricsSection';
 import { PartitionHealth } from './PartitionHealth';
+import { ReadFailureNotice } from './ReadFailureNotice';
 import { Recommendations } from './Recommendations';
 import { type OverviewTab, TabbedOverviewLayout } from './TabbedOverviewLayout';
 import { useOverviewHealthSignals } from './useOverviewHealthSignals';
@@ -87,7 +89,7 @@ const useStyles = makeStyles({
     },
 });
 
-type Inventory = {
+type Inventory = ReadDiagnosticsResult & {
     supported: boolean;
     available: boolean;
     reason?: UnavailableReason;
@@ -799,11 +801,26 @@ export const OverviewDashboard = ({
         normalizedRuApplicability,
         recommendations,
         recommendationsLoading,
+        derivedAdvisories,
+        dismissedAdvisoryIds,
     });
 
     return (
         <DashboardActionsProvider value={actions}>
             <div className={styles.root} inert={creationBusy} aria-busy={creationBusy}>
+                <ReadFailureNotice
+                    failures={[
+                        ...(inventory.diagnostics ?? []),
+                        ...(inventoryMetrics?.diagnostics ?? []),
+                        ...(partitionHealth?.diagnostics ?? []),
+                        ...(accountHealthResult?.diagnostics ?? []),
+                        ...(activeAlerts?.diagnostics ?? []),
+                        ...(alerts?.diagnostics ?? []),
+                        ...(recommendations?.diagnostics ?? []),
+                        ...(derivedAdvisories?.diagnostics ?? []),
+                        ...Object.values(trends).flatMap((series) => series?.diagnostics ?? []),
+                    ]}
+                />
                 <TabbedOverviewLayout
                     requestedTab={
                         requestedTarget === 'overview' || requestedTarget === 'advisories' ? requestedTab : undefined

@@ -4,15 +4,17 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type MonitorClient } from '@azure/arm-monitor';
+import { type ReadDiagnosticsResult } from '../accessRequirements';
 import { type MetricUnavailableReason } from '../metrics/contracts';
 import { deriveAccountHealth } from '../overviewHealthModel';
 import { HEALTH_POLICY } from './healthPolicy';
+import { reportUnavailableClient } from './readDiagnostics';
 import { queryThrottlingSummary } from './ruTrends';
 import { type HealthState, metricFailureReason, type ProvisioningState } from './shared';
 
 export { deriveAccountHealth } from '../overviewHealthModel';
 
-export interface AccountHealthResult {
+export interface AccountHealthResult extends ReadDiagnosticsResult {
     /** Whether the account-wide request signal was observed, independently of provisioning problems. */
     available: boolean;
     reason?: MetricUnavailableReason;
@@ -35,6 +37,7 @@ export async function getAccountHealth(
         generatedAt,
     };
     if (!client) {
+        reportUnavailableClient('metrics');
         return { ...base, reason: 'noData' };
     }
     const config = HEALTH_POLICY.sustainedThrottling.observation;

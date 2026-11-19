@@ -17,6 +17,7 @@ import {
     DEFAULT_PARTITION_THRESHOLDS,
     type PartitionStorageResult,
 } from '../partitionHealth';
+import { readRequest } from '../readDiagnostics';
 import { getContainerCreatedAt, getKnownResourceAgeDays, getSystemCreatedAt } from '../resourceAge';
 import { getRuTrends, getThrottleRate } from '../ruTrends';
 import { classifyUnavailable, containerKey } from '../shared';
@@ -122,10 +123,12 @@ export interface CollectDerivedAdvisoriesParams {
     accountConfig?: AccountConfigInput;
     /**
      * Data-plane Log Analytics client for the Tier-2 log-based advisories (DX-002/003/007/010). Absent when the
-     * client could not be acquired — the collector then reports Tier-2 as unavailable (`noData`) while still
-     * returning the Tier-1 advisories.
+     * client could not be acquired — the collector then reports Tier-2 as unavailable while still returning
+     * Tier-1 advisories. A known acquisition cause takes precedence over the generic `noData` fallback.
      */
     logsClient?: LogsQueryExecutor;
+    /** Known acquisition cause; preserves sign-in/access guidance without forwarding SDK errors. */
+    logsClientFailure?: Pick<LogsDiagnostic, 'kind' | 'reason'>;
     /** Sanitized Log Analytics failures for the local Output channel, not telemetry. */
     onLogsDiagnostic?: LogsDiagnosticReporter;
     /** Existing ARM cloud/subscription context for optional read-only financial enrichment. */
@@ -213,7 +216,11 @@ async function getAccountCreatedAt(
     resourceGroup: string,
     accountName: string,
 ): Promise<string | undefined> {
-    return getSystemCreatedAt(await cosmosClient.databaseAccounts.get(resourceGroup, accountName));
+    return getSystemCreatedAt(
+        await readRequest('account', 'databaseAccounts.get', () =>
+            cosmosClient.databaseAccounts.get(resourceGroup, accountName),
+        ),
+    );
 }
 
 /**
@@ -682,6 +689,7 @@ export async function collectDerivedAdvisories(
         rows.filter((row) => row.offerLevel === 'database'),
         effectiveAccountConfig !== undefined &&
             expensiveConsistencyDetector.evaluate(effectiveAccountConfig) !== undefined,
+        params.logsClientFailure,
     );
 
     const advisories = computeDerivedAdvisories(
@@ -783,12 +791,18 @@ export async function collectTier2Logs(
     ingestionTargets: readonly { databaseId: string; containerId: string }[] = scanTargets,
     sharedMembers: readonly { databaseId: string; containerId: string }[] = [],
     includeConsistencyReadRu = false,
+    clientFailure?: Pick<LogsDiagnostic, 'kind' | 'reason'>,
 ): Promise<Tier2Logs> {
     const empty = { crossPartition: [], ingestion: [], sharedThroughput: [] };
     const failures: NonNullable<LogsSourceStatus['failures']> = [];
     const report: LogsDiagnosticReporter = (diagnostic: LogsDiagnostic) => {
         if (
-            !failures.some((failure) => failure.operation === diagnostic.operation && failure.kind === diagnostic.kind)
+            !failures.some(
+                (failure) =>
+                    failure.operation === diagnostic.operation &&
+                    failure.kind === diagnostic.kind &&
+                    failure.reason === diagnostic.reason,
+            )
         ) {
             failures.push({ operation: diagnostic.operation, kind: diagnostic.kind, reason: diagnostic.reason });
         }
@@ -806,6 +820,10 @@ export async function collectTier2Logs(
         return { available: false, reason, failures };
     };
     if (!logsClient) {
+        if (clientFailure) {
+            failures.push({ operation: 'client', ...clientFailure });
+            return { ...empty, logSource: coverage() };
+        }
         report({
             operation: 'client',
             kind: 'clientUnavailable',

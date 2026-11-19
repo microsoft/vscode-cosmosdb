@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type MonitorClient } from '@azure/arm-monitor';
+import { readMetrics } from '../../readDiagnostics';
 import { querySeries } from '../../ruTrends';
 import {
     containerFilter,
@@ -40,7 +41,7 @@ async function getAccountRequestDimension(
 ): Promise<Record<string, number>> {
     const observation = DIAGNOSTIC_POLICY.accountRequests.observation;
     const seriesLimit = 1000;
-    const response = await client.metrics.list(resourceUri, {
+    const response = await readMetrics(client, resourceUri, {
         metricnames: 'TotalRequests',
         aggregation: 'Count',
         timespan: advisoryTimespan(observation, now),
@@ -107,7 +108,7 @@ export async function getAccountConsumedRuShape(
     resourceUri: string,
 ): Promise<AccountConsumedRuShape> {
     const observation = DIAGNOSTIC_POLICY.serverless.observation;
-    const response = await client.metrics.list(resourceUri, {
+    const response = await readMetrics(client, resourceUri, {
         metricnames: 'TotalRequestUnits',
         aggregation: 'Total',
         timespan: advisoryTimespan(observation),
@@ -167,6 +168,7 @@ async function getContainerMetricPeak(
         advisoryTimespan(observation, now),
         observation.interval,
         requestMetricFilter(databaseId, containerId, sharedContainerIds),
+        [databaseId, containerId ?? '', ...(sharedContainerIds ?? [])],
     );
     return buckets.size > 0 ? Math.max(...buckets.values()) : undefined;
 }
@@ -275,13 +277,18 @@ export async function getAutoscaleUtilization(
     }
     const filter = `${throughputOfferFilter(databaseId, containerId)} and PhysicalPartitionId eq '*'`;
     const observation = DIAGNOSTIC_POLICY.autoscaleUtilization.observation;
-    const response = await client.metrics.list(resourceUri, {
-        metricnames: 'AutoscaledRU',
-        aggregation: 'Maximum',
-        timespan: advisoryTimespan(observation),
-        interval: observation.interval,
-        filter,
-    });
+    const response = await readMetrics(
+        client,
+        resourceUri,
+        {
+            metricnames: 'AutoscaledRU',
+            aggregation: 'Maximum',
+            timespan: advisoryTimespan(observation),
+            interval: observation.interval,
+            filter,
+        },
+        [databaseId, containerId ?? ''],
+    );
 
     // timestamp → summed AutoscaledRU across the container's physical partitions.
     const totals = new Map<number, number>();
@@ -332,6 +339,7 @@ export async function getContainerIndexingUsage(
             advisoryTimespan(observation, now),
             observation.interval,
             containerFilter(databaseId, containerId),
+            [databaseId, containerId],
         );
         return buckets.size > 0 ? buckets.get(Math.max(...buckets.keys())) : undefined;
     };

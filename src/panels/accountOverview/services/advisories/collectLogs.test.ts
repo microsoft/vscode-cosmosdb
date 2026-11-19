@@ -112,6 +112,59 @@ describe('Log Analytics collection coverage', () => {
         expect(queryResource.mock.calls.filter((call) => call[1].startsWith('CDBDataPlaneRequests '))).toEqual([]);
     });
 
+    it.each([
+        ['noData', 'rbac'],
+        ['rbac', 'noData'],
+    ] as const)('preserves distinct RU partial-failure reasons in order %j', async (first, second) => {
+        const base = client();
+        const queryResource: LogsQueryExecutor['queryResource'] = async (...args) => {
+            if (args[1].includes('totalQueryRu')) {
+                const reason = args[1].includes("CollectionName == 'first'") ? first : second;
+                return {
+                    status: LogsQueryResultStatus.PartialFailure,
+                    partialTables: [],
+                    partialError: {
+                        code: reason === 'rbac' ? 'InsufficientAccessError' : 'PartialError',
+                        message: reason === 'rbac' ? 'Insufficient access.' : 'Incomplete result.',
+                    },
+                };
+            }
+            return base.queryResource(...args);
+        };
+        const result = await collectTier2Logs(
+            { queryResource },
+            resource,
+            ['first', 'second'].map((containerId) => ({ databaseId: 'db', containerId })),
+            [],
+        );
+        expect(result.logSource).toMatchObject({
+            available: false,
+            reason: 'rbac',
+            failures: [
+                { operation: 'crossPartitionRu', kind: 'partialFailure', reason: first },
+                { operation: 'crossPartitionRu', kind: 'partialFailure', reason: second },
+            ],
+        });
+    });
+
+    it.each(['authentication', 'accessDenied'] as const)(
+        'preserves the known %s acquisition cause without a synthetic client failure',
+        async (kind) => {
+            const report = vi.fn();
+            const result = await collectTier2Logs(undefined, resource, targets, inventory, report, targets, [], false, {
+                kind,
+                reason: 'rbac',
+            });
+            expect(result.logSource).toEqual({
+                available: false,
+                reason: 'rbac',
+                failures: [{ operation: 'client', kind, reason: 'rbac' }],
+            });
+            expect(report).not.toHaveBeenCalled();
+            expect(result.crossPartition).toEqual([]);
+        },
+    );
+
     it('marks incomplete charge matches as partial coverage while retaining structural evidence', async () => {
         const base = client();
         const queryResource = vi.fn<LogsQueryExecutor['queryResource']>(async (...args) =>

@@ -14,8 +14,10 @@ import {
     type PartitionHealthResult,
     type TimeRange,
 } from '../../../accountOverview/services';
+import { reportUnavailableClient } from '../../../accountOverview/services/readDiagnostics';
 import { type AccountOverviewRouterContext } from '../../appRouter';
 import { accountOverviewProcedure } from '../../trpc';
+import { readAccountData } from './readData';
 import { readPartitionThresholds } from './thresholds';
 
 // ─── Zone: Partition key distribution health ────────────────────────────────────
@@ -66,24 +68,33 @@ export const partitionHealthProcedures = {
                     generatedAt: Date.now(),
                 });
 
-                const experience = tryGetExperience(metadata.databaseAccount as DatabaseAccountGetResults);
-                if (experience && experience.api !== API.Core) {
-                    return unavailable('unsupported');
-                }
+                return readAccountData<PartitionHealthResult>(
+                    metadata,
+                    'metrics',
+                    async () => {
+                        const experience = tryGetExperience(metadata.databaseAccount as DatabaseAccountGetResults);
+                        if (experience && experience.api !== API.Core) {
+                            return unavailable('unsupported');
+                        }
 
-                const client = await metadata.getMonitorClient();
-                if (!client) {
-                    return unavailable('error');
-                }
+                        const client = await metadata.getMonitorClient();
+                        if (!client) {
+                            reportUnavailableClient('metrics');
+                            return unavailable('error');
+                        }
 
-                return getPartitionHealth(
-                    client,
-                    metadata.accountId,
-                    mode,
-                    input.timeRange,
-                    input.databaseId,
-                    input.containerId,
-                    readPartitionThresholds(),
+                        return getPartitionHealth(
+                            client,
+                            metadata.accountId,
+                            mode,
+                            input.timeRange,
+                            input.databaseId,
+                            input.containerId,
+                            readPartitionThresholds(),
+                        );
+                    },
+                    unavailable,
+                    [input.databaseId, input.containerId],
                 );
             },
         ),

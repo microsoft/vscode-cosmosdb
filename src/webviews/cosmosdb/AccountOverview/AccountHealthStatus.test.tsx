@@ -232,4 +232,25 @@ describe('AccountHealthStatus', () => {
             expect(screen.queryByRole('group')).not.toBeInTheDocument();
         });
     });
+
+    it('describes significant findings from both recommendation sources independently of account health', () => {
+        expect(
+            healthIndicatorDescriptions({
+                advisories: {
+                    severity: 'Needs Attention',
+                    reasons: [
+                        { kind: 'advisorRecommendations', count: 2 },
+                        { kind: 'derivedAdvisories', count: 3 },
+                    ],
+                },
+            }),
+        ).toEqual({
+            advisories: {
+                severity: 'Needs Attention',
+                description:
+                    'High- or medium-impact Azure Advisor recommendations: 2. ' +
+                    'High- or medium-severity derived advisories: 3. These findings do not escalate account health.',
+            },
+        });
+    });
 });

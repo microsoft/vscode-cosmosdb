@@ -11,6 +11,7 @@ import {
     resolveAccountHealth,
     rowHealth,
 } from './overviewHealthModel';
+import { type DerivedAdvisory } from './services/advisories/core/types';
 
 const empty: Parameters<typeof deriveOverviewHealth>[0] = {
     accountLoading: false,
@@ -19,6 +20,16 @@ const empty: Parameters<typeof deriveOverviewHealth>[0] = {
     inventory: { available: true, supported: true, rows: [] },
     inventoryMetricsLoading: false,
     recommendationsLoading: false,
+};
+
+const advisory: DerivedAdvisory = {
+    id: 'idle',
+    rule: 'IdleContainer',
+    severity: 'High',
+    title: 'Idle container',
+    rationale: 'Almost no traffic was observed.',
+    suggestedAction: 'Review unused capacity.',
+    thresholdReference: 'Idle threshold.',
 };
 
 describe('Overview health model', () => {
@@ -97,7 +108,7 @@ describe('Overview health model', () => {
             ...empty,
             account: { available: true, health: 'Critical', hasSustainedThrottling: true, generatedAt: 1 },
             accountLoading: true,
-            recommendations: { available: false, hasHighImpactPerfCost: true },
+            recommendations: { available: false, hasHighImpactPerfCost: true, recommendations: [] },
         });
         expect(model.health).toBe('Critical');
         expect(model.indicators).toEqual({
@@ -112,9 +123,117 @@ describe('Overview health model', () => {
         expect(
             deriveOverviewHealth({
                 ...empty,
-                recommendations: { available: true, hasHighImpactPerfCost: true },
+                recommendations: { available: true, hasHighImpactPerfCost: true, recommendations: [] },
             }).health,
         ).toBe('Needs Attention');
+    });
+
+    it.each(['High', 'Medium', 'Low'] as const)(
+        'uses %s Advisor recommendations in non-health categories only for the tab indicator',
+        (impact) => {
+            const model = deriveOverviewHealth({
+                ...empty,
+                account: { available: true, health: 'Healthy', generatedAt: 1 },
+                recommendations: {
+                    available: true,
+                    hasHighImpactPerfCost: false,
+                    recommendations: ['HighAvailability', 'Security', 'OperationalExcellence'].map((category) => ({
+                        id: category,
+                        category,
+                        impact,
+                        problem: 'Review account configuration.',
+                    })),
+                },
+            });
+            expect(model.health).toBe('Healthy');
+            expect(model.indicators.advisories).toEqual(
+                impact === 'Low'
+                    ? undefined
+                    : {
+                          severity: 'Needs Attention',
+                          reasons: [{ kind: 'advisorRecommendations', count: 3 }],
+                      },
+            );
+            expect(model.checks).toContainEqual({ kind: 'advisor', outcome: 'passed', detail: 'clear' });
+        },
+    );
+
+    it.each(['High', 'Medium', 'Low'] as const)(
+        'uses visible %s derived findings without establishing account health',
+        (severity) => {
+            const model = deriveOverviewHealth({
+                ...empty,
+                derivedAdvisories: { available: true, advisories: [{ ...advisory, severity }] },
+            });
+            expect(model.health).toBeUndefined();
+            expect(model.indicators.advisories).toEqual(
+                severity === 'Low'
+                    ? undefined
+                    : {
+                          severity: 'Needs Attention',
+                          reasons: [{ kind: 'derivedAdvisories', count: 1 }],
+                      },
+            );
+        },
+    );
+
+    it('excludes dismissed and superseded findings and ignores partial coverage alone', () => {
+        const model = deriveOverviewHealth({
+            ...empty,
+            derivedAdvisories: {
+                available: true,
+                advisories: [
+                    { ...advisory, id: 'dismissed' },
+                    { ...advisory, id: 'superseded', supersededBy: 'replacement' },
+                    { ...advisory, id: 'low', severity: 'Low' },
+                ],
+            },
+            dismissedAdvisoryIds: new Set(['dismissed']),
+        });
+        expect(model.indicators.advisories).toBeUndefined();
+        const partial = {
+            available: true,
+            advisories: [],
+            metricSource: { available: false, failures: [{ rule: 'IdleContainer', reason: 'noData' }] },
+            logSource: { available: false, reason: 'rbac' },
+        };
+        expect(deriveOverviewHealth({ ...empty, derivedAdvisories: partial }).indicators.advisories).toBeUndefined();
+    });
+
+    it('ignores unavailable recommendation results even when they retain findings', () => {
+        const model = deriveOverviewHealth({
+            ...empty,
+            recommendations: {
+                available: false,
+                hasHighImpactPerfCost: true,
+                recommendations: [{ id: 'ha', category: 'HighAvailability', impact: 'High', problem: 'Review HA.' }],
+            },
+            derivedAdvisories: { available: false, advisories: [advisory] },
+        });
+        expect(model.health).toBeUndefined();
+        expect(model.indicators.advisories).toBeUndefined();
+    });
+
+    it('combines both recommendation sources without downgrading a critical alert', () => {
+        const model = deriveOverviewHealth({
+            ...empty,
+            activeAlerts: { available: true, totalCount: 1, criticalCount: 1, warningCount: 0, generatedAt: 1 },
+            recommendations: {
+                available: true,
+                hasHighImpactPerfCost: false,
+                recommendations: [{ id: 'ha', category: 'HighAvailability', impact: 'High', problem: 'Review HA.' }],
+            },
+            derivedAdvisories: { available: true, advisories: [advisory] },
+        });
+        expect(model.health).toBe('Critical');
+        expect(model.indicators.advisories).toEqual({
+            severity: 'Critical',
+            reasons: [
+                { kind: 'criticalAlerts' },
+                { kind: 'advisorRecommendations', count: 1 },
+                { kind: 'derivedAdvisories', count: 1 },
+            ],
+        });
     });
 
     it('uses one escalation policy including critical containers without downgrading the base', () => {

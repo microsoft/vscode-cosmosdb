@@ -364,15 +364,24 @@ Observed zero counts permit Healthy in step 3. `Succeeded` alone does not.
 Apply the following signals with a maximum operation; escalation MUST NOT downgrade a known base.
 If no base exists, an adverse signal can establish its severity. No adverse signal plus no base stays Unknown.
 
-| Signal                                                                     | Minimum aggregate severity | Tab source severity                       |
-| -------------------------------------------------------------------------- | -------------------------- | ----------------------------------------- |
-| Account sustained 429                                                      | Critical                   | Monitoring: Critical                      |
-| At least one Fired Sev0/Sev1 alert                                         | Critical                   | Advisories: Critical                      |
-| At least one Fired Sev2/Sev3 alert                                         | Needs Attention            | Advisories: Needs Attention               |
-| Available Advisor result containing High-impact Performance or Cost        | Needs Attention            | Advisories: Needs Attention               |
-| At least one Critical inventory container                                  | Needs Attention            | Databases and Containers: Critical        |
-| Warning-only inventory containers                                          | No account escalation      | Databases and Containers: Needs Attention |
-| Informational alerts, other Advisor categories/impacts, derived advisories | No account escalation      | No health indicator from these inputs     |
+| Signal                                                                    | Minimum aggregate severity | Tab source severity                       |
+| ------------------------------------------------------------------------- | -------------------------- | ----------------------------------------- |
+| Account sustained 429                                                     | Critical                   | Monitoring: Critical                      |
+| At least one Fired Sev0/Sev1 alert                                        | Critical                   | Advisories: Critical                      |
+| At least one Fired Sev2/Sev3 alert                                        | Needs Attention            | Advisories: Needs Attention               |
+| Available Advisor result containing High-impact Performance or Cost       | Needs Attention            | Advisories: Needs Attention               |
+| At least one Critical inventory container                                 | Needs Attention            | Databases and Containers: Critical        |
+| Warning-only inventory containers                                         | No account escalation      | Databases and Containers: Needs Attention |
+| Available High/Medium-impact Advisor recommendations outside Health rules | No account escalation      | Advisories: Needs Attention               |
+| Visible High/Medium-severity derived advisories                           | No account escalation      | Advisories: Needs Attention               |
+| Informational alerts and Low-impact/severity recommendations              | No account escalation      | No health indicator from these inputs     |
+
+Tab indicators are broader than aggregate Health: High/Medium Advisor recommendations in any category and
+High/Medium derived findings add a yellow Advisories indicator without changing Health escalation rules.
+The indicator description counts significant recommendations separately for each source.
+Superseded and session-dismissed derived findings are excluded using the same visibility filter as the advisory cards.
+Unavailable recommendation sources and partial-coverage notices alone do not add a finding-based indicator.
+Critical active alerts retain precedence over recommendation warnings.
 
 The final badge also resolves against the header's provisioning state, keeping the higher known severity.
 If the latest Fired-summary check is unavailable and the resolved result would be Healthy, display Unknown.
@@ -501,6 +510,7 @@ This cache does not implement polling.
 Filter recommendations to case-insensitive account resource ID equality or the `accountId + "/"` descendant prefix.
 Omit recommendations without problem text. Normalize unknown impact to Low.
 Sort High/Medium/Low then category. Health qualification requires exact category Performance/Cost and impact High.
+The Advisories tab indicator separately includes High/Medium impact in every category.
 Azure recommendation prose and links remain Azure-authored; DTO normalization means the payload is not literally verbatim.
 Derived advisories do not substitute for unavailable Advisor evidence.
 

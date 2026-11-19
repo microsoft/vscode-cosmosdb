@@ -13,6 +13,8 @@ import {
     RestError,
 } from '@azure/core-rest-pipeline';
 import { z } from 'zod';
+import { type ReadDiagnosticsResult } from '../accessRequirements';
+import { reportReadFailure, reportUnavailableClient } from './readDiagnostics';
 import { classifyUnavailable, type UnavailableReason } from './shared';
 
 export { escalateAccountHealth, type AccountHealthSignals } from '../overviewHealthModel';
@@ -55,7 +57,7 @@ export interface AlertItem {
     portalUrl: string;
 }
 
-export interface AlertsResult {
+export interface AlertsResult extends ReadDiagnosticsResult {
     /** False when Alerts Management returned an error for this account/scope. */
     available: boolean;
     /** When `available` is false, why: `noData` | `unsupported` | `rbac`. */
@@ -70,7 +72,7 @@ export interface AlertsResult {
     generatedAt: number;
 }
 
-export interface ActiveAlertSummary {
+export interface ActiveAlertSummary extends ReadDiagnosticsResult {
     available: boolean;
     reason?: UnavailableReason;
     totalCount: number;
@@ -119,6 +121,7 @@ export async function getActiveAlertSummary(
         generatedAt,
     });
     if (!client) {
+        reportUnavailableClient('alertCounts');
         return unavailable('noData');
     }
     try {
@@ -147,7 +150,21 @@ export async function getActiveAlertSummary(
             }),
         );
         if (response.status < 200 || response.status >= 300) {
-            throw new RestError('Unable to query active alerts in Resource Graph.', { statusCode: response.status });
+            let details: unknown;
+            if (response.bodyAsText) {
+                try {
+                    details = JSON.parse(response.bodyAsText);
+                } catch {
+                    details = { error: { message: 'The service error body could not be decoded.' } };
+                }
+            }
+            throw Object.assign(
+                new RestError('Unable to query active alerts in Resource Graph.', {
+                    statusCode: response.status,
+                    response,
+                }),
+                { details },
+            );
         }
         const result = alertCountsSchema.parse(JSON.parse(response.bodyAsText ?? 'null'));
         const counts = result.data[0];
@@ -170,6 +187,7 @@ export async function getActiveAlertSummary(
         }
         return { available: true, ...counts, generatedAt };
     } catch (error) {
+        reportReadFailure('alertCounts', 'ResourceGraph.resources', error, [resourceId]);
         return unavailable(classifyUnavailable(error));
     }
 }
@@ -191,7 +209,7 @@ export interface RecommendationItem {
     learnMoreLink?: string;
 }
 
-export interface RecommendationsResult {
+export interface RecommendationsResult extends ReadDiagnosticsResult {
     /** False when Advisor returned an error for this subscription. */
     available: boolean;
     /** When `available` is false, why: `noData` | `unsupported` | `rbac`. */
@@ -338,6 +356,7 @@ export async function getAlerts(
             });
         }
     } catch (error) {
+        reportReadFailure('alerts', 'alerts.getAll', error, [resourceId]);
         return {
             available: false,
             reason: classifyUnavailable(error),
@@ -421,6 +440,7 @@ export async function getRecommendations(
     try {
         all = await listSubscriptionRecommendations(client, subscriptionId, now);
     } catch (error) {
+        reportReadFailure('advisor', 'recommendations.list', error, [accountId]);
         return {
             available: false,
             reason: classifyUnavailable(error),

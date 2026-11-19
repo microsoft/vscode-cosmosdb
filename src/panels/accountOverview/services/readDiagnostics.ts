@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type MonitorClient } from '@azure/arm-monitor';
+import { type Metric, type MonitorClient } from '@azure/arm-monitor';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { classifyLogsFailure, type LogsDiagnostic, type LogsFailureKind } from './advisories/fetchers/logsDiagnostics';
 import { type UnavailableReason } from './shared';
@@ -35,6 +35,7 @@ interface ReadContext {
 }
 
 const readContext = new AsyncLocalStorage<ReadContext>();
+const metricErrorDiagnostics = new WeakMap<object, Pick<LogsDiagnostic, 'kind' | 'reason'>>();
 
 /** Snapshots bounded diagnostics when work completes, without delaying results for unfinished sibling reads. */
 export async function withReadDiagnostics<T>(
@@ -82,13 +83,22 @@ export function reportReadFailure(source: ReadSource, error: unknown): void {
             context.reportedErrors.add(error);
         }
     }
-    const failure = classifyLogsFailure(error);
+    const failure =
+        (error && typeof error === 'object' ? metricErrorDiagnostics.get(error) : undefined) ??
+        classifyLogsFailure(error);
     const classified =
         failure.kind === 'unknown' && error && typeof error === 'object' && 'code' in error
             ? classifyLogsFailure({ statusCode: error.code, cause: error })
             : failure;
 
     recordReadDiagnostic(source, classified);
+}
+
+/** Associates existing errors with inline metric diagnostics; no file contents, paths, or names are emitted. */
+export function associateMetricReadError<T extends Error>(metric: Pick<Metric, 'errorCode'>, error: T): T {
+    metricErrorDiagnostics.set(error, classifyLogsFailure({ code: metric.errorCode, statusCode: metric.errorCode }));
+
+    return error;
 }
 
 /** Reports previously unrecorded failures; no file contents, paths, or names are emitted. */

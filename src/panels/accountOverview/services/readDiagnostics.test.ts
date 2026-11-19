@@ -4,8 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { describe, expect, it, vi } from 'vitest';
+import { fetchMetricSeries } from '../metrics/hostFetchers';
 import { getAccountConsumedRuShape, getAutoscaleUtilization } from './advisories/fetchers/metrics';
 import {
+    associateMetricReadError,
     readItems,
     readMetrics,
     readRequest,
@@ -13,7 +15,7 @@ import {
     reportUnavailableClient,
     withReadDiagnostics,
 } from './readDiagnostics';
-import { getRuTrends, getThrottleRate, querySeries } from './ruTrends';
+import { getRuTrends, getThrottleRate, querySeries, queryThrottlingSummary } from './ruTrends';
 import { mockClient } from './testFixtures';
 
 describe('invocation-local Account Overview read diagnostics', () => {
@@ -73,6 +75,11 @@ describe('invocation-local Account Overview read diagnostics', () => {
             (client: ReturnType<typeof mockClient>) =>
                 getThrottleRate(client, 'private-account', '7D', 'private-db', 'private-container'),
         ],
+        [
+            'throttling summary',
+            (client: ReturnType<typeof mockClient>) =>
+                queryThrottlingSummary(client, 'private-account', 'window', 'PT1H', 3_600_000, undefined),
+        ],
         ['account RU', (client: ReturnType<typeof mockClient>) => getAccountConsumedRuShape(client, 'private-account')],
         [
             'autoscale',
@@ -104,34 +111,124 @@ describe('invocation-local Account Overview read diagnostics', () => {
             ).rejects.toMatchObject({ name: 'Error', message: 'private-account is denied' });
         });
 
-        expect(captured.diagnostics).toContainEqual({ source: 'metrics', kind: 'accessDenied', reason: 'rbac' });
+        expect(captured.diagnostics).toEqual([{ source: 'metrics', kind: 'accessDenied', reason: 'rbac' }]);
         expect(JSON.stringify(captured)).not.toContain('private-');
     });
 
-    it('observes an inline RU failure without changing the existing fallback reason', async () => {
-        const client = mockClient({});
-        vi.spyOn(client.metrics, 'list').mockResolvedValue({
-            cost: 0,
-            timespan: 'window',
-            value: [
-                {
-                    id: 'private-id',
-                    type: 'private-type',
-                    name: { value: 'NormalizedRUConsumption' },
-                    unit: 'Percent',
-                    timeseries: [],
-                    errorCode: 'Forbidden',
-                    errorMessage: 'private-account is denied',
-                },
-            ],
-        });
-        const captured = await withReadDiagnostics(() =>
-            getRuTrends(client, 'private-account', '7D', 'private-db', 'private-container'),
-        );
+    it.each([
+        [
+            'RU',
+            (client: ReturnType<typeof mockClient>) =>
+                getRuTrends(client, 'private-account', '7D', undefined, undefined),
+            'noData',
+        ],
+        [
+            'generic metric',
+            (client: ReturnType<typeof mockClient>) =>
+                fetchMetricSeries('normalizedRu', client, 'private-account', {}, '7D'),
+            'error',
+        ],
+    ] as const)(
+        'observes an inline %s failure without changing the existing fallback reason',
+        async (_label, read, reason) => {
+            const client = mockClient({});
+            vi.spyOn(client.metrics, 'list').mockResolvedValue({
+                cost: 0,
+                timespan: 'window',
+                value: [
+                    {
+                        id: 'private-id',
+                        type: 'private-type',
+                        name: { value: 'NormalizedRUConsumption' },
+                        unit: 'Percent',
+                        timeseries: [],
+                        errorCode: 'Forbidden',
+                        errorMessage: 'private-account is denied',
+                    },
+                ],
+            });
+            const captured = await withReadDiagnostics(async () => read(client));
 
-        expect(captured.result).toMatchObject({ available: false, reason: 'noData' });
-        expect(captured.diagnostics).toContainEqual({ source: 'metrics', kind: 'accessDenied', reason: 'rbac' });
+            expect(captured.result).toMatchObject({ available: false, reason });
+            expect(captured.diagnostics).toEqual([{ source: 'metrics', kind: 'accessDenied', reason: 'rbac' }]);
+        },
+    );
+
+    it.each([
+        [
+            'RU',
+            (client: ReturnType<typeof mockClient>) =>
+                getRuTrends(client, 'private-account', '7D', undefined, undefined),
+        ],
+        [
+            'generic metric',
+            (client: ReturnType<typeof mockClient>) =>
+                fetchMetricSeries('normalizedRu', client, 'private-account', {}, '7D'),
+        ],
+    ] as const)('counts an inline %s overlay failure once while retaining the primary series', async (_label, read) => {
+        const client = mockClient({});
+        vi.spyOn(client.metrics, 'list')
+            .mockResolvedValueOnce({
+                cost: 0,
+                timespan: 'window',
+                value: [
+                    {
+                        id: 'private-id',
+                        type: 'private-type',
+                        name: { value: 'NormalizedRUConsumption' },
+                        unit: 'Percent',
+                        timeseries: [{ data: [{ timeStamp: new Date('2026-11-19T10:00:00Z'), maximum: 50 }] }],
+                    },
+                ],
+            })
+            .mockResolvedValueOnce({
+                cost: 0,
+                timespan: 'window',
+                value: [
+                    {
+                        id: 'private-id',
+                        type: 'private-type',
+                        name: { value: 'TotalRequests' },
+                        unit: 'Count',
+                        timeseries: [],
+                        errorCode: 'Forbidden',
+                        errorMessage: 'private-account is denied',
+                    },
+                ],
+            });
+        const captured = await withReadDiagnostics(async () => read(client));
+
+        expect(captured.result).toMatchObject({ available: true, points: [{ throttled: false }] });
+        expect(captured.diagnostics).toEqual([{ source: 'metrics', kind: 'accessDenied', reason: 'rbac' }]);
+        expect(JSON.stringify(captured.diagnostics)).not.toContain('private-');
     });
+
+    it.each(['Forbidden', '403', '503'])(
+        'associates inline %s diagnostics without mutating the existing error',
+        async (code) => {
+            const error: Error = Object.freeze(new Error('private-service-error'));
+            const associated = associateMetricReadError({ errorCode: code }, error);
+            const captured = await withReadDiagnostics(async () => {
+                await expect(
+                    readRequest('metrics', async () => {
+                        throw associated;
+                    }),
+                ).rejects.toBe(error);
+            });
+
+            expect(associated).toBe(error);
+            expect(associated).toMatchObject({ name: 'Error', message: 'private-service-error' });
+            expect(Object.hasOwn(associated, 'code')).toBe(false);
+            expect(captured.diagnostics).toEqual([
+                {
+                    source: 'metrics',
+                    kind: code === '503' ? 'transient' : 'accessDenied',
+                    reason: code === '503' ? 'noData' : 'rbac',
+                },
+            ]);
+            expect(JSON.stringify(captured.diagnostics)).not.toContain('private-');
+        },
+    );
 
     it('preserves successful results and does not fabricate failures for empty reads', async () => {
         const result = { available: false, reason: 'noData' };

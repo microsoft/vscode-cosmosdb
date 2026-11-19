@@ -331,9 +331,7 @@ describe('metric coverage and actionable findings', () => {
             resource.focus();
             await user.keyboard('{Enter}');
             const detail = within(dialog).getByRole('region', { name: 'db/items' });
-            expect(detail).toHaveTextContent(
-                'Estimated capacity savings: 58.40 EUR per month',
-            );
+            expect(detail).toHaveTextContent('Estimated capacity savings: 58.40 EUR per month');
             expect(detail).toHaveTextContent(
                 'Model: 1,000.00 recoverable RU/s at 0.0584 EUR per RU/s-month, without additional region, autoscale or zone multipliers.',
             );

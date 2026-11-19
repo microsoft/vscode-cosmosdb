@@ -117,9 +117,7 @@ describe('paid continuous-backup retail scenario', () => {
         const { read, list, fetchMock } = setup();
 
         list.mockResolvedValue(metric([storageSeries('items', bytes)]));
-        fetchMock.mockResolvedValue(
-            new Response(JSON.stringify(page([retailItem('eastus', { retailPrice: 1 })]))),
-        );
+        fetchMock.mockResolvedValue(new Response(JSON.stringify(page([retailItem('eastus', { retailPrice: 1 })]))));
 
         expect(await read({ locationNames: ['East US'] }, [rows[0]])).toMatchObject({
             storageBytes: bytes,

@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { autoscaleMaxOverProvisionedDetector } from '../detectors/AutoscaleMaxOverProvisionedDetector';
 import { crossPartitionQueryDetector } from '../detectors/CrossPartitionQueryDetector';
 import { multiRegionWriteAntipatternDetector } from '../detectors/MultiRegionWriteAntipatternDetector';
 import { paidContinuousBackupDetector } from '../detectors/PaidContinuousBackupDetector';
@@ -141,6 +142,57 @@ describe('all native CODA adapters without private-source access', () => {
             Array.from({ length: 24 }, (_, index) => `DX-${String(index + 1).padStart(3, '0')}`),
         );
     });
+
+    it.each([
+        {
+            detector: '002',
+            given: 'a container with 2400 queries that all fan out across 1 physical partitions in a 2 hour window',
+            root: 'single_partition_container',
+        },
+        {
+            detector: '017',
+            given: 'the busiest partition holds 0 GiB and grows 1 GiB per day',
+            root: 'insufficient_data',
+        },
+        {
+            detector: '021',
+            given: '2400 requests of which 240 were throttled',
+            root: 'not_throttling',
+        },
+    ])('retains the CODA negative root for DX-$detector', async ({ detector, given, root }) => {
+        expect(await executeCase(scenario(detector, given, `the root cause is ${root}`))).toBe(1);
+    });
+
+    it.each([
+        {
+            given: 'an autoscale container with a 10000 RU/s max whose two partitions each provision 500 RU/s for 48 samples',
+            peakPercent: 10,
+            avgPercent: 10,
+        },
+        {
+            given: 'an autoscale container with a 10000 RU/s max and 48 samples averaging 10 percent and peaking at 20 percent',
+            peakPercent: 20,
+            avgPercent: 10,
+        },
+    ])(
+        'passes explicit autoscale sample histories to the DX-011 production path',
+        async ({ given, peakPercent, avgPercent }) => {
+            const evaluate = vi.spyOn(autoscaleMaxOverProvisionedDetector, 'evaluateResult');
+            const testCase = scenario(
+                '011',
+                `${given}
+    And the scope provisions 10000 RU/s in total`,
+                'the severity is High',
+            );
+
+            expect(await executeCase(testCase)).toBe(1);
+            expect(evaluate).toHaveBeenCalledWith(
+                expect.objectContaining({ peakPercent, avgPercent: expect.closeTo(avgPercent), sampleCount: 48 }),
+                30,
+                10000,
+            );
+        },
+    );
 
     it.each(['container', 'shared database'])(
         'uses scope-relative materiality in both DX-011 evaluation paths for an autoscale %s',

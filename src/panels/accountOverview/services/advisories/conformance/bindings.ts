@@ -57,11 +57,12 @@ async function evaluate(world: World, detector: string): Promise<void> {
         const summary = await withMetrics(
             metricResponse(
                 'AutoscaledRU',
-                fixture.peaks.map((peak) =>
-                    Array.from({ length: fixture.samples }, (_, index) =>
-                        index === fixture.samples - 1 ? peak : peak / 2,
+                fixture.series ??
+                    fixture.peaks.map((peak) =>
+                        Array.from({ length: fixture.samples }, (_, index) =>
+                            index === fixture.samples - 1 ? peak : peak / 2,
+                        ),
                     ),
-                ),
             ),
             (client) => getAutoscaleUtilization(client, 'fixture-account', 'fixture-db', containerId, fixture.max),
         );

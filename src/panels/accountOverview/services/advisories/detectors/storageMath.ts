@@ -33,7 +33,16 @@ export const STORAGE_SKEW_HIGH_BYTES = DIAGNOSTIC_POLICY.storageSkew.highBytes;
 export const STORAGE_SKEW_MEDIUM_BYTES = DIAGNOSTIC_POLICY.storageSkew.mediumBytes;
 
 export function hasSingleObservedStoragePartition(input: Pick<ContainerStorageInput, 'partitions'>): boolean {
-    return input.partitions.length === 1 && input.partitions[0].samples.some(({ bytes }) => Number.isFinite(bytes));
+    let observed = false;
+    for (const partition of input.partitions) {
+        if (partition.samples.some(({ bytes }) => Number.isFinite(bytes))) {
+            if (observed) {
+                return false;
+            }
+            observed = true;
+        }
+    }
+    return observed;
 }
 
 /** A finite observation and an independent physical count are both required to establish single-partition storage. */

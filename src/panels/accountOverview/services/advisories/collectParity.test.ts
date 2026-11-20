@@ -227,6 +227,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
         'accountFallback',
         'sharedOfferDate',
         'unknown',
+        'singleObservedHistory',
         'idleFailure',
     ] as const)('attributes age failures to the actual offer and container dependencies (%s)', async (state) => {
         const engine = await vi.importActual<typeof EngineModule>('./engine');
@@ -286,13 +287,15 @@ describe('collectDerivedAdvisories parity wiring', () => {
             timeRange: '7D',
             generatedAt: 0,
         });
+        vi.mocked(getContainerPartitionCount).mockResolvedValueOnce(state === 'singleObservedHistory' ? 1 : undefined);
         vi.mocked(getPartitionStorageSeries).mockResolvedValue({
             available: true,
             databaseId: row.databaseId,
             containerId: row.containerId,
             partitions: ['0', '1'].map((partitionId) => ({
                 partitionId,
-                samples: [{ timestamp: 0, bytes: 20 * GB }],
+                samples:
+                    state === 'singleObservedHistory' && partitionId === '1' ? [] : [{ timestamp: 0, bytes: 20 * GB }],
             })),
             generatedAt: 0,
         });
@@ -300,13 +303,23 @@ describe('collectDerivedAdvisories parity wiring', () => {
         const result = await collectDerivedAdvisories(params({ cosmosClient, logsClient: undefined }));
 
         expect(result.detectorCoverage.find(({ rule }) => rule === 'IdleContainer')).toMatchObject({
-            status: state === 'unknown' ? 'partial' : state === 'idleFailure' ? 'unavailable' : 'evaluated',
+            status:
+                state === 'unknown' || state === 'singleObservedHistory'
+                    ? 'partial'
+                    : state === 'idleFailure'
+                      ? 'unavailable'
+                      : 'evaluated',
             evaluatedCount: state === 'idleFailure' ? 0 : 1,
-            unavailableReasons: state === 'unknown' || state === 'idleFailure' ? ['rbac'] : [],
+            unavailableReasons: ['unknown', 'singleObservedHistory', 'idleFailure'].includes(state) ? ['rbac'] : [],
         });
         expect(result.detectorCoverage.find(({ rule }) => rule === 'StorageSkewRisk')).toMatchObject({
-            status: shared ? 'notApplicable' : state === 'unknown' ? 'partial' : 'evaluated',
-            evaluatedCount: shared ? 0 : 1,
+            status:
+                shared || state === 'singleObservedHistory'
+                    ? 'notApplicable'
+                    : state === 'unknown'
+                      ? 'partial'
+                      : 'evaluated',
+            evaluatedCount: shared || state === 'singleObservedHistory' ? 0 : 1,
             unavailableReasons: state === 'unknown' ? ['rbac'] : [],
         });
         expect(result.metricSource.available).toBe(false);

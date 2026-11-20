@@ -162,8 +162,9 @@ Sufficient query traffic with known low fan-out is a completed negative evaluati
 Missing configuration fields remain insufficient evidence, not a failed workload-data dependency.
 Required log-query failures affect only their dependent rules; optional cost, request-charge or consistency-charge
 enrichment does not change detector coverage. No per-container or detector-entry/exit events are emitted.
-Operation-throttling coverage requires a usable breakdown only after sufficient traffic and above-threshold throttling
-are established: successful emptiness is insufficient evidence, and a denied required breakdown is unavailable.
+After sufficient traffic and above-threshold throttling are established, the operation breakdown is read.
+A successfully empty breakdown is an evaluated negative (`not_throttling`); an access-denied breakdown retains that
+detector result while reporting `partial` coverage with an `rbac` reason.
 
 `cosmosDB.accountOverview.webviewError` records subscription failures, render failures and unhandled JavaScript
 errors/rejections with `errorCategory = webview`, `failureKind` and an optional bounded subscription name.
@@ -806,8 +807,8 @@ per-region/per-partition autoscale flag. Missing backup mode, unknown tier on no
 applicable autoscale configuration are reported in workload coverage, not interpreted as disabled/free.
 DX-020 and DX-021 do not require Log Analytics or inventory. Status parsing accepts finite positive counts
 with numeric integer status codes; hard errors are codes >=400 excluding 429. All parsed requests, including
-429s, remain in the denominator. One status read feeds both rules; a failed/empty operation breakdown at a
-qualifying throttle rate marks DX-021 incomplete without removing a successful DX-020 finding.
+429s, remain in the denominator. One status read feeds both rules; a failed or empty operation breakdown at a
+qualifying throttle rate is recorded in source diagnostics without removing a successful DX-020 finding.
 Both split queries request up to 1,000 series and reject a response at that cap as potentially truncated.
 DX-023 uses the same distinct-offer total as materiality, not replicated container rows or regional copies.
 Unavailable, incomplete, invalid or duplicate inventory withholds its baseline and records incomplete coverage.

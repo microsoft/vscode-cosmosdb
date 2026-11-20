@@ -57,8 +57,8 @@
 - **Before a commit without a push:** at most run formatting and linting; reserve builds, tests, and localization generation
   for their other triggers in this section. Use individual commands rather than `npm run pre-commit`, which also runs
   builds, localization generation, and tests.
-- **Before a push:** run the full sequence below against the changes being pushed. A combined commit-and-push request follows
-  this rule; include any generated changes in the commit before pushing.
+- **Before a push:** run the applicable steps in the validation sequence below against the changes being pushed. A combined
+  commit-and-push request follows this rule; include any generated changes in the commit before pushing.
 
 ### Independent correctness review
 
@@ -81,17 +81,17 @@ criteria and the diff, without the implementer's rationale. A green build or tes
 For a planned series of actions, including work delegated to subagents, or when running in autopilot or allow-all mode:
 
 1. Complete all planned implementation work and integrate all subagent results before entering finalization.
-   Pass this timing policy to subagents; they must leave full-suite runs and repository-wide generators to the coordinating
+   Pass this timing policy to subagents; they must leave final validation and repository-wide generators to the coordinating
    agent rather than running them independently after each subtask.
 2. Write or update the necessary tests during finalization, once implementation is complete, rather than while the design
    and code are still changing. An explicit user request for test-first work overrides this timing.
-3. Run the full validation sequence below on the integrated result at the end, even if no push is requested.
+3. Run the applicable steps in the validation sequence below on the integrated result at the end, even if no push is requested.
    Follow its completion gate and three-iteration recovery limit.
 
 **Targeted-test exception:** when continuing implementation requires test feedback, run only the specific tests needed to
 unblock the next change, not the full suite. If that requires a new or updated test, limit the early test work to that case.
 
-### Full validation sequence
+### Validation sequence
 
 > **Verify every command's exit code.** A command has passed only when its process exits with code `0`; seeing the npm command
 > banner or no error output is not sufficient. Some tools in this repository can terminate silently with exit code `255`.
@@ -115,14 +115,21 @@ unblock the next change, not the full suite. If that requires a new or updated t
    ```bash
    npm run build
    ```
-5. **Tests** — Run the unit test suite:
-   ```bash
-   npm run vitest
-   ```
+5. **Tests** — Apply both checks:
+   1. **Does the diff change behavior or tests?** Run tests when the diff changes business logic, other runtime behavior,
+      executable skill behavior, or tests themselves (including fixtures and snapshots). Skip tests for documentation and
+      metadata-only edits, such as Markdown prose or JSON metadata. File extension alone does not determine scope:
+      JSON that controls runtime behavior and Markdown that directs skill execution count as behavior changes.
+   2. **Which tests are affected?** Run only added or modified tests and existing tests that exercise the changed behavior.
+      Pass explicit test-file paths to `npx --no-install vitest run`; use the relevant runner for affected E2E or package tests.
+      Run `npm run test:migration-skill` only when migration skill behavior or its tests change, not for unrelated changes
+      or migration UI changes alone. Leave full suites and unrelated packages (such as the Chevrotain-based parser) to CI
+      unless the user explicitly requests them. The root `npm run vitest` script also runs migration skill tests,
+      even when Vitest receives file selectors.
 
-> **Completion gate (Full validation only):** once this sequence is started, the agent must not finish or terminate until
+> **Completion gate (validation sequence only):** once this sequence is started, the agent must not finish or terminate until
 > every applicable step has run and exited with code `0`, except when pausing for user guidance as described below.
-> This gate does not require starting Full validation after ordinary edits or an isolated requested check.
+> This gate does not require starting the sequence after ordinary edits or an isolated requested check.
 >
 > **Recovery limit:** after the initial failure, perform at most **three fix-and-recheck iterations** across the entire
 > sequence, not three per command or subagent. Each iteration consists of applying fixes and rerunning the affected steps,

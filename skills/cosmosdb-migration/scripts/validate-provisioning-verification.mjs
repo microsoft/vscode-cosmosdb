@@ -39,6 +39,7 @@ const CONTAINER_KEYS = new Set([
     'indexingPolicy',
     'fullTextPolicy',
     'uniqueKeyPolicy',
+    'defaultTtl',
     'capacityMode',
     'maxThroughput',
     'throughputMode',
@@ -177,6 +178,7 @@ function expectedContainers(model, targetEnvironment) {
             },
             ...(container.fullTextPolicy === undefined ? {} : { fullTextPolicy: container.fullTextPolicy }),
             ...(container.uniqueKeyPolicy === undefined ? {} : { uniqueKeyPolicy: container.uniqueKeyPolicy }),
+            ...(container.defaultTtl === undefined ? {} : { defaultTtl: container.defaultTtl }),
             ...capacity,
             ...(explicitAllocation && capacity.capacityMode === 'provisioned' ? {
                 throughputMode: allocation,
@@ -306,6 +308,7 @@ export function validateProvisioningVerification(
             }
             observedNames.add(container.name);
             const normalized = { ...container, indexingPolicy: comparableIndexingPolicy(container.indexingPolicy) };
+            if (normalized.defaultTtl === null) delete normalized.defaultTtl;
             if (container.uniqueKeyPolicy !== undefined) {
                 if (equal(container.uniqueKeyPolicy, { uniqueKeys: [] })) {
                     delete normalized.uniqueKeyPolicy;

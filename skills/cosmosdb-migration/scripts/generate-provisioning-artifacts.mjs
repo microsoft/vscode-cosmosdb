@@ -151,6 +151,7 @@ export function buildBicep(model, targetEnvironment) {
             }
             lines.push('        ]', '      }');
         }
+        if (container.defaultTtl !== undefined) lines.push(`      defaultTtl: ${container.defaultTtl}`);
         if (container.uniqueKeyPolicy) {
             lines.push('      uniqueKeyPolicy: {', '        uniqueKeys: [');
             for (const key of container.uniqueKeyPolicy.uniqueKeys) {
@@ -244,7 +245,8 @@ export function buildSeedScript(model, targetEnvironment) {
     }
     const databaseName = escapeShell(targetEnvironment?.databaseName ?? model.databaseName);
     const seedOnly = targetEnvironment?.type !== 'emulator' || model.containers.some((container) =>
-        container.fullTextPolicy !== undefined || container.uniqueKeyPolicy !== undefined || container.throughputMode === 'shared');
+        container.fullTextPolicy !== undefined || container.uniqueKeyPolicy !== undefined ||
+        container.defaultTtl !== undefined || container.throughputMode === 'shared');
     let connection = 'connect $1';
     if (
         ['azure', 'provision'].includes(targetEnvironment?.type) &&

@@ -291,6 +291,20 @@ test('unions compatible same-container entities and index paths', () => {
     );
 });
 
+test('merges shared container TTL only when every domain agrees', () => {
+    const domains = ['Sales', 'Catalog'].map(domainName => ({
+        domainName,
+        model: domainModel(domainName, 'Shared', entity(domainName, `${domainName}.Items`)),
+    }));
+    domains[0].model.containers[0].defaultTtl = 15552000;
+    for (const ttl of [undefined, -1]) {
+        domains[1].model.containers[0].defaultTtl = ttl;
+        assert(mergeCosmosModels(domains, mergeOptions).conflicts.some(conflict => conflict.includes('defaultTtl')));
+    }
+    domains[1].model.containers[0].defaultTtl = 15552000;
+    assert.equal(mergeCosmosModels(domains, mergeOptions).model.containers[0].defaultTtl, 15552000);
+});
+
 test('preserves agreed unique-key policies and rejects incompatible shared-container policies', () => {
     const domains = ['Sales', 'Catalog'].map(domainName => ({
         domainName,

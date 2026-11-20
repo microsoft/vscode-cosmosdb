@@ -174,6 +174,9 @@ export function mergeCosmosModels(domainModels, { databaseName, capacityMode, ca
                 conflicts,
             );
             if (errors.length === 0) {
+                if (existing.container.defaultTtl !== incomingContainer.defaultTtl) {
+                    conflicts.push(`${context}: defaultTtl differs; every sharing domain must agree on retention`);
+                }
                 const fullTextPolicy = mergeFullTextPolicies(
                     existing.container.fullTextPolicy,
                     incomingContainer.fullTextPolicy,

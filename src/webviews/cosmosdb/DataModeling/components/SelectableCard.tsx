@@ -127,7 +127,11 @@ export function SelectableCard({ name, value, selected, onSelect, title, descrip
                 aria-labelledby={titleId}
                 aria-describedby={describedBy || undefined}
             />
-            <span className={styles.body}>
+            {/*
+              The radio's name and description reference this text, so it is hidden from the accessibility tree.
+              Otherwise scan-mode screen readers read each card twice: once as the radio, once as plain text.
+            */}
+            <span className={styles.body} aria-hidden={true}>
                 <span id={titleId} className={styles.title}>
                     {title}
                 </span>

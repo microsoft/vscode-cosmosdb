@@ -89,23 +89,23 @@ describe('WorkloadPage result status', () => {
         expect(search).toHaveFocus();
     });
 
-    it('announces trait chips only when the count changes and Clear all through the focused search box', async () => {
+    it('announces filter chips only when the count changes and Clear all through the focused search box', async () => {
         const user = userEvent.setup();
         render(<Workload />);
-        const trait = toolbar().getByRole('button', { name: 'Write-heavy' });
-        await user.click(trait);
+        const filterChip = toolbar().getByRole('button', { name: 'Write-heavy' });
+        await user.click(filterChip);
         expectResult('2 matching scenarios');
-        expect(trait).toHaveFocus();
+        expect(filterChip).toHaveFocus();
 
         const search = searchBox();
         await user.type(search, 'clickstream');
         expectResult('1 matching scenario');
         // Toggling the chip off and on keeps the count, so the pressed state alone is the feedback.
         const announced = announce.mock.calls.length;
-        await user.click(trait);
-        expect(trait).toHaveAttribute('aria-pressed', 'false');
-        await user.click(trait);
-        expect(trait).toHaveAttribute('aria-pressed', 'true');
+        await user.click(filterChip);
+        expect(filterChip).toHaveAttribute('aria-pressed', 'false');
+        await user.click(filterChip);
+        expect(filterChip).toHaveAttribute('aria-pressed', 'true');
         expect(screen.getByText('1 matching scenario')).toBeVisible();
         // A separate announcement would be cut off by the focus move, so the search box's description carries the
         // result instead. Focus must leave Clear all while it is still visible: hiding a focused button makes screen
@@ -257,7 +257,7 @@ describe('WorkloadPage native radio cards', () => {
     });
 });
 
-describe('WorkloadPage trait filter', () => {
+describe('WorkloadPage filter chips', () => {
     const shownIds = () => {
         const ids = new Set(screen.getAllByRole('radio').map((radio) => radio.getAttribute('value')));
         return getScenarioList()
@@ -266,7 +266,7 @@ describe('WorkloadPage trait filter', () => {
     };
     const chip = (name: string) => toolbar().getByRole('button', { name });
 
-    it('sits beside the search box and groups one chip per trait by color, excluding the fallback', () => {
+    it('sits beside the search box and groups one chip per filter by color, excluding the fallback', () => {
         render(<Workload />);
         const search = searchBox();
         expect(search.closest('div')).toContainElement(firstChip());
@@ -308,7 +308,7 @@ describe('WorkloadPage trait filter', () => {
         expect(clearButton()).toHaveAccessibleDescription('Clear the search text and selected filters');
     });
 
-    it('narrows scenarios by the chosen traits with OR and keeps the fallback visible', async () => {
+    it('narrows scenarios by the chosen filters with OR and keeps the fallback visible', async () => {
         const user = userEvent.setup();
         const onPick = vi.fn();
         render(<Workload onPick={onPick} />);
@@ -323,7 +323,7 @@ describe('WorkloadPage trait filter', () => {
         expect(onPick).not.toHaveBeenCalled();
     });
 
-    it('combines traits with the text filter while keeping the custom workload visible and selectable', async () => {
+    it('combines filter chips with the text filter while keeping the custom workload visible and selectable', async () => {
         const user = userEvent.setup();
         const onPick = vi.fn();
         render(<Workload onPick={onPick} />);
@@ -367,7 +367,7 @@ describe('WorkloadPage trait filter', () => {
         expect(chips.at(-1)).toHaveFocus();
     });
 
-    it('gives each trait one color in the shared scheme', () => {
+    it('gives each filter one color in the shared scheme', () => {
         const byTone = (tone: string) =>
             Object.entries(TRAIT_TONE)
                 .filter(([, value]) => value === tone)
@@ -378,7 +378,7 @@ describe('WorkloadPage trait filter', () => {
         for (const scenario of getScenarioList()) expect(scenario.badge.tone).toBe(TRAIT_TONE[scenario.badge.tag]);
     });
 
-    it('shows Clear all only while filtering, and resets text and traits without changing the selection', async () => {
+    it('shows Clear all only while filtering, and resets text and filters without changing the selection', async () => {
         const user = userEvent.setup();
         const onPick = vi.fn();
         render(<Workload initialScenario="iot" onPick={onPick} />);

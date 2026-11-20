@@ -8,14 +8,15 @@ import { type MetricUnavailableReason } from '../metrics/contracts';
 import { HEALTH_POLICY, OVERVIEW_DEFAULTS } from './healthPolicy';
 import {
     metricFailureReason,
+    containerFilter,
     classifyUnavailable,
-    escapeODataLiteral,
     isHotPartition,
     parseMonitorTimestamp,
     pickPointValue,
     partitionSaturationStats,
     percentile,
     RANGE_CONFIG,
+    throughputOfferFilter,
     type PartitionSaturationStats,
     type RangeConfig,
     type TimeRange,
@@ -78,7 +79,8 @@ export interface PartitionHealthResult {
     reason?: MetricUnavailableReason;
     mode: PartitionDistributionMode;
     databaseId: string;
-    containerId: string;
+    /** Absent when diagnostics evaluate a shared database offer. */
+    containerId?: string;
     /** All partitions, sorted by descending share/saturation; the ranked list slices `topN`. */
     tiles: PartitionTile[];
     /**
@@ -232,7 +234,7 @@ export async function getPartitionHealth(
     mode: PartitionDistributionMode,
     timeRange: TimeRange,
     databaseId: string,
-    containerId: string,
+    containerId: string | undefined,
     thresholds: PartitionThresholds,
     config: RangeConfig = RANGE_CONFIG[timeRange],
     percentileRank: number = HEALTH_POLICY.partition.percentile,
@@ -435,9 +437,13 @@ async function queryPartitionSplitSeries(
     timespan: string,
     interval: string,
     databaseId: string,
-    containerId: string,
+    containerId: string | undefined,
 ): Promise<Map<string, Map<number, number>>> {
-    const filter = `DatabaseName eq '${escapeODataLiteral(databaseId)}' and CollectionName eq '${escapeODataLiteral(containerId)}' and ${dimension} eq '*'`;
+    const scope =
+        metricName === 'NormalizedRUConsumption'
+            ? throughputOfferFilter(databaseId, containerId)
+            : containerFilter(databaseId, containerId);
+    const filter = `${scope} and ${dimension} eq '*'`;
     const response = await client.metrics.list(resourceUri, {
         metricnames: metricName,
         aggregation: 'Maximum',
@@ -449,6 +455,9 @@ async function queryPartitionSplitSeries(
     const dimensionKey = dimension.toLowerCase();
     const byPartition = new Map<string, Map<number, number>>();
     for (const metric of response.value ?? []) {
+        if (metric.errorCode && metric.errorCode !== 'Success') {
+            throw new Error(metric.errorMessage ?? metric.errorCode);
+        }
         for (const series of metric.timeseries ?? []) {
             const partitionId = series.metadatavalues?.find(
                 (m) => m.name?.value?.toLowerCase() === dimensionKey,

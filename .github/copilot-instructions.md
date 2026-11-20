@@ -60,6 +60,22 @@
 - **Before a push:** run the full sequence below against the changes being pushed. A combined commit-and-push request follows
   this rule; include any generated changes in the commit before pushing.
 
+### Independent correctness review
+
+Before pushing a behavior change, get a fresh, read-only review of the diff from the PR's actual base to the exact
+head being pushed. For stacked PRs, use the predecessor branch as the base. Give the reviewer the spec or acceptance
+criteria and the diff, without the implementer's rationale. A green build or test run does not replace this review.
+
+- Trace changed behavior from input through validation, fallback, side effects, and the observable result. For
+  external responses, distinguish valid empty data from malformed data and failed requests. Verify when a retry,
+  next-page request, or broader query is allowed, and whether partial data can produce a result.
+- Report each finding with the code location, a concrete reproducer, and expected versus actual behavior. Address
+  confirmed bugs with a focused regression before pushing, or record the user's explicit decision to defer them.
+- For CODA-related changes, verify detector behavior with conformance tests and extension-specific response handling
+  with focused regressions. Document intentional differences rather than treating a parity pass as coverage for both.
+- Rerun the affected review after fixes that change behavior. If an independent reviewer is unavailable, state that
+  explicitly rather than counting a self-review as independent.
+
 ### Multi-step and autonomous work
 
 For a planned series of actions, including work delegated to subagents, or when running in autopilot or allow-all mode:

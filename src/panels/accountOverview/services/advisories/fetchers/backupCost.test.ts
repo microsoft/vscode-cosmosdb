@@ -107,6 +107,17 @@ afterEach(() => {
 });
 
 describe('paid continuous-backup retail scenario', () => {
+    it('prices canonical regions once across separate read and write location lists', async () => {
+        const { read, fetchMock } = setup();
+        await expect(
+            read({ locationNames: ['East US'], writeLocationNames: ['eastus', 'West US'] }),
+        ).resolves.toMatchObject({
+            monthlyAmount: 0.8,
+            referenceRegion: 'East US',
+        });
+        expect(fetchMock).toHaveBeenCalledOnce();
+    });
+
     it.each([
         [125_000_000, 0.12],
         [375_000_000, 0.38],
@@ -180,20 +191,24 @@ describe('paid continuous-backup retail scenario', () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('does not count differently cased copies of the same metric identity twice', async () => {
-        const { read, list, fetchMock } = setup();
-        list.mockResolvedValue(
-            metric([
-                storageSeries('items'),
-                {
-                    ...storageSeries('items'),
-                    metadatavalues: [...dims('DB', 'ITEMS'), { name: { value: 'Region' }, value: 'East US' }],
-                },
-            ]),
-        );
-        await expect(read({}, [rows[0]])).rejects.toMatchObject({ kind: 'noData' });
-        expect(fetchMock).not.toHaveBeenCalled();
-    });
+    it.each([timestamp, new Date(now)])(
+        'rejects duplicate storage series even at different timestamps (%s)',
+        async (latest) => {
+            const { read, list, fetchMock } = setup();
+            list.mockResolvedValue(
+                metric([
+                    storageSeries('items'),
+                    {
+                        ...storageSeries('items'),
+                        metadatavalues: [...dims('DB', 'ITEMS'), { name: { value: 'Region' }, value: 'East US' }],
+                        data: [{ timeStamp: latest, total: 0 }],
+                    },
+                ]),
+            );
+            await expect(read({}, [rows[0]])).rejects.toMatchObject({ kind: 'invalidData' });
+            expect(fetchMock).not.toHaveBeenCalled();
+        },
+    );
 
     it.each([false, true])('classifies malformed retail JSON as invalid evidence (later page=%s)', async (later) => {
         const { read, fetchMock } = setup();
@@ -275,7 +290,6 @@ describe('paid continuous-backup retail scenario', () => {
 
     it.each([
         ['non-byte unit', (series: TimeSeriesElement) => metric([series], { unit: 'Count' })],
-        ['embedded error', (series: TimeSeriesElement) => metric([series], { errorCode: 'Forbidden' })],
         ['negative bytes', () => metric([storageSeries('items', -1)])],
         ['non-finite bytes', () => metric([storageSeries('items', Infinity)])],
         [
@@ -298,6 +312,18 @@ describe('paid continuous-backup retail scenario', () => {
         const { read, list, fetchMock } = setup();
         list.mockResolvedValue(response(storageSeries('items')));
         await expect(read()).rejects.toBeInstanceOf(Error);
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ['Forbidden', 'accessDenied'],
+        ['TooManyRequests', 'rateLimited'],
+        ['InternalServerError', 'serviceError'],
+        ['UnknownMetricFailure', 'queryError'],
+    ])('preserves embedded Monitor error %s as %s without querying prices', async (errorCode, kind) => {
+        const { read, list, fetchMock } = setup();
+        list.mockResolvedValue(metric([], { errorCode }));
+        await expect(read({}, [rows[0]])).rejects.toMatchObject({ kind });
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
@@ -469,13 +495,15 @@ describe('paid continuous-backup retail scenario', () => {
     });
 
     it.each([
+        '',
+        'not-a-url',
         'http://prices.azure.com/api/retail/prices',
         'https://other.invalid/api/retail/prices',
         'https://prices.azure.com/other',
         'https://user:password@prices.azure.com/api/retail/prices',
-    ])('rejects pagination outside the fixed HTTPS endpoint: %s', async (next) => {
+    ])('rejects malformed or out-of-endpoint pagination: %s', async (next) => {
         const { read, fetchMock } = setup();
-        fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(page([retailItem('eastus')], next))));
+        fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(page(undefined, next))));
         await expect(read()).rejects.toMatchObject({ kind: 'invalidData' });
         expect(fetchMock).toHaveBeenCalledOnce();
     });

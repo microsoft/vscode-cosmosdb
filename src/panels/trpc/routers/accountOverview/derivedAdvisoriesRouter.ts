@@ -45,6 +45,22 @@ type AdvisoryAccountMetadata = Pick<
     };
 };
 
+function backupLocations(account: DatabaseAccountGetResults): {
+    locationNames: string[];
+    writeLocationNames?: string[];
+} {
+    if (account.locations !== undefined && account.locations !== null) {
+        return { locationNames: account.locations.map((location) => location?.locationName ?? '') };
+    }
+    if (!account.readLocations?.length || !account.writeLocations?.length) {
+        return { locationNames: [] };
+    }
+    return {
+        locationNames: account.readLocations.map((location) => location?.locationName ?? ''),
+        writeLocationNames: account.writeLocations.map((location) => location?.locationName ?? ''),
+    };
+}
+
 export async function getDerivedAdvisoriesForAccount(
     metadata: AdvisoryAccountMetadata,
 ): Promise<DerivedAdvisoriesResult> {
@@ -156,9 +172,7 @@ export async function getDerivedAdvisoriesForAccount(
                 multiRegionWritesEnabled: account.enableMultipleWriteLocations,
                 subscriptionId: metadata.subscription.subscriptionId,
                 resourceManagerEndpoint: metadata.subscription.environment.resourceManagerEndpointUrl,
-                locationNames: (account.locations ?? account.readLocations ?? []).map(
-                    (location) => location.locationName ?? '',
-                ),
+                ...backupLocations(account),
             },
         });
         return { available: true, ...collected, generatedAt: Date.now() };

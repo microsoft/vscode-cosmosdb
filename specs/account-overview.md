@@ -610,6 +610,8 @@ Currency, contributing meters, cost, billed usage, window, rate and its scope re
 As in CODA, a successful account query with no usable positive rate permits one subscription-wide bill query.
 This fallback is explicitly labeled `subscription_fallback`; it is a blended subscription rate, not account
 attribution. Authentication, access, service, timeout and invalid-response failures never broaden the query.
+Unlike the pinned CODA reader, the extension validates required column names and types even with zero rows:
+a valid empty result permits fallback, but an invalid schema does not.
 Estimates do not alter findings, severity, thresholds or supersession. Superseded, blocked, unquantified,
 zero-capacity and unrelated findings receive no throughput estimate. The UI explicitly describes the rate as
 blended and savings as modeled, not a guaranteed invoice reduction; reservations, commitments and future demand
@@ -618,16 +620,21 @@ can prevent realization. There is no monetary rollup because actions can overlap
 Paid continuous-backup findings use a **separate USD retail-price scenario**, not the customer-bill rate.
 Only the public Azure cloud is supported for this source. Every configured account region must resolve
 unambiguously through subscription location metadata, and ARM container inventory must have completed.
+Use the combined ARM location list when present; otherwise, require both read and write locations and take their
+union after resolving aliases. An incomplete location footprint cannot produce an estimate.
 Accepted region aliases resolve separately to the canonical retail key and the Monitor display name.
 Storage filters, dimension validation and provenance use the resolved display name, not the caller's alias.
 `DataUsageV2` (`Total`, bytes, five-minute grain, last 24 hours) is read per known logical container in one
 reference region. The newest complete common timestamp must contain every inventory container exactly once,
 with correct resource/region dimensions, finite nonnegative bytes, age at most six hours and future skew at
-most five minutes. Missing/duplicate series and partial inventories never become zero storage. Observed zero
-bytes are valid. No time buckets or replicated-region storage copies are added together.
+most five minutes. Duplicate series are invalid even when their timestamps do not overlap. Missing series and
+partial inventories never become zero storage. Observed zero bytes are valid. No time buckets or replicated-region
+storage copies are added together.
 
 Unauthenticated Azure Retail Prices requests accept no redirects and follow only bounded, non-looping
-pagination on the fixed HTTPS endpoint. Every configured region needs exactly one current primary consumption
+pagination on the fixed HTTPS endpoint. Only an absent or null continuation ends pagination; malformed links,
+including empty strings, are invalid evidence, not query failures.
+Every configured region needs exactly one current primary consumption
 record for `Azure Cosmos DB - PITR` / `Backup` / `Cont 30D Bckp Continuous Backup`, unit `1 GB`, base tier and USD.
 Restore meters, other tiers, duplicate current records, invalid prices/dates and currency mismatches cannot
 produce an estimate. Decimal logical GB times the sum of regional monthly prices gives the scenario amount,
@@ -642,7 +649,8 @@ Throughput estimates do not require a separate regional footprint or write-mode 
 produced eligible recoverable capacity. These inputs are not quantity gates in CODA's bill-derived model.
 Any future billing-model correction must be coordinated with CODA's versioned contract and shared fixtures;
 the extension does not independently reinterpret the pinned model.
-Denied inventory retains `backup/accessDenied` rather than becoming missing storage data.
+Inventory and embedded Monitor failures retain their cost-coverage category rather than becoming missing or invalid
+storage data. A changed cost warning is announced politely when Recommendations is active.
 Unsupported-cost guidance covers both account API restrictions and cloud restrictions.
 Authentication, access denial, rate limiting, timeouts, service/query errors, invalid/incomplete evidence,
 unsupported clouds and no usable data stay distinguishable without forwarding raw service errors or billing

@@ -9,6 +9,7 @@ import {
     accordionClassNames,
     accordionHeaderClassNames,
     accordionPanelClassNames,
+    AnnounceProvider,
     badgeClassNames,
     cardClassNames,
     FluentProvider,
@@ -242,6 +243,46 @@ describe('metric coverage and actionable findings', () => {
         } finally {
             errors.mockRestore();
         }
+    });
+
+    it('announces changed cost guidance on refresh without repeating unchanged or hidden guidance', () => {
+        const announce = vi.fn();
+        const announcer = { announce };
+        const view = (kind: 'noData' | 'accessDenied', active = true) => (
+            <FluentProvider theme={webLightTheme}>
+                <AnnounceProvider value={announcer}>
+                    <DashboardActionsProvider value={{ openUrl: vi.fn(), showOutput: vi.fn(), reportEvent: vi.fn() }}>
+                        <DerivedAdvisories
+                            active={active}
+                            result={{
+                                available: true,
+                                generatedAt: 0,
+                                advisories: [],
+                                costSource: { available: false, failures: [{ operation: 'throughput', kind }] },
+                            }}
+                            loading={false}
+                            dismissedIds={new Set()}
+                            onDismiss={vi.fn()}
+                        />
+                    </DashboardActionsProvider>
+                </AnnounceProvider>
+            </FluentProvider>
+        );
+        const { rerender } = render(view('noData'));
+        expect(announce).toHaveBeenCalledExactlyOnceWith(
+            expect.stringContaining('Missing data is not zero cost.'),
+            expect.objectContaining({ polite: true }),
+        );
+        announce.mockClear();
+        rerender(view('accessDenied'));
+        expect(announce).toHaveBeenCalledExactlyOnceWith(
+            expect.stringContaining('Cost evidence access was denied.'),
+            expect.objectContaining({ polite: true }),
+        );
+        announce.mockClear();
+        rerender(view('accessDenied'));
+        rerender(view('noData', false));
+        expect(announce).not.toHaveBeenCalled();
     });
 
     it('keeps cost coverage separate and names access/rate failures without hiding recommendations', () => {

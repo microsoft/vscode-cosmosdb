@@ -28,6 +28,7 @@ import {
     Text,
     tokens,
     typographyStyles,
+    useAnnounce,
     useRestoreFocusTarget,
 } from '@fluentui/react-components';
 import { ChevronRight16Regular, Dismiss16Regular, Sparkle16Regular } from '@fluentui/react-icons';
@@ -882,7 +883,7 @@ export const DerivedAdvisories = ({
                 {partialCoverage && <PartialCoverageNotice source={logSource} />}
                 {metricPartialCoverage && <MetricCoverageNotice source={result?.metricSource} />}
                 {result?.available && result.costSource?.available === false && (
-                    <CostCoverageNotice source={result.costSource} />
+                    <CostCoverageNotice source={result.costSource} active={active} />
                 )}
                 {body}
             </div>
@@ -992,8 +993,15 @@ const CostEstimateDetails = ({ estimate }: { estimate: NonNullable<DerivedAdviso
     );
 };
 
-const CostCoverageNotice = ({ source }: { source: NonNullable<DerivedAdvisoriesResult['costSource']> }) => {
+const CostCoverageNotice = ({
+    source,
+    active,
+}: {
+    source: NonNullable<DerivedAdvisoriesResult['costSource']>;
+    active: boolean;
+}) => {
     const styles = useStyles();
+    const { announce } = useAnnounce();
     const title = l10n.t('Some cost estimates are unavailable');
     const reasons: Record<NonNullable<DerivedAdvisoriesResult['costSource']>['failures'][number]['kind'], string> = {
         notConfigured: l10n.t('Billing context was not available for this analysis.'),
@@ -1011,6 +1019,26 @@ const CostCoverageNotice = ({ source }: { source: NonNullable<DerivedAdvisoriesR
         ),
         unsupported: l10n.t('Cost estimates are not supported for this account API or Azure cloud.'),
     };
+    const items = source.failures.map(({ operation, kind }) => ({
+        key: `${operation}-${kind}`,
+        message:
+            operation === 'throughput'
+                ? l10n.t('Throughput: {reason}', { reason: reasons[kind] })
+                : l10n.t('Continuous backup: {reason}', { reason: reasons[kind] }),
+    }));
+    const summary = items
+        .map(({ message }) => message)
+        .sort()
+        .join(' ');
+    const previousSummary = useRef(summary);
+    useEffect(() => {
+        // Fluent announces the mounted message bar; announce only subsequent changes here.
+        if (previousSummary.current !== summary && active) {
+            announce(summary, { polite: true });
+        }
+        previousSummary.current = summary;
+    }, [active, announce, summary]);
+
     return (
         <MessageBar
             className={styles.notice}
@@ -1026,12 +1054,8 @@ const CostCoverageNotice = ({ source }: { source: NonNullable<DerivedAdvisoriesR
                     {l10n.t('Capacity and configuration recommendations remain valid without monetary estimates.')}
                 </div>
                 <ul>
-                    {source.failures.map((failure) => (
-                        <li key={`${failure.operation}-${failure.kind}`}>
-                            {failure.operation === 'throughput'
-                                ? l10n.t('Throughput: {reason}', { reason: reasons[failure.kind] })
-                                : l10n.t('Continuous backup: {reason}', { reason: reasons[failure.kind] })}
-                        </li>
+                    {items.map(({ key, message }) => (
+                        <li key={key}>{message}</li>
                     ))}
                 </ul>
             </MessageBarBody>

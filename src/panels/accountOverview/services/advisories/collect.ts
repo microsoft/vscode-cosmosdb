@@ -28,6 +28,7 @@ import {
     type AccountRequestMetricsInput,
     type CrossPartitionInput,
     type ConsistencyReadRuInput,
+    type CostFailureKind,
     type CostSourceStatus,
     type DerivedAdvisory,
     type DerivedAdvisoryRule,
@@ -46,7 +47,7 @@ import {
 import { enrichAdvisoryCosts } from './costEstimates';
 import { expensiveConsistencyDetector } from './detectors/ExpensiveConsistencyDetector';
 import { computeDerivedAdvisories } from './engine';
-import { type CostContext } from './fetchers/costManagement';
+import { classifyCostFailure, type CostContext } from './fetchers/costManagement';
 import {
     fetchConsistencyReadRu,
     fetchCrossPartitionShapes,
@@ -243,7 +244,12 @@ export async function collectDerivedAdvisories(
 
     let rows: InventoryContainerRow[] = [];
     let offers: InventoryThroughputOffer[] = [];
-    const inventory = await capture(getSqlInventoryDetails(cosmosClient, resourceGroup, accountName, isServerless));
+    const inventory: CollectResult<Awaited<ReturnType<typeof getSqlInventoryDetails>>> & {
+        costFailure?: CostFailureKind;
+    } = await getSqlInventoryDetails(cosmosClient, resourceGroup, accountName, isServerless).then(
+        (value) => ({ value }),
+        (error: unknown) => ({ reason: classifyUnavailable(error), costFailure: classifyCostFailure(error) }),
+    );
     if (inventory.value) {
         rows = inventory.value.rows;
         offers = inventory.value.offers;
@@ -751,7 +757,7 @@ export async function collectDerivedAdvisories(
         context: params.costContext,
         accountId,
         inventoryRows: inventory.value?.rows,
-        inventoryFailureReason: inventory.reason,
+        inventoryCostFailure: inventory.costFailure,
         now,
     });
     return {

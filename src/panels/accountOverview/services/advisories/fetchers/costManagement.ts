@@ -17,8 +17,10 @@ import { type CostFailureKind, type ThroughputRate } from '../core/types';
 export interface CostContext {
     subscriptionId: string;
     resourceManagerEndpoint: string;
-    /** Complete configured ARM location list, not a caller-selected subset of regions. */
+    /** Complete ARM location list, or the read locations when paired with writeLocationNames. */
     locationNames: readonly string[];
+    /** Present only when ARM reports separate read and write location lists instead of a combined list. */
+    writeLocationNames?: readonly string[];
     /** Raw ARM setting; absent is unknown, not a single-write account. */
     multiRegionWritesEnabled?: boolean;
 }
@@ -49,6 +51,23 @@ export function classifyCostFailure(error: unknown): CostFailureKind {
         }
         const code = 'code' in error ? error.code : undefined;
         const name = 'name' in error ? error.name : undefined;
+        switch (code) {
+            case 'Unauthorized':
+            case 'AuthenticationFailed':
+            case 'InvalidAuthenticationToken':
+                return 'authentication';
+            case 403:
+            case 'Forbidden':
+            case 'AuthorizationFailed':
+                return 'accessDenied';
+            case 'TooManyRequests':
+                return 'rateLimited';
+            case 'InternalServerError':
+            case 'ServiceUnavailable':
+            case 'BadGateway':
+            case 'GatewayTimeout':
+                return 'serviceError';
+        }
         if (code === 'ETIMEDOUT' || name === 'AbortError' || name === 'TimeoutError') {
             return 'timeout';
         }
@@ -98,7 +117,7 @@ const responseSchema = z.object({
     }),
 });
 
-/** CODA's account-first bill rate; only a successful unusable account response permits subscription fallback. */
+/** CODA's account-first bill rate; only valid account evidence without a usable rate permits subscription fallback. */
 export async function getThroughputRate(
     client: CosmosDBManagementClient,
     context: CostContext,
@@ -154,16 +173,13 @@ async function queryThroughputRate(
         },
     );
     const parsed = responseSchema.safeParse(payload);
-    if (!parsed.success || parsed.data.properties.nextLink) {
+    if (!parsed.success || typeof parsed.data.properties.nextLink === 'string') {
         throw new CostEvidenceError('invalidData');
     }
     const { columns, rows } = parsed.data.properties;
     const indexes = new Map(columns.map((column, index) => [column.name, index]));
     if (indexes.size !== columns.length) {
         throw new CostEvidenceError('invalidData');
-    }
-    if (rows.length === 0) {
-        return undefined;
     }
     const indexOf = (name: string, type: string): number => {
         const index = indexes.get(name);

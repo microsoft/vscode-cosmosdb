@@ -138,10 +138,16 @@ function params(overrides: Partial<Parameters<typeof collectDerivedAdvisories>[0
 }
 
 describe('collectDerivedAdvisories parity wiring', () => {
-    it('preserves denied inventory as backup cost access denial', async () => {
+    it.each([
+        [{ statusCode: 403 }, 'accessDenied'],
+        [{ code: 'AuthorizationFailed' }, 'accessDenied'],
+        [{ statusCode: 429 }, 'rateLimited'],
+        [{ statusCode: 503 }, 'serviceError'],
+        [{ name: 'TimeoutError' }, 'timeout'],
+    ])('preserves inventory failure %j as backup cost %s', async (error, kind) => {
         const engine = await vi.importActual<typeof EngineModule>('./engine');
         vi.mocked(computeDerivedAdvisories).mockImplementation(engine.computeDerivedAdvisories);
-        vi.mocked(getSqlInventoryDetails).mockRejectedValue({ statusCode: 403 });
+        vi.mocked(getSqlInventoryDetails).mockRejectedValue(error);
         const defaults = params();
         const result = await collectDerivedAdvisories(
             params({
@@ -163,7 +169,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
         expect(backup?.costEstimate).toBeUndefined();
         expect(result.costSource).toEqual({
             available: false,
-            failures: [{ operation: 'backup', kind: 'accessDenied' }],
+            failures: [{ operation: 'backup', kind }],
         });
     });
 

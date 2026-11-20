@@ -192,6 +192,30 @@ describe('CODA account-first throughput billing', () => {
     });
 
     it.each([
+        ['missing Cost', { columns: columns.filter((column) => column.name !== 'Cost') }],
+        [
+            'wrong Cost type',
+            { columns: columns.map((column) => (column.name === 'Cost' ? { ...column, type: 'String' } : column)) },
+        ],
+        ['an empty continuation link', { columns, nextLink: '' }],
+    ])(
+        'does not fall back to a usable subscription rate when empty account rows have %s',
+        async (_label, properties) => {
+            const { client, send } = setup();
+            send.mockImplementationOnce(async (_http, request) => ({
+                request,
+                status: 200,
+                headers: createHttpHeaders(),
+                bodyAsText: JSON.stringify({ properties: { ...properties, rows: [] } }),
+            }));
+            await expect(getThroughputRate(client, context, accountId, now)).rejects.toMatchObject({
+                kind: 'invalidData',
+            });
+            expect(send).toHaveBeenCalledOnce();
+        },
+    );
+
+    it.each([
         { columns: [...columns, columns[0]], rows: [] },
         { columns: columns.slice(1), rows: [row()] },
         { columns: columns.map((col) => ({ ...col, type: 'String' })), rows: [row()] },

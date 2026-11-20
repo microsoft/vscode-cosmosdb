@@ -170,6 +170,40 @@ describe('account advisory acquisition', () => {
         );
     });
 
+    it.each([
+        { locations: undefined, writeLocations: [{ locationName: 'westus' }, { locationName: 'East US' }] },
+        { locations: null, writeLocations: [{ locationName: 'eastus' }] },
+        { locations: undefined, writeLocations: undefined },
+    ])(
+        'preserves separate read and write locations when the combined list is absent: %j',
+        async ({ locations, writeLocations }) => {
+            vi.mocked(collectDerivedAdvisories).mockResolvedValueOnce({
+                advisories: [],
+                logSource: { available: true },
+                metricSource: { available: true, failures: [] },
+            });
+            const input = metadata({
+                locations: locations ?? undefined,
+                readLocations: [{ locationName: 'eastus' }],
+                writeLocations,
+            });
+            if (locations === null) {
+                Reflect.set(input.databaseAccount, 'locations', null);
+            }
+            await getDerivedAdvisoriesForAccount(input);
+            expect(collectDerivedAdvisories).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    costContext: expect.objectContaining({
+                        locationNames: writeLocations ? ['eastus'] : [],
+                        ...(writeLocations
+                            ? { writeLocationNames: writeLocations.map(({ locationName }) => locationName) }
+                            : {}),
+                    }),
+                }),
+            );
+        },
+    );
+
     it('reports unknown configuration rather than interpreting absent ARM fields as off', async () => {
         const input = metadata({ backupPolicy: undefined, enablePerRegionPerPartitionAutoscale: undefined });
         input.getMonitorClient.mockResolvedValue(undefined);

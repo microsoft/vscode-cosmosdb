@@ -11,7 +11,7 @@ import { type InventoryContainerRow } from '../../inventory';
 import { containerFilter, DAY, escapeODataLiteral, HOUR, MINUTE, parseMonitorTimestamp } from '../../shared';
 import { roundMonthlySavings } from '../core/helpers';
 import { type AdvisoryCostEstimate, type BackupPrice } from '../core/types';
-import { CostEvidenceError, readCostArmJson, type CostContext } from './costManagement';
+import { classifyCostFailure, CostEvidenceError, readCostArmJson, type CostContext } from './costManagement';
 
 const RETAIL_URL = 'https://prices.azure.com/api/retail/prices';
 const PITR_PRODUCT = 'Azure Cosmos DB - PITR';
@@ -40,7 +40,7 @@ async function resolveRegions(
             `/subscriptions/${encodeURIComponent(context.subscriptionId)}/locations?api-version=2022-12-01`,
         ),
     );
-    if (!parsed.success || parsed.data.nextLink) {
+    if (!parsed.success || typeof parsed.data.nextLink === 'string') {
         throw new CostEvidenceError('invalidData');
     }
     const aliases = new Map<string, Map<string, string | undefined>>();
@@ -58,8 +58,8 @@ async function resolveRegions(
             }
         }
     }
-    const regions = context.locationNames.map((name) => {
-        const candidates = aliases.get(name.toLowerCase());
+    const resolveRegion = (name: string) => {
+        const candidates = aliases.get(name.trim().toLowerCase());
         if (candidates?.size !== 1) {
             throw new CostEvidenceError('invalidData');
         }
@@ -68,11 +68,22 @@ async function resolveRegions(
             throw new CostEvidenceError('invalidData');
         }
         return { retailName, monitorName };
-    });
-    if (regions.length === 0 || new Set(regions.map((region) => region.retailName)).size !== regions.length) {
-        throw new CostEvidenceError('invalidData');
+    };
+    const resolveList = (names: readonly string[]) => {
+        const regions = names.map(resolveRegion);
+        const byName = new Map(regions.map((region) => [region.retailName, region]));
+        if (byName.size === 0 || byName.size !== regions.length) {
+            throw new CostEvidenceError('invalidData');
+        }
+        return byName;
+    };
+    const regions = resolveList(context.locationNames);
+    if (context.writeLocationNames !== undefined) {
+        for (const [region, location] of resolveList(context.writeLocationNames)) {
+            regions.set(region, location);
+        }
     }
-    return regions;
+    return [...regions.values()];
 }
 
 const retailPageSchema = z.object({
@@ -96,11 +107,19 @@ async function getBackupPrices(regions: readonly string[], now: number): Promise
     let url: string | null | undefined = initial.toString();
     const seen = new Set<string>();
     const prices = new Map<string, BackupPrice>();
-    while (url) {
-        const target = new URL(url);
+    while (url !== null && url !== undefined) {
+        let target: URL;
+        try {
+            target = new URL(url);
+        } catch (error) {
+            if (error instanceof TypeError) {
+                throw new CostEvidenceError('invalidData');
+            }
+            throw error;
+        }
         if (
-            target.origin !== new URL(RETAIL_URL).origin ||
-            target.pathname !== new URL(RETAIL_URL).pathname ||
+            target.origin !== initial.origin ||
+            target.pathname !== initial.pathname ||
             target.username ||
             target.password ||
             target.hash ||
@@ -202,15 +221,18 @@ async function getStorageSnapshot(
                     interval: 'PT5M',
                     filter: `${containerFilter(row.databaseId, row.containerId)} and Region eq '${escapeODataLiteral(referenceRegion)}'`,
                 });
-                if (
-                    response.value?.length !== 1 ||
-                    response.value[0].name?.value !== 'DataUsageV2' ||
-                    response.value[0].unit !== 'Bytes' ||
-                    (response.value[0].errorCode && response.value[0].errorCode !== 'Success')
-                ) {
+                const metric = response.value?.[0];
+                if (response.value?.length !== 1 || metric?.name?.value !== 'DataUsageV2') {
                     throw new CostEvidenceError('invalidData');
                 }
-                for (const series of response.value[0].timeseries ?? []) {
+                if (metric.errorCode && metric.errorCode !== 'Success') {
+                    throw new CostEvidenceError(classifyCostFailure({ code: metric.errorCode }));
+                }
+                const seriesList = metric.timeseries ?? [];
+                if (metric.unit !== 'Bytes' || seriesList.length > 1) {
+                    throw new CostEvidenceError('invalidData');
+                }
+                for (const series of seriesList) {
                     const metadata = new Map(
                         series.metadatavalues?.map((value) => [value.name?.value?.toLowerCase(), value.value]),
                     );

@@ -6,11 +6,10 @@
 import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { type MonitorClient } from '@azure/arm-monitor';
 import { type InventoryContainerRow } from '../inventory';
-import { type UnavailableReason } from '../shared';
 import { roundMonthlySavings } from './core/helpers';
-import { type CostSourceStatus, type DerivedAdvisory } from './core/types';
+import { type CostFailureKind, type CostSourceStatus, type DerivedAdvisory } from './core/types';
 import { getBackupCostEstimate } from './fetchers/backupCost';
-import { classifyCostFailure, CostEvidenceError, getThroughputRate, type CostContext } from './fetchers/costManagement';
+import { classifyCostFailure, getThroughputRate, type CostContext } from './fetchers/costManagement';
 
 export function recoverableCapacity(advisory: DerivedAdvisory): number | undefined {
     if (advisory.supersededBy || advisory.actionEligibility === 'blocked') {
@@ -45,7 +44,7 @@ export async function enrichAdvisoryCosts(params: {
     context?: CostContext;
     accountId: string;
     inventoryRows?: readonly InventoryContainerRow[];
-    inventoryFailureReason?: UnavailableReason;
+    inventoryCostFailure?: CostFailureKind;
     now: number;
 }): Promise<CostSourceStatus | undefined> {
     const { advisories, cosmosClient, monitorClient, context, accountId, inventoryRows, now } = params;
@@ -93,11 +92,10 @@ export async function enrichAdvisoryCosts(params: {
     if (backup) {
         if (!context) {
             failures.push({ operation: 'backup', kind: 'notConfigured' });
+        } else if (params.inventoryCostFailure) {
+            failures.push({ operation: 'backup', kind: params.inventoryCostFailure });
         } else {
             try {
-                if (params.inventoryFailureReason === 'rbac') {
-                    throw new CostEvidenceError('accessDenied');
-                }
                 backup.costEstimate = await getBackupCostEstimate(
                     cosmosClient,
                     monitorClient,

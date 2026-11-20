@@ -267,7 +267,7 @@ Record one `documentMappings[]` entry per document-sourced target entity:
 ```
 
 Examples must be complete documents matching the actual entity mappings, not isolated field samples.
-`executeDocumentMapping` in `mapping-examples.mjs` replays the field mappings, preserves unaccounted root properties,
+`executeDocumentMapping` in `mapping-examples.mjs` replays the field mappings, preserves unaccounted root properties by default,
 checks metadata collisions, and resolves identity. It takes the inventory, entity, that entity's field mappings,
 document decision, source object, and optional `{partitionKeys, generatedId}`. A generated UUID example supplies
 its already assigned ID; the helper does not generate production assignments. Source objects are not mutated.
@@ -287,6 +287,14 @@ ask focused workload questions or retain the simpler source-shaped design.
 Reshaping still needs complete executable examples and full source coverage; justification is not permission
 to discard data. Splits requiring unrepresented joins or multi-item execution need an explicit supported mapping
 extension, not fabricated successful examples.
+
+For a derived target that needs only selected fields, use `mode:"projection"` with the same justification.
+Every `sourceDispositions` entry naming that target must classify it as `projection`; omission is not allowed
+on authoritative, embedded, or consolidated targets. A projection emits only mapped fields, identity, and
+discriminator. Show the exact output from a full source example with unselected known and unknown properties.
+Identity, routing, metadata collisions, types, and missing/null checks still apply. The authoritative target
+must preserve known and unknown content independently; a projection never supplies authoritative coverage.
+These examples verify document shape, not how the projection stays current.
 
 This document-evidence requirement is a conversion-contract change. Existing version-2 document models lacking
 it need renewed conversion review; do not infer preservation or manufacture examples from old outputs.

@@ -172,6 +172,96 @@ describe('ReviewPage', () => {
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
+    it('lists non-blocking warnings separately from blocking issues, each with a described Fix button', async () => {
+        const error = { message: 'Orders: Blocking issue.', path: [] };
+        const warning = { message: 'Users: Non-blocking issue.', path: [] };
+        const onFixIssue = vi.fn();
+        render(
+            <ReviewPage
+                workloadLabel="Other"
+                containers={[createBlankContainer('Orders')]}
+                validationErrors={[error]}
+                validationWarnings={[warning]}
+                onFixIssue={onFixIssue}
+                onEditWorkload={vi.fn()}
+                onEditContainer={vi.fn()}
+            />,
+        );
+        const alert = screen.getByRole('alert');
+        const status = screen.getByRole('group', {
+            name: 'Review these issues. They will not block a recommendation.',
+        });
+        expect(status).toHaveTextContent(/^Review these issues\. They will not block a recommendation\./);
+        expect(within(alert).queryByText(warning.message)).not.toBeInTheDocument();
+        const fix = within(status).getByRole('button', { name: 'Fix' });
+        expect(fix).toHaveAccessibleDescription(warning.message);
+        expect(within(alert).getByRole('button', { name: 'Fix' })).toHaveAccessibleDescription(error.message);
+        await userEvent.click(fix);
+        expect(onFixIssue).toHaveBeenLastCalledWith(warning);
+    });
+
+    it('shows unreviewed configuration links inside each container card with accessible navigation', async () => {
+        const orders = createBlankContainer('Orders');
+        const users = createBlankContainer('Users');
+        const onOpenContainerTab = vi.fn();
+        const { rerender } = render(
+            <ReviewPage
+                workloadLabel="Other"
+                containers={[orders, users]}
+                visitedTabs={new Map([[orders.id, new Set(['data', 'scale'] as const)]])}
+                onOpenContainerTab={onOpenContainerTab}
+                onEditWorkload={vi.fn()}
+                onEditContainer={vi.fn()}
+            />,
+        );
+        const cards = screen.getByRole('list', { name: 'Containers' });
+        const ordersCard = within(cards).getByRole('heading', { name: 'Container: Orders' }).closest('li')!;
+        const usersCard = within(cards).getByRole('heading', { name: 'Container: Users' }).closest('li')!;
+        const warnings = within(cards).getAllByText(/^Please review configuration:/);
+        expect(warnings.map((warning) => warning.textContent)).toEqual([
+            'Please review configuration: Queries',
+            'Please review configuration: Data, Queries, Scale',
+        ]);
+        expect(ordersCard).toContainElement(warnings[0]);
+        expect(usersCard).toContainElement(warnings[1]);
+        expect(
+            screen.queryByText(
+                'Some configuration sections have not been reviewed. Check that their settings match your app.',
+            ),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Configure' })).not.toBeInTheDocument();
+        const links = warnings.flatMap((warning) => within(warning).getAllByRole('button'));
+        expect(links.map((link) => link.textContent)).toEqual(['Queries', 'Data', 'Queries', 'Scale']);
+        for (const [index, link] of links.entries()) {
+            expect(link).toHaveAccessibleName(link.textContent);
+            expect(link).toHaveAccessibleDescription(index === 0 ? 'Container: Orders' : 'Container: Users');
+        }
+        await userEvent.click(links[0]);
+        expect(onOpenContainerTab).toHaveBeenLastCalledWith(orders.id, 'queries');
+        links[3].focus();
+        await userEvent.keyboard('{Enter}');
+        expect(onOpenContainerTab).toHaveBeenLastCalledWith(users.id, 'scale');
+
+        const all = new Set(['data', 'queries', 'scale'] as const);
+        rerender(
+            <ReviewPage
+                workloadLabel="Other"
+                containers={[orders, users]}
+                visitedTabs={
+                    new Map([
+                        [orders.id, all],
+                        [users.id, all],
+                    ])
+                }
+                onOpenContainerTab={onOpenContainerTab}
+                onEditWorkload={vi.fn()}
+                onEditContainer={vi.fn()}
+            />,
+        );
+        expect(screen.queryByText(/^Please review configuration:/)).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Configure' })).not.toBeInTheDocument();
+    });
+
     it('lists validation issues with individually described Fix buttons', async () => {
         const errors = ['Orders: First issue.', 'Users: Second issue.'];
         const issues = errors.map((message) => ({ message, path: [] }));

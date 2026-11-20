@@ -287,6 +287,17 @@ describe('AccountHeader', () => {
         expect(screen.getByText('Capacity mode: Provisioned throughput')).toBeVisible();
     });
 
+    it.each([false, true])('exposes only the account title as a heading when details are open: %s', (open) => {
+        renderHeader({ defaultEssentialsOpen: open });
+        expect(screen.getAllByRole('heading')).toEqual([
+            screen.getByRole('heading', { level: 1, name: summary.accountName }),
+        ]);
+        const toggle = screen.getByRole('button', { name: 'Account details' });
+        expect(toggle).toHaveTextContent('Account details');
+        expect(toggle).toHaveAccessibleName('Account details');
+        expect(toggle).toHaveAttribute('aria-expanded', String(open));
+    });
+
     it('opens and closes Account details with Enter and Space while maintaining its ARIA relationship', async () => {
         const user = userEvent.setup();
         renderHeader();
@@ -657,7 +668,7 @@ describe('AccountHeader', () => {
         expect(screen.getByRole('status')).toHaveTextContent('Account health: Critical');
     });
 
-    it('exposes the health explanation on keyboard focus without replacing the visible badge name', async () => {
+    it('opens focusable health details without replacing the visible badge name', async () => {
         const user = userEvent.setup();
         renderHeader({ summary: { ...summary, provisioningState: 'Failed' } });
         const badge = screen.getByLabelText('Critical', { selector: `.${badgeClassNames.root}` });
@@ -665,10 +676,11 @@ describe('AccountHeader', () => {
         act(() => badge.focus());
         expect(badge).toHaveFocus();
         expect(badge).toHaveAccessibleName('Critical');
-        expect(badge).toHaveAccessibleDescription(
-            'Resource provisioning state: Failed. See Status in Account details.',
-        );
-        expect(await screen.findByRole('tooltip')).toHaveTextContent('Resource provisioning state: Failed.');
+        expect(badge).toHaveAccessibleDescription('Show account health details');
+        await user.keyboard('{Enter}');
+        const details = screen.getByRole('group', { name: 'Health: Critical' });
+        expect(details).toHaveFocus();
+        expect(details).toHaveTextContent('Resource provisioning state: Failed. See Status in Account details.');
         await user.keyboard('{Escape}');
         expect(badge).toHaveFocus();
     });

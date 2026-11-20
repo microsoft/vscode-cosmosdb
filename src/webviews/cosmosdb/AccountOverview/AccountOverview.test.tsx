@@ -19,7 +19,7 @@ import { createEventChannel } from '@microsoft/vscode-ext-webview/webview';
 import { act, createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type PropsWithChildren } from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { getAccountMetricApplicability } from '../../../panels/accountOverview/metrics/contracts';
 import { HEALTH_POLICY } from '../../../panels/accountOverview/services/healthPolicy';
 import { HOUR } from '../../../panels/accountOverview/services/units';
@@ -153,6 +153,23 @@ let modelerCallbacks: typeof aiCallbacks;
 
 function Wrapper({ children }: PropsWithChildren) {
     return <FluentProvider theme={webLightTheme}>{children}</FluentProvider>;
+}
+
+function mockWebviewLinkHandling() {
+    const open = vi.fn();
+    const handleClick = (event: MouseEvent) => {
+        // VS Code handles bubbled anchor clicks even when React has already called preventDefault().
+        for (const element of event.composedPath()) {
+            if (element instanceof HTMLAnchorElement && element.href) {
+                open(element.href);
+                event.preventDefault();
+                return;
+            }
+        }
+    };
+    window.addEventListener('click', handleClick);
+    onTestFinished(() => window.removeEventListener('click', handleClick));
+    return open;
 }
 
 function navigate(target: AccountOverviewTarget, revision: number) {
@@ -503,7 +520,9 @@ describe('account-wide health collection', () => {
         render(<AccountOverview />, { wrapper: Wrapper });
         expect(await screen.findByText('Account health: Critical')).toBeVisible();
         expect(screen.getByRole('tab', { name: 'Monitoring' })).not.toHaveAccessibleDescription();
-        expect(screen.getByLabelText('Critical', { selector: `.${badgeClassNames.root}` })).toHaveAccessibleDescription(
+        const user = userEvent.setup();
+        await user.click(screen.getByRole('button', { name: 'Critical' }));
+        expect(screen.getByRole('group', { name: 'Health: Critical' })).toHaveTextContent(
             /Resource provisioning state: Failed/,
         );
     });
@@ -592,12 +611,13 @@ describe('account-wide health collection', () => {
             unit: 'hour',
             unitDisplay: 'long',
         }).format(HEALTH_POLICY.sustainedThrottling.observation.windowMs / HOUR);
-        expect(badge).toHaveAccessibleDescription(
-            expect.stringContaining(
-                `Account-wide request health over the last ${observationWindow} could not be assessed: ${caption}.`,
-            ),
-        );
         const user = userEvent.setup();
+        expect(badge).toHaveAccessibleDescription('Show account health details');
+        await user.click(badge);
+        expect(screen.getByRole('group', { name: 'Health: Unknown' })).toHaveTextContent(
+            `Account-wide request health over the last ${observationWindow} could not be assessed: ${caption}.`,
+        );
+        await user.keyboard('{Escape}');
         await user.click(screen.getByRole('button', { name: 'Account details' }));
         const details = within(screen.getByRole('region', { name: 'Account details' }));
         expect(within(details.getByText('Status').parentElement!).getByText('Online')).toBeVisible();
@@ -2170,7 +2190,8 @@ describe('alert monitor condition and active health', () => {
         expect(queries.activeAlerts).toHaveBeenCalledExactlyOnceWith();
     });
 
-    it('opens the general portal alerts page by keyboard even when both alert queries fail', async () => {
+    it.each(['mouse', 'keyboard'])('opens the general portal alerts page once via VS Code (%s)', async (input) => {
+        const nativeOpen = mockWebviewLinkHandling();
         queries.activeAlerts.mockResolvedValue({ ...activeAlertSummary(), available: false, reason: 'rbac' });
         queries.alerts.mockImplementation(async (filter: AlertFilter) => ({
             ...result(filter),
@@ -2186,9 +2207,24 @@ describe('alert monitor condition and active health', () => {
         );
         expect(link).toHaveAttribute('href', summary.alertsPortalUrl);
         expect(link.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+        queries.reportEvent.mockClear();
         act(() => link.focus());
-        await user.keyboard('{Enter}');
-        expect(queries.openUrl).toHaveBeenCalledExactlyOnceWith({ url: summary.alertsPortalUrl });
+        if (input === 'keyboard') {
+            await user.keyboard('{Enter}');
+        } else {
+            await user.click(link);
+        }
+        expect(nativeOpen).toHaveBeenCalledExactlyOnceWith(summary.alertsPortalUrl);
+        expect(queries.openUrl).not.toHaveBeenCalled();
+        expect(queries.reportEvent.mock.calls.filter(([event]) => event.eventName === 'deepLinkFollowed')).toEqual([
+            [
+                {
+                    eventName: 'deepLinkFollowed',
+                    properties: { target: 'portal' },
+                    measurements: undefined,
+                },
+            ],
+        ]);
         expect(link).toHaveFocus();
     });
 
@@ -2219,9 +2255,7 @@ describe('alert monitor condition and active health', () => {
         const badge = screen.getByLabelText('Healthy', { selector: `.${badgeClassNames.root}` });
         expect(badge).toHaveTextContent('Healthy');
         expect(badge).toHaveAccessibleName('Healthy');
-        expect(badge).toHaveAccessibleDescription(/Resource provisioning — Passed/);
-        expect(badge).toHaveAccessibleDescription(/Container throttling — Not assessed/);
-        expect(badge).toHaveAccessibleDescription(/Active Azure Monitor alerts — Passed/);
+        expect(badge).toHaveAccessibleDescription('Show account health details');
         expect(badge).toHaveAttribute('tabindex', '0');
         act(() => refresh.focus());
         await user.tab();
@@ -2233,16 +2267,19 @@ describe('alert monitor condition and active health', () => {
         expect(preview).toHaveAccessibleDescription('Preview: features and behavior may change. Use with care.');
         await user.tab();
         expect(badge).toHaveFocus();
-        const tooltip = await screen.findByRole('tooltip');
-        const checks = within(tooltip).getAllByRole('listitem');
+        await user.keyboard('{Enter}');
+        const details = screen.getByRole('group', { name: 'Health: Healthy' });
+        expect(details).toHaveFocus();
+        const checks = within(details).getAllByRole('listitem');
         expect(checks).toHaveLength(5);
         expect(checks[0]).toHaveTextContent('Resource provisioning — Passed');
         expect(checks[2]).toHaveTextContent('Container throttling — Not assessed');
-        expect(tooltip).toHaveTextContent(
+        expect(checks[3]).toHaveTextContent('Active Azure Monitor alerts — Passed');
+        expect(details).toHaveTextContent(
             'HTTP 5xx errors, availability, latency, storage limits, and index health are not assessed',
         );
         await user.keyboard('{Escape}');
-        await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument());
+        await waitFor(() => expect(screen.queryByRole('group', { name: 'Health: Healthy' })).not.toBeInTheDocument());
         expect(badge).toHaveFocus();
     });
 
@@ -2474,6 +2511,32 @@ describe('inventory accessibility', () => {
         onOpenQueryEditor: vi.fn(),
         onSelectContainer: vi.fn(),
     };
+
+    it('keeps the associated search label visible while typing and clearing the search', async () => {
+        const user = userEvent.setup();
+        render(<InventoryTable {...inventoryProps} rows={rows} />, { wrapper: Wrapper });
+        const searchLabel = 'Search containers or databases';
+        const label = screen.getByText(searchLabel, { selector: 'label' });
+        const search = screen.getByRole('textbox', { name: searchLabel });
+        expect(label).toBeVisible();
+        expect(search).toHaveAccessibleName(searchLabel);
+        await user.click(label);
+        expect(search).toHaveFocus();
+
+        await user.type(search, 'products');
+        expect(search).toHaveValue('products');
+        expect(label).toBeVisible();
+        expect(search).toHaveAccessibleName(searchLabel);
+        expect(within(screen.getByRole('table', { name: 'Containers' })).getAllByRole('row')).toHaveLength(2);
+
+        await user.type(search, '-missing');
+        expect(screen.getByText('No containers match the current filters.')).toBeVisible();
+        expect(label).toBeVisible();
+
+        await user.clear(search);
+        expect(label).toBeVisible();
+        expect(within(screen.getByRole('table', { name: 'Containers' })).getAllByRole('row')).toHaveLength(3);
+    });
 
     it('pins Critical rows before pagination for every column and direction without discarding filters', async () => {
         const user = userEvent.setup();
@@ -2959,6 +3022,7 @@ describe('local result announcements', () => {
 
 describe('Advisor recommendation accessibility', () => {
     it('describes documentation and portal links with their recommendation and opens the matching URL', async () => {
+        const nativeOpen = mockWebviewLinkHandling();
         const user = userEvent.setup();
         const recommendations: RecommendationsResult['recommendations'] = [
             {
@@ -3012,6 +3076,7 @@ describe('Advisor recommendation accessibility', () => {
             expect(queries.openUrl).toHaveBeenNthCalledWith(index + 1, { url: recommendation.learnMoreLink });
         }
         expect(queries.openUrl).toHaveBeenCalledTimes(2);
+        expect(nativeOpen).not.toHaveBeenCalled();
         expect(screen.getByText('Recommendation without documentation')).toBeVisible();
         const portalLinks = screen.getAllByRole('link', { name: 'View in Azure portal' });
         expect(portalLinks).toHaveLength(3);
@@ -3032,9 +3097,10 @@ describe('Advisor recommendation accessibility', () => {
             } else {
                 await user.click(link);
             }
-            expect(queries.openUrl).toHaveBeenNthCalledWith(index + 1, { url: recommendation.portalUrl });
+            expect(nativeOpen).toHaveBeenNthCalledWith(index + 1, recommendation.portalUrl);
         }
-        expect(queries.openUrl).toHaveBeenCalledTimes(3);
+        expect(nativeOpen).toHaveBeenCalledTimes(3);
+        expect(queries.openUrl).not.toHaveBeenCalled();
         expect(queries.reportEvent.mock.calls).toEqual(
             recommendations.slice(0, 3).map((recommendation) => [
                 {

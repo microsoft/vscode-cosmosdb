@@ -228,3 +228,11 @@ export class MyPanelContextProvider extends BaseContextProvider {
 | **Zod schema casting**     | Use `as unknown as z.ZodType<T>` when `z.infer` must produce an exact external type.                                                     |
 | **No `z.nativeEnum`**      | Deprecated in Zod v4. Use `z.enum()` or `z.union()` of `z.literal()` values.                                                             |
 | **Output schemas**         | Use `.output()` on mutations when the return type is complex — provides runtime validation and helps avoid TS2589 deep inference errors. |
+
+### External links
+
+When an external URL is available at render time, use `<Link href={url}>` and let VS Code open it.
+An `onClick` handler may record telemetry, but must not also invoke a host link-opening procedure.
+VS Code handles bubbled anchor clicks even when `preventDefault()` has been called, so combining both paths opens two tabs.
+
+When the URL must be obtained at click time, use `<Link as="button">` without `href` and open it once through the host.

@@ -7,6 +7,7 @@ import {
     Badge,
     Button,
     Dropdown,
+    Field,
     Input,
     type InputOnChangeData,
     makeStyles,
@@ -70,6 +71,7 @@ const useStyles = makeStyles({
     filter: {
         minWidth: 0,
         maxWidth: '100%',
+        alignSelf: 'end',
     },
     scrollArea: {
         overflowX: 'auto',
@@ -744,14 +746,9 @@ export const InventoryTable = ({
             {emptyContent ?? (
                 <>
                     <div className={styles.toolbar}>
-                        <Input
-                            className={styles.search}
-                            contentBefore={undefined}
-                            placeholder={l10n.t('Search containers or databases…')}
-                            value={search}
-                            onChange={handleSearchChange}
-                            aria-label={l10n.t('Search containers or databases')}
-                        />
+                        <Field className={styles.search} label={l10n.t('Search containers or databases')}>
+                            <Input contentBefore={undefined} value={search} onChange={handleSearchChange} />
+                        </Field>
                         <Dropdown
                             key={`database-${active}-${navigationRevision}`}
                             className={styles.filter}

@@ -15,7 +15,7 @@ This guide explains the current repository implementation. Maintainers and codin
 
 ## Start here
 
-1. Check **Health** beside the account name. Focus or hover over the badge to see what was checked and what is unknown.
+1. Check **Health** beside the account name. Activate the badge to read what was checked and what is unknown.
 2. Use **Monitoring** to compare traffic, throughput, storage and latency over the last hour, day or week.
 3. Open **Databases and Containers** to find a particular container and investigate its physical partitions.
 4. Open **Advisories** for suggested investigations, Azure Advisor recommendations and Azure Monitor alerts.
@@ -377,7 +377,10 @@ not a custom light surface. They follow theme changes while Overview remains ope
 retain normal styling unless a tooltip explicitly sets its appearance.
 Chart-value popups retain their existing chart colors in every theme, without custom color inversion.
 
-Use Tab to reach controls and focusable badges. Focus a health/metric badge for its explanation.
+Use Tab to reach controls and focusable badges. Activate the health badge with Enter, Space or a click to open its details.
+Focus moves into the scrollable popover, where screen readers can navigate the checklist. Escape closes it and returns
+focus to the badge. Clicking outside also closes it.
+Focus a metric badge or the State/Activity legend for its associated explanation.
 Use Left/Right to move between tab labels, then Enter or Space to activate.
 Sortable table headers support Enter/Space; pagination and filters expose their selected values.
 Loading controls remain in the keyboard focus order but cannot start duplicate requests.

@@ -3,7 +3,17 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Badge, type BadgeProps, makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
+import {
+    Badge,
+    type BadgeProps,
+    makeStyles,
+    mergeClasses,
+    Popover,
+    PopoverSurface,
+    PopoverTrigger,
+    tokens,
+} from '@fluentui/react-components';
+import { useActiveVSCodeThemeKind } from '@microsoft/vscode-ext-webview-fluentui';
 import * as l10n from '@vscode/l10n';
 import {
     type HealthCheckOutcome,
@@ -192,8 +202,9 @@ const useStyles = makeStyles({
         borderRadius: tokens.borderRadiusCircular,
         backgroundColor: 'currentColor',
     },
-    tooltip: {
+    details: {
         maxWidth: 'min(480px, calc(100vw - 32px))',
+        overflowY: 'auto',
         overflowWrap: 'anywhere',
     },
     checks: {
@@ -226,6 +237,7 @@ export const AccountHealthStatus = ({
     activeAlertsUnavailable?: boolean;
 }) => {
     const styles = useStyles();
+    const themeKind = useActiveVSCodeThemeKind();
     const health =
         HEALTH_LABELS[resolveAccountHealth(provisioningState, accountHealth, activeAlertsUnavailable) ?? 'Unknown'];
     const provisioning = provisioningHealthCheck(provisioningState);
@@ -247,49 +259,65 @@ export const AccountHealthStatus = ({
           ]
               .filter(Boolean)
               .join(' ');
+
+    const badge = (
+        <Badge
+            appearance="tint"
+            shape="circular"
+            color={health.tone}
+            className={mergeClasses('focusableBadge', styles.focus)}
+            aria-label={health.label}
+            icon={<span className={styles.dot} aria-hidden />}
+        >
+            <span aria-hidden>{health.label}</span>
+        </Badge>
+    );
+
     return (
         <div className={styles.root}>
             <output className={styles.srOnly} aria-live="polite">
                 {l10n.t('Account health: {status}', { status: health.label })}
             </output>
             <span>{l10n.t('Health:')}</span>
-            <Tooltip
-                content={
-                    checks ? (
-                        <div className={styles.tooltip}>
-                            <strong>{l10n.t('Health: {health}', { health: health.label })}</strong>
-                            <ul className={styles.checks}>
-                                {checks.map((check) => (
-                                    <li key={check.label}>
-                                        <strong>{check.label}</strong>
-                                        {' — '}
-                                        {CHECK_OUTCOMES[check.outcome]}
-                                        <div>{check.detail}</div>
-                                    </li>
-                                ))}
-                            </ul>
-                            <div>{scope}</div>
-                        </div>
-                    ) : (
-                        explanation
-                    )
-                }
-                relationship="description"
-                visible={explanation ? undefined : false}
-            >
-                <Badge
-                    appearance="tint"
-                    shape="circular"
-                    color={health.tone}
-                    tabIndex={explanation ? 0 : undefined}
-                    className={mergeClasses('focusableBadge', styles.focus)}
-                    aria-label={health.label}
-                    aria-description={explanation || undefined}
-                    icon={<span className={styles.dot} aria-hidden />}
+            {explanation ? (
+                <Popover
+                    appearance={themeKind === 'vscode-dark' ? 'inverted' : undefined}
+                    positioning={{ autoSize: 'height', overflowBoundaryPadding: 16 }}
+                    withArrow
                 >
-                    <span aria-hidden>{health.label}</span>
-                </Badge>
-            </Tooltip>
+                    <PopoverTrigger>
+                        <Tooltip content={l10n.t('Show account health details')} relationship="description">
+                            {badge}
+                        </Tooltip>
+                    </PopoverTrigger>
+                    <PopoverSurface
+                        className={mergeClasses(styles.details, styles.focus)}
+                        aria-label={l10n.t('Health: {health}', { health: health.label })}
+                        tabIndex={0}
+                    >
+                        {checks ? (
+                            <>
+                                <strong>{l10n.t('Health: {health}', { health: health.label })}</strong>
+                                <ul className={styles.checks}>
+                                    {checks.map((check) => (
+                                        <li key={check.label}>
+                                            <strong>{check.label}</strong>
+                                            {' — '}
+                                            {CHECK_OUTCOMES[check.outcome]}
+                                            <div>{check.detail}</div>
+                                        </li>
+                                    ))}
+                                </ul>
+                                <div>{scope}</div>
+                            </>
+                        ) : (
+                            explanation
+                        )}
+                    </PopoverSurface>
+                </Popover>
+            ) : (
+                badge
+            )}
         </div>
     );
 };

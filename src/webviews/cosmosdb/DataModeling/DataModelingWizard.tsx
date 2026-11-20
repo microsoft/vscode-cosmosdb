@@ -57,6 +57,7 @@ import { getScenarioList } from './scenarios';
 import { SchemaImportTracker } from './schemaImports';
 import { useModelingPageVisible, useModelingTelemetryReporter, useModelingUsage } from './useModelingTelemetry';
 import { useNativeConfirmation } from './useNativeConfirmation';
+import { getAttributeCountMismatch } from './workloadLimits';
 
 /**
  * Root of the Data-Modeling (Partition Key Advisor) wizard.
@@ -105,6 +106,22 @@ function getWorkloadIssues(wizard: WizardState): ReviewValidationIssue[] {
                   path: issue.path.slice(3).map(String),
               };
           });
+}
+
+/** Issues that Review lists with Fix buttons but that do not block recommendation requests. */
+function getWorkloadWarnings(wizard: WizardState): ReviewValidationIssue[] {
+    return wizard.dataModel.containers.flatMap((container) => {
+        const message = getAttributeCountMismatch(container);
+        return message
+            ? [
+                  {
+                      message: container.entity ? `${container.entity}: ${message}` : message,
+                      containerId: container.id,
+                      path: ['document', 'attributeCount'],
+                  },
+              ]
+            : [];
+    });
 }
 
 // Separate from useStyles so the outer shell does not change the insertion order of the Wizard overrides.
@@ -286,9 +303,10 @@ const HydratedDataModelingWizard = ({
     const visible = useModelingPageVisible();
     const { confirm, confirming, confirmationError } = useNativeConfirmation();
     const advanceButtonRef = useRef<HTMLButtonElement>(null);
-    const queriesTabRef = useRef<HTMLButtonElement>(null);
     const [containerTab, setContainerTab] = useState<ContainerTab>('data');
-    const [fixTarget, setFixTarget] = useState<ReviewValidationIssue>();
+    // A workload card is only a selection until Start applies it, so revisiting Workload is side-effect free.
+    const [pendingScenario, setPendingScenario] = useState<ScenarioId>();
+    const [fixTarget, setFixTarget] = useState<Pick<ReviewValidationIssue, 'containerId' | 'path'>>();
     const clearFixTarget = useCallback(() => setFixTarget(undefined), []);
     const removeButtonRef = useRef<HTMLButtonElement>(null);
     const addButtonRef = useRef<HTMLButtonElement>(null);
@@ -376,6 +394,7 @@ const HydratedDataModelingWizard = ({
                     ...previous,
                     wizard: {
                         ...wizard,
+                        inputsChangedSinceAdvance: true,
                         reachedSteps:
                             wizard.reachedSteps ??
                             (previous.recommendation.value ? buildStepValues(previous.wizard.dataModel) : undefined),
@@ -570,6 +589,7 @@ const HydratedDataModelingWizard = ({
     const goToStep = useCallback(
         (step: number) => {
             setContainerTab('data');
+            setPendingScenario(undefined);
             setState((prev) => {
                 const values = buildStepValues(prev.dataModel);
                 const clamped = Math.min(Math.max(step, 1), values.length);
@@ -630,10 +650,9 @@ const HydratedDataModelingWizard = ({
     const pickScenario = useCallback(
         (scenario: ScenarioId) => {
             report({ type: 'scenarioSelected', scenario });
-            const dataModel = buildDataModel(scenario);
-            setState((prev) => ({ ...prev, scenario, dataModel }));
+            setPendingScenario(scenario);
         },
-        [setState, report],
+        [report],
     );
 
     const scenarioLabel = useMemo(
@@ -770,24 +789,33 @@ const HydratedDataModelingWizard = ({
     }, [setState]);
 
     const workloadIssues = useMemo(() => getWorkloadIssues(state), [state]);
+    const workloadWarnings = useMemo(() => getWorkloadWarnings(state), [state]);
     const workloadErrors = useMemo(() => workloadIssues.map((issue) => issue.message), [workloadIssues]);
+    // Older drafts infer reached steps from the current step; preserve access to Review when jumping back.
+    const preserveReachedSteps = () => setState((previous) => ({ ...previous, reachedSteps }));
+    // An empty focus path focuses the opened tab panel itself.
+    const openContainerTab = (containerId: string, tab: ContainerTab, focusPath: string[] = []) => {
+        preserveReachedSteps();
+        goToContainer(containerId);
+        setContainerTab(tab);
+        setFixTarget({ containerId, path: focusPath });
+    };
     const fixIssue = (issue: ReviewValidationIssue) => {
-        // Older drafts infer reached steps from the current step; preserve access to Review when jumping back.
-        setState((previous) => ({ ...previous, reachedSteps }));
         if (!issue.containerId) {
+            preserveReachedSteps();
             goToStep(1);
             return;
         }
-        goToContainer(issue.containerId);
         const section = issue.path[0];
-        setContainerTab(
+        openContainerTab(
+            issue.containerId,
             section === 'scale'
                 ? 'scale'
                 : section === 'reads' || section === 'writes' || section === undefined
                   ? 'queries'
                   : 'data',
+            issue.path,
         );
-        setFixTarget(issue);
     };
 
     // Send the finished data model to Copilot Chat and wait for the tool callback.
@@ -814,6 +842,7 @@ const HydratedDataModelingWizard = ({
             ...current,
             wizard: {
                 ...current.wizard,
+                inputsChangedSinceAdvance: false,
                 step: buildStepValues(current.wizard.dataModel).length,
                 reachedSteps: buildStepValues(current.wizard.dataModel),
             },
@@ -922,8 +951,23 @@ const HydratedDataModelingWizard = ({
         }
     }, [visible, isResult, recommendationStatus, recommendation, report]);
 
-    const canAdvance = (!isWorkload || !!state.scenario) && (!isReview || workloadErrors.length === 0);
+    const selectedScenario = pendingScenario ?? state.scenario;
+    const canAdvance = (!isWorkload || !!selectedScenario) && (!isReview || workloadErrors.length === 0);
     const nextLabel = isWorkload ? l10n.t('Start') : isReview ? l10n.t('Get Recommendation') : l10n.t('Next');
+
+    const resetModel = (nextSnapshot: typeof snapshot) => {
+        abandonRecommendation();
+        containerNameRequest.current += 1;
+        containerNamePending.current = false;
+        setAddingContainer(false);
+        setAddContainerError('');
+        cancelEditingContainerName();
+        setDeployOwner(undefined);
+        setDeploymentDraft(undefined);
+        setContainerTab('data');
+        setPendingScenario(undefined);
+        setSnapshot(nextSnapshot);
+    };
 
     const advance = () => {
         if (stepIndex >= stepValues.length) {
@@ -936,12 +980,69 @@ const HydratedDataModelingWizard = ({
             abandonRecommendation();
             setSnapshot((previous) => ({
                 ...previous,
-                wizard: { ...previous.wizard, reachedSteps: stepValues.slice(0, stepIndex + 1) },
+                wizard: {
+                    ...previous.wizard,
+                    inputsChangedSinceAdvance: false,
+                    reachedSteps: stepValues.slice(0, stepIndex + 1),
+                },
                 recommendation: { status: 'idle' },
                 deployment: undefined,
             }));
             goToStep(stepIndex + 1);
         }
+    };
+    const startWorkload = async (scenario: ScenarioId) => {
+        const resetToDefaults = () => {
+            const dataModel = buildDataModel(scenario);
+            resetModel({
+                ...createInitialSnapshot(),
+                wizard: {
+                    scenario,
+                    step: 2,
+                    dataModel,
+                    reachedSteps: buildStepValues(dataModel).slice(0, 2),
+                    inputsChangedSinceAdvance: false,
+                },
+            });
+        };
+        const hasProgress = !!recommendation || reachedSteps.some((value) => stepValues.indexOf(value) > 0);
+        const continueWithModel = () => (hasProgress ? goToStep(2) : advance());
+        const edited = !!state.scenario && !modelingInputsEqual(state.dataModel, buildDataModel(state.scenario));
+        const title = l10n.t('Reset model to workload defaults?');
+        const resetLabel = l10n.t('Reset to defaults');
+        if (scenario !== state.scenario) {
+            // A pending request is in-flight work, so switching asks first even when the model is untouched.
+            if (!edited && !recommendation && recommendationStatus !== 'waiting') {
+                resetToDefaults();
+                return;
+            }
+            const result = await confirm(
+                title,
+                l10n.t(
+                    'Switching workloads replaces all model values and containers with the defaults for the selected workload and discards later progress and the existing recommendation. Choose Cancel to stay on Workload without changes.',
+                ),
+                { primary: resetLabel },
+            );
+            if (result === true) resetToDefaults();
+            else advanceButtonRef.current?.focus();
+            return;
+        }
+        if (!edited) {
+            continueWithModel();
+            return;
+        }
+        const keepLabel = l10n.t('Keep my model');
+        const result = await confirm(
+            title,
+            l10n.t(
+                'Choose {reset} to replace all model values and containers with the defaults for this workload and discard later progress and the existing recommendation. Choose {keep} to continue with your current model. Choose Cancel to stay on Workload without changes.',
+                { reset: resetLabel, keep: keepLabel },
+            ),
+            { primary: resetLabel, secondary: keepLabel },
+        );
+        if (result === true) resetToDefaults();
+        else if (result === false) continueWithModel();
+        else advanceButtonRef.current?.focus();
     };
     const onNext = async () => {
         if (isResult) {
@@ -950,26 +1051,21 @@ const HydratedDataModelingWizard = ({
             }
             return;
         }
-        const visitedTabs = isContainerStep ? visits.get(activeValue.slice(CONTAINER_PREFIX.length)) : undefined;
-        if (isContainerStep && containerTab === 'data' && !visitedTabs?.has('queries') && !visitedTabs?.has('scale')) {
-            const result = await confirm(
-                l10n.t('Configure queries and scale?'),
-                l10n.t(
-                    'You have not visited the Queries or Scale tabs for this container. Configure them now, or go to the next step?',
-                ),
-                { primary: l10n.t('Configure'), secondary: l10n.t('Next') },
-            );
-            if (result === true) {
-                setContainerTab('queries');
-                queriesTabRef.current?.focus();
-                return;
-            }
-            if (result !== false) {
-                advanceButtonRef.current?.focus();
-                return;
-            }
+        if (isWorkload) {
+            if (selectedScenario) await startWorkload(selectedScenario);
+            return;
         }
-        if (recommendation || reachedSteps.some((value) => stepValues.indexOf(value) >= stepIndex)) {
+        const hasLaterProgress =
+            !!recommendation || reachedSteps.some((value) => stepValues.indexOf(value) >= stepIndex);
+        // Get Recommendation always replaces an existing or pending result, so that remains confirmed.
+        const replacesRecommendation = isReview && (!!recommendation || recommendationStatus === 'waiting');
+        if (hasLaterProgress && !replacesRecommendation && state.inputsChangedSinceAdvance === false) {
+            // Nothing changed since moving ahead, so continue without discarding later progress.
+            if (isReview) advance();
+            else goToStep(stepIndex + 1);
+            return;
+        }
+        if (hasLaterProgress) {
             const result = await confirm(
                 l10n.t('Restart from this step?'),
                 l10n.t(
@@ -1013,16 +1109,7 @@ const HydratedDataModelingWizard = ({
     };
     const restart = () => {
         report({ type: 'action', action: 'startOver' });
-        abandonRecommendation();
-        containerNameRequest.current += 1;
-        containerNamePending.current = false;
-        setAddingContainer(false);
-        setAddContainerError('');
-        cancelEditingContainerName();
-        setDeployOwner(undefined);
-        setDeploymentDraft(undefined);
-        setContainerTab('data');
-        setSnapshot(createInitialSnapshot());
+        resetModel(createInitialSnapshot());
     };
 
     // Only successful deployment details are persisted; editable drafts remain local to the open wizard.
@@ -1208,7 +1295,7 @@ const HydratedDataModelingWizard = ({
                             "Pick the closest pattern. We'll pre-fill typical partition key (PK) candidates and defaults.",
                         )}
                     >
-                        <WorkloadPage scenario={state.scenario} onPickScenario={pickScenario} />
+                        <WorkloadPage scenario={selectedScenario} onPickScenario={pickScenario} />
                     </WizardStep>
 
                     {state.dataModel.containers.map((c, index) => (
@@ -1308,7 +1395,7 @@ const HydratedDataModelingWizard = ({
                                 model={state.dataModel}
                                 tab={containerTab}
                                 onTabChange={setContainerTab}
-                                queriesTabRef={queriesTabRef}
+                                visitedTabs={visits.get(c.id)}
                                 active={activeValue === containerStep(c.id)}
                                 containerId={c.id}
                                 focusPath={fixTarget?.containerId === c.id ? fixTarget.path : undefined}
@@ -1332,7 +1419,10 @@ const HydratedDataModelingWizard = ({
                     >
                         <ReviewPage
                             validationErrors={workloadIssues}
+                            validationWarnings={workloadWarnings}
                             onFixIssue={fixIssue}
+                            visitedTabs={visits}
+                            onOpenContainerTab={openContainerTab}
                             workloadLabel={scenarioLabel ?? l10n.t('Not selected')}
                             containers={state.dataModel.containers}
                             onEditWorkload={() => goToStep(1)}

@@ -10,7 +10,6 @@ import {
     Link,
     makeStyles,
     shorthands,
-    Text,
     tokens,
 } from '@fluentui/react-components';
 import { CheckmarkRegular, SearchRegular } from '@fluentui/react-icons';
@@ -20,7 +19,7 @@ import { SelectableCard } from '../components/SelectableCard';
 import { type ScenarioId } from '../models';
 import { getScenarioList, type ScenarioBadge, type ScenarioTag } from '../scenarios';
 
-/** The fallback scenario is not a workload trait, so it has no chip and stays visible while traits are selected. */
+/** The fallback scenario has no trait chip and stays visible regardless of the text or trait filters. */
 const FALLBACK_SCENARIO: ScenarioId = 'other';
 /** Chips are grouped by color so related traits sit together: access patterns, write pressure, read scaling. */
 const TONE_ORDER: ScenarioBadge['tone'][] = ['info', 'warn', 'success'];
@@ -112,9 +111,9 @@ const useStyles = makeStyles({
         fontSize: tokens.fontSizeBase200,
         color: tokens.colorNeutralForeground3,
     },
-    empty: {
+    resultStatus: {
         color: tokens.colorNeutralForeground3,
-        padding: tokens.spacingVerticalL,
+        marginBottom: tokens.spacingVerticalS,
     },
 });
 
@@ -167,13 +166,15 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
         const q = filter.trim().toLowerCase();
         return scenarios.filter(
             (s) =>
-                (tags.length === 0 || s.id === FALLBACK_SCENARIO || tags.includes(s.badge.tag)) &&
-                (!q ||
-                    s.title.toLowerCase().includes(q) ||
-                    s.description.toLowerCase().includes(q) ||
-                    s.searchTerms.includes(q)),
+                s.id === FALLBACK_SCENARIO ||
+                ((tags.length === 0 || tags.includes(s.badge.tag)) &&
+                    (!q ||
+                        s.title.toLowerCase().includes(q) ||
+                        s.description.toLowerCase().includes(q) ||
+                        s.searchTerms.includes(q))),
         );
     }, [filter, tags, scenarios]);
+    const matchCount = visible.filter((s) => s.id !== FALLBACK_SCENARIO).length;
 
     const toggleTag = (tag: ScenarioTag) =>
         setTags((previous) => (previous.includes(tag) ? previous.filter((t) => t !== tag) : [...previous, tag]));
@@ -219,6 +220,7 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
                     contentBefore={<SearchRegular />}
                     placeholder={l10n.t('Filter scenarios…')}
                     aria-label={l10n.t('Filter scenarios…')}
+                    aria-description={l10n.t('Scenarios filter as you type.')}
                     value={filter}
                     onChange={(_, data) => setFilter(data.value)}
                 />
@@ -273,33 +275,37 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
                     {l10n.t('Clear all')}
                 </Link>
             </div>
-            {visible.length === 0 ? (
-                <Text className={styles.empty}>{l10n.t('No scenarios match your filter.')}</Text>
-            ) : (
-                <div className={styles.list} role="radiogroup" aria-label={l10n.t('Workload scenarios')}>
-                    {visible.map((s) => (
-                        <SelectableCard
-                            key={s.id}
-                            name={groupName}
-                            value={s.id}
-                            selected={scenario === s.id}
-                            onSelect={() => onPickScenario(s.id)}
-                            title={s.title}
-                            description={s.description}
-                            meta={
-                                s.hint || s.badge ? (
-                                    <span className={styles.meta}>
-                                        <Badge appearance="tint" color={BADGE_COLOR[s.badge.tone]}>
-                                            {s.badge.text}
-                                        </Badge>
-                                        {s.hint ? <span className={styles.hint}>{s.hint}</span> : null}
-                                    </span>
-                                ) : undefined
-                            }
-                        />
-                    ))}
-                </div>
-            )}
+            {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- Status live region recommended by #3590. */}
+            <div className={styles.resultStatus} role="status" aria-atomic={true}>
+                {matchCount === 0
+                    ? l10n.t('No scenarios match your filter. You can still choose a custom workload.')
+                    : matchCount === 1
+                      ? l10n.t('1 matching scenario')
+                      : l10n.t('{count} matching scenarios', { count: matchCount })}
+            </div>
+            <div className={styles.list} role="radiogroup" aria-label={l10n.t('Workload scenarios')}>
+                {visible.map((s) => (
+                    <SelectableCard
+                        key={s.id}
+                        name={groupName}
+                        value={s.id}
+                        selected={scenario === s.id}
+                        onSelect={() => onPickScenario(s.id)}
+                        title={s.title}
+                        description={s.description}
+                        meta={
+                            s.hint || s.badge ? (
+                                <span className={styles.meta}>
+                                    <Badge appearance="tint" color={BADGE_COLOR[s.badge.tone]}>
+                                        {s.badge.text}
+                                    </Badge>
+                                    {s.hint ? <span className={styles.hint}>{s.hint}</span> : null}
+                                </span>
+                            ) : undefined
+                        }
+                    />
+                ))}
+            </div>
         </div>
     );
 }

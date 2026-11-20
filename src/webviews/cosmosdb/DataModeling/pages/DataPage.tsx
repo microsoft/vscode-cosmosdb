@@ -6,9 +6,11 @@
 import {
     Button,
     Checkbox,
+    Dropdown,
     Field,
     Input,
     makeStyles,
+    Option,
     Select,
     Table,
     TableBody,
@@ -38,7 +40,6 @@ import {
     type ArrayUpdatePattern,
     type ContainerModel,
     MAX_DOCUMENT_SIZE_KB,
-    type PropertyRole,
     type PropertyType,
     PROPERTY_TYPES,
     type SchemaProperty,
@@ -49,12 +50,12 @@ import { SchemaImportTracker } from '../schemaImports';
 import { useNativeConfirmation } from '../useNativeConfirmation';
 import { getRoleOptions } from '../wizardState';
 import {
-    getArrayItemsOrderMessage,
-    getCountErrorMessage,
+    type DataNumberField,
+    getAttributeCountMismatch,
+    getDataFieldErrors,
     MAX_ARRAY_ITEMS,
     MAX_ATTRIBUTE_COUNT,
     parseCountInput,
-    validateCount,
 } from '../workloadLimits';
 
 /**
@@ -111,6 +112,40 @@ const useStyles = makeStyles({
     cellSelect: {
         minWidth: '120px',
     },
+    roleDropdown: {
+        width: '260px',
+        minWidth: '260px',
+    },
+    roleControls: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: tokens.spacingHorizontalXS,
+    },
+    roleListbox: {
+        width: 'max-content',
+        maxWidth: 'calc(100vw - 32px)',
+    },
+    roleOption: {
+        display: 'grid',
+        gridTemplateColumns: 'auto minmax(0, 1fr)',
+        columnGap: tokens.spacingHorizontalXS,
+        alignItems: 'baseline',
+        textAlign: 'left',
+        whiteSpace: 'normal',
+        // Follows Fluent's committed selection (aria-selected); arrow-key navigation shows the focus ring instead.
+        // Native select highlight; engines without system colours fall back to the theme menu colours.
+        '&[aria-selected="true"], &[aria-selected="true"]:hover, &[aria-selected="true"]:active': {
+            backgroundColor: ['var(--vscode-menu-selectionBackground)', 'SelectedItem'],
+            color: ['var(--vscode-menu-selectionForeground)', 'SelectedItemText'],
+        },
+    },
+    roleOptionHeading: {
+        gridColumn: '2',
+        whiteSpace: 'nowrap',
+    },
+    roleOptionDescription: {
+        gridColumn: '2',
+    },
     propertyWarning: {
         display: 'inline-flex',
         alignItems: 'flex-start',
@@ -133,6 +168,19 @@ const useStyles = makeStyles({
     kvInput: {
         width: '100%',
         minWidth: 0,
+    },
+    kvField: {
+        gridColumn: '1 / -1',
+        gridTemplateColumns: 'subgrid',
+        gridTemplateRows: 'auto',
+        alignItems: 'center',
+        minWidth: 0,
+        '& > .fui-Field__label': {
+            gridRow: 'auto',
+        },
+    },
+    fieldError: {
+        gridColumn: '1 / -1',
     },
     unit: {
         display: 'flex',
@@ -165,21 +213,14 @@ export interface DataPageProps {
     schemaImports?: SchemaImportTracker;
 }
 
-type DocumentSizeField = 'avgSizeKb' | 'maxSizeKb';
-type CountField = 'attributeCount' | 'avgItems' | 'maxItems';
-
 export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPageProps) {
     const styles = useStyles();
     const [draftTag, setDraftTag] = useState('');
     const [uploadContainerId, setUploadContainerId] = useState<string>();
     const [uploadInfo, setUploadInfo] = useState<string>();
     const [uploadError, setUploadError] = useState<string>();
-    const [sizeErrors, setSizeErrors] = useState<Partial<Record<DocumentSizeField, string>>>({});
-    const [countErrors, setCountErrors] = useState<Partial<Record<CountField, string>>>({});
-    const [countDrafts, setCountDrafts] = useState<Partial<Record<CountField, string>>>({});
-    const negativeSizeMessage = l10n.t('Document size cannot be negative.');
+    const [numberDrafts, setNumberDrafts] = useState<Partial<Record<DataNumberField, string>>>({});
     const sizeLimitMessage = l10n.t('Document size cannot exceed 2 MB (2048 KB).');
-    const sizeOrderMessage = l10n.t('Average document size cannot exceed maximum document size.');
     const { confirm, confirmationError } = useNativeConfirmation();
     const fileRef = useRef<HTMLInputElement>(null);
     const uploadButtonRef = useRef<HTMLButtonElement>(null);
@@ -207,9 +248,7 @@ export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPa
     useEffect(() => {
         setUploadInfo(undefined);
         setUploadError(undefined);
-        setSizeErrors({});
-        setCountErrors({});
-        setCountDrafts({});
+        setNumberDrafts({});
     }, [active?.id]);
     useEffect(() => {
         // The inferred properties retain their identity through candidate derivation.
@@ -220,9 +259,12 @@ export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPa
             setUploadContainerId(request.containerId);
             setUploadInfo(request.fileName);
             setUploadError(undefined);
-            setSizeErrors({});
-            setCountErrors((previous) => ({ ...previous, attributeCount: undefined }));
-            setCountDrafts((previous) => ({ ...previous, attributeCount: undefined }));
+            setNumberDrafts((previous) => ({
+                ...previous,
+                attributeCount: undefined,
+                avgSizeKb: undefined,
+                maxSizeKb: undefined,
+            }));
             uploadButtonRef.current?.focus();
         }
     }, [model, imports, active?.id, onTelemetry]);
@@ -259,7 +301,12 @@ export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPa
             if (c.properties.some((p) => p.name.toLowerCase() === trimmed.toLowerCase())) {
                 return c;
             }
-            return { ...c, properties: [...c.properties, prop] };
+            const properties = [...c.properties, prop];
+            return {
+                ...c,
+                properties,
+                document: { ...c.document, attributeCount: Math.max(c.document.attributeCount, properties.length) },
+            };
         });
         if (willAdd) onTelemetry?.({ type: 'fieldAdded' });
     };
@@ -380,74 +427,40 @@ export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPa
     const patchDocument = (patch: Partial<ContainerModel['document']>) =>
         updateActive((c) => ({ ...c, document: { ...c.document, ...patch } }));
 
-    const patchDocumentSize = (field: DocumentSizeField, value: string) => {
-        const size = Number(value) || 0;
-        const document = { ...active.document, [field]: size };
-        const error =
-            size < 0
-                ? negativeSizeMessage
-                : size > MAX_DOCUMENT_SIZE_KB
-                  ? sizeLimitMessage
-                  : document.avgSizeKb > document.maxSizeKb
-                    ? sizeOrderMessage
-                    : undefined;
-        setSizeErrors((previous) => ({ ...previous, [field]: error }));
-        if (!error) {
-            patchDocument({ [field]: size });
-        }
-    };
-
     const patchArrays = (patch: Partial<ContainerModel['arrays']>) =>
         updateActive((c) => ({ ...c, arrays: { ...c.arrays, ...patch } }));
 
-    const patchCount = (field: CountField, raw: string, commit = false) => {
-        setCountDrafts((previous) => ({ ...previous, [field]: commit ? undefined : raw }));
+    const patchNumber = (field: DataNumberField, raw: string) => {
+        setNumberDrafts((previous) => ({ ...previous, [field]: raw }));
         const value = parseCountInput(raw);
-        const max = field === 'attributeCount' ? MAX_ATTRIBUTE_COUNT : MAX_ARRAY_ITEMS;
-        const invalid = validateCount(value, max, field === 'avgItems');
-        const arrays = { ...active.arrays, [field]: value };
-        const error = invalid
-            ? getCountErrorMessage(invalid, max)
-            : commit && field !== 'attributeCount' && arrays.avgItems > arrays.maxItems
-              ? getArrayItemsOrderMessage()
-              : undefined;
-        setCountErrors((previous) =>
-            !error && commit && field !== 'attributeCount'
-                ? {
-                      ...previous,
-                      [field]: undefined,
-                      ...(previous.avgItems === getArrayItemsOrderMessage() ? { avgItems: undefined } : {}),
-                      ...(previous.maxItems === getArrayItemsOrderMessage() ? { maxItems: undefined } : {}),
-                  }
-                : { ...previous, [field]: error },
-        );
-        if (error || (field !== 'attributeCount' && !commit)) {
-            return;
-        }
-        setCountDrafts((previous) => ({ ...previous, [field]: undefined }));
-        if (field === 'attributeCount') {
-            patchDocument({ attributeCount: value });
-        } else {
+        if (field === 'avgItems' || field === 'maxItems') {
             patchArrays({ [field]: value });
+        } else {
+            patchDocument({ [field]: value });
         }
     };
 
-    const countValidation = (error: string | undefined) => ({
+    const numberInput = (field: DataNumberField) => {
+        const value = field === 'avgItems' || field === 'maxItems' ? active.arrays[field] : active.document[field];
+        const draft = numberDrafts[field];
+        return {
+            value: draft !== undefined && parseCountInput(draft) === value ? draft : String(value),
+            onChange: (_: ChangeEvent<HTMLInputElement>, data: { value: string }) => patchNumber(field, data.value),
+            onBlur: () => setNumberDrafts((previous) => ({ ...previous, [field]: undefined })),
+        };
+    };
+
+    const fieldValidation = (error: string | undefined) => ({
         validationState: error ? ('error' as const) : ('none' as const),
-        validationMessage: error ? { children: error, role: 'alert' } : undefined,
+        validationMessage: error ? { children: error, role: 'alert', className: styles.fieldError } : undefined,
     });
 
     if (!active) {
         return null;
     }
 
-    const existingSizeError = active.document.avgSizeKb > active.document.maxSizeKb ? sizeOrderMessage : undefined;
-    const averageSizeError = sizeErrors.avgSizeKb ?? existingSizeError;
-    const maximumSizeError = sizeErrors.maxSizeKb ?? existingSizeError;
-    const existingItemsError =
-        active.arrays.avgItems > active.arrays.maxItems ? getArrayItemsOrderMessage() : undefined;
-    const averageItemsError = countErrors.avgItems ?? existingItemsError;
-    const maximumItemsError = countErrors.maxItems ?? existingItemsError;
+    const errors = getDataFieldErrors(active);
+    const attributeCountError = errors.attributeCount ?? getAttributeCountMismatch(active);
     const attributeCountLabel = l10n.t('Total attributes per document');
     const averageItemsLabel = l10n.t('Average items per array');
     const maximumItemsLabel = l10n.t('Maximum items per array');
@@ -533,12 +546,12 @@ export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPa
                                 <TableHeaderCell>{l10n.t('Property')}</TableHeaderCell>
                                 <TableHeaderCell>{l10n.t('Type')}</TableHeaderCell>
                                 <TableHeaderCell>{l10n.t('Role')}</TableHeaderCell>
-                                <TableHeaderCell />
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {active.properties.map((p) => {
                                 const restriction = getPartitionKeyRestriction(p, active.properties);
+                                const selectedRole = roleOptions.find((option) => option.value === p.role);
                                 return (
                                     <TableRow key={p.id}>
                                         <TableCell>{p.name}</TableCell>
@@ -564,48 +577,90 @@ export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPa
                                             </Select>
                                         </TableCell>
                                         <TableCell>
-                                            {restriction ? (
-                                                <span className={styles.propertyWarning}>
-                                                    <WarningRegular
-                                                        className={styles.warningIcon}
-                                                        fontSize={16}
-                                                        aria-hidden
-                                                    />
-                                                    <Text size={200}>
-                                                        {restriction === 'arrayAncestor'
-                                                            ? l10n.t(
-                                                                  'Not usable as a partition key: this field is inside an array.',
-                                                              )
-                                                            : l10n.t(
-                                                                  'Not usable as a partition key: this field has object or array values.',
-                                                              )}
-                                                    </Text>
-                                                </span>
-                                            ) : (
-                                                <Select
-                                                    className={styles.cellSelect}
-                                                    aria-label={l10n.t('Role for {name}', { name: p.name })}
-                                                    value={p.role}
-                                                    onChange={(_, data) =>
-                                                        patchProperty(p.id, { role: data.value as PropertyRole })
-                                                    }
-                                                >
-                                                    {roleOptions.map((o) => (
-                                                        <option key={o.value} value={o.value}>
-                                                            {o.label}
-                                                        </option>
-                                                    ))}
-                                                </Select>
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Button
-                                                icon={<DismissRegular />}
-                                                appearance="subtle"
-                                                size="small"
-                                                aria-label={l10n.t('Remove {name}', { name: p.name })}
-                                                onClick={() => removeProperty(p.id)}
-                                            />
+                                            <div className={styles.roleControls}>
+                                                {restriction ? (
+                                                    <span className={styles.propertyWarning}>
+                                                        <WarningRegular
+                                                            className={styles.warningIcon}
+                                                            fontSize={16}
+                                                            aria-hidden
+                                                        />
+                                                        <Text size={200}>
+                                                            {restriction === 'arrayAncestor'
+                                                                ? l10n.t(
+                                                                      'Not usable as a partition key: this field is inside an array.',
+                                                                  )
+                                                                : l10n.t(
+                                                                      'Not usable as a partition key: this field has object or array values.',
+                                                                  )}
+                                                        </Text>
+                                                    </span>
+                                                ) : (
+                                                    <Dropdown
+                                                        className={styles.roleDropdown}
+                                                        listbox={{ className: styles.roleListbox }}
+                                                        positioning={{
+                                                            // Overrides the dropdown's default 'width' so the menu can be wider than the control.
+                                                            matchTargetSize: undefined,
+                                                            autoSize: 'height',
+                                                            // Stay below when possible; right-align to the control before flipping above.
+                                                            fallbackPositions: [
+                                                                'below-end',
+                                                                'above-start',
+                                                                'above-end',
+                                                            ],
+                                                        }}
+                                                        aria-label={l10n.t('Role for {name}: {role}', {
+                                                            name: p.name,
+                                                            role: selectedRole?.label ?? p.role,
+                                                        })}
+                                                        value={selectedRole?.label}
+                                                        selectedOptions={[p.role]}
+                                                        onOptionSelect={(_, data) => {
+                                                            const option = roleOptions.find(
+                                                                (option) => option.value === data.optionValue,
+                                                            );
+                                                            if (option) {
+                                                                patchProperty(p.id, { role: option.value });
+                                                            }
+                                                        }}
+                                                    >
+                                                        {roleOptions.map((o) => (
+                                                            <Option
+                                                                key={o.value}
+                                                                className={styles.roleOption}
+                                                                checkIcon={null}
+                                                                value={o.value}
+                                                                text={o.label}
+                                                                aria-label={o.label}
+                                                                aria-description={o.description}
+                                                            >
+                                                                <span aria-hidden="true">{o.icon}</span>
+                                                                <span
+                                                                    className={styles.roleOptionHeading}
+                                                                    aria-hidden="true"
+                                                                >
+                                                                    {o.title}
+                                                                </span>
+                                                                <Text
+                                                                    className={styles.roleOptionDescription}
+                                                                    size={200}
+                                                                    aria-hidden="true"
+                                                                >
+                                                                    {o.description}
+                                                                </Text>
+                                                            </Option>
+                                                        ))}
+                                                    </Dropdown>
+                                                )}
+                                                <Button
+                                                    icon={<DismissRegular />}
+                                                    appearance="subtle"
+                                                    size="small"
+                                                    aria-label={l10n.t('Remove {name}', { name: p.name })}
+                                                    onClick={() => removeProperty(p.id)}
+                                                />
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 );
@@ -618,12 +673,16 @@ export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPa
             <SubPanel
                 title={l10n.t('📐 Document shape & size')}
                 subtitle={l10n.t(
-                    'RU cost and the 20 GB partition limit scale with document size. Estimate the overall shape here instead of listing every property.',
+                    'RU cost and the 20 GB partition limit scale with document size. The total attributes must match the schema properties table.',
                 )}
             >
                 <div className={styles.kvGrid}>
-                    <Text>{attributeCountLabel}</Text>
-                    <Field {...countValidation(countErrors.attributeCount)}>
+                    <Field
+                        className={styles.kvField}
+                        orientation="horizontal"
+                        label={attributeCountLabel}
+                        {...fieldValidation(attributeCountError)}
+                    >
                         <Input
                             className={styles.kvInput}
                             type="number"
@@ -632,14 +691,14 @@ export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPa
                             step={1}
                             aria-label={attributeCountLabel}
                             name="document.attributeCount"
-                            value={countDrafts.attributeCount ?? String(active.document.attributeCount)}
-                            onChange={(_, data) => patchCount('attributeCount', data.value)}
+                            {...numberInput('attributeCount')}
                         />
                     </Field>
-                    <Text>{l10n.t('Average document size')}</Text>
                     <Field
-                        validationState={averageSizeError ? 'error' : 'none'}
-                        validationMessage={averageSizeError ? { children: averageSizeError, role: 'alert' } : undefined}
+                        className={styles.kvField}
+                        orientation="horizontal"
+                        label={l10n.t('Average document size')}
+                        {...fieldValidation(errors.avgSizeKb)}
                     >
                         <div className={styles.unit}>
                             <Input
@@ -650,16 +709,16 @@ export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPa
                                 step="any"
                                 aria-label={l10n.t('Average document size')}
                                 name="document.avgSizeKb"
-                                value={String(active.document.avgSizeKb)}
-                                onChange={(_, data) => patchDocumentSize('avgSizeKb', data.value)}
+                                {...numberInput('avgSizeKb')}
                             />
                             <Text>{'KB'}</Text>
                         </div>
                     </Field>
-                    <Text>{l10n.t('Maximum document size')}</Text>
                     <Field
-                        validationState={maximumSizeError ? 'error' : 'none'}
-                        validationMessage={maximumSizeError ? { children: maximumSizeError, role: 'alert' } : undefined}
+                        className={styles.kvField}
+                        orientation="horizontal"
+                        label={l10n.t('Maximum document size')}
+                        {...fieldValidation(errors.maxSizeKb)}
                     >
                         <div className={styles.unit}>
                             <Input
@@ -670,8 +729,7 @@ export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPa
                                 step="any"
                                 aria-label={l10n.t('Maximum document size')}
                                 name="document.maxSizeKb"
-                                value={String(active.document.maxSizeKb)}
-                                onChange={(_, data) => patchDocumentSize('maxSizeKb', data.value)}
+                                {...numberInput('maxSizeKb')}
                             />
                             <Text>{'KB'}</Text>
                         </div>
@@ -692,45 +750,56 @@ export function DataPage({ model, onChange, onTelemetry, schemaImports }: DataPa
                 />
                 {active.arrays.hasArrays ? (
                     <div className={styles.kvGrid}>
-                        <Text>{averageItemsLabel}</Text>
-                        <Field {...countValidation(averageItemsError)}>
+                        <Field
+                            className={styles.kvField}
+                            orientation="horizontal"
+                            label={averageItemsLabel}
+                            {...fieldValidation(errors.avgItems)}
+                        >
                             <Input
+                                className={styles.kvInput}
                                 type="number"
                                 min={0}
                                 max={MAX_ARRAY_ITEMS}
                                 step="any"
                                 aria-label={averageItemsLabel}
                                 name="arrays.avgItems"
-                                value={countDrafts.avgItems ?? String(active.arrays.avgItems)}
-                                onChange={(_, data) => patchCount('avgItems', data.value)}
-                                onBlur={(event) => patchCount('avgItems', event.target.value, true)}
+                                {...numberInput('avgItems')}
                             />
                         </Field>
-                        <Text>{maximumItemsLabel}</Text>
-                        <Field {...countValidation(maximumItemsError)}>
+                        <Field
+                            className={styles.kvField}
+                            orientation="horizontal"
+                            label={maximumItemsLabel}
+                            {...fieldValidation(errors.maxItems)}
+                        >
                             <Input
+                                className={styles.kvInput}
                                 type="number"
                                 min={0}
                                 max={MAX_ARRAY_ITEMS}
                                 step={1}
                                 aria-label={maximumItemsLabel}
                                 name="arrays.maxItems"
-                                value={countDrafts.maxItems ?? String(active.arrays.maxItems)}
-                                onChange={(_, data) => patchCount('maxItems', data.value)}
-                                onBlur={(event) => patchCount('maxItems', event.target.value, true)}
+                                {...numberInput('maxItems')}
                             />
                         </Field>
-                        <Text>{l10n.t('Array update pattern')}</Text>
-                        <Select
-                            value={active.arrays.updatePattern}
-                            onChange={(_, data) => patchArrays({ updatePattern: data.value as ArrayUpdatePattern })}
+                        <Field
+                            className={styles.kvField}
+                            orientation="horizontal"
+                            label={l10n.t('Array update pattern')}
                         >
-                            {arrayOptions.map((o) => (
-                                <option key={o.value} value={o.value}>
-                                    {o.label}
-                                </option>
-                            ))}
-                        </Select>
+                            <Select
+                                value={active.arrays.updatePattern}
+                                onChange={(_, data) => patchArrays({ updatePattern: data.value as ArrayUpdatePattern })}
+                            >
+                                {arrayOptions.map((o) => (
+                                    <option key={o.value} value={o.value}>
+                                        {o.label}
+                                    </option>
+                                ))}
+                            </Select>
+                        </Field>
                     </div>
                 ) : null}
             </SubPanel>

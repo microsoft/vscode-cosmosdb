@@ -5,7 +5,7 @@
 
 // @vitest-environment jsdom
 
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -38,6 +38,49 @@ function Workload({
 const toolbar = () => within(screen.getByRole('toolbar', { name: 'Filter by workload trait' }));
 const firstChip = () => toolbar().getAllByRole('button')[0];
 const clearButton = () => screen.getByRole('button', { name: 'Clear all' });
+
+describe('WorkloadPage result status', () => {
+    it('exposes matching counts and no-match feedback in a persistent live region without moving focus', async () => {
+        const user = userEvent.setup();
+        render(<Workload />);
+        const search = screen.getByRole('textbox', { name: 'Filter scenarios…' });
+        expect(search).toHaveAccessibleName('Filter scenarios…');
+        expect(search).toHaveAccessibleDescription('Scenarios filter as you type.');
+        const status = screen.getByRole('status');
+        expect(status).toHaveAttribute('aria-atomic', 'true');
+        expect(status.textContent).toBe(`${getScenarioList().length - 1} matching scenarios`);
+        await user.click(search);
+
+        fireEvent.change(search, { target: { value: 'transactions' } });
+        expect(status.textContent).toBe('2 matching scenarios');
+        fireEvent.change(search, { target: { value: 'clickstream' } });
+        expect(status.textContent).toBe('1 matching scenario');
+        fireEvent.change(search, { target: { value: 'no matching workload' } });
+        expect(status).toHaveTextContent('No scenarios match your filter. You can still choose a custom workload.');
+        expect(status).toBeVisible();
+        expect(screen.getAllByRole('radio')).toHaveLength(1);
+        expect(screen.getByRole('status')).toBe(status);
+        expect(search).toHaveFocus();
+    });
+
+    it('updates the status for trait filters, combined filters, and Clear all', async () => {
+        const user = userEvent.setup();
+        render(<Workload />);
+        const status = screen.getByRole('status');
+        const trait = toolbar().getByRole('button', { name: 'Write-heavy' });
+        await user.click(trait);
+        expect(status.textContent).toBe('2 matching scenarios');
+        expect(trait).toHaveFocus();
+
+        const search = screen.getByRole('textbox', { name: 'Filter scenarios…' });
+        await user.type(search, 'clickstream');
+        expect(status.textContent).toBe('1 matching scenario');
+        await user.click(clearButton());
+        expect(status.textContent).toBe(`${getScenarioList().length - 1} matching scenarios`);
+        expect(search).toHaveFocus();
+    });
+});
+
 describe('WorkloadPage native radio cards', () => {
     it('provides a single Tab entry with arrow navigation, wrapping, and Space selection', async () => {
         const user = userEvent.setup();
@@ -110,7 +153,7 @@ describe('WorkloadPage native radio cards', () => {
         await user.type(filter, 'transactions');
         const group = within(screen.getByRole('radiogroup', { name: 'Workload scenarios' }));
         const radios = group.getAllByRole('radio');
-        expect(radios).toHaveLength(2);
+        expect(radios).toHaveLength(3);
         expect(onPick).not.toHaveBeenCalled();
         await user.tab();
         expect(firstChip()).toHaveFocus();
@@ -133,18 +176,24 @@ describe('WorkloadPage native radio cards', () => {
         expect(screen.getByRole('radio', { name: 'Financial Ledger' })).toHaveFocus();
     });
 
-    it('skips an empty filtered group and restores the saved selection when the filter is cleared', async () => {
+    it('keeps the custom workload keyboard-accessible and restores the selection when the filter is cleared', async () => {
         const user = userEvent.setup();
         const onPick = vi.fn();
         render(<Workload initialScenario="chat" onPick={onPick} />);
         const filter = screen.getByRole('textbox', { name: 'Filter scenarios…' });
         await user.type(filter, 'no matching workload');
-        expect(screen.getByText('No scenarios match your filter.')).toBeVisible();
-        expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument();
+        const custom = getScenarioList().find((item) => item.id === 'other')!;
+        const customRadio = screen.getByRole('radio', { name: custom.title });
+        expect(screen.getByText(custom.title)).toBeVisible();
+        expect(customRadio).toHaveAccessibleName(custom.title);
+        expect(screen.getAllByRole('radio')).toEqual([customRadio]);
         await user.tab();
         expect(firstChip()).toHaveFocus();
         await user.tab();
         expect(clearButton()).toHaveFocus();
+        await user.tab();
+        expect(customRadio).toHaveFocus();
+        expect(customRadio).not.toBeChecked();
         await user.tab();
         expect(screen.getByRole('button', { name: 'After workloads' })).toHaveFocus();
         await user.clear(filter);
@@ -224,12 +273,22 @@ describe('WorkloadPage trait filter', () => {
         expect(onPick).not.toHaveBeenCalled();
     });
 
-    it('combines traits with the text filter', async () => {
+    it('combines traits with the text filter while keeping the custom workload visible and selectable', async () => {
         const user = userEvent.setup();
-        render(<Workload />);
+        const onPick = vi.fn();
+        render(<Workload onPick={onPick} />);
         await user.click(chip('Write-heavy'));
-        await user.type(screen.getByRole('textbox', { name: 'Filter scenarios…' }), 'clickstream');
-        expect(shownIds()).toEqual(['analytics']);
+        const search = screen.getByRole('textbox', { name: 'Filter scenarios…' });
+        await user.type(search, 'clickstream');
+        expect(shownIds()).toEqual(['analytics', 'other']);
+        await user.clear(search);
+        await user.type(search, 'no matching workload');
+        expect(shownIds()).toEqual(['other']);
+        expect(onPick).not.toHaveBeenCalled();
+        const customRadio = screen.getByRole('radio');
+        await user.click(customRadio);
+        expect(customRadio).toBeChecked();
+        expect(onPick).toHaveBeenCalledExactlyOnceWith('other');
     });
 
     it('is a single Tab stop with arrow, Home and End navigation across groups, and Space/Enter toggling', async () => {
@@ -276,7 +335,7 @@ describe('WorkloadPage trait filter', () => {
         const search = screen.getByRole('textbox', { name: 'Filter scenarios…' });
         await user.click(chip('Read-heavy'));
         await user.type(search, 'articles');
-        expect(shownIds()).toEqual(['cms']);
+        expect(shownIds()).toEqual(['cms', 'other']);
         await user.click(clearButton());
         expect(search).toHaveValue('');
         expect(
@@ -292,12 +351,12 @@ describe('WorkloadPage trait filter', () => {
         expect(search).toHaveFocus();
     });
 
-    it('clears from the keyboard and recovers from an empty result', async () => {
+    it('clears from the keyboard and restores the catalog when only the custom workload matches', async () => {
         const user = userEvent.setup();
         render(<Workload />);
         const search = screen.getByRole('textbox', { name: 'Filter scenarios…' });
         await user.type(search, 'no matching workload');
-        expect(screen.getByText('No scenarios match your filter.')).toBeVisible();
+        expect(shownIds()).toEqual(['other']);
         await user.tab();
         await user.tab();
         expect(clearButton()).toHaveFocus();

@@ -16,6 +16,7 @@ import {
 import { CheckmarkRegular, SearchRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { Fragment, type KeyboardEvent, useId, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { SelectableCard } from '../components/SelectableCard';
 import { type ScenarioId } from '../models';
 import { getScenarioList, type ScenarioBadge, type ScenarioListItem, type ScenarioTag } from '../scenarios';
@@ -162,6 +163,8 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
     const searchHintId = useId();
     const [filter, setFilter] = useState('');
     const [tags, setTags] = useState<ScenarioTag[]>([]);
+    // Clear all stays visible while focused, so clearing never hides the element that has focus.
+    const [clearFocused, setClearFocused] = useState(false);
     // Roving tabindex: the chip row is one Tab stop; arrow keys move between chips.
     const [activeChip, setActiveChip] = useState(0);
     const chipRefs = useRef<(HTMLElement | null)[]>([]);
@@ -211,11 +214,12 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
     // Clear all hides itself, so focus returns to the search box. A separate announcement would be cut off by that
     // focus move, so the search box is described by the result summary, which is read as part of the focus change.
     const clearFilters = () => {
-        // Focus leaves the button before the cleared state hides it, since hiding a focused button gets it re-read.
-        // The browser reports the focus change after this handler's render, so the description read is current.
+        // Commit the cleared value and summary first, so the search box is already current when focus lands on it.
+        flushSync(() => {
+            setFilter('');
+            setTags([]);
+        });
         searchRef.current?.focus();
-        setFilter('');
-        setTags([]);
     };
 
     const onChipKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -303,8 +307,10 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
                 <Link
                     as="button"
                     className={styles.clear}
-                    style={{ visibility: hasFilters ? 'visible' : 'hidden' }}
+                    style={{ visibility: hasFilters || clearFocused ? 'visible' : 'hidden' }}
                     aria-description={l10n.t('Clear the search text and selected filters')}
+                    onFocus={() => setClearFocused(true)}
+                    onBlur={() => setClearFocused(false)}
                     onClick={clearFilters}
                 >
                     {l10n.t('Clear all')}

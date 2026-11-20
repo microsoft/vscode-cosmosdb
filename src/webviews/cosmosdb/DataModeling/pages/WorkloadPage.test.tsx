@@ -48,6 +48,28 @@ const toolbar = () => within(screen.getByRole('toolbar', { name: 'Filter by work
 const firstChip = () => toolbar().getAllByRole('button')[0];
 const clearButton = () => screen.getByRole('button', { name: 'Clear all' });
 const searchBox = () => screen.getByPlaceholderText('Filter scenarios…');
+/**
+ * Records what a screen reader would read from the search box at the instant it gains focus, and whether Clear all
+ * is still visible then. Clear all relies on that focus change, so the box must already reflect the cleared state.
+ */
+function snapshotSearchOnFocus() {
+    const search = searchBox() as HTMLInputElement;
+    const clear = clearButton();
+    const snapshot = { value: '', description: '', clearVisibility: '' };
+    search.addEventListener(
+        'focus',
+        () => {
+            snapshot.value = search.value;
+            snapshot.description = (search.getAttribute('aria-describedby') ?? '')
+                .split(' ')
+                .map((id) => document.getElementById(id)?.textContent)
+                .join(' ');
+            snapshot.clearVisibility = clear.style.visibility;
+        },
+        { once: true },
+    );
+    return snapshot;
+}
 
 describe('WorkloadPage result status', () => {
     const allMatching = () => `${getScenarioList().length - 1} matching scenarios`;
@@ -108,17 +130,17 @@ describe('WorkloadPage result status', () => {
         expect(filterChip).toHaveAttribute('aria-pressed', 'true');
         expect(screen.getByText('1 matching scenario')).toBeVisible();
         // A separate announcement would be cut off by the focus move, so the search box's description carries the
-        // result instead. Focus must leave Clear all while it is still visible: hiding a focused button makes screen
-        // readers read it again.
-        const clear = clearButton();
-        let clearVisibilityOnFocus = '';
-        search.addEventListener('focus', () => {
-            clearVisibilityOnFocus = clear.style.visibility;
+        // result instead. It must already be current when focus lands, and Clear all must not hide while focused.
+        const onFocus = snapshotSearchOnFocus();
+        await user.click(clearButton());
+        expect(onFocus).toEqual({
+            value: '',
+            description: `${allMatching()} Scenarios filter as you type.`,
+            clearVisibility: 'visible',
         });
-        await user.click(clear);
-        expect(clearVisibilityOnFocus).toBe('visible');
         expect(search).toHaveFocus();
-        expect(search).toHaveAccessibleDescription(`${allMatching()} Scenarios filter as you type.`);
+        expect(clearButton).toThrow();
+        expect(screen.getByText('Clear all')).toHaveStyle({ visibility: 'hidden' });
         expect(screen.getByText(allMatching())).toBeVisible();
         expect(announce).toHaveBeenCalledTimes(announced);
         // One batch for every source, so a newer summary replaces a stale one still waiting to be read.
@@ -410,7 +432,14 @@ describe('WorkloadPage filter chips', () => {
         await user.tab();
         await user.tab();
         expect(clearButton()).toHaveFocus();
+        // Clearing a no-match search: the box must not still read "No scenarios match…" when focus lands on it.
+        const onFocus = snapshotSearchOnFocus();
         await user.keyboard('{Enter}');
+        expect(onFocus).toEqual({
+            value: '',
+            description: `${getScenarioList().length - 1} matching scenarios Scenarios filter as you type.`,
+            clearVisibility: 'visible',
+        });
         expect(search).toHaveFocus();
         expect(search).toHaveValue('');
         expect(screen.getAllByRole('radio')).toHaveLength(getScenarioList().length);

@@ -32,6 +32,8 @@
     "dist",
     "out",
     "node_modules",
+    "packages/docs/.vitepress/cache",
+    "packages/docs/.vitepress/dist",
     "resources",
     "scripts",
     "skills",

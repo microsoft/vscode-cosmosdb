@@ -5,8 +5,9 @@
 
 // @vitest-environment jsdom
 
+import { AriaLiveAnnouncer } from '@fluentui/react-components';
 import type * as FluentUI from '@fluentui/react-components';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -15,12 +16,20 @@ import { getScenarioList, TRAIT_TONE } from '../scenarios';
 import { WorkloadPage } from './WorkloadPage';
 
 const announce = vi.hoisted(() => vi.fn());
-vi.mock('@fluentui/react-components', async (importOriginal) => ({
-    ...(await importOriginal<typeof FluentUI>()),
-    useAnnounce: () => ({ announce }),
-}));
+// Most tests observe announcements through a spy; `announcer.real` switches to Fluent's own announcer.
+const announcer = vi.hoisted(() => ({ real: false }));
+vi.mock('@fluentui/react-components', async (importOriginal) => {
+    const actual = await importOriginal<typeof FluentUI>();
+    return {
+        ...actual,
+        useAnnounce: () => (announcer.real ? actual.useAnnounce() : { announce }),
+    };
+});
 
-beforeEach(() => announce.mockReset());
+beforeEach(() => {
+    announce.mockReset();
+    announcer.real = false;
+});
 
 function Workload({
     initialScenario,
@@ -142,10 +151,46 @@ describe('WorkloadPage result status', () => {
         expect(clearButton).toThrow();
         expect(screen.getByText('Clear all')).toHaveStyle({ visibility: 'hidden' });
         expect(screen.getByText(allMatching())).toBeVisible();
-        expect(announce).toHaveBeenCalledTimes(announced);
+        // Clear all speaks no count of its own; it only blanks the shared batch to drop stale queued feedback.
+        expect(announce).toHaveBeenCalledTimes(announced + 1);
+        expect(announce).toHaveBeenLastCalledWith('', expect.objectContaining({ polite: true }));
         // One batch for every source, so a newer summary replaces a stale one still waiting to be read.
         const batches = new Set(announce.mock.calls.map(([, options]) => (options as { batchId?: string }).batchId));
         expect([...batches]).toEqual([expect.any(String)]);
+    });
+
+    it('drops filter feedback still queued in the real announcer when Clear all is activated', async () => {
+        // Without ariaNotify, Fluent queues messages that arrive while one is being read and delivers them later.
+        expect('ariaNotify' in document).toBe(false);
+        announcer.real = true;
+        render(
+            <AriaLiveAnnouncer>
+                <Workload />
+            </AriaLiveAnnouncer>,
+        );
+        const liveRegion = document.querySelector<HTMLElement>('[aria-live]')!;
+        const delivered: string[] = [];
+        new MutationObserver((records) => {
+            for (const record of records) {
+                for (const node of record.addedNodes) {
+                    const text = (node as HTMLElement).innerText;
+                    if (text) delivered.push(text);
+                }
+            }
+        }).observe(liveRegion, { childList: true });
+        const flush = (ms: number) => act(() => new Promise((resolve) => setTimeout(resolve, ms)));
+
+        const search = searchBox();
+        fireEvent.change(search, { target: { value: 'iot' } });
+        await flush(50);
+        expect(delivered).toEqual(['1 matching scenario. ']);
+        // Arrives while the first message is still being read, so Fluent holds it for the next cycle.
+        fireEvent.change(search, { target: { value: 'transactions' } });
+        fireEvent.click(clearButton());
+        expect(search).toHaveFocus();
+        await flush(700);
+        // The restored count is read from the focused search box; the stale filtered count must never follow it.
+        expect(delivered).toEqual(['1 matching scenario. ']);
     });
 });
 

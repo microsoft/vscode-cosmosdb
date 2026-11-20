@@ -214,6 +214,9 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
     // Clear all hides itself, so focus returns to the search box. A separate announcement would be cut off by that
     // focus move, so the search box is described by the result summary, which is read as part of the focus change.
     const clearFilters = () => {
+        // Supersede any filter feedback Fluent still has queued, so a stale count is not read after the restored one.
+        // Fluent replaces the queued message of the same batch and skips empty messages when speaking.
+        announce('', { polite: true, batchId: RESULTS_ANNOUNCEMENT });
         // Commit the cleared value and summary first, so the search box is already current when focus lands on it.
         flushSync(() => {
             setFilter('');

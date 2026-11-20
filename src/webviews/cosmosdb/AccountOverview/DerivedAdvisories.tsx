@@ -882,8 +882,8 @@ export const DerivedAdvisories = ({
             <div className={styles.scrollBody}>
                 {partialCoverage && <PartialCoverageNotice source={logSource} />}
                 {metricPartialCoverage && <MetricCoverageNotice source={result?.metricSource} />}
-                {result?.available && result.costSource?.available === false && (
-                    <CostCoverageNotice source={result.costSource} active={active} />
+                {active && result?.available && result.costSource?.available === false && (
+                    <CostCoverageNotice source={result.costSource} />
                 )}
                 {body}
             </div>
@@ -993,13 +993,7 @@ const CostEstimateDetails = ({ estimate }: { estimate: NonNullable<DerivedAdviso
     );
 };
 
-const CostCoverageNotice = ({
-    source,
-    active,
-}: {
-    source: NonNullable<DerivedAdvisoriesResult['costSource']>;
-    active: boolean;
-}) => {
+const CostCoverageNotice = ({ source }: { source: NonNullable<DerivedAdvisoriesResult['costSource']> }) => {
     const styles = useStyles();
     const { announce } = useAnnounce();
     const title = l10n.t('Some cost estimates are unavailable');
@@ -1033,11 +1027,11 @@ const CostCoverageNotice = ({
     const previousSummary = useRef(summary);
     useEffect(() => {
         // Fluent announces the mounted message bar; announce only subsequent changes here.
-        if (previousSummary.current !== summary && active) {
+        if (previousSummary.current !== summary) {
             announce(summary, { polite: true });
         }
         previousSummary.current = summary;
-    }, [active, announce, summary]);
+    }, [announce, summary]);
 
     return (
         <MessageBar

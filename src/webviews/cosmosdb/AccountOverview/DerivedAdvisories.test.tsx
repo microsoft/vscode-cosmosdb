@@ -268,7 +268,9 @@ describe('metric coverage and actionable findings', () => {
                 </AnnounceProvider>
             </FluentProvider>
         );
-        const { rerender } = render(view('noData'));
+        const { rerender } = render(view('noData', false));
+        expect(announce).not.toHaveBeenCalled();
+        rerender(view('noData'));
         expect(announce).toHaveBeenCalledExactlyOnceWith(
             expect.stringContaining('Missing data is not zero cost.'),
             expect.objectContaining({ polite: true }),

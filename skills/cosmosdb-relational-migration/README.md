@@ -153,6 +153,11 @@ before resuming. Applicable production rollout, synchronization readiness, and r
 window tasks remain in a separate operational handoff checklist; code completion does
 not mean production cut-over has occurred. See the
 [checklist contract](./references/phases/code-migration.md#execution-checklist).
+Readiness gates distinguish isolated implementation verification, production activation,
+and post-activation observation. Dependencies include evidence required indirectly through
+blocker clearance; activation cannot wait for its own later rollback-window closure.
+Supporting services need concrete selected mechanisms or explicit unresolved design
+conditions, not only promises to implement their guarantees.
 
 ### Review and Fix
 
@@ -210,6 +215,10 @@ You do not need complete production measurements before starting: missing facts 
 remain explicitly unknown, and inferred values must be distinguished from observed data.
 
 ### Supply Input Files
+
+When resuming an existing migration, keep its project root consistent with any explicit
+`workspace` selection. Conflicting roots require clarification before project inspection
+or initialization, even in autonomous mode; neither selection silently overrides the other.
 
 Identify the application project root and the files to use in your request. Files
 already inside that project can stay where they are; files outside it are copied into

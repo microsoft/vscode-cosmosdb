@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "sourceSha256": "51ef1032804f5b78d2d97f3cc08c14c72a10a1630fd0724ddb93e4d6f6438ad1",
+  "blockingIssues": [],
+  "tables": ["dbo.BuildVersion","dbo.ErrorLog","SalesLT.Address","SalesLT.Customer","SalesLT.CustomerAddress","SalesLT.Product","SalesLT.ProductCategory","SalesLT.ProductDescription","SalesLT.ProductModel","SalesLT.ProductModelProductDescription","SalesLT.SalesOrderDetail","SalesLT.SalesOrderHeader"],
+  "domains": ["Catalog","Customers","Operations","Orders"],
+  "crossDomainEdges": [
+    {"fromDomain":"Orders","fromTable":"SalesLT.SalesOrderHeader","toDomain":"Customers","toTable":"SalesLT.Customer","constraint":"FK_SalesOrderHeader_Customer_CustomerID","columns":["CustomerID"],"referencedColumns":["CustomerID"],"onDelete":"NO ACTION","strategy":"Preserve source identity and required customer reference; define enforcement and delete restriction during conversion."},
+    {"fromDomain":"Orders","fromTable":"SalesLT.SalesOrderHeader","toDomain":"Customers","toTable":"SalesLT.Address","constraint":"FK_SalesOrderHeader_Address_BillTo_AddressID","columns":["BillToAddressID"],"referencedColumns":["AddressID"],"onDelete":"NO ACTION","strategy":"Preserve optional billing address reference and delete restriction against the single shared address owner; define enforcement later."},
+    {"fromDomain":"Orders","fromTable":"SalesLT.SalesOrderHeader","toDomain":"Customers","toTable":"SalesLT.Address","constraint":"FK_SalesOrderHeader_Address_ShipTo_AddressID","columns":["ShipToAddressID"],"referencedColumns":["AddressID"],"onDelete":"NO ACTION","strategy":"Preserve optional shipping address reference and delete restriction separately from billing; define enforcement later."},
+    {"fromDomain":"Orders","fromTable":"SalesLT.SalesOrderDetail","toDomain":"Catalog","toTable":"SalesLT.Product","constraint":"FK_SalesOrderDetail_Product_ProductID","columns":["ProductID"],"referencedColumns":["ProductID"],"onDelete":"NO ACTION","strategy":"Preserve product reference and product delete restriction; define enforcement and read resolution later."}
+  ]
+}

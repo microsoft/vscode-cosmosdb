@@ -1,0 +1,118 @@
+name: cosmosdb-relational-migration-adventureworks-integration
+description: Opt-in chained migration integration; independent phase tests run by default.
+type: capability
+
+agent_environment:
+  skills:
+    - ../../../../skills/cosmosdb-relational-migration
+    - ../../../../skills/cosmosdb-best-practices
+  files:
+    - { src: ../setup.mjs, dest: setup-adventureworks.mjs }
+    - { src: ../checkpoints.mjs, dest: checkpoints.mjs }
+    - { src: ../sample.mjs, dest: sample.mjs }
+
+defaults:
+  executor: copilot-sdk
+  model: gpt-6.1-sol
+  reasoning_effort: high
+  judge_model: gpt-6-astra
+  judge_reasoning_effort: high
+  runs: 1
+  timeout: 60m
+
+scoring:
+  threshold: 1
+
+stimuli:
+  - name: adventureworks-migration-plan
+    tags: { category: integration, sample: adventureworks, scenario: supplied-ddl }
+    agent_environment:
+      files:
+        - { src: ../AdventureworksLT.sql, dest: AdventureworksLT.sql }
+      commands: [node setup-adventureworks.mjs supplied]
+    turns:
+      - |
+        Run only discovery, including required preflight, for a relational-to-Cosmos DB
+        migration in ./app. Work autonomously with model-only DDL interpretation.
+        The supplied AdventureworksLT.sql is authoritative and immutable. Analyze the
+        application's actual Entity Framework mappings and controller reads/writes.
+        Use workload.json as synthetic planning assumptions, not production observations.
+        Include every supplied table, retaining tables with no observed application access.
+        Preserve source code and unknown project properties.
+        For this entire conversation: no application execution, dependency installation,
+        custom DDL parser scripts, source-database connections, Azure calls, deployments,
+        seeding, or application edits. Read only ./app and installed skill guidance.
+        Do not access other projects, user profiles, credentials, or external services.
+        Record uncertainty honestly, validate the phase, and stop at its checkpoint.
+      - |
+        Continue with assessment only, autonomously. Use the accepted discovery evidence.
+        Assign every source table to exactly one business domain; distinguish EF mappings
+        from actual controller access. Preserve shared reference ownership, self-references,
+        cross-domain dependencies, composite keys, and cascade semantics. Missing observed
+        access is not permission to drop a table. Validate the checkpoint and stop.
+        Keep the previous no-execution, no-network and no-application-edit restrictions.
+      - |
+        Continue with schema conversion only, autonomously, with include-unmapped-domains:
+        true. Produce a complete canonical model for all source tables, plus domain models,
+        summaries and evidence. Preserve source identities, composite relationships,
+        Product uniqueness under the supplied collation, financial precision, computed
+        totals, sequence-generated order IDs, and XML/binary content. Where the source
+        behavior cannot be implemented by Cosmos configuration alone, specify a concrete
+        preservation design and its implementation/verification obligations; do not silently
+        weaken guarantees or fabricate source measurements. Choose justified designs for
+        this development migration and record conditional assumptions. No particular domain
+        count, container count, or partition-key layout is prescribed.
+        Validate all required artifacts and stop; do not provision or modify the application.
+      - |
+        Generate provisioning artifacts only for the saved planned development target.
+        This invocation has allow-provisioning: false. Generate Bicep, parameters,
+        synthetic sample data and the seed script from the accepted model, using bundled
+        helpers, and validate their consistency. Treat target metadata as planned settings,
+        not observed cloud facts. Do not query Azure, deploy, seed, install tools, or execute
+        generated scripts. Do not mark provisioning complete or the target verified.
+        Explain unperformed checks and the authorized next step.
+      - |
+        Create and validate the application code-migration plan only. Use the accepted
+        model and saved target; do not change application files or execute build/restore.
+        Plan a direct switch with a maintenance window, one authoritative writer, and an
+        explicit rollback/data-reconciliation strategy. Review the obsolete framework
+        and choose a supported modernization path as ordered work, not an unexplained
+        terminal blocker. Map real controller reads/writes, relationship hydration,
+        uniqueness, computed values, identity generation, authentication and validation
+        to the new design. Keep all implementation tasks pending and distinguish plan
+        completion from successful application migration, deployment or production readiness.
+        Use unchecked pending CM- tasks in Ordered Changes and OP- tasks in Operational
+        Handoff; give each one Depends on field (task IDs or none) and a Done when condition.
+        Keep the dependency graph acyclic, with test-environment setup and implementation
+        verification before production handoff. Separate unresolved mechanism choices
+        from future verification evidence; do not resolve a blocker by naming a service.
+    rubric:
+      - Inventory all twelve authoritative tables, their columns and ordered keys, all twelve foreign keys, self-reference and cascade behavior, without modifying the supplied DDL.
+      - Trace the Customers, Products and ProductCategories controllers to their EF reads and writes; distinguish schema-only entities from observed application operations and identify the .NET Core 2.1 framework.
+      - Preserve every source table exactly once across assessed domains and converted entities without treating no observed access as permission to exclude it.
+      - Explain concrete preservation designs for case-insensitive unique Product Name/ProductNumber values, composite identities and relationships, order-number generation, monetary/computed totals, XML and binary fields. Disclose assumptions and implementation obligations rather than claiming unsupported native guarantees.
+      - Generate model-consistent provisioning and synthetic seed artifacts without claiming cloud verification or completed provisioning; do not execute the generated files.
+      - Produce a validated, actionable direct-switch code-migration plan covering the real application and a supported framework/SDK path, with pending implementation/verification work and honest rollback limits. Do not claim builds or application migration occurred.
+      - Preserve application files, source DDL and user metadata; use only synthetic workload assumptions and fake sample values, and perform no external-resource operations.
+      - Implementation and blocker-clearance conditions must not depend on production tasks that themselves require implementation completion; mandatory supporting services need concrete storage/API and recovery mechanisms or explicitly unresolved design blockers, not unsupported feasibility claims.
+    graders:
+      - type: completed
+      - type: skill-invocation
+        config: { required: [cosmosdb-relational-migration, cosmosdb-best-practices] }
+      - type: adventureworks-artifacts
+        config: { scenario: supplied-ddl }
+      - type: prompt
+        config:
+          scoring: binary
+          threshold: 1
+          evidence: [trajectory, diff, repo]
+          prompt: >-
+            Inspect the source evidence, generated artifacts and trajectory. Grade each
+            rubric criterion for substantive correctness, not keyword presence or final
+            completion claims. Accept justified alternative domain/container layouts and
+            semantically equivalent explanations. Distinguish planning assumptions from
+            observed facts and future implementation obligations from completed execution.
+      - type: output-matches
+        config: { pattern: '\S' }
+    artifacts:
+      include: [app/.cosmosdb-migration/**]

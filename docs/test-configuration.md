@@ -1,11 +1,13 @@
 # Test Configuration Documentation
 
-This project uses **two test frameworks**:
+This project uses the following test runners and evaluation tools:
 
 - **Vitest** — unit tests (Node, mocked `vscode`) and integration tests
   (real `vscode` API inside the Extension Host).
 - **Playwright** — end-to-end tests that drive the React webviews inside a
   real downloaded VS Code instance, against a Cosmos DB emulator in Docker.
+- **Node's built-in test runner** — portable migration skill tests and offline evaluation tests.
+- **Vally** — live migration skill capability and artifact evaluations using GitHub Copilot.
 
 ## 📋 Test Structure Overview
 
@@ -15,6 +17,11 @@ vscode-cosmosdb/
 │   └── **/*.test.ts              # Vitest unit tests (run in Node, vscode is mocked)
 ├── packages/*/src/
 │   └── **/*.test.ts              # Vitest unit tests for workspace packages
+├── skills/cosmosdb-relational-migration/tests/
+│   └── *.test.mjs                # Portable migration helper and contract tests
+├── evals/cosmosdb-relational-migration/
+│   ├── **/eval.yaml              # Vally capability and artifact evaluation specs
+│   └── *.test.mjs                # Offline grader, fixture, and CI gating tests
 ├── test/                         # Integration tests (Vitest in Extension Host)
 │   ├── index.ts                  # Custom @vitest/runner entry executed inside VS Code
 │   ├── **/*.test.ts              # Vitest integration tests (real vscode API)
@@ -25,6 +32,7 @@ vscode-cosmosdb/
 │       ├── fixtures/workspace/   # Workspace folder copied into each worker temp dir
 │       └── README.md             # Detailed e2e architecture notes
 ├── scripts/
+│   ├── eval.mjs                  # Runs Vally specs in isolated trial workspaces
 │   ├── run-integration-tests.mjs # Downloads VS Code + launches the integration host
 │   ├── test-proxy.mjs            # Isolated proxy-routing matrix launcher
 │   ├── test-proxy-host.mjs       # SDK/adapter comparison inside the Extension Host
@@ -62,6 +70,7 @@ Instead, we drive `@vitest/runner.startTests()` directly from a small entry scri
 
 - Use Node's built-in test runner so the standalone skill does not depend on Vitest.
 - Run alone with `npm run test:migration-skill`, or as part of the main `npm run vitest` command.
+- For live agent behavior and artifact checks, see [Migration skill evaluations (Vally)](#migration-skill-evaluations-vally).
 
 ### Integration tests (`test/**/*.test.ts`)
 
@@ -146,6 +155,332 @@ npm run vitest         # one-shot Vitest and migration skill tests
 npm run vitest:coverage # one-shot tests with Vitest coverage
 npm run vitest:ui      # Vitest watch UI (excludes migration skill tests)
 ```
+
+### Migration skill evaluations (Vally)
+
+The [Vally suite](../evals/cosmosdb-relational-migration/) follows the live capability-evaluation approach in
+[AzureCosmosDB/cosmosdb-agent-kit#277](https://github.com/AzureCosmosDB/cosmosdb-agent-kit/pull/277).
+It supplements, rather than replaces, `npm run test:migration-skill` and the extension's unit and UI tests.
+
+Use the Node.js version in `.nvmrc` and install the pinned development dependencies with `npm ci`.
+
+```bash
+# No model calls or credentials required.
+npm run eval:lint
+npm run eval:test
+
+# Requires Copilot authentication and access to both configured models.
+npm run eval
+npm run eval -- --tag category=guidance
+npm run eval -- --tag category=artifacts --tag phase=preflight
+# Check persisted project identity and artifact regeneration for an approved database switch.
+npm run eval -- --tag contract=target-switch --max-retries 0
+# Focused regressions for implied readiness cycles and unselected implementation mechanisms.
+npm run eval -- --tag regression=planning-quality --max-retries 0
+# Parser fallback explanations and the actual first-use permission request.
+npm run eval -- --tag contract=parser-consent --max-retries 0
+# Independent real-sample phases and inference; fetches the pinned application once.
+npm run eval -- --tag category=extended --max-retries 0
+# Run one phase from reviewed prerequisites, without rerunning earlier phases.
+npm run eval -- --tag category=extended --tag phase=provisioning --max-retries 0
+# Explicit opt-in: one conversation chaining discovery through planning.
+npm run eval -- --tag category=integration --max-retries 0
+# Opt-in handoff: fresh conversion, then a separate planning session using those exact outputs.
+npm run eval:handoff
+# Run the smaller suite without downloading the external sample.
+npm run eval -- --tag category!=extended
+# Optional model overrides, without changing the committed specs.
+npm run eval -- --model <agent-model> --judge-model <judge-model>
+```
+
+The suite includes:
+
+- Guidance scenarios for all six phases, parser consent and fallback, source authority, SDK eligibility,
+  domain ownership, peer-skill design guidance, approval gates, reruns, project scope,
+  historical code-migration completion, and project-local memory.
+  Planning regressions cover implementation-versus-production readiness, activation-versus-observation cycles,
+  and unresolved service mechanisms being mislabeled as resolved work.
+  Parser coverage includes both fallback explanations and presenting the first-use choice with dependency/license
+  disclosure, then stopping without selecting or invoking a parser. The headless scenario tests the permission
+  request and pause, not a real user-approval round trip or dependency installation.
+- An unrelated PostgreSQL prompt that must activate neither migration nor best-practices skills.
+- Three artifact-producing scenarios: preflight from supplied synthetic inputs, assessment from a valid
+  discovery checkpoint, and a database target switch from a synthetic completed provisioning checkpoint.
+  Each trial gets a separate `app` fixture and local copies of both skills.
+  A host-side grader plugin reruns trusted migration completion validators, checks source inventory and ownership,
+  and rejects source edits, changed predecessor evidence, lost user metadata, and out-of-phase artifacts.
+  The model judge also inspects the generated files, not just the agent's completion claim.
+  The target-switch case replaces the prose-only identity-preservation check: it verifies the saved project name,
+  accepted root/domain models, upstream state and freshness, account coordinates, and reused sample data.
+  It requires the approved database in saved state, exact target-dependent artifact regeneration, and incomplete,
+  unverified provisioning. Old readback may be removed or retained unchanged as historical evidence, but must not be
+  retargeted or refreshed into new verification. The semantic judge checks the decision summary and execution
+  boundaries without requiring the final reply to enumerate every preserved field.
+- Seven extended AdventureWorks scenarios: independent preflight, discovery, assessment, schema conversion,
+  artifact-only provisioning and code-migration planning, plus discovery that infers DDL from the real
+  Entity Framework application without receiving the supplied schema.
+- An opt-in integration scenario chaining discovery through planning in one conversation. The runner
+  excludes it unless `--tag category=integration` explicitly selects it, including on an unfiltered `npm run eval`.
+- An opt-in conversion-to-planning handoff, reusing the isolated phase specifications and their current rubrics.
+  It runs fresh conversion first, then passes its exact accepted outputs to a new planning session instead of
+  substituting the reviewed conversion fixture. It is not included in an unfiltered `npm run eval`.
+
+Every scenario requires completion, correct skill activation, a nonempty answer, and binary correctness
+at threshold `1`. Guidance scenarios also require no workspace edits. Offline fake-judge tests exercise
+grading and rejection paths; they do **not** establish model quality. Artifact checks validate recorded
+contracts and source hashes, not SQL-engine fidelity or real deployment success. No scenario deploys
+resources, executes generated seed scripts, rewrites application code, or builds the sample application.
+
+Live runs consume Copilot requests. Authenticate through the Copilot CLI or set `COPILOT_GITHUB_TOKEN`
+in your environment; never put tokens in specs or fixtures. Acceptance evaluations use frontier models
+to match the recommended migration workflow:
+
+| Suite                                 | Agent           | Judge         | Agent / judge reasoning effort |
+| ------------------------------------- | --------------- | ------------- | ------------------------------ |
+| Guidance and small artifact scenarios | `gpt-6.1-terra` | `gpt-6.1-sol` | `high` / `high`                |
+| Extended AdventureWorks scenarios     | `gpt-6.1-sol`   | `gpt-6-astra` | `high` / `high`                |
+
+Model IDs and reasoning effort are pinned in each spec. Local model access does not establish access for
+the Actions job token: confirm both agent and judge access in CI when changing these defaults. Unavailable
+models must fail the run rather than silently falling back to a different model.
+
+Vally telemetry is disabled by the npm commands. Trials prohibit deployment, source
+database access and dependency installation, and need no Azure credentials or emulator. Local Vally
+workspaces are isolated directories, **not an OS security sandbox**; run only trusted skills and fixtures.
+The runner rejects `--in-place`. Do not point workspace overrides at a real application.
+
+Reports, trajectories and optional preserved workspaces belong under the ignored `.vally/` directory.
+Use `--workspace .vally/workspaces` to retain trial workspaces for diagnosis. Vally retries executor timeouts
+and rate limits at most twice; failed correctness verdicts are not retried or relaxed.
+The extended CI job disables executor retries to avoid repeating an expensive full migration after a timeout.
+
+The [evaluation workflow](../.github/workflows/migration-evals.yml) runs offline checks when evaluation inputs
+change. Automatic live runs require changes under `skills/cosmosdb-relational-migration/` or its required
+`skills/cosmosdb-best-practices/` peer; evaluation-only and unrelated changes skip model calls.
+Fork and Dependabot PRs are always offline-only. A manual workflow dispatch runs the default suites;
+its `integration` input additionally enables the chained scenario, and its independent `handoff` input enables
+the conversion-to-planning handoff.
+The small and AdventureWorks suites run in independent matrix jobs after offline validation, with fail-fast
+disabled so a failed suite cannot cancel or suppress another. Requested integration and handoff each run in their own matrix job.
+Each live job uses a job-scoped token with `copilot-requests: write`, publishes its own report summary and retains
+suite-named artifacts for 14 days. The aggregate check requires every requested suite to succeed, reports success
+for intentional skips and fails for incomplete required jobs.
+
+When adding scenarios, use synthetic inputs, meaningful behavioral rubrics and category/phase tags.
+Keep answer keys and executable artifact checks outside agent-visible fixtures. The artifact grader plugin
+loads validators from the repository, not from potentially modified copies in the trial workspace.
+Extend the offline tests with a passing case and focused malformed-output cases for each new artifact contract.
+
+#### Bounded evidence for isolated AdventureWorks judges
+
+The isolated phase specs use the [bounded judge](../evals/cosmosdb-relational-migration/adventureworks/judge.mjs),
+not a full repository snapshot. A host-side builder selects the requested phase's source evidence,
+prerequisites and output artifacts and supplies them **inline** to the configured judge. Conversion uses separate
+design and execution-boundary packets; planning uses implementation, dependency-ordering and execution-boundary
+packets. Other phases retain one complete packet. Every rubric criterion belongs to exactly one scope, and every
+scope must pass; missing or duplicate criterion assignments fail before model invocation. The judge runs in
+an empty temporary workspace with no readable evidence files, so it need not spend tool calls searching
+the repository. Models, reasoning effort, binary threshold and the 120-second response timeout **per call** are unchanged.
+Conversion requires two calls and planning three; these are separate assessments, not retries or a vote.
+The opt-in chained integration case and smaller suites retain their existing graders.
+
+Each packet is limited to **384,000 UTF-8 bytes**; it is not permission to clip oversized files.
+Splitting separates design/source evidence from the execution audit and isolates dependency reasoning over
+the complete plan. Boundary packets retain the complete audit; design/implementation packets explicitly state
+that it is assessed separately. Shared contextual files are repeated where necessary, not shortened.
+Selected text files are complete, JSON is compactly serialized, and the project-state projection explicitly
+lists omitted freshness/activity/history fields. Every selected file carries its path, role, original byte
+count and SHA-256. The packet also includes the independent structural-validation result, final agent answer,
+assistant messages, full command arguments and tool-result success flags. Repeated skill bodies and migration
+artifact patch bodies are represented by names/paths and hashes instead of duplicated text. Executable
+patches are retained. The packet lists its exclusions; it is not an exhaustive source or execution audit,
+and tool success flags alone do not prove shell exit codes.
+
+Single-packet evidence is retained in `metadata.evidence_packet`; scoped evidence uses `metadata.evidence_packets`,
+with each scope's assigned rubric indices, complete packet and byte count. `metadata.group_results` records each
+response's timing, token usage and scores; `evidence_bytes` is the sum across packets, not a per-packet limit.
+This makes the actual judge input auditable
+and avoids the pinned Vally repository snapshot's 32 KB per-file truncation and 64,000-character retrieval
+budget. It does not expand the agent's permissions or replace independent artifact validation.
+
+All packets are built and bounded before any judge call. Missing, unreadable, unsafe or oversized evidence fails
+**before** a model call with `status: error`.
+Judge timeouts, malformed/incomplete score sets and an explicit inability to grade also return errors.
+A fully graded incorrect output remains a normal failed verdict, not an infrastructure error. Both fail
+the strict CI gate; neither silently passes, retries, drops criteria or substitutes a different model.
+Review oversized-packet diagnostics and narrow the scenario/evidence design deliberately rather than
+truncating evidence to obtain a verdict.
+
+#### Plan dependencies and implementation feasibility
+
+Planning artifact checks require unchecked, pending `CM-` tasks in `Ordered Changes` and optional `OP-` tasks
+in `Operational Handoff`. Each task declares one `Depends on:` field with existing task IDs or `none`, and a
+`Done when:` condition. Duplicate IDs, unknown prerequisites, self-dependencies, cycles, and code tasks depending
+on production handoff tasks fail deterministically. This is an evaluation contract, not a change to the migration
+skill or its portable validators.
+
+The judge additionally checks **implied** dependencies: a task cannot require blocker-clearance evidence produced
+only by a later task that itself depends on the first. Isolated test-environment setup and implementation
+verification must be distinguished from production inventory, deployment and cutover readiness. An acyclic list
+of explicit task IDs does not establish a feasible execution order.
+
+Conversion and planning rubrics also distinguish a concrete implementation mechanism from a named future service.
+Mandatory supporting components need identified storage/API primitives, ownership, publication/fencing and recovery
+behavior, plus verification obligations. Unresolved technology, supplier or protocol choices remain explicit
+conditions/blockers, rather than being marked resolved by a promise to implement them. Prohibited execution is not
+required during planning: evidence still to collect is different from a mechanism not yet selected.
+
+#### Opt-in conversion-to-planning handoff
+
+`npm run eval:handoff` runs one conversion trial (45-minute budget) followed by one planning trial (20-minute
+budget), in separate sessions and workspaces, with zero executor retries. It uses the same pinned agent/judge
+models, phase prompts, strict graders, and separate bounded evidence packets as the default isolated suite.
+The normal source fetch/cache behavior is unchanged.
+
+Planning starts only after conversion execution and every required grader succeed. The host captures the accepted
+application/artifacts before planning; planning must preserve source files, all analytical artifacts, project identity,
+phase state and upstream freshness. The plan manifest must reference the exact generated model hash. The baseline
+is captured outside the agent workspace for grading and checked again after planning; this is not an OS sandbox.
+No reference snapshots are refreshed or promoted automatically.
+
+Each phase retains its ordinary Vally reports and workspace under a unique `handoff-*` result directory.
+`handoff.json` records the source model hash, completed phase trial identities and the overall outcome. Failed,
+missing, skipped or ungradeable conversion results stop the handoff, never falling back to checked-in conversion.
+Use `-- --output-dir <directory>` to choose another result parent. The handoff does not provision, seed, build,
+apply the application plan or prove production feasibility. Packet overflow still fails without truncation.
+
+#### Comparing migration models
+
+Use the same judge and reasoning effort for every candidate, keeping fixtures, prompts, rubrics, validators
+and thresholds unchanged:
+
+```bash
+npm run eval -- --tag category=extended \
+  --model gpt-6.1-terra,gpt-6.1-sol --judge-model gpt-6-astra \
+  --reasoning-effort high --judge-reasoning-effort high \
+  --runs 1 --max-retries 0
+```
+
+Vally reports each agent model separately. One trial per scenario is a diagnostic comparison, not a
+statistically reliable ranking; use repeated trials before drawing reliability conclusions. Preserve failed
+outputs and inspect substantive findings manually. A stronger judge does not replace deterministic checks,
+and a passing frontier-model run does not erase a demonstrated omission in another model's output.
+With the pinned Vally version, omit `--workspace` for multi-model runs to avoid workspace-path collisions;
+configured output artifacts are still retained. To preserve complete workspaces, run each model separately
+with a distinct workspace root.
+
+#### AdventureWorks inputs and assertions
+
+The [extended specs](../evals/cosmosdb-relational-migration/adventureworks/eval.yaml) use
+[Azure-Samples/AdventureWorks.Web](https://github.com/Azure-Samples/AdventureWorks.Web) at commit
+`d548c0ddb3e3a464fa34c1fdc39c2333506b42cc`. The repository is MIT-licensed, archived, and targets
+.NET Core 2.1. It is intentionally analyzed as legacy source, not restored, built, or started.
+Framework modernization belongs in the generated plan, not in evaluation setup.
+
+The runner fetches that exact commit once into `.vally/fixtures/adventureworks-web/` before starting
+matching live stimuli, then copies the checkout into each isolated trial without its Git metadata.
+Its license is retained. A cached checkout must have the pinned HEAD and no local changes; mismatches
+fail explicitly rather than resetting or overwriting files. Offline lint/tests and filtered runs that
+exclude the extended scenarios do not download it. Initial preparation requires Git and GitHub access.
+
+[AdventureworksLT.sql](../evals/cosmosdb-relational-migration/adventureworks/AdventureworksLT.sql) is the
+supplied EF-aligned AdventureWorksLT schema export, normalized to LF line endings. It is a versioned test
+input, not downloaded from the application's branch or regenerated during CI. The supplied-DDL phases and integration scenario receive it; the inference scenario receives application
+code and synthetic workload assumptions.
+No database backup, production rows, credentials, or live source database are required.
+
+The host-side [schema contract](../evals/cosmosdb-relational-migration/adventureworks/schema-contract.json)
+records reviewed table/column inventories, scalar types and nullability, ordered primary keys, foreign-key
+endpoints/delete actions, and separate unique/nonunique indexes. Deterministic
+graders compare the agent's evidence with those facts, require read/write evidence from all three CRUD
+controllers, check inference provenance, and rerun the portable phase validators. Phase-specific checks
+require exact table coverage in assessment/conversion, model-consistent Bicep/seed artifacts during
+provisioning, or a valid plan-only manifest during code-migration planning. All phases preserve application/DDL
+bytes, user metadata and the planned target. They must not fabricate deployment verification or build results.
+
+The [source-contract checker](../evals/cosmosdb-relational-migration/adventureworks/source-contract.mjs)
+normalizes case/whitespace, the fixture's six SQL alias base types, `INTEGER`/`INT` and `NUMERIC`/`DECIMAL`,
+and length/precision/scale supplied either in the type string or separate fields. Conflicting representations
+fail rather than letting one field override another. Known scalar nullability must be explicit (`nullable`
+or `isNullable`); it is not guessed from a missing field. Indexes can be recorded globally or per table,
+with `keys`, `columns`, or `keyColumns`, and unique entries can use `uniqueConstraints`. Uniqueness is
+never inferred from an `AK_` name. Missing, duplicate, reordered, filtered, combined or invented constraints
+fail. In particular, Product Name and ProductNumber remain separate constraints.
+
+Optional `length` and `maxLength` facets may be omitted or `null` when not separately specified.
+The required length must still come from the type (including resolved fixture aliases) or a concrete facet:
+`varbinary(max)` with `maxLength: null` retains its declared `max`, while bare `varbinary` with only null
+facets fails. Every concrete facet must agree with the type and other concrete facets. This does not relax
+required nullability, precision/scale, key, or uniqueness evidence.
+
+Source mode is selected by the evaluation scenario, not by an agent-controlled `origin` field:
+
+- **Supplied DDL:** require the recorded delete action for every FK and every declared index, including
+  nonunique indexes. An explicit update-action claim must match the source's `NO ACTION` behavior.
+- **EF inference:** still require known mapped scalar facts and explicitly mapped indexes. Seven nonunique
+  FK-convention indexes are optional because they are not explicitly declared in the pinned EF configuration.
+  Physical FK actions may be missing or `unknown`; any concrete database-action claim must agree with the
+  mapped relationship. ORM `ClientSetNull` descriptions are not treated as database `SET NULL`.
+  `includedColumns: null` records unknown physical index metadata and is accepted only in inference mode;
+  it is not normalized into an assertion that the deployed index has no included columns. Concrete included
+  columns must still match the fixture, and supplied-DDL grading continues to reject explicit unknown values.
+- **Computed columns:** retain their computed nature; allow explicit unknown physical type/nullability
+  metadata instead of pretending SQL Server ran. Concrete mapped types are checked against the EF mapping,
+  including `LineTotal` precision/scale. Nonblank `computedExpression` and `computedSql` strings are equivalent
+  evidence of a computed column, alongside the existing `computed` marker/expression or computed type label.
+  Recognizing an expression does not bypass type/nullability checks or independently validate its SQL semantics.
+
+These are deterministic checks of recorded source facts, not a SQL parser or source-engine validation.
+Mutation tests cover wrong types, narrowed lengths, precision/scale changes, missing or contradictory
+nullability, changed FK actions, lost uniqueness and fabricated email uniqueness. The oracle is reviewed
+against the versioned DDL and pinned EF source, not generated from the answer under evaluation.
+Target-side collation equivalence, global-versus-partition uniqueness and application enforcement designs
+remain the bounded judge's responsibility; matching source index metadata does not prove target preservation.
+
+The synthetic workload is table-specific: one BuildVersion row with zero growth, 50 categories, 250 models,
+1,000 products, 10,000 order headers and 40,000 details, with different sizes, growth and busy-window rates.
+These are illustrative fixture assumptions, **not counts measured from AdventureWorks**. Sizes use decimal KB
+(1,000 bytes); TPS is not a continuous duty cycle or a basis for deriving net inserts. The aggregate order ratio
+is not a maximum number of children per order. Snapshot volumetrics and domain/root payload examples are reconciled
+with the same profile. A separate `workload-contradiction` guidance case keeps the impossible 1,000-row TINYINT-key
+example out of the default artifact inputs and checks that the agent flags it without silently inventing a replacement.
+
+The model judge covers semantic details without a fixed container layout: case-insensitive uniqueness,
+composite relationships, cascade behavior, self-reference, sequence-generated IDs, exact financial/computed
+values, XML/binary preservation, modernization and rollback. Workload numbers and source collation are
+explicit synthetic planning assumptions, not facts measured from the sample. Passing these checks does
+not prove source-engine validity, production performance, successful deployment or executable migrated code.
+
+Each isolated phase gets a fresh session, separate workspace, timeout, grading verdict and artifact export.
+The budget is 20 minutes per trial, except schema conversion at 45 minutes. A failed phase does not prevent
+other independent phase trials from running; there is no shared conversation deadline.
+The opt-in integration scenario retains its 60-minute shared deadline.
+CI runs the independent phases separately from the smaller live suite under the same skill-change/trusted-PR gate.
+Each suite has its own 150-minute job limit, including the optional integration suite; there is no shared CI deadline.
+Changes to the sample pin, DDL or graders alone still receive offline checks only, so use a manual dispatch to evaluate those changes.
+When updating the pin or DDL, review the independent contract and semantic rubrics rather than regenerating
+expected answers from the agent's output.
+
+#### Prerequisite fixtures and phase boundaries
+
+The [versioned checkpoint snapshots](../evals/cosmosdb-relational-migration/adventureworks/checkpoints/README.md)
+contain reviewed analytical artifacts, project-state projections and integrity metadata. Discovery starts
+from preflight; assessment from discovery; conversion from assessment; provisioning and planning from
+conversion. Planning does not need a deployed target or provisioning completion. Preflight starts from
+the raw supplied inputs; inference discovery still performs its necessary preflight work itself.
+
+Only predecessor snapshots are staged for a trial: conversion never sees the reference converted model,
+and provisioning/planning never see reference outputs for their own phase. Setup checks the pinned source
+revision, schema/workload hashes and fixture file hashes, reconstructs workspace-local freshness, and
+validates every prerequisite before the agent starts. This fixture-only initialization does not permit
+the agent to rebaseline stale evidence. Grading rejects changed predecessor files/state, future-phase
+completion and artifacts outside the requested phase. Snapshots are never refreshed from current run outputs.
+
+The agent can use installed shell tools to process inputs, including Node.js or Python for bounded JSON/log
+aggregation. These scenarios explicitly select model-only DDL interpretation, so Python/SQLGlot or custom
+parser scripts must not be used to interpret DDL. They also forbid dependency installation, application
+execution and external-resource calls. The workload fixture contains estimates, not generated database rows.
+Shell access is a capability, not a sandbox guarantee or permission to ignore those restrictions.
 
 ### Integration tests (slow, real VS Code)
 

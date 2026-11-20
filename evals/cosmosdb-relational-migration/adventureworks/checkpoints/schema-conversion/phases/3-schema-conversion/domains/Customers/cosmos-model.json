@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "databaseName": "adventureworks-eval",
+  "capacityMode": "serverless",
+  "domain": "Customers",
+  "sourceType": "SQL Server",
+  "containers": [
+    {
+      "name": "Customers",
+      "partitionKeys": [
+        {
+          "path": "/id",
+          "analysis": "Each standalone item uses its deterministic source-key-derived id as its partition key."
+        }
+      ],
+      "entities": [
+        {
+          "name": "Address",
+          "docType": "address",
+          "sourceTable": "SalesLT.Address",
+          "idTemplate": "address-{AddressID}",
+          "attributes": [
+            {"target":"id","source":{"table":"SalesLT.Address","column":"AddressID","type":"INT"},"type":"string","isId":true,"isPartitionKey":true},
+            {"target":"addressId","source":{"table":"SalesLT.Address","column":"AddressID","type":"INT"},"type":"integer"},
+            {"target":"addressLine1","source":{"table":"SalesLT.Address","column":"AddressLine1","type":"NVARCHAR(60)"},"type":"string"},
+            {"target":"addressLine2","source":{"table":"SalesLT.Address","column":"AddressLine2","type":"NVARCHAR(60)"},"type":"string"},
+            {"target":"city","source":{"table":"SalesLT.Address","column":"City","type":"NVARCHAR(30)"},"type":"string"},
+            {"target":"stateProvince","source":{"table":"SalesLT.Address","column":"StateProvince","type":"dbo.Name"},"type":"string"},
+            {"target":"countryRegion","source":{"table":"SalesLT.Address","column":"CountryRegion","type":"dbo.Name"},"type":"string"},
+            {"target":"postalCode","source":{"table":"SalesLT.Address","column":"PostalCode","type":"NVARCHAR(15)"},"type":"string"},
+            {"target":"rowguid","source":{"table":"SalesLT.Address","column":"rowguid","type":"UNIQUEIDENTIFIER"},"type":"string"},
+            {"target":"modifiedDate","source":{"table":"SalesLT.Address","column":"ModifiedDate","type":"DATETIME"},"type":"string"}
+          ],
+          "relationships": [
+            {"targetEntity":"SalesOrderHeader","sourceFK":{"table":"SalesLT.SalesOrderHeader","column":"BillToAddressID","constraintName":"FK_SalesOrderHeader_Address_BillTo_AddressID"},"type":"one-to-many","strategy":"reference"},
+            {"targetEntity":"SalesOrderHeader","sourceFK":{"table":"SalesLT.SalesOrderHeader","column":"ShipToAddressID","constraintName":"FK_SalesOrderHeader_Address_ShipTo_AddressID"},"type":"one-to-many","strategy":"reference"}
+          ]
+        },
+        {
+          "name": "Customer",
+          "docType": "customer",
+          "sourceTable": "SalesLT.Customer",
+          "idTemplate": "customer-{CustomerID}",
+          "attributes": [
+            {"target":"id","source":{"table":"SalesLT.Customer","column":"CustomerID","type":"INT"},"type":"string","isId":true,"isPartitionKey":true},
+            {"target":"customerId","source":{"table":"SalesLT.Customer","column":"CustomerID","type":"INT"},"type":"integer"},
+            {"target":"nameStyle","source":{"table":"SalesLT.Customer","column":"NameStyle","type":"dbo.NameStyle"},"type":"boolean"},
+            {"target":"title","source":{"table":"SalesLT.Customer","column":"Title","type":"NVARCHAR(8)"},"type":"string"},
+            {"target":"firstName","source":{"table":"SalesLT.Customer","column":"FirstName","type":"dbo.Name"},"type":"string"},
+            {"target":"middleName","source":{"table":"SalesLT.Customer","column":"MiddleName","type":"dbo.Name"},"type":"string"},
+            {"target":"lastName","source":{"table":"SalesLT.Customer","column":"LastName","type":"dbo.Name"},"type":"string"},
+            {"target":"suffix","source":{"table":"SalesLT.Customer","column":"Suffix","type":"NVARCHAR(10)"},"type":"string"},
+            {"target":"companyName","source":{"table":"SalesLT.Customer","column":"CompanyName","type":"NVARCHAR(128)"},"type":"string"},
+            {"target":"salesPerson","source":{"table":"SalesLT.Customer","column":"SalesPerson","type":"NVARCHAR(256)"},"type":"string"},
+            {"target":"emailAddress","source":{"table":"SalesLT.Customer","column":"EmailAddress","type":"NVARCHAR(50)"},"type":"string"},
+            {"target":"phone","source":{"table":"SalesLT.Customer","column":"Phone","type":"dbo.Phone"},"type":"string"},
+            {"target":"passwordHash","source":{"table":"SalesLT.Customer","column":"PasswordHash","type":"VARCHAR(128)"},"type":"string"},
+            {"target":"passwordSalt","source":{"table":"SalesLT.Customer","column":"PasswordSalt","type":"VARCHAR(10)"},"type":"string"},
+            {"target":"rowguid","source":{"table":"SalesLT.Customer","column":"rowguid","type":"UNIQUEIDENTIFIER"},"type":"string"},
+            {"target":"modifiedDate","source":{"table":"SalesLT.Customer","column":"ModifiedDate","type":"DATETIME"},"type":"string"}
+          ],
+          "relationships": [
+            {"targetEntity":"SalesOrderHeader","sourceFK":{"table":"SalesLT.SalesOrderHeader","column":"CustomerID","constraintName":"FK_SalesOrderHeader_Customer_CustomerID"},"type":"one-to-many","strategy":"reference"}
+          ]
+        },
+        {
+          "name": "CustomerAddress",
+          "docType": "customerAddress",
+          "sourceTable": "SalesLT.CustomerAddress",
+          "idTemplate": "customerAddress-{CustomerID}-{AddressID}",
+          "attributes": [
+            {"target":"id","source":{"table":"SalesLT.CustomerAddress","column":"CustomerID","type":"INT"},"type":"string","isId":true,"isPartitionKey":true},
+            {"target":"customerId","source":{"table":"SalesLT.CustomerAddress","column":"CustomerID","type":"INT"},"type":"integer"},
+            {"target":"addressId","source":{"table":"SalesLT.CustomerAddress","column":"AddressID","type":"INT"},"type":"integer"},
+            {"target":"addressType","source":{"table":"SalesLT.CustomerAddress","column":"AddressType","type":"dbo.Name"},"type":"string"},
+            {"target":"rowguid","source":{"table":"SalesLT.CustomerAddress","column":"rowguid","type":"UNIQUEIDENTIFIER"},"type":"string"},
+            {"target":"modifiedDate","source":{"table":"SalesLT.CustomerAddress","column":"ModifiedDate","type":"DATETIME"},"type":"string"}
+          ],
+          "relationships": [
+            {"targetEntity":"Customer","sourceFK":{"table":"SalesLT.CustomerAddress","column":"CustomerID","constraintName":"FK_CustomerAddress_Customer_CustomerID"},"type":"one-to-many","strategy":"reference"},
+            {"targetEntity":"Address","sourceFK":{"table":"SalesLT.CustomerAddress","column":"AddressID","constraintName":"FK_CustomerAddress_Address_AddressID"},"type":"one-to-many","strategy":"reference"}
+          ]
+        }
+      ],
+      "indexingPolicy": {
+        "indexingMode": "consistent",
+        "automatic": true,
+        "includedPaths": [{"path":"/*"}],
+        "excludedPaths": [{"path":"/\"_etag\"/?"},{"path":"/passwordHash/?"},{"path":"/passwordSalt/?"}]
+      }
+    }
+  ],
+  "accessPatterns": [
+    {"name":"R001 List customers","source":{"type":"EF Core","query":"List Customer without filter"},"target":{"type":"query","container":"Customers","operation":"Parameterized paginated cross-partition query","query":"SELECT * FROM c WHERE c.docType = @docType","isCrossPartition":true}},
+    {"name":"R002 Customer by key and existence","source":{"type":"EF Core","query":"Find Customer by CustomerID"},"target":{"type":"pointRead","container":"Customers","operation":"Read item by derived id and identical partition key","partitionKeyValue":"customer-{CustomerID}","isCrossPartition":false}},
+    {"name":"W001 Create customer","source":{"type":"EF Core","query":"Insert Customer"},"target":{"type":"write","container":"Customers","operation":"Coordinated create with derived id and identical partition key","partitionKeyValue":"customer-{CustomerID}","isCrossPartition":false}},
+    {"name":"W002 Update customer","source":{"type":"EF Core","query":"Update Customer by CustomerID"},"target":{"type":"write","container":"Customers","operation":"Coordinated conditional replace with id and identical partition key","partitionKeyValue":"customer-{CustomerID}","isCrossPartition":false}},
+    {"name":"W003 Delete customer","source":{"type":"EF Core","query":"Delete Customer by CustomerID"},"target":{"type":"write","container":"Customers","operation":"Coordinated delete after integrity checks","partitionKeyValue":"customer-{CustomerID}","isCrossPartition":false}}
+  ],
+  "crossPartitionQueries": [
+    {"name":"R001 List customers","container":"Customers","query":"SELECT * FROM c WHERE c.docType = @docType","reason":"No id or partition key is supplied for the list.","estimatedRUCost":"unknown; fan-out depends on partition count and results","optimizations":["Use continuation tokens and project only necessary non-sensitive fields.","Consider a read model only after workload and consistency requirements are measured."]}
+  ]
+}

@@ -1,0 +1,310 @@
+name: cosmosdb-relational-migration-adventureworks-phases
+description: Independent real-application phases with reviewed prerequisites, fresh sessions and separate budgets.
+type: capability
+
+agent_environment:
+  skills:
+    - ../../../skills/cosmosdb-relational-migration
+    - ../../../skills/cosmosdb-best-practices
+  files:
+    - { src: setup.mjs, dest: setup-adventureworks.mjs }
+    - { src: checkpoints.mjs, dest: checkpoints.mjs }
+    - { src: sample.mjs, dest: sample.mjs }
+
+defaults:
+  executor: copilot-sdk
+  model: gpt-6.1-sol
+  reasoning_effort: high
+  judge_model: gpt-6-astra
+  judge_reasoning_effort: high
+  runs: 1
+  timeout: 20m
+
+scoring:
+  threshold: 1
+
+stimuli:
+  - name: adventureworks-preflight
+    tags: { category: extended, sample: adventureworks, phase: preflight }
+    agent_environment:
+      files:
+        - &ddl { src: AdventureworksLT.sql, dest: AdventureworksLT.sql }
+      commands: [node setup-adventureworks.mjs preflight]
+    prompt: |
+      Run only preflight for the relational-to-Cosmos DB migration in ./app,
+      autonomously with model-only DDL interpretation. The supplied AdventureworksLT.sql
+      is authoritative and immutable. Identify application details, inventory every
+      source table and declared relationship, and reconcile workload.json as synthetic
+      assumptions rather than production facts. Review the real application for
+      discrepancies without modifying it. Validate the checkpoint and stop before discovery.
+      No application execution, dependency installation, custom DDL parser scripts,
+      source-database connections, external-service calls, deployments, seeding or
+      application edits. Read only ./app and installed skill guidance. Preserve user
+      metadata and the planned target. Do not inspect other projects or user profiles.
+    rubric:
+      - Inventory all twelve authoritative tables, their columns and ordered keys, all twelve foreign keys, self-reference and cascade behavior, without modifying the supplied DDL.
+      - Preserve source and user metadata, distinguish synthetic workload assumptions from observations, and report concrete discrepancies without inventing repairs or facts.
+      - Complete and validate preflight only; do not evaluate discovery-owned SDK compatibility or advance discovery or later phases.
+    graders:
+      - &completed { type: completed }
+      - &migration
+        type: skill-invocation
+        config: { required: [cosmosdb-relational-migration] }
+      - type: adventureworks-artifacts
+        config: { scenario: preflight }
+      - &judge
+        type: adventureworks-judge
+        config:
+          scoring: binary
+          threshold: 1
+          prompt: &judge-prompt >-
+            Inspect the source evidence, generated artifacts and trajectory for the
+            requested phase only. Grade substantive correctness, not keyword presence
+            or final completion claims. Accept justified alternative designs and
+            semantically equivalent explanations. Prerequisite fixtures are inputs,
+            not work performed by this agent. Distinguish planning assumptions and
+            implementation obligations from observed facts and completed execution.
+      - &output
+        type: output-matches
+        config: { pattern: '\S' }
+    artifacts: &artifacts
+      include: [app/.cosmosdb-migration/**]
+
+  - name: adventureworks-discovery
+    tags: { category: extended, sample: adventureworks, phase: discovery, scenario: supplied-ddl }
+    agent_environment:
+      files:
+        - *ddl
+        - &preflight { src: checkpoints/preflight, dest: .checkpoints/preflight }
+      commands: [node setup-adventureworks.mjs discovery]
+    prompt: |
+      Run only discovery for the relational-to-Cosmos DB migration in ./app,
+      autonomously. Preflight is already complete and validated; preserve its artifacts.
+      Trace the application's actual Entity Framework mappings and controller reads/writes.
+      Distinguish mapped entities from observed application operations, evaluate SDK and
+      framework compatibility, and retain every source table including those with no
+      observed access. Workload.json contains synthetic assumptions, not measurements.
+      Validate discovery and stop before assessment. Use model-only DDL interpretation.
+      No application execution, installs, custom DDL parsers, external-service or database
+      calls, deployment, seeding or application edits. Read only ./app and installed
+      skills; preserve user metadata, source DDL and the planned target.
+    rubric:
+      - Trace Customers, Products and ProductCategories controller reads and writes to their mapped entities, distinguishing schema-only presence from observed operations.
+      - Evaluate the .NET SDK and identify the obsolete .NET Core 2.1 framework with modernization obligations, without claiming a build or runtime compatibility test.
+      - Preserve the accepted preflight and source evidence, account for every table, validate discovery and stop before assessment; do not fabricate workload observations.
+    graders:
+      - *completed
+      - *migration
+      - type: adventureworks-artifacts
+        config: { scenario: discovery }
+      - *judge
+      - *output
+    artifacts: *artifacts
+
+  - name: adventureworks-assessment
+    tags: { category: extended, sample: adventureworks, phase: assessment }
+    agent_environment:
+      files:
+        - *ddl
+        - *preflight
+        - &discovery { src: checkpoints/discovery, dest: .checkpoints/discovery }
+      commands: [node setup-adventureworks.mjs assessment]
+    prompt: |
+      Run only assessment for the relational-to-Cosmos DB migration in ./app,
+      autonomously. Preflight and discovery are already complete and validated.
+      Assign every source table to exactly one business domain; distinguish EF mappings
+      from controller access and preserve shared reference ownership, self-references,
+      cross-domain dependencies, composite keys and cascade semantics. Missing observed
+      access is not permission to drop a table. Validate assessment and stop before
+      final container/partition-key design. Preserve accepted predecessor artifacts.
+      No application execution, installs, custom DDL parsers, external-service or database
+      calls, deployment, seeding or application edits. Read only ./app and installed
+      skills; preserve user metadata, source DDL and the planned target.
+    rubric:
+      - Assign every one of the twelve source tables to exactly one coherent domain, retaining schema-only entities and accurately distinguishing mapping from observed application access.
+      - Record shared Address ownership, cross-domain foreign keys, category self-reference and order cascade semantics with evidence and uncertainty.
+      - Produce and validate root/domain assessment artifacts without changing accepted source or predecessor evidence, and stop before final Cosmos DB model design.
+    graders:
+      - *completed
+      - *migration
+      - type: adventureworks-artifacts
+        config: { scenario: assessment }
+      - *judge
+      - *output
+    artifacts: *artifacts
+
+  - name: adventureworks-schema-conversion
+    tags: { category: extended, sample: adventureworks, phase: schema-conversion }
+    constraints: { max_duration: 45m }
+    agent_environment:
+      files:
+        - *ddl
+        - *preflight
+        - *discovery
+        - &assessment { src: checkpoints/assessment, dest: .checkpoints/assessment }
+      commands: [node setup-adventureworks.mjs schema-conversion]
+    prompt: |
+      Run only schema conversion for the relational-to-Cosmos DB migration in ./app,
+      autonomously with include-unmapped-domains: true. Discovery and assessment are
+      already validated. Produce canonical and domain models, summaries and evidence
+      for all source tables. Preserve identities, composite relationships, Product
+      uniqueness under the supplied collation, financial precision, computed totals,
+      sequence-generated order IDs and XML/binary content. Where Cosmos configuration
+      alone is insufficient, specify a concrete preservation design and its implementation
+      and verification obligations. Record assumptions; do not fabricate measurements.
+      For mandatory supporting components, identify the storage/API primitives, ownership,
+      publication and failure/recovery mechanism, and the evidence needed to establish
+      feasibility. Distinguish a selected implementation mechanism from an unresolved
+      technology or supplier choice; do not turn "implement an exact comparator" or
+      "prove fencing later" into a claim of solved feasibility.
+      No particular container count or partition-key layout is prescribed.
+      Validate conversion and stop; preserve accepted predecessor artifacts.
+      No application execution, installs, custom DDL parsers, external-service or database
+      calls, deployment, seeding or application edits. Read only ./app and installed
+      skills; preserve user metadata, source DDL and the planned target.
+    rubric:
+      - Map every selected source table exactly once into validated domain models and a consistent canonical model, preserving identities and relationships.
+      - Explain concrete preservation designs for both case-insensitive Product Name and ProductNumber uniqueness, including source-wide scope rather than assuming partition-local policies are global.
+      - Preserve composite relationships, order-number allocation, exact financial/computed values, XML and binary content; disclose assumptions and implementation/verification obligations instead of claiming native guarantees.
+      - Preserve accepted predecessor evidence and stop before provisioning or application edits.
+      - For non-native guarantees, identify concrete implementation primitives and failure/recovery mechanisms with verification obligations; distinguish evidence still to collect from unresolved mechanism or supplier choices, and keep the latter explicit conditions rather than claiming feasibility is solved by naming a future service.
+    graders:
+      - *completed
+      - &peers
+        type: skill-invocation
+        config: { required: [cosmosdb-relational-migration, cosmosdb-best-practices] }
+      - type: adventureworks-artifacts
+        config: { scenario: schema-conversion }
+      - type: adventureworks-judge
+        config:
+          scoring: binary
+          threshold: 1
+          prompt: *judge-prompt
+          evidence_groups:
+            design: [0, 1, 2, 4]
+            boundary: [3]
+      - *output
+    artifacts: *artifacts
+
+  - name: adventureworks-provisioning-artifacts
+    tags: { category: extended, sample: adventureworks, phase: provisioning }
+    agent_environment:
+      files:
+        - *ddl
+        - *preflight
+        - *discovery
+        - *assessment
+        - &conversion { src: checkpoints/schema-conversion, dest: .checkpoints/schema-conversion }
+      commands: [node setup-adventureworks.mjs provisioning]
+    prompt: |
+      Generate provisioning artifacts only for the relational-to-Cosmos DB migration
+      in ./app, autonomously with allow-provisioning: false. The source analysis and
+      canonical model are already validated inputs; preserve them unchanged.
+      Use the saved planned development target. Generate Bicep, parameters, synthetic
+      sample data and the seed script through bundled helpers and validate consistency.
+      Respect the accepted design's coordinator/content-store clearance conditions.
+      Target metadata is planned, not observed cloud evidence. Do not execute generated
+      scripts, deploy, seed, contact Azure or any database, install tools, run the application,
+      or modify application files. Keep provisioning incomplete and the target unverified.
+      Explain unperformed checks and the authorized next step, then stop before code
+      migration. Read only ./app and installed skills; preserve user metadata and source DDL.
+    rubric:
+      - Generate model-consistent Bicep, parameters, synthetic sample data and seed script, validating them with the bundled helpers and respecting identity and relationship contracts.
+      - Preserve the accepted model and its implementation/clearance obligations; distinguish generated artifacts and uncreated synthetic content from safe-to-execute, deployed infrastructure.
+      - Keep provisioning incomplete and the target unverified, perform no external-resource operations, and stop before application planning or migration.
+    graders:
+      - *completed
+      - *peers
+      - type: adventureworks-artifacts
+        config: { scenario: provisioning }
+      - *judge
+      - *output
+    artifacts: *artifacts
+
+  - name: adventureworks-code-migration-plan
+    tags: { category: extended, sample: adventureworks, phase: code-migration }
+    agent_environment:
+      files:
+        - *ddl
+        - *preflight
+        - *discovery
+        - *assessment
+        - *conversion
+      commands: [node setup-adventureworks.mjs code-migration]
+    prompt: |
+      Create and validate only the application code-migration plan for the
+      relational-to-Cosmos DB migration in ./app, autonomously. The accepted analytical
+      artifacts and canonical model are already validated. The target is planned and
+      unverified; deployment is not required for planning. Preserve all prerequisite artifacts.
+      Plan a direct switch with a maintenance window, one authoritative writer and
+      explicit rollback/data-reconciliation semantics. Review the obsolete framework
+      and choose a supported modernization path as ordered work. Map actual controller
+      reads/writes, relationship hydration, uniqueness, computed values, identity,
+      authentication and verification to the accepted design and its supporting services.
+      Use CM- task IDs in Ordered Changes and OP- IDs in Operational Handoff, with
+      unchecked pending tasks, one Depends on field (task IDs or none), and a Done when
+      condition for each. Keep dependencies acyclic and complete. Put test-environment
+      setup and implementation verification before production handoff. Separate their
+      clearance evidence from production writer inventory, deployment and cutover gates;
+      no code task may require evidence produced only by a later task that depends on it.
+      Review whether required supporting-service mechanisms are actually selected and
+      implementable. Name storage/API primitives, fencing/publication/recovery steps
+      and verification tasks, or keep unresolved mechanisms explicit blockers rather
+      than marking them resolved merely because a future service was named.
+      Keep implementation tasks pending. Do not change application files, run build/restore,
+      install tools, contact databases or external services, provision or seed anything.
+      Do not execute provisioning or rewrite the accepted model. Read only ./app and
+      installed skills; preserve user metadata, source DDL and the planned target.
+    rubric:
+      - Produce a validated, actionable direct-switch plan covering actual controller operations and a supported framework/SDK path, preserving accepted model contracts and supporting-service obligations.
+      - Include ordered implementation and verification tasks, authentication, uniqueness, computed values, identity and relationship hydration, with honest writer ownership and rollback/data-reconciliation limits.
+      - Keep execution tasks pending and distinguish plan completion from builds, code migration, deployment or production readiness; preserve application and predecessor artifacts.
+      - The implementation, verification, blocker-clearance and operational dependencies are executable in order, including prerequisites implied by completion conditions; separate isolated verification from production-only readiness and reject circular gates even when the explicit task graph is acyclic.
+      - Carry every mandatory supporting-service obligation into actionable implementation and verification tasks; identify concrete primitives and failure/recovery mechanisms, and retain unresolved technology, supplier or protocol choices as blockers rather than resolved implementation work. Missing execution evidence alone is not a missing design, and no prohibited execution is required during planning.
+    graders:
+      - *completed
+      - *peers
+      - type: adventureworks-artifacts
+        config: { scenario: code-migration }
+      - type: adventureworks-judge
+        config:
+          scoring: binary
+          threshold: 1
+          prompt: *judge-prompt
+          evidence_groups:
+            implementation: [0, 1, 4]
+            dependencies: [3]
+            boundary: [2]
+      - *output
+    artifacts: *artifacts
+
+  - name: adventureworks-inferred-discovery
+    tags: { category: extended, sample: adventureworks, phase: discovery, scenario: inferred-ddl }
+    agent_environment:
+      commands: [node setup-adventureworks.mjs inferred]
+    prompt: |
+      Run discovery, including preflight, for a relational-to-Cosmos DB migration in
+      ./app. No DDL was supplied. Infer processable SQL Server DDL from this application's
+      Entity Framework mappings, models and controller evidence, with schema-source: infer
+      and ddl-parser: model. Work autonomously. Record inference provenance, source paths,
+      uncertainties and distinctions between model declarations and observed access.
+      Assess the application's framework/runtime compatibility with the recommended SDK
+      and explain any necessary modernization.
+      Use workload.json only as synthetic assumptions; do not fabricate production facts.
+      Preserve application files and user metadata. Do not install dependencies, run the
+      application, create custom DDL parser scripts, access other projects or user profiles,
+      connect to any database, or make cloud or other external-service calls.
+      Validate discovery and stop before assessment or target model design.
+    rubric:
+      - Infer all twelve mapped tables with the declared columns and ordered primary/foreign keys, including composite keys and ProductCategory self-reference, from the EF/model evidence rather than inventing constraints.
+      - Write processable inferred DDL under the migration schema folder, record origin inferred and source-file provenance, and distinguish unresolved source facts from validated source-engine behavior.
+      - Derive real access patterns from all three CRUD controllers and evaluate the .NET SDK while identifying the obsolete framework; classify schema-only mappings honestly.
+      - Complete and validate discovery without modifying application code or advancing assessment, and label workload values as synthetic rather than measured production data.
+    graders:
+      - *completed
+      - *migration
+      - type: adventureworks-artifacts
+        config: { scenario: inferred-ddl }
+      - *judge
+      - *output
+    artifacts: *artifacts

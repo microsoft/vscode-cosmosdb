@@ -1,0 +1,1 @@
+{"version":1,"sourceSha256":"51ef1032804f5b78d2d97f3cc08c14c72a10a1630fd0724ddb93e4d6f6438ad1","blockingIssues":[],"domain":"Customers","tables":["SalesLT.Address","SalesLT.Customer","SalesLT.CustomerAddress"]}

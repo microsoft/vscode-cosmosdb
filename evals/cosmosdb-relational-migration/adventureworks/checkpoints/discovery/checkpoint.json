@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "phase": "discovery",
+  "sourceRevision": "d548c0ddb3e3a464fa34c1fdc39c2333506b42cc",
+  "schemaSha256": "837602bee5baca4cf026663627007c6e70df5896093f9cf31c0f804cb05d1065",
+  "workloadSha256": "fdab033da5cabe5813778bc8e147409532f878ef6599dcbb60e86782a3319a1a",
+  "project": {
+    "version": 1,
+    "name": "AdventureWorksEvaluation",
+    "sourceCode": "parent",
+    "customMetadata": {
+      "preserve": "adventureworks-evaluation"
+    },
+    "phases": {
+      "targetEnvironment": {
+        "type": "provision",
+        "accountName": "vally-adventureworks",
+        "databaseName": "adventureworks-eval",
+        "location": "eastus",
+        "verified": false
+      },
+      "discovery": {
+        "status": "complete",
+        "preflightStatus": "complete",
+        "ddlParsing": {
+          "method": "model",
+          "decisionSource": "explicit"
+        },
+        "applicationAnalysis": {
+          "projectName": "AdventureWorks.Web",
+          "projectType": "ASP.NET Core MVC web application",
+          "language": "C#",
+          "databaseType": "Microsoft SQL Server",
+          "databaseAccess": "Entity Framework Core SQL Server provider",
+          "frameworks": [
+            "ASP.NET Core MVC 2.1",
+            "Entity Framework Core"
+          ],
+          "completedAt": "2026-11-07T11:13:51.000Z"
+        },
+        "preflightCompletedAt": "2026-11-07T11:18:20.000Z",
+        "completedAt": "2026-11-07T11:18:20.000Z"
+      }
+    }
+  },
+  "consulted": [
+    "AdventureWorks.Web.csproj",
+    "Startup.cs",
+    "Models/sampledbContext.cs",
+    "Models/Address.cs",
+    "Models/BuildVersion.cs",
+    "Models/Customer.cs",
+    "Models/CustomerAddress.cs",
+    "Models/ErrorLog.cs",
+    "Models/Product.cs",
+    "Models/ProductCategory.cs",
+    "Models/ProductDescription.cs",
+    "Models/ProductModel.cs",
+    "Models/ProductModelProductDescription.cs",
+    "Models/SalesOrderDetail.cs",
+    "Models/SalesOrderHeader.cs",
+    "Controllers/CustomersController.cs",
+    "Controllers/ProductCategoriesController.cs",
+    "Controllers/ProductsController.cs",
+    "Controllers/HomeController.cs",
+    "Views/Customers/Index.cshtml",
+    "Views/Customers/Create.cshtml",
+    "Views/Customers/Edit.cshtml",
+    "Views/Customers/Delete.cshtml",
+    "Views/Customers/Details.cshtml",
+    "Views/Products/Index.cshtml",
+    "Views/ProductCategories/Index.cshtml"
+  ],
+  "files": {
+    "phases/1-discovery/discovery-manifest.json": "6ec9c2ba630d0c8f341bd68fc99528193692d3fa27989187be12a6a9ffb0553c",
+    "phases/1-discovery/discovery-report.md": "450cb20fdfec48d7243e92c4047981f4ed5d420a2e31fadb92cd796fb5d76e0d"
+  }
+}

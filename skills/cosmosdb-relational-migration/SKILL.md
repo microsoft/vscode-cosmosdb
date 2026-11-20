@@ -156,7 +156,8 @@ be inferred safely.
   explicit approval before writes or phase execution; this overrides mode fallback and rerun defaults.
 - `additional instructions`: optional phase guidance supplied with the request.
 - `workspace`: selected application project root; default to the sole workspace folder
-  only when it is also the target project root. Resolve it as described below.
+  only when it is also the target project root. An explicit workspace does not override
+  a conflicting selected migration. Apply the Project Scope conflict check below first.
 - `run-id`: optional host-supplied tracking identifier. Use it for the run activity contract in
   [project-state-and-artifacts.md](./references/contracts/project-state-and-artifacts.md#run-activity), not as authorization.
 - `allow-provisioning`: default `false`. Only `true` explicitly authorizes resource or
@@ -168,10 +169,21 @@ and version 1 `project.json` fields are defined in
 
 ### Project Scope
 
-Resolve one application project root before inspecting or initializing migration state.
-An explicit `workspace` selects that root. When resuming a selected existing migration,
-use the directory containing its `.cosmosdb-migration` folder. If these identify different
-roots, stop and ask which project to use; do not initialize another migration instead.
+**Check for conflicting selections before choosing a root or inspecting migration state.**
+An explicit `workspace` and a selected existing migration are two constraints, not a
+precedence order. If they identify different project roots, stop and ask which project
+to use. Do not select either root, inspect either project, initialize another migration,
+or assume that the explicit workspace overrides the request to resume the existing migration.
+The conflict is already established by the request; do not defer clarification until
+after inspecting files or discovering that the other project's state is needed.
+This gate also applies in autonomous mode. If the host cannot ask, report the unresolved
+scope and stop rather than choosing a root.
+
+Only after ruling out a conflict, resolve one application project root:
+
+- When resuming a selected existing migration, use the directory containing its `.cosmosdb-migration` folder.
+- Otherwise, an explicit `workspace` selects the project root.
+
 With no explicit selection, use the sole workspace folder only when it is the target
 project root. If multiple projects could match, ask the user to select one before proceeding.
 Do not infer the target from workspace-folder order, the active editor, or terminal working directory.

@@ -1,0 +1,143 @@
+{
+  "version": 1,
+  "domain": "Catalog",
+  "databaseName": "adventureworks-eval",
+  "capacityMode": "serverless",
+  "sourceType": "SQL Server",
+  "containers": [
+    {
+      "name": "Catalog",
+      "partitionKeys": [
+        {
+          "path": "/id",
+          "analysis": "Each independently addressed source row has a deterministic ID and its own logical partition; lists and relationship checks fan out. The association culture field is lowercase hex of the raw UTF-16LE source code units before typed-hex-v1 identity encoding."
+        }
+      ],
+      "entities": [
+        {
+          "name": "Product",
+          "docType": "product",
+          "sourceTable": "SalesLT.Product",
+          "idTemplate": "product-{ProductID}",
+          "attributes": [
+            { "target": "id", "source": { "table": "SalesLT.Product", "column": "ProductID", "type": "INT" }, "type": "string", "isId": true, "isPartitionKey": true },
+            { "target": "productId", "source": { "table": "SalesLT.Product", "column": "ProductID", "type": "INT" }, "type": "integer" },
+            { "target": "name", "source": { "table": "SalesLT.Product", "column": "Name", "type": "dbo.Name" }, "type": "string" },
+            { "target": "productNumber", "source": { "table": "SalesLT.Product", "column": "ProductNumber", "type": "NVARCHAR(25)" }, "type": "string" },
+            { "target": "color", "source": { "table": "SalesLT.Product", "column": "Color", "type": "NVARCHAR(15)" }, "type": "string" },
+            { "target": "standardCost", "source": { "table": "SalesLT.Product", "column": "StandardCost", "type": "MONEY" }, "type": "string" },
+            { "target": "listPrice", "source": { "table": "SalesLT.Product", "column": "ListPrice", "type": "MONEY" }, "type": "string" },
+            { "target": "size", "source": { "table": "SalesLT.Product", "column": "Size", "type": "NVARCHAR(5)" }, "type": "string" },
+            { "target": "weight", "source": { "table": "SalesLT.Product", "column": "Weight", "type": "DECIMAL(8,2)" }, "type": "string" },
+            { "target": "productCategoryId", "source": { "table": "SalesLT.Product", "column": "ProductCategoryID", "type": "INT" }, "type": "integer" },
+            { "target": "productModelId", "source": { "table": "SalesLT.Product", "column": "ProductModelID", "type": "INT" }, "type": "integer" },
+            { "target": "sellStartDate", "source": { "table": "SalesLT.Product", "column": "SellStartDate", "type": "DATETIME" }, "type": "string" },
+            { "target": "sellEndDate", "source": { "table": "SalesLT.Product", "column": "SellEndDate", "type": "DATETIME" }, "type": "string" },
+            { "target": "discontinuedDate", "source": { "table": "SalesLT.Product", "column": "DiscontinuedDate", "type": "DATETIME" }, "type": "string" },
+            { "target": "thumbNailPhoto", "source": { "table": "SalesLT.Product", "column": "ThumbNailPhoto", "type": "VARBINARY(MAX)" }, "type": "object" },
+            { "target": "thumbnailPhotoFileName", "source": { "table": "SalesLT.Product", "column": "ThumbnailPhotoFileName", "type": "NVARCHAR(50)" }, "type": "string" },
+            { "target": "rowguid", "source": { "table": "SalesLT.Product", "column": "rowguid", "type": "UNIQUEIDENTIFIER" }, "type": "string" },
+            { "target": "modifiedDate", "source": { "table": "SalesLT.Product", "column": "ModifiedDate", "type": "DATETIME" }, "type": "string" }
+          ],
+          "relationships": [
+            { "targetEntity": "ProductCategory", "sourceFK": { "table": "SalesLT.Product", "column": "ProductCategoryID", "constraintName": "FK_Product_ProductCategory_ProductCategoryID" }, "type": "one-to-many", "strategy": "reference" },
+            { "targetEntity": "ProductModel", "sourceFK": { "table": "SalesLT.Product", "column": "ProductModelID", "constraintName": "FK_Product_ProductModel_ProductModelID" }, "type": "one-to-many", "strategy": "reference" },
+            { "targetEntity": "SalesOrderDetail", "sourceFK": { "table": "SalesLT.SalesOrderDetail", "column": "ProductID", "constraintName": "FK_SalesOrderDetail_Product_ProductID" }, "type": "one-to-many", "strategy": "reference" }
+          ]
+        },
+        {
+          "name": "ProductCategory",
+          "docType": "productCategory",
+          "sourceTable": "SalesLT.ProductCategory",
+          "idTemplate": "productCategory-{ProductCategoryID}",
+          "attributes": [
+            { "target": "id", "source": { "table": "SalesLT.ProductCategory", "column": "ProductCategoryID", "type": "INT" }, "type": "string", "isId": true, "isPartitionKey": true },
+            { "target": "productCategoryId", "source": { "table": "SalesLT.ProductCategory", "column": "ProductCategoryID", "type": "INT" }, "type": "integer" },
+            { "target": "parentProductCategoryId", "source": { "table": "SalesLT.ProductCategory", "column": "ParentProductCategoryID", "type": "INT" }, "type": "integer" },
+            { "target": "name", "source": { "table": "SalesLT.ProductCategory", "column": "Name", "type": "dbo.Name" }, "type": "string" },
+            { "target": "rowguid", "source": { "table": "SalesLT.ProductCategory", "column": "rowguid", "type": "UNIQUEIDENTIFIER" }, "type": "string" },
+            { "target": "modifiedDate", "source": { "table": "SalesLT.ProductCategory", "column": "ModifiedDate", "type": "DATETIME" }, "type": "string" }
+          ],
+          "relationships": [
+            { "targetEntity": "ProductCategory", "sourceFK": { "table": "SalesLT.ProductCategory", "column": "ParentProductCategoryID", "constraintName": "FK_ProductCategory_ProductCategory_ParentProductCategoryID_ProductCategoryID" }, "type": "one-to-many", "strategy": "reference" }
+          ]
+        },
+        {
+          "name": "ProductDescription",
+          "docType": "productDescription",
+          "sourceTable": "SalesLT.ProductDescription",
+          "idTemplate": "productDescription-{ProductDescriptionID}",
+          "attributes": [
+            { "target": "id", "source": { "table": "SalesLT.ProductDescription", "column": "ProductDescriptionID", "type": "INT" }, "type": "string", "isId": true, "isPartitionKey": true },
+            { "target": "productDescriptionId", "source": { "table": "SalesLT.ProductDescription", "column": "ProductDescriptionID", "type": "INT" }, "type": "integer" },
+            { "target": "description", "source": { "table": "SalesLT.ProductDescription", "column": "Description", "type": "NVARCHAR(400)" }, "type": "string" },
+            { "target": "rowguid", "source": { "table": "SalesLT.ProductDescription", "column": "rowguid", "type": "UNIQUEIDENTIFIER" }, "type": "string" },
+            { "target": "modifiedDate", "source": { "table": "SalesLT.ProductDescription", "column": "ModifiedDate", "type": "DATETIME" }, "type": "string" }
+          ]
+        },
+        {
+          "name": "ProductModel",
+          "docType": "productModel",
+          "sourceTable": "SalesLT.ProductModel",
+          "idTemplate": "productModel-{ProductModelID}",
+          "attributes": [
+            { "target": "id", "source": { "table": "SalesLT.ProductModel", "column": "ProductModelID", "type": "INT" }, "type": "string", "isId": true, "isPartitionKey": true },
+            { "target": "productModelId", "source": { "table": "SalesLT.ProductModel", "column": "ProductModelID", "type": "INT" }, "type": "integer" },
+            { "target": "name", "source": { "table": "SalesLT.ProductModel", "column": "Name", "type": "dbo.Name" }, "type": "string" },
+            { "target": "catalogDescription", "source": { "table": "SalesLT.ProductModel", "column": "CatalogDescription", "type": "XML" }, "type": "object" },
+            { "target": "rowguid", "source": { "table": "SalesLT.ProductModel", "column": "rowguid", "type": "UNIQUEIDENTIFIER" }, "type": "string" },
+            { "target": "modifiedDate", "source": { "table": "SalesLT.ProductModel", "column": "ModifiedDate", "type": "DATETIME" }, "type": "string" }
+          ]
+        },
+        {
+          "name": "ProductModelProductDescription",
+          "docType": "productModelProductDescription",
+          "sourceTable": "SalesLT.ProductModelProductDescription",
+          "idTemplate": "productModelProductDescription-{ProductModelID}-{ProductDescriptionID}-{Culture}",
+          "attributes": [
+            { "target": "id", "source": { "table": "SalesLT.ProductModelProductDescription", "column": "ProductModelID", "type": "INT" }, "type": "string", "isId": true, "isPartitionKey": true },
+            { "target": "productModelId", "source": { "table": "SalesLT.ProductModelProductDescription", "column": "ProductModelID", "type": "INT" }, "type": "integer" },
+            { "target": "productDescriptionId", "source": { "table": "SalesLT.ProductModelProductDescription", "column": "ProductDescriptionID", "type": "INT" }, "type": "integer" },
+            { "target": "culture", "source": { "table": "SalesLT.ProductModelProductDescription", "column": "Culture", "type": "NVARCHAR(6)" }, "type": "string" },
+            { "target": "rowguid", "source": { "table": "SalesLT.ProductModelProductDescription", "column": "rowguid", "type": "UNIQUEIDENTIFIER" }, "type": "string" },
+            { "target": "modifiedDate", "source": { "table": "SalesLT.ProductModelProductDescription", "column": "ModifiedDate", "type": "DATETIME" }, "type": "string" }
+          ],
+          "relationships": [
+            { "targetEntity": "ProductModel", "sourceFK": { "table": "SalesLT.ProductModelProductDescription", "column": "ProductModelID", "constraintName": "FK_ProductModelProductDescription_ProductModel_ProductModelID" }, "type": "one-to-many", "strategy": "reference" },
+            { "targetEntity": "ProductDescription", "sourceFK": { "table": "SalesLT.ProductModelProductDescription", "column": "ProductDescriptionID", "constraintName": "FK_ProductModelProductDescription_ProductDescription_ProductDescriptionID" }, "type": "one-to-many", "strategy": "reference" }
+          ]
+        }
+      ],
+      "indexingPolicy": {
+        "indexingMode": "consistent",
+        "automatic": true,
+        "includedPaths": [
+          { "path": "/docType/?" },
+          { "path": "/productCategoryId/?" },
+          { "path": "/productModelId/?" },
+          { "path": "/parentProductCategoryId/?" },
+          { "path": "/productDescriptionId/?" }
+        ],
+        "excludedPaths": [
+          { "path": "/*" },
+          { "path": "/\"_etag\"/?" }
+        ]
+      }
+    }
+  ],
+  "accessPatterns": [
+    { "name": "R003 category list with parent", "source": { "type": "EF Core", "query": "List categories and include parent" }, "target": { "type": "query", "container": "Catalog", "operation": "Query categories then hydrate non-null parents by point read", "query": "SELECT * FROM c WHERE c.docType = @docType", "isCrossPartition": true } },
+    { "name": "R004 category key with parent", "source": { "type": "EF Core", "query": "Find category by ProductCategoryID, optionally include parent" }, "target": { "type": "point read", "container": "Catalog", "operation": "Read productCategory-{ProductCategoryID} and hydrate parent if requested", "isCrossPartition": false } },
+    { "name": "R005 category selection", "source": { "type": "EF Core", "query": "List categories for parent selection" }, "target": { "type": "query", "container": "Catalog", "operation": "Query categories with projection", "query": "SELECT c.id, c.productCategoryId, c.name FROM c WHERE c.docType = @docType", "isCrossPartition": true } },
+    { "name": "R006 product list with category and model", "source": { "type": "EF Core", "query": "List products with category and model" }, "target": { "type": "query", "container": "Catalog", "operation": "Query products then hydrate category and model with point reads", "query": "SELECT * FROM c WHERE c.docType = @docType", "isCrossPartition": true } },
+    { "name": "R007 product key with relationships", "source": { "type": "EF Core", "query": "Find product by ProductID, optionally include category and model" }, "target": { "type": "point read", "container": "Catalog", "operation": "Read product-{ProductID} and hydrate non-null relationships if requested", "isCrossPartition": false } },
+    { "name": "R008 category and model selection", "source": { "type": "EF Core", "query": "List categories and models for product selection" }, "target": { "type": "query", "container": "Catalog", "operation": "Run two projected docType queries", "query": "SELECT c.id, c.name FROM c WHERE c.docType = @docType", "isCrossPartition": true } },
+    { "name": "W004 W005 W006 category writes", "source": { "type": "EF Core", "query": "Create, update, or delete one category" }, "target": { "type": "coordinator", "container": "Catalog", "operation": "Coordinated create, conditional replace, or delete with integrity checks", "isCrossPartition": true } },
+    { "name": "W007 W008 W009 product writes", "source": { "type": "EF Core", "query": "Create, update, or delete one product" }, "target": { "type": "coordinator", "container": "Catalog", "operation": "Coordinated create, conditional replace, or delete with integrity checks", "isCrossPartition": true } }
+  ],
+  "crossPartitionQueries": [
+    { "name": "Category and product lists", "container": "Catalog", "query": "SELECT * FROM c WHERE c.docType = @docType", "reason": "Lists have no source ID and each row has a distinct partition key.", "estimatedRUCost": "medium, unmeasured planning class", "optimizations": ["Continuation-based paging and projection", "Consider a maintained read model only with an approved consistency contract"] },
+    { "name": "Selection lists", "container": "Catalog", "query": "SELECT c.id, c.name FROM c WHERE c.docType = @docType", "reason": "No partition key is available for all category or model choices.", "estimatedRUCost": "medium, unmeasured planning class", "optimizations": ["Continuation-based paging and projection", "Consider a bounded cache with explicit freshness"] },
+    { "name": "Dependent FK lookup", "container": "Catalog", "query": "SELECT c.id FROM c WHERE c.docType = @docType AND c.productCategoryId = @categoryId", "reason": "Category dependents occupy separate ID partitions; modeled coordinator maintains authoritative references.", "estimatedRUCost": "medium, unmeasured planning class", "optimizations": ["Use a durable coordinator-owned reverse-reference registry", "Use an indexed reconciliation query, not query-then-write as an integrity guarantee"] }
+  ]
+}

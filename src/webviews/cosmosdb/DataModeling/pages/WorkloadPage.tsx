@@ -304,7 +304,7 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
                     as="button"
                     className={styles.clear}
                     style={{ visibility: hasFilters ? 'visible' : 'hidden' }}
-                    aria-description={l10n.t('Clear the search text and selected traits')}
+                    aria-description={l10n.t('Clear the search text and selected filters')}
                     onClick={clearFilters}
                 >
                     {l10n.t('Clear all')}

@@ -305,7 +305,7 @@ describe('WorkloadPage trait filter', () => {
         const [selectedBadge, ...unchangedCards] = badgeClass();
         expect(selectedBadge).not.toBe(chipBadge);
         expect(unchangedCards.every((cardBadge) => cardBadge === chipBadge)).toBe(true);
-        expect(clearButton()).toHaveAccessibleDescription('Clear the search text and selected traits');
+        expect(clearButton()).toHaveAccessibleDescription('Clear the search text and selected filters');
     });
 
     it('narrows scenarios by the chosen traits with OR and keeps the fallback visible', async () => {

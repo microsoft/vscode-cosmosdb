@@ -375,7 +375,7 @@
   "Cleaning up the original item...": "Cleaning up the original item...",
   "Cleanup may have completed, but the item in the new partition could not be refreshed. Retry to load its latest state.": "Cleanup may have completed, but the item in the new partition could not be refreshed. Retry to load its latest state.",
   "Clear all": "Clear all",
-  "Clear the search text and selected traits": "Clear the search text and selected traits",
+  "Clear the search text and selected filters": "Clear the search text and selected filters",
   "Click Edit to change any selection before analysis.": "Click Edit to change any selection before analysis.",
   "Click to view resource": "Click to view resource",
   "Clickstream, sessions, funnels": "Clickstream, sessions, funnels",

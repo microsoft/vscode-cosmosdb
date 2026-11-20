@@ -81,7 +81,7 @@ function snapshotSearchOnFocus() {
 }
 
 describe('WorkloadPage result status', () => {
-    const allMatching = () => `${getScenarioList().length - 1} matching scenarios`;
+    const allMatching = () => `${getScenarioList().length - 1} matching predefined scenarios`;
     // The visible count and the announcement come from the same edit, with no delay in between.
     const expectResult = (message: string) => {
         expect(screen.getByText(message)).toBeVisible();
@@ -101,22 +101,28 @@ describe('WorkloadPage result status', () => {
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
         expect(container.querySelector('[aria-live]')).toBeNull();
         expect(screen.getByText(allMatching())).toBeVisible();
+        // The always-shown custom card is not counted, and the wording says the count covers predefined scenarios.
+        expect(screen.getAllByRole('radio')).toHaveLength(getScenarioList().length);
         await user.click(search);
         expect(announce).not.toHaveBeenCalled();
 
         fireEvent.change(search, { target: { value: 'transactions' } });
-        expectResult('2 matching scenarios');
+        expectResult('2 matching predefined scenarios');
         fireEvent.change(search, { target: { value: 'iot' } });
-        expectResult('1 matching scenario');
+        expectResult('1 matching predefined scenario');
         announce.mockClear();
         // Same count, different card: the new search still gets feedback.
         fireEvent.change(search, { target: { value: 'clickstream' } });
-        expect(announce).toHaveBeenCalledExactlyOnceWith('1 matching scenario', expect.anything());
-        expectResult('1 matching scenario');
+        expect(announce).toHaveBeenCalledExactlyOnceWith('1 matching predefined scenario', expect.anything());
+        expectResult('1 matching predefined scenario');
 
         fireEvent.change(search, { target: { value: 'no matching workload' } });
-        expectResult('No scenarios match your filter. You can still choose a custom workload.');
+        expectResult('No predefined scenarios match your filter. You can still choose a custom workload.');
         expect(screen.getAllByRole('radio')).toHaveLength(1);
+        // Searching for the custom card itself leaves it visible without claiming that it does not match.
+        fireEvent.change(search, { target: { value: 'None of these fit' } });
+        expectResult('No predefined scenarios match your filter. You can still choose a custom workload.');
+        expect(screen.getAllByRole('radio')).toEqual([screen.getByRole('radio', { name: 'None of these fit' })]);
         expect(search).toHaveFocus();
     });
 
@@ -125,19 +131,19 @@ describe('WorkloadPage result status', () => {
         render(<Workload />);
         const filterChip = toolbar().getByRole('button', { name: 'Write-heavy' });
         await user.click(filterChip);
-        expectResult('2 matching scenarios');
+        expectResult('2 matching predefined scenarios');
         expect(filterChip).toHaveFocus();
 
         const search = searchBox();
         await user.type(search, 'clickstream');
-        expectResult('1 matching scenario');
+        expectResult('1 matching predefined scenario');
         // Toggling the chip off and on keeps the count, so the pressed state alone is the feedback.
         const announced = announce.mock.calls.length;
         await user.click(filterChip);
         expect(filterChip).toHaveAttribute('aria-pressed', 'false');
         await user.click(filterChip);
         expect(filterChip).toHaveAttribute('aria-pressed', 'true');
-        expect(screen.getByText('1 matching scenario')).toBeVisible();
+        expect(screen.getByText('1 matching predefined scenario')).toBeVisible();
         // A separate announcement would be cut off by the focus move, so the search box's description carries the
         // result instead. It must already be current when focus lands, and Clear all must not hide while focused.
         const onFocus = snapshotSearchOnFocus();
@@ -183,14 +189,14 @@ describe('WorkloadPage result status', () => {
         const search = searchBox();
         fireEvent.change(search, { target: { value: 'iot' } });
         await flush(50);
-        expect(delivered).toEqual(['1 matching scenario. ']);
+        expect(delivered).toEqual(['1 matching predefined scenario. ']);
         // Arrives while the first message is still being read, so Fluent holds it for the next cycle.
         fireEvent.change(search, { target: { value: 'transactions' } });
         fireEvent.click(clearButton());
         expect(search).toHaveFocus();
         await flush(700);
         // The restored count is read from the focused search box; the stale filtered count must never follow it.
-        expect(delivered).toEqual(['1 matching scenario. ']);
+        expect(delivered).toEqual(['1 matching predefined scenario. ']);
     });
 });
 
@@ -477,12 +483,12 @@ describe('WorkloadPage filter chips', () => {
         await user.tab();
         await user.tab();
         expect(clearButton()).toHaveFocus();
-        // Clearing a no-match search: the box must not still read "No scenarios match…" when focus lands on it.
+        // Clearing a no-match search: the box must not still read "No predefined scenarios match…" when focus lands.
         const onFocus = snapshotSearchOnFocus();
         await user.keyboard('{Enter}');
         expect(onFocus).toEqual({
             value: '',
-            description: `${getScenarioList().length - 1} matching scenarios Scenarios filter as you type.`,
+            description: `${getScenarioList().length - 1} matching predefined scenarios Scenarios filter as you type.`,
             clearVisibility: 'visible',
         });
         expect(search).toHaveFocus();

@@ -164,7 +164,9 @@ test('Workload and Scale cards use native radio keyboard navigation, including f
         await expect(filter).toBeFocused();
         await expect(filter).toHaveValue('');
         // Focus lands on the search box, whose description carries the restored result count.
-        await expect(filter).toHaveAccessibleDescription(/^\d+ matching scenarios Scenarios filter as you type\.$/);
+        await expect(filter).toHaveAccessibleDescription(
+            /^\d+ matching predefined scenarios Scenarios filter as you type\.$/,
+        );
         await expect(clear).toBeHidden();
         await filter.press('Tab');
         await expect(firstTrait).toBeFocused();

@@ -42,12 +42,14 @@ function filterScenarios(scenarios: ScenarioListItem[], filter: string, tags: Sc
 }
 
 function summarizeResults(visible: ScenarioListItem[]): string {
+    // The custom workload is always shown, so it never counts as a match. Naming predefined scenarios keeps the count
+    // accurate next to that extra card, including when it is the only card a search leaves visible.
     const matchCount = visible.filter((s) => s.id !== FALLBACK_SCENARIO).length;
     return matchCount === 0
-        ? l10n.t('No scenarios match your filter. You can still choose a custom workload.')
+        ? l10n.t('No predefined scenarios match your filter. You can still choose a custom workload.')
         : matchCount === 1
-          ? l10n.t('1 matching scenario')
-          : l10n.t('{count} matching scenarios', { count: matchCount });
+          ? l10n.t('1 matching predefined scenario')
+          : l10n.t('{count} matching predefined scenarios', { count: matchCount });
 }
 
 /**

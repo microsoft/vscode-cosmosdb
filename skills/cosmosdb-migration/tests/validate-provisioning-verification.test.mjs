@@ -458,6 +458,23 @@ test('verifies unique-key readback independent of order without allowing policy 
     }
 });
 
+test('verifies observed TTL, distinguishing disabled from enabled without a default expiry', () => {
+    const { model, sampleData, project, report } = inputs();
+    const verify = () => validateProvisioningVerification(model, sampleData, project, report);
+    report.containers[0].defaultTtl = null;
+    assert.deepEqual(verify(), []);
+    report.containers[0].defaultTtl = -1;
+    assert(verify().some(error => error.path.endsWith('.defaultTtl')));
+    model.containers[0].defaultTtl = 15552000;
+    report.modelSha256 = modelSha256(model);
+    for (const observed of [undefined, null, -1, 180]) {
+        report.containers[0].defaultTtl = observed;
+        assert(verify().some(error => error.path.endsWith('.defaultTtl')));
+    }
+    report.containers[0].defaultTtl = 15552000;
+    assert.deepEqual(verify(), []);
+});
+
 test('accepts empty service unique-key defaults but rejects unexpected constraints', () => {
     const { model, sampleData, project, report } = inputs();
     report.containers[0].uniqueKeyPolicy = { uniqueKeys: [] };

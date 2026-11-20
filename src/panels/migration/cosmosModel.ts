@@ -40,6 +40,8 @@ export interface CosmosContainer {
     partitionKeys?: PartitionKeyConfig[];
     entities: CosmosEntity[];
     indexingPolicy?: IndexingPolicy;
+    /** Seconds since last modification; -1 enables item-level TTL without default expiration. */
+    defaultTtl?: number;
     /**
      * Autoscale maximum RU/s for this container.
      * Only meaningful for dedicated throughput with `'provisioned'` account capacity.

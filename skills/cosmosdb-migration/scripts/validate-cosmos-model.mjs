@@ -29,6 +29,7 @@ const CONTAINER_KEYS = new Set([
     'indexingPolicy',
     'fullTextPolicy',
     'uniqueKeyPolicy',
+    'defaultTtl',
     'maxThroughput',
     'throughputMode',
     'estimatedStorageGB',
@@ -654,6 +655,15 @@ function checkContainer(container, jsonPath, entityNames, capacityMode, errors, 
     checkIndexingPolicy(container.indexingPolicy, `${jsonPath}.indexingPolicy`, errors, warnings);
     checkFullTextPolicy(container, jsonPath, errors);
     checkUniqueKeyPolicy(container.uniqueKeyPolicy, `${jsonPath}.uniqueKeyPolicy`, errors);
+    if (container.defaultTtl !== undefined) {
+        const ttl = container.defaultTtl;
+        if (ttl !== -1 && !(Number.isInteger(ttl) && ttl >= 1 && ttl <= 2147483647)) {
+            addError(errors, `${jsonPath}.defaultTtl`, 'must be -1 or an integer from 1 to 2147483647 seconds');
+        }
+        if (container.indexingPolicy?.indexingMode === 'none') {
+            addError(errors, `${jsonPath}.defaultTtl`, 'requires indexing to be enabled');
+        }
+    }
     if (container.maxThroughput !== undefined) {
         if (!Number.isInteger(container.maxThroughput) || container.maxThroughput < 1000 || container.maxThroughput % 1000 !== 0) {
             addError(errors, `${jsonPath}.maxThroughput`, 'must be an integer multiple of 1000 and at least 1000');
@@ -916,6 +926,7 @@ function canonicalContainer(container) {
     if (container.uniqueKeyPolicy !== undefined)
         result.uniqueKeyPolicy = canonicalUniqueKeyPolicy(container.uniqueKeyPolicy);
     if (container.maxThroughput !== undefined) result.maxThroughput = container.maxThroughput;
+    if (container.defaultTtl !== undefined) result.defaultTtl = container.defaultTtl;
     if (container.throughputMode !== undefined) result.throughputMode = container.throughputMode;
     if (container.estimatedStorageGB !== undefined) result.estimatedStorageGB = container.estimatedStorageGB;
     if (container.estimatedRowCount !== undefined) result.estimatedRowCount = container.estimatedRowCount;

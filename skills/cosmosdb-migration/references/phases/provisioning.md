@@ -298,9 +298,12 @@ summaries for embedding and relationship context that the canonical model omits.
    embedded-only handling, field names and types, IDs, partition-key values,
    uniqueness, references, nesting depth, and item size.
 5. Generate an idempotent `seed-data.csh` script.
-6. Compare model capabilities with generated Bicep. Unsupported TTL,
-   regional, consistency, or other fields block deployment or produce an explicit
-   warning; never drop them silently.
+6. Compare approved settings with generated Bicep. If the generator cannot express
+   a required setting, record what is missing and how it will be applied and verified.
+   Do not patch generated artifacts or mark provisioning complete with the requirement unmet.
+   Before deployment, compare existing containers' TTL with the model. Obtain separate
+   approval before changing TTL on a populated container: enabling or shortening it can
+   immediately expire older items, including items with their own `ttl` overrides.
 
 Generate only synthetic sample data. Preserve modeled fields, including credential-named
 fields such as `password` or `token`, and populate sensitive fields with clearly fake,
@@ -537,7 +540,7 @@ Check every modeled container name and its immutable settings before the first
 mutation, not incrementally during execution. Treat failed lookups as unresolved,
 not evidence of absence.
 
-Emulator models containing `fullTextPolicy` or `uniqueKeyPolicy` also use seed-only
+Emulator models containing `fullTextPolicy`, `uniqueKeyPolicy`, or `defaultTtl` also use seed-only
 scripts. Provision and verify those containers through a supported SDK first;
 Shell's `--index_policy` cannot configure these container-level policies.
 For unique keys, compare every existing container's policy before mutation. Policies
@@ -649,6 +652,8 @@ Record observed `uniqueKeyPolicy` beside those policies. Constraint/path order i
 ignored during comparison, but path case and constraint membership must match.
 An absent policy and the service default `{ "uniqueKeys": [] }` both mean no constraints.
 Read the settings from the target, never copy expected configuration as evidence.
+Record the observed container `defaultTtl` in seconds (`-1` enables item-only expiry).
+An absent or null readback means TTL is off; it does not match `-1`.
 
 Record each container's observed `capacityMode` and, for dedicated provisioned capacity, its
 autoscale `maxThroughput`. Models with explicit allocation on provisioned targets use the allocation observations described above.

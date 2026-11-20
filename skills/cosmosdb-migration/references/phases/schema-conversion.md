@@ -336,6 +336,12 @@ index, following [best-practices integration](../workflow/best-practices-integra
 When selected, represent the policy at container level as
 `uniqueKeyPolicy: { "uniqueKeys": [{ "paths": ["/email"] }] }`.
 
+Model approved retention per container with `defaultTtl`: omit it for TTL off, use
+`-1` for item-level expiration only, or use a positive number of seconds from each
+item's last update. For example, 180 days is `15552000`. Do not infer this setting
+from a storage forecast or substitute sliding expiration for an absolute source deadline.
+All domains sharing a container must agree on this setting.
+
 Every domain sharing a container must declare the same complete policy; the merger
 does not union policies. Record the chosen uniqueness scope and supporting evidence
 in the conversion summary.

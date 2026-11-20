@@ -31,6 +31,71 @@
       }
     },
     {
+      "name": "Launch Extension (stop Watch on exit)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/vite/bin/vite.js",
+      "args": ["build", "--mode", "development", "--watch", "--config", "${workspaceFolder}/vite.config.ext.mjs"],
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole",
+      "outputCapture": "std",
+      "sourceMaps": false,
+      "env": { "NO_COLOR": "1" },
+      "serverReadyAction": {
+        "pattern": "built in\\s+[\\d.]+ms\\.",
+        "action": "startDebugging",
+        "name": "Vite Webviews (debug session)"
+      },
+      "cascadeTerminateToConfigurations": ["Vite Webviews (debug session)", "Extension Host (debug session)"]
+    },
+    {
+      "name": "Vite Webviews (debug session)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/vite/bin/vite.js",
+      "args": ["--mode", "development", "--config", "${workspaceFolder}/vite.config.views.mjs"],
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole",
+      "outputCapture": "std",
+      "sourceMaps": false,
+      "env": { "NO_COLOR": "1" },
+      "serverReadyAction": {
+        "pattern": "ready in\\s+[\\d.]+\\s*ms\\b",
+        "action": "startDebugging",
+        "name": "Extension Host (debug session)"
+      },
+      "cascadeTerminateToConfigurations": ["Launch Extension (stop Watch on exit)", "Extension Host (debug session)"],
+      "presentation": { "hidden": true }
+    },
+    {
+      "name": "Extension Host (debug session)",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": ["--extensionDevelopmentPath=${workspaceFolder}/dist"],
+      "outFiles": ["${workspaceFolder}/dist/**/*.mjs"],
+      "autoAttachChildProcesses": true,
+      "debugWebWorkerHost": true,
+      "debugWebviews": false,
+      "trace": true,
+      "sourceMaps": true,
+      "pauseForSourceMap": true,
+      "rendererDebugOptions": {
+        "webRoot": "${workspaceFolder}"
+      },
+      "resolveSourceMapLocations": ["${workspaceFolder}/dist/**", "!**/node_modules/**"],
+      "sourceMapPathOverrides": {
+        "./*": "${workspaceFolder}/*"
+      },
+      "env": {
+        "DEBUGTELEMETRY": "true",
+        "DEVSERVER": "true",
+        "STOP_ON_ENTRY": "false"
+      },
+      "cascadeTerminateToConfigurations": ["Launch Extension (stop Watch on exit)", "Vite Webviews (debug session)"],
+      "presentation": { "hidden": true }
+    },
+    {
       "name": "Launch Extension + AzureResources",
       "type": "extensionHost",
       "request": "launch",

@@ -25,6 +25,26 @@ A webview error such as `No procedure found on path "dataModeling.getDeploymentO
 an API absent from the running host. Rebuilding files on disk or reloading only the webview is insufficient.
 Reopen the modeler after the host restart. Unsaved deployment choices and Bicep edits are intentionally transient.
 
+### Watch task lifetime
+
+`Launch Extension` and `Launch Extension + AzureResources` keep their two Vite Watch tasks running after debug ends.
+For automatic cleanup, select `Launch Extension (stop Watch on exit)`. This launches the extension build watcher
+through the Node debugger. Its `serverReadyAction` starts the webview server after the first successful build;
+the server's readiness action then starts the Extension Development Host. Output appears in the Debug Console.
+Both Vite sessions set `NO_COLOR=1` so ANSI formatting cannot interrupt the readiness patterns.
+
+All three configurations link to each other with `cascadeTerminateToConfigurations`. Stopping any one, or closing
+the Extension Development Host, stops the other two through the debugger's normal process management. There are no
+custom start/stop scripts, control sockets, or process-name-based termination.
+
+The two intermediate configurations are hidden from the launch picker. Use only one instance of this profile per
+VS Code window: cascading termination targets debug sessions by name. Other Watch tasks are not affected.
+Stop default Watch tasks before switching profiles, since both profiles use the same output directory and dev-server port.
+Unlike a compound, which starts all configurations in parallel, the readiness chain waits for both the build and server.
+
+After switching branches, restart Watch tasks as well as the Extension Development Host. A running Vite watcher may
+still use the previous branch's build configuration; a host restart alone does not refresh it.
+
 ---
 
 ## Shared webview theming

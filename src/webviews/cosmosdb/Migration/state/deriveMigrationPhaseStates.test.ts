@@ -819,7 +819,7 @@ describe('migration phase outcomes', () => {
         expect(screen.getAllByTestId('migration-diagnostic-failure')).toHaveLength(1);
         expect(screen.queryByRole('button', { name: 'Next diagnostics' })).not.toBeInTheDocument();
         fireEvent.click(toggle);
-        const list = screen.getByRole('textbox', { name: 'Errors (80)' }) as HTMLTextAreaElement;
+        const list = screen.getByRole<HTMLTextAreaElement>('textbox', { name: 'Errors (80)' });
         expect(list.readOnly).toBe(true);
         expect(list.value.split('\n')).toHaveLength(80);
         expect(list.value.split('\n')).toContain('Diagnostic 79');

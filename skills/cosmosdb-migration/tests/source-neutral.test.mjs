@@ -661,6 +661,54 @@ test('flattened document projections require an evidenced benefit and migration 
     assert.match(validate()[0].message, /benefit/u);
 });
 
+test('only a justified projection can omit known and unknown document properties', t => {
+    const data = documentFixture(t);
+    const authority = data.evidence.documentMappings[0];
+    const source = authority.examples[0].source;
+    const original = structuredClone(source);
+    const justification = { benefit: 'performance', rationale: 'Route reverse lookups by tenant.',
+        evidence: [sourcePath], tradeoffs: 'Derived membership needs reconciliation.' };
+    Object.assign(authority, { mode: 'reshape', justification });
+    const container = structuredClone(data.model.containers[0]);
+    container.name = 'OrdersByTenant';
+    const entity = container.entities[0];
+    entity.name = 'OrderMembership';
+    entity.docType = 'orderMembership';
+    entity.attributes = entity.attributes.filter(attribute => attribute.target !== 'details');
+    data.model.containers.push(container);
+    const target = { domain: 'Orders', container: container.name, entity: entity.name };
+    const mappings = data.evidence.fieldMappings.filter(mapping => mapping.target !== 'details')
+        .map(mapping => ({ ...structuredClone(mapping), ...target }));
+    data.evidence.fieldMappings.push(...mappings);
+    const { sourceId, tenant } = data.item;
+    const output = { sourceId, tenant, docType: entity.docType };
+    output.id = resolveItemId(entity, output);
+    const decision = { ...target, mode: 'projection', justification, examples: [{ source, output }] };
+    data.evidence.documentMappings.push(decision);
+    data.evidence.identityExamples.push({ ...target, cases: [{ item: output, id: output.id }] });
+    data.evidence.sourceDispositions = [{ sourceDataset: 'orders', domain: 'Orders', targets: [
+        { domain: 'Orders', container: 'Orders', entity: 'Order', kind: 'authoritative' },
+        { ...target, kind: 'projection' },
+    ] }];
+    refreshDocumentModel(data);
+    assert.deepEqual(validateConversionEvidence(data.project, data.inventory, data.models, data.root, data.evidence), []);
+    assert.deepEqual(source, original);
+    assert.deepEqual(authority.examples[0].output.details, original.details);
+    assert.deepEqual(authority.examples[0].output.unlistedRoot, original.unlistedRoot);
+    assert.throws(() => executeDocumentMapping(data.inventory, entity, mappings, decision,
+        { ...source, _etag: 'unmapped' }), /collides/u);
+    const validate = () => validateMappingEvidence(data.inventory, data.models, data.evidence, new Map([['orders', 'Orders']]));
+    delete decision.justification;
+    assert.throws(validate, /evidenced Cosmos DB benefit/u);
+    decision.justification = justification;
+    for (const kind of ['authoritative', 'embedded', 'consolidated']) {
+        data.evidence.sourceDispositions[0].targets[1].kind = kind;
+        assert.throws(validate, /projection-only target disposition/u);
+    }
+    delete data.evidence.sourceDispositions;
+    assert.throws(validate, /projection-only target disposition/u);
+});
+
 test('whole-document mapping rejects metadata collisions instead of silently losing source values', t => {
     const data = documentFixture(t);
     const decision = data.evidence.documentMappings[0];

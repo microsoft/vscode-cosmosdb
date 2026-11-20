@@ -125,6 +125,10 @@ small adaptations, but avoid unrelated renaming or duplicate copies of every nes
 Require the [whole-document evidence](../contracts/source-inventory.md#document-preservation) contract.
 Only split, flatten, denormalize, or otherwise restructure when an evidenced Cosmos DB performance, reliability,
 cost, or service-limit benefit outweighs migration complexity. Record that benefit, alternatives, and tradeoffs.
+For a derived lookup that needs only selected fields, declare its target as `kind:"projection"` in
+`sourceDispositions` and use `mode:"projection"` in its whole-document evidence. Show the exact lookup shape
+and preserve the full document on the authoritative target. Explain how stale or missing lookup entries
+affect readers; a passing mapping example does not verify synchronization.
 Without code, ask about intended lookups, writes, atomicity, retention, scale, and size before selecting partition
 or indexing optimizations. Unknown workload supports a provisional conservative design, not invented query evidence.
 

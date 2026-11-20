@@ -7,6 +7,7 @@ import { directIdentityField, isFieldPathPrefix, sourceRefs, validateFieldPath }
 
 export const DOCUMENT_MAPPING_VERSION = 2;
 const SYSTEM_FIELDS = new Set(['id', 'docType', '_rid', '_self', '_etag', '_attachments', '_ts']);
+const DOCUMENT_MODES = new Set(['preserve', 'reshape', 'projection']);
 const WORKLOAD_EVIDENCE = new Set([
     '.cosmosdb-migration/phases/1-discovery/access-patterns/access-patterns.md',
     '.cosmosdb-migration/phases/1-discovery/volumetrics/volumetrics.md',
@@ -161,7 +162,7 @@ export function executeDocumentMapping(inventory, entity, mappings, decision, so
     assertJson(source);
     const dataset = inventory.datasets.find(entry => entry.id === entity.sourceDataset);
     if (!dataset || dataset.kind !== 'document') throw new Error('Document mapping requires a document dataset');
-    if (!['preserve', 'reshape'].includes(decision.mode)) throw new Error('Document mapping mode must be preserve or reshape');
+    if (!DOCUMENT_MODES.has(decision.mode)) throw new Error('Document mapping mode must be preserve, reshape, or projection');
     const nativeKey = directIdentityField(entity, dataset);
     const nativeValue = nativeKey && readFieldValue(source, nativeKey.path);
     if (nativeKey && nativeValue.state !== 'value') throw new Error('Source identity is missing');
@@ -201,8 +202,7 @@ export function executeDocumentMapping(inventory, entity, mappings, decision, so
         }
         return { mapping, fields };
     });
-    const target = structuredClone(source);
-    // Unknown properties pass through; known roots are replaced only by explicit mappings.
+    const target = decision.mode === 'projection' ? {} : structuredClone(source);
     for (const root of mappedRoots) delete target[root];
     if (decision.mode === 'reshape') {
         for (const field of dataset.fields.filter(field => field.path.length === 1 && field.path[0].kind === 'property')) {
@@ -210,7 +210,8 @@ export function executeDocumentMapping(inventory, entity, mappings, decision, so
         }
     }
     for (const key of SYSTEM_FIELDS) {
-        if (Object.hasOwn(target, key)) throw new Error(`Source property ${key} collides with target metadata; inventory and map it explicitly`);
+        const collision = decision.mode === 'projection' ? Object.hasOwn(source, key) && !mappedRoots.has(key) : Object.hasOwn(target, key);
+        if (collision) throw new Error(`Source property ${key} collides with target metadata; inventory and map it explicitly`);
     }
     for (const { mapping, fields } of resolved) {
         if (Object.hasOwn(target, mapping.target)) throw new Error('A mapped target would overwrite an unaccounted source property');
@@ -250,13 +251,20 @@ function validateDocumentMappings(inventory, models, evidence) {
     for (const decision of evidence.documentMappings) {
         const key = JSON.stringify([decision.domain, decision.container, decision.entity]);
         const entry = expected.get(key);
-        if (!entry || !['preserve', 'reshape'].includes(decision.mode)) throw new Error('Unknown or duplicate document mapping');
+        if (!entry || !DOCUMENT_MODES.has(decision.mode)) throw new Error('Unknown or duplicate document mapping');
+        if (decision.mode === 'projection') {
+            const dispositions = (evidence.sourceDispositions ?? []).flatMap(disposition => disposition.targets)
+                .filter(target => target.domain === decision.domain && target.container === decision.container && target.entity === decision.entity);
+            if (!dispositions.length || dispositions.some(target => target.kind !== 'projection')) {
+                throw new Error('Projection mode requires an explicit projection-only target disposition');
+            }
+        }
         const targets = models.flatMap(({ model }) => model.containers.flatMap(container => container.entities))
             .filter(entity => entity.sourceDataset === entry.entity.sourceDataset);
         if (decision.mode === 'preserve' && (targets.length > 1 || entry.entity.isEmbeddedOnly)) {
             throw new Error('Splitting, embedding, or duplicating a document across targets requires an evidenced Cosmos DB benefit');
         }
-        if (decision.mode === 'reshape') {
+        if (decision.mode !== 'preserve') {
             const reason = decision.justification;
             if (!['performance', 'reliability', 'cost', 'service-limit'].includes(reason?.benefit) ||
                 ![reason.rationale, reason.tradeoffs].every(value => typeof value === 'string' && value.trim()) ||

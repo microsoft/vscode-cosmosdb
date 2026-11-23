@@ -11,6 +11,12 @@
 // its `cleanup` in `afterEach` when imported under Vitest's globals, so the component test files do
 // not need to wire that up and node tests never have to import react-dom here.
 import '@testing-library/jest-dom/vitest';
+import { afterAll } from 'vitest';
+import { installLoopbackNetworkGuard } from './vitest.network-guard';
+
+if (process.env.VITEST_ALLOW_EXTERNAL_NETWORK !== '1') {
+    afterAll(installLoopbackNetworkGuard());
+}
 
 // jsdom does not implement ResizeObserver or matchMedia, both of which Fluent UI components and the
 // query-generation input rely on. Provide minimal stubs so component tests can render under jsdom.

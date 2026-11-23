@@ -36,23 +36,11 @@ function getConnectionOptions([address, host]: unknown[]): ConnectionOptions {
     return { port: address, host: typeof host === 'string' ? host : undefined };
 }
 
-export function installLoopbackNetworkGuard(): () => void {
-    const connect: typeof Socket.prototype.connect & { [guardKey]?: () => void } = Socket.prototype.connect;
+export function installLoopbackNetworkGuard(reportBlockedConnection: (error: Error) => void): void {
+    const connect: typeof Socket.prototype.connect & { [guardKey]?: true } = Socket.prototype.connect;
 
     if (connect[guardKey]) {
-        return connect[guardKey];
-    }
-
-    let firstBlocked: Error | undefined;
-
-    function assertNoBlockedConnections(): void {
-        if (firstBlocked) {
-            const cause = firstBlocked;
-
-            firstBlocked = undefined;
-
-            throw new Error('Vitest blocked an unexpected TCP connection.', { cause });
-        }
+        return;
     }
 
     function guardedConnect(this: Socket, ...args: unknown[]): Socket {
@@ -81,12 +69,10 @@ export function installLoopbackNetworkGuard(): () => void {
 
         const error = new Error(`TCP host blocked by the Vitest loopback guard: ${JSON.stringify(host)}.`);
 
-        firstBlocked ??= error;
+        reportBlockedConnection(error);
 
         throw error;
     }
 
-    Socket.prototype.connect = Object.assign(guardedConnect, { [guardKey]: assertNoBlockedConnections });
-
-    return assertNoBlockedConnections;
+    Socket.prototype.connect = Object.assign(guardedConnect, { [guardKey]: true });
 }

@@ -12,11 +12,13 @@ import { createConnection, Socket } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { connect as connectTls } from 'node:tls';
-import { describe, expect, it, vi } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 
-const isCanary = process.env.VITEST_LOOPBACK_GUARD_CANARY === '1';
+const canaryMode = process.env.VITEST_LOOPBACK_GUARD_CANARY;
+const isCanary = canaryMode !== undefined;
 const allowsExternal = process.env.VITEST_ALLOW_EXTERNAL_NETWORK === '1';
 const testHost = 'network-guard.invalid';
+const blockedMessage = 'TCP host blocked by the Vitest loopback guard';
 
 async function withLoopbackServer(work: (port: number) => Promise<void>): Promise<void> {
     const server = createServer((_request, response) => response.end('loopback'));
@@ -38,7 +40,6 @@ async function withLoopbackServer(work: (port: number) => Promise<void>): Promis
 
 it.skipIf(!isCanary || allowsExternal)('network guard subprocess canary: blocks TCP, HTTP, TLS and fetch', async () => {
     const socket = new Socket();
-    const blockedMessage = 'TCP host blocked by the Vitest loopback guard';
     const lookup = vi.fn(() => {
         throw new Error('External host must be blocked before DNS.');
     });
@@ -74,6 +75,17 @@ it.skipIf(!isCanary || !allowsExternal)('network guard subprocess canary: opts o
         }
     });
 });
+
+it.skipIf(canaryMode !== 'late teardown')('network guard subprocess canary: late teardown', () => {
+    expect(allowsExternal).toBe(false);
+});
+
+function attemptConnectionDuringTeardown(): void {
+    expect(() => new Socket().connect(80, '127.0.0.2')).toThrow(blockedMessage);
+}
+
+// List ordering runs this root hook after the setup-file root hook.
+afterAll(canaryMode === 'late teardown' ? attemptConnectionDuringTeardown : () => {});
 
 describe.skipIf(isCanary || allowsExternal)('Vitest loopback network guard', () => {
     it('allows loopback fetch and resolves localhost without calling a custom lookup', async () => {
@@ -119,16 +131,25 @@ describe.skipIf(isCanary || allowsExternal)('Vitest loopback network guard', () 
     });
 
     it.each([
-        { allowExternal: '0', expectedStatus: 1 },
-        { allowExternal: '1', expectedStatus: 0 },
+        { canary: 'blocks TCP', allowExternal: '0', expectedStatus: 1 },
+        { canary: 'opts out explicitly', allowExternal: '1', expectedStatus: 0 },
+        { canary: 'late teardown', allowExternal: '0', expectedStatus: 1 },
     ])(
-        'enforces the worker guard with external network opt-in set to $allowExternal',
-        ({ allowExternal, expectedStatus }) => {
+        'enforces the worker guard for $canary',
+        ({ canary, allowExternal, expectedStatus }) => {
             const require = createRequire(import.meta.url);
             const vitestCli = join(dirname(require.resolve('vitest/package.json')), 'vitest.mjs');
             const child = spawnSync(
                 process.execPath,
-                [vitestCli, 'run', import.meta.filename, '-t', 'network guard subprocess canary', '--reporter=default'],
+                [
+                    vitestCli,
+                    'run',
+                    import.meta.filename,
+                    '-t',
+                    `network guard subprocess canary: ${canary}`,
+                    '--reporter=default',
+                    '--sequence.hooks=list',
+                ],
                 {
                     encoding: 'utf8',
                     env: {
@@ -137,7 +158,7 @@ describe.skipIf(isCanary || allowsExternal)('Vitest loopback network guard', () 
                         FORCE_COLOR: '0',
                         NO_PROXY: '*',
                         VITEST_ALLOW_EXTERNAL_NETWORK: allowExternal,
-                        VITEST_LOOPBACK_GUARD_CANARY: '1',
+                        VITEST_LOOPBACK_GUARD_CANARY: canary,
                     },
                     timeout: 25_000,
                 },
@@ -145,10 +166,10 @@ describe.skipIf(isCanary || allowsExternal)('Vitest loopback network guard', () 
             const output = child.stdout + child.stderr;
 
             expect(child.error).toBeUndefined();
-            // The canary itself passed, but the worker's afterAll hook must still fail the guarded run.
+            // Catching the connection error must not prevent the worker from failing the run.
             expect(output).toMatch(/Tests\s+1 passed/);
             expect(child.status).toBe(expectedStatus);
-            expect(output.includes('Vitest blocked an unexpected TCP connection.')).toBe(expectedStatus !== 0);
+            expect(output.includes('Loopback Network Guard')).toBe(expectedStatus !== 0);
         },
         30_000,
     );

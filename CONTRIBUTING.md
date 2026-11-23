@@ -26,7 +26,8 @@ There are several ways you can contribute to the [vscode-cosmosdb repository](ht
 ## Network access in Vitest
 
 The root Vitest setup allows TCP connections to `127.0.0.1` and `::1`, resolves `localhost` only to those addresses,
-and preserves local IPC. Unexpected outbound TCP attempts fail the suite even if application code handles the error.
+and preserves local IPC. Unexpected outbound TCP attempts fail the run, including during teardown and when application
+code handles the error.
 Mock external services in unit tests. This is a Node worker guard, not OS-level isolation: it does not restrict UDP or
 child processes.
 

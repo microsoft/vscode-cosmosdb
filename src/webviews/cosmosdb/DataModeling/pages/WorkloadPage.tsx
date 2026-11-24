@@ -10,20 +10,47 @@ import {
     Link,
     makeStyles,
     shorthands,
-    Text,
     tokens,
+    useAnnounce,
 } from '@fluentui/react-components';
 import { CheckmarkRegular, SearchRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { Fragment, type KeyboardEvent, useId, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { SelectableCard } from '../components/SelectableCard';
 import { type ScenarioId } from '../models';
-import { getScenarioList, type ScenarioBadge, type ScenarioTag } from '../scenarios';
+import { getScenarioList, type ScenarioBadge, type ScenarioListItem, type ScenarioTag } from '../scenarios';
 
 /** The fallback scenario has no trait chip and stays visible regardless of the text or trait filters. */
 const FALLBACK_SCENARIO: ScenarioId = 'other';
 /** Chips are grouped by color so related traits sit together: access patterns, write pressure, read scaling. */
 const TONE_ORDER: ScenarioBadge['tone'][] = ['info', 'warn', 'success'];
+/** Shared batch so a newer result summary replaces one still queued from a previous keystroke or click. */
+const RESULTS_ANNOUNCEMENT = 'workload-results';
+
+function filterScenarios(scenarios: ScenarioListItem[], filter: string, tags: ScenarioTag[]): ScenarioListItem[] {
+    const q = filter.trim().toLowerCase();
+    return scenarios.filter(
+        (s) =>
+            s.id === FALLBACK_SCENARIO ||
+            ((tags.length === 0 || tags.includes(s.badge.tag)) &&
+                (!q ||
+                    s.title.toLowerCase().includes(q) ||
+                    s.description.toLowerCase().includes(q) ||
+                    s.searchTerms.includes(q))),
+    );
+}
+
+function summarizeResults(visible: ScenarioListItem[]): string {
+    // The custom workload is always shown, so it never counts as a match. Naming predefined scenarios keeps the count
+    // accurate next to that extra card, including when it is the only card a search leaves visible.
+    const matchCount = visible.filter((s) => s.id !== FALLBACK_SCENARIO).length;
+    return matchCount === 0
+        ? l10n.t('No predefined scenarios match your filter. You can still choose a custom workload.')
+        : matchCount === 1
+          ? l10n.t('1 matching predefined scenario')
+          : l10n.t('{count} matching predefined scenarios', { count: matchCount });
+}
 
 /**
  * Step 1 — Workload. Self-contained: it only needs the currently selected
@@ -112,9 +139,9 @@ const useStyles = makeStyles({
         fontSize: tokens.fontSizeBase200,
         color: tokens.colorNeutralForeground3,
     },
-    empty: {
+    resultStatus: {
         color: tokens.colorNeutralForeground3,
-        padding: tokens.spacingVerticalL,
+        marginBottom: tokens.spacingVerticalS,
     },
 });
 
@@ -133,8 +160,13 @@ export interface WorkloadPageProps {
 export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
     const styles = useStyles();
     const groupName = useId();
+    const { announce } = useAnnounce();
+    const resultSummaryId = useId();
+    const searchHintId = useId();
     const [filter, setFilter] = useState('');
     const [tags, setTags] = useState<ScenarioTag[]>([]);
+    // Clear all stays visible while focused, so clearing never hides the element that has focus.
+    const [clearFocused, setClearFocused] = useState(false);
     // Roving tabindex: the chip row is one Tab stop; arrow keys move between chips.
     const [activeChip, setActiveChip] = useState(0);
     const chipRefs = useRef<(HTMLElement | null)[]>([]);
@@ -163,26 +195,35 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
     }, [scenarios]);
     const chipCount = traitGroups.reduce((count, group) => count + group.options.length, 0);
 
-    const visible = useMemo(() => {
-        const q = filter.trim().toLowerCase();
-        return scenarios.filter(
-            (s) =>
-                s.id === FALLBACK_SCENARIO ||
-                ((tags.length === 0 || tags.includes(s.badge.tag)) &&
-                    (!q ||
-                        s.title.toLowerCase().includes(q) ||
-                        s.description.toLowerCase().includes(q) ||
-                        s.searchTerms.includes(q))),
-        );
-    }, [filter, tags, scenarios]);
+    const visible = useMemo(() => filterScenarios(scenarios, filter, tags), [filter, tags, scenarios]);
+    const resultSummary = summarizeResults(visible);
+
+    // Typing and trait chips share this path.
+    // A search edit is always announced, even when the count text is unchanged (e.g. "iot" -> "clickstream").
+    // Chips already report their pressed state, so they only add a changed count.
+    const applyFilters = (nextFilter: string, nextTags: ScenarioTag[]) => {
+        const nextSummary = summarizeResults(filterScenarios(scenarios, nextFilter, nextTags));
+        setFilter(nextFilter);
+        setTags(nextTags);
+        if (nextFilter !== filter || nextSummary !== resultSummary) {
+            announce(nextSummary, { polite: true, batchId: RESULTS_ANNOUNCEMENT });
+        }
+    };
 
     const toggleTag = (tag: ScenarioTag) =>
-        setTags((previous) => (previous.includes(tag) ? previous.filter((t) => t !== tag) : [...previous, tag]));
+        applyFilters(filter, tags.includes(tag) ? tags.filter((t) => t !== tag) : [...tags, tag]);
 
-    // The button unmounts once nothing is filtered, so hand focus to the search box instead of losing it.
+    // Clear all hides itself, so focus returns to the search box. A separate announcement would be cut off by that
+    // focus move, so the search box is described by the result summary, which is read as part of the focus change.
     const clearFilters = () => {
-        setFilter('');
-        setTags([]);
+        // Supersede any filter feedback Fluent still has queued, so a stale count is not read after the restored one.
+        // Fluent replaces the queued message of the same batch and skips empty messages when speaking.
+        announce('', { polite: true, batchId: RESULTS_ANNOUNCEMENT });
+        // Commit the cleared value and summary first, so the search box is already current when focus lands on it.
+        flushSync(() => {
+            setFilter('');
+            setTags([]);
+        });
         searchRef.current?.focus();
     };
 
@@ -219,10 +260,14 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
                     className={styles.search}
                     contentBefore={<SearchRegular />}
                     placeholder={l10n.t('Filter scenarios…')}
-                    aria-label={l10n.t('Filter scenarios…')}
+                    aria-describedby={`${resultSummaryId} ${searchHintId}`}
                     value={filter}
-                    onChange={(_, data) => setFilter(data.value)}
+                    onChange={(_, data) => applyFilters(data.value, tags)}
                 />
+                {/* `hidden` keeps the hint out of layout, so it cannot pull a screen reader's cursor off-screen. */}
+                <span id={searchHintId} hidden>
+                    {l10n.t('Scenarios filter as you type.')}
+                </span>
                 <div
                     className={styles.traits}
                     role="toolbar"
@@ -267,40 +312,42 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
                 <Link
                     as="button"
                     className={styles.clear}
-                    style={{ visibility: hasFilters ? 'visible' : 'hidden' }}
-                    aria-description={l10n.t('Clear the search text and selected traits')}
+                    style={{ visibility: hasFilters || clearFocused ? 'visible' : 'hidden' }}
+                    aria-description={l10n.t('Clear the search text and selected filters')}
+                    onFocus={() => setClearFocused(true)}
+                    onBlur={() => setClearFocused(false)}
                     onClick={clearFilters}
                 >
                     {l10n.t('Clear all')}
                 </Link>
             </div>
-            {visible.length === 0 ? (
-                <Text className={styles.empty}>{l10n.t('No scenarios match your filter.')}</Text>
-            ) : (
-                <div className={styles.list} role="radiogroup" aria-label={l10n.t('Workload scenarios')}>
-                    {visible.map((s) => (
-                        <SelectableCard
-                            key={s.id}
-                            name={groupName}
-                            value={s.id}
-                            selected={scenario === s.id}
-                            onSelect={() => onPickScenario(s.id)}
-                            title={s.title}
-                            description={s.description}
-                            meta={
-                                s.hint || s.badge ? (
-                                    <span className={styles.meta}>
-                                        <Badge appearance="tint" color={BADGE_COLOR[s.badge.tone]}>
-                                            {s.badge.text}
-                                        </Badge>
-                                        {s.hint ? <span className={styles.hint}>{s.hint}</span> : null}
-                                    </span>
-                                ) : undefined
-                            }
-                        />
-                    ))}
-                </div>
-            )}
+            {/* Not a live region: edits announce it explicitly, and the search box reads it as its description. */}
+            <div id={resultSummaryId} className={styles.resultStatus}>
+                {resultSummary}
+            </div>
+            <div className={styles.list} role="radiogroup" aria-label={l10n.t('Workload scenarios')}>
+                {visible.map((s) => (
+                    <SelectableCard
+                        key={s.id}
+                        name={groupName}
+                        value={s.id}
+                        selected={scenario === s.id}
+                        onSelect={() => onPickScenario(s.id)}
+                        title={s.title}
+                        description={s.description}
+                        meta={
+                            s.hint || s.badge ? (
+                                <span className={styles.meta}>
+                                    <Badge appearance="tint" color={BADGE_COLOR[s.badge.tone]}>
+                                        {s.badge.text}
+                                    </Badge>
+                                    {s.hint ? <span className={styles.hint}>{s.hint}</span> : null}
+                                </span>
+                            ) : undefined
+                        }
+                    />
+                ))}
+            </div>
         </div>
     );
 }

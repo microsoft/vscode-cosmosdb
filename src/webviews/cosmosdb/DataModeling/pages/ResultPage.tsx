@@ -534,6 +534,7 @@ export interface ResultPageProps {
     recommendation?: PartitionKeyRecommendation;
     recommendationError?: string;
     onRetryRecommendation: () => void;
+    recommendationDisabledReason?: string;
     onEditModel: () => void;
     onStopWaitingRecommendation: () => Promise<void>;
     /** When supplied (including undefined), the parent owns the selection and resets it for new recommendations. */
@@ -547,6 +548,7 @@ export function ResultPage(props: ResultPageProps) {
         recommendation,
         recommendationError,
         onRetryRecommendation,
+        recommendationDisabledReason,
         onEditModel,
         onStopWaitingRecommendation,
         onFeedback,
@@ -587,6 +589,7 @@ export function ResultPage(props: ResultPageProps) {
                             : recommendationError
                     }
                     onRetry={onRetryRecommendation}
+                    retryDisabledReason={recommendationDisabledReason}
                     onEditModel={onEditModel}
                     onStopWaiting={onStopWaitingRecommendation}
                 />

@@ -52,17 +52,65 @@ describe('modeling advisor persistence', () => {
         expect(save).not.toHaveBeenCalled();
     });
 
-    it('blocks saving after a failed load and hydrates the saved model after retry', async () => {
-        const saved = savedSnapshot();
-        const load = vi.fn().mockRejectedValueOnce(new Error('corrupt')).mockResolvedValue(saved);
+    it.each(['rejection', 'synchronous throw', 'invalid response'])(
+        'keeps fallback edits local after a load %s until retry loads the saved model',
+        async (failure) => {
+            const load = vi.fn<() => Promise<ReturnType<typeof savedSnapshot> | null>>(() => {
+                if (failure === 'synchronous throw') throw new Error('Load failed');
+                return failure === 'rejection'
+                    ? Promise.reject(new Error('Load failed'))
+                    : Promise.resolve({ ...savedSnapshot(), wizard: { ...savedSnapshot().wizard, step: -1 } });
+            });
+            const save = vi.fn().mockResolvedValue(undefined);
+            const { result } = renderHook(() => useModelingAdvisorPersistence({ load, save }));
+            await waitFor(() => expect(result.current.loadStatus).toBe('ready'));
+            expect(result.current.loadFailed).toBe(true);
+            expect(result.current.snapshot).toEqual(createInitialSnapshot());
+            expect(save).not.toHaveBeenCalled();
+            const edited = savedSnapshot();
+            act(() => result.current.setSnapshot(edited));
+            act(() => result.current.retrySave());
+            expect(save).not.toHaveBeenCalled();
+            await expect(result.current.flush(edited)).rejects.toThrow('Retry loading');
+            expect(save).not.toHaveBeenCalled();
+            expect(result.current.snapshot).toEqual(edited);
+
+            const saved = savedSnapshot();
+            load.mockResolvedValue(saved);
+            act(() => result.current.retryLoad());
+            await waitFor(() => expect(result.current.loadFailed).toBe(false));
+            expect(result.current.snapshot).toEqual(saved);
+            expect(save).not.toHaveBeenCalled();
+            act(() => result.current.setSnapshot(edited));
+            await waitFor(() => expect(save).toHaveBeenCalledWith(edited));
+        },
+    );
+
+    it('retains temporary edits when retry loading fails and blocks writes while a retry is pending', async () => {
+        const load = vi
+            .fn<() => Promise<ReturnType<typeof savedSnapshot> | null>>()
+            .mockRejectedValue(new Error('Load failed'));
         const save = vi.fn().mockResolvedValue(undefined);
         const { result } = renderHook(() => useModelingAdvisorPersistence({ load, save }));
-        await waitFor(() => expect(result.current.loadStatus).toBe('error'));
-        act(() => result.current.setSnapshot(savedSnapshot()));
-        expect(save).not.toHaveBeenCalled();
+        await waitFor(() => expect(result.current.loadFailed).toBe(true));
+        const edited = savedSnapshot();
+        act(() => result.current.setSnapshot(edited));
+        let rejectLoad!: (error: Error) => void;
+        load.mockImplementationOnce(
+            () =>
+                new Promise((_, reject) => {
+                    rejectLoad = reject;
+                }),
+        );
         act(() => result.current.retryLoad());
-        await waitFor(() => expect(result.current.loadStatus).toBe('ready'));
-        expect(result.current.snapshot).toEqual(saved);
+        expect(result.current.loadStatus).toBe('loading');
+        await expect(result.current.flush(edited)).rejects.toThrow('Retry loading');
+        act(() => result.current.retrySave());
+        expect(save).not.toHaveBeenCalled();
+        await act(async () => rejectLoad(new Error('Still unavailable')));
+        expect(result.current.loadStatus).toBe('ready');
+        expect(result.current.loadFailed).toBe(true);
+        expect(result.current.snapshot).toEqual(edited);
         expect(save).not.toHaveBeenCalled();
     });
 

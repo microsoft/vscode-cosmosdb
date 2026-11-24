@@ -92,7 +92,8 @@ export class DataModelingWizardTab extends BaseTab {
         project: DataModelerProjectService,
         column: vscode.ViewColumn,
     ): Promise<DataModelingWizardTab> {
-        const saved = await project.loadState();
+        // The webview reloads and reports failures with Retry loading, so a failed read must not block opening.
+        const saved = await project.loadState().catch(() => null);
         let choice: 'new' | 'continued' | 'replaced' = saved ? 'continued' : 'new';
         if (saved) {
             const yes = { title: l10n.t('Yes') };

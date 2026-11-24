@@ -22,7 +22,22 @@ const NODE_EXTERNALS = new Set([...builtinModules, ...builtinModules.map((m) => 
 
 const marketplaceExcludedRegion =
     /<!-- region exclude-from-marketplace -->.*?<!-- endregion exclude-from-marketplace -->/gis;
-const shippedLocales = '{cs,de,es,fr,it,ja,ko,pl,pt-BR,ru,tr,zh-Hans,zh-Hant,qps-ploc}';
+const shippedLocales = [
+    'cs',
+    'de',
+    'es',
+    'fr',
+    'it',
+    'ja',
+    'ko',
+    'pl',
+    'pt-BR',
+    'ru',
+    'tr',
+    'zh-Hans',
+    'zh-Hant',
+    'qps-ploc',
+];
 
 export default ({ mode }) => {
     const isDev = mode === 'development';
@@ -196,8 +211,11 @@ export default ({ mode }) => {
         plugins: [
             copyStaticAssets({
                 targets: [
-                    { src: `l10n/bundle.l10n.${shippedLocales}.json`, dest: 'l10n' },
-                    { src: `package.nls.${shippedLocales}.json` },
+                    // Track the shipped files explicitly instead of recursively watching the root (which contains dist).
+                    ...shippedLocales.flatMap((locale) => [
+                        { src: `l10n/bundle.l10n.${locale}.json`, dest: 'l10n' },
+                        { src: `package.nls.${locale}.json` },
+                    ]),
                     { src: 'package.nls.json' },
                     { src: 'resources' },
                     { src: 'skills' },

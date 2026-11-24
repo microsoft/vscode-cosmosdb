@@ -85,13 +85,13 @@ VS Code loads the current display language's bundle from the directory declared 
 Keep that ordering so labels evaluated at module initialization are translated too.
 
 The extension build must put each translated bundle directly under `dist/l10n`, for example
-`dist/l10n/bundle.l10n.fr.json`. `vite-plugin-static-copy` preserves source directories, so the localization target
-in `vite.config.ext.mjs` uses `rename: { stripBase: true }` to avoid an extra `l10n` directory.
+`dist/l10n/bundle.l10n.fr.json`. [`vite.config.ext.mjs`](../vite.config.ext.mjs) lists the shipped locales and configures
+the [`copyStaticAssets` plugin](../plugins/vite-plugin-copy-static-assets.mjs) to copy the bundles and localized manifests.
 Bundles under `dist/l10n/l10n` are not found by VS Code, leaving both host and webview translations unavailable.
 
-`src/localizationPackaging.test.ts` exercises the real copy plugin in development and production modes.
-It checks the manifest path and verifies that every locale shipped with a localized manifest has its unchanged bundle
-in that directory.
+`src/localizationPackaging.test.ts` exercises the real copy plugin in development and production modes. It checks
+representative extension assets and verifies that every locale shipped with a localized manifest has its unchanged
+bundle in the directory declared by the manifest.
 
 `test/e2e/specs/queryEditor-localization.spec.ts` additionally launches real VS Code instances with the official
 German and Japanese language packs. It changes the display language through the UI, confirms a restart, and opens

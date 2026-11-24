@@ -201,7 +201,7 @@ export class BaseTab {
     </div>
     <script nonce="${params.nonce}">
       globalThis.l10n_bundle = ${
-          // eslint-disable-next-line no-restricted-syntax
+          // oxlint-disable-next-line cosmosdb/no-restricted-syntax -- Pass the host bundle into the webview.
           JSON.stringify(vscode.l10n.bundle ?? {})
       };
     </script>

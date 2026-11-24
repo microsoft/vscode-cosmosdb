@@ -478,7 +478,7 @@ npm install
 npm run vitest          # unit tests (no emulator needed)
 npm run vitest:ui       # watch mode with UI
 npm run build           # compile ESM
-npm run lint            # ESLint
+npm run lint            # Oxlint (from the repository root)
 ```
 
 ### Integration tests (requires Cosmos DB Emulator)

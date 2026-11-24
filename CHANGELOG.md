@@ -1,5 +1,18 @@
 # Change Log
 
+## 0.38.2
+
+### Fixed
+
+- Fixed **Data Modeler** workload-filter announcements and focus handling, including live result counts and clearer feedback when no predefined scenarios match. ([#3590](https://github.com/microsoft/vscode-cosmosdb/issues/3590))
+- Fixed **Data Modeler** accessible labels for nested-property dropdowns and array controls. ([#3595](https://github.com/microsoft/vscode-cosmosdb/issues/3595))
+- Fixed **Account Overview** inventory search accessibility with a persistent label. ([#3596](https://github.com/microsoft/vscode-cosmosdb/issues/3596))
+
+### Changed
+
+- Added **Account Overview** usage and error telemetry without changing advisory behavior. ([#3607](https://github.com/microsoft/vscode-cosmosdb/pull/3607))
+- Updated translations across 13 languages. ([#3618](https://github.com/microsoft/vscode-cosmosdb/pull/3618))
+
 ## 0.38.1
 
 ### Fixed

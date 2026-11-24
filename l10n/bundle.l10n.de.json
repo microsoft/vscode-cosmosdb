@@ -1663,6 +1663,7 @@
   "Shared-throughput database {database} has `{ru} RU/s` across `{count} collections`. {mono} consumes `{monoShare}%` of the pool.": "Die Datenbank mit gemeinsamem Durchsatz {database} verfügt über{ru} RU/s in{count} Sammlungen. {mono} verbraucht{monoShare} % des Pools.",
   "Shared-throughput starvation": "Verhungern durch gemeinsam genutzten Durchsatz",
   "Shared-throughput starvation in {database}": "Mangel an gemeinsam genutzem Durchsatz in {database}",
+  "Show account health details": "Details zur Kontointegrität anzeigen",
   "Show chart: {metric}": "Diagramm anzeigen: {metric}",
   "Show current schema": "Aktuelles Schema anzeigen",
   "Show full migration assistant description": "Vollständige Beschreibung des Migration Assistant anzeigen",

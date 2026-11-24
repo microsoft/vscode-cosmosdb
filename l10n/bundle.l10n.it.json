@@ -1663,6 +1663,7 @@
   "Shared-throughput database {database} has `{ru} RU/s` across `{count} collections`. {mono} consumes `{monoShare}%` of the pool.": "Il database con velocità effettiva condivisa {database} ha `{ru} RU/s` distribuiti su `{count} collections`. {mono} utilizza il `{monoShare}%` del pool.",
   "Shared-throughput starvation": "Esaurimento della velocità effettiva condivisa",
   "Shared-throughput starvation in {database}": "Esaurimento della velocità effettiva condivisa in {database}",
+  "Show account health details": "Mostra i dettagli dell'integrità dell'account",
   "Show chart: {metric}": "Mostra grafico: {metric}",
   "Show current schema": "Mostra schema corrente",
   "Show full migration assistant description": "Mostra la descrizione completa di Migration Assistant",

@@ -1663,6 +1663,7 @@
   "Shared-throughput database {database} has `{ru} RU/s` across `{count} collections`. {mono} consumes `{monoShare}%` of the pool.": "Baza danych o współdzielonej przepływności {database} ma `{ru} RU/s` w `{count} collections`. Platforma {mono} zużywa element `{monoShare}%` puli.",
   "Shared-throughput starvation": "Niedobór współdzielonej przepływności",
   "Shared-throughput starvation in {database}": "Niedobór współdzielonej przepływności w {database}",
+  "Show account health details": "Pokaż szczegóły dotyczące kondycji konta",
   "Show chart: {metric}": "Pokaż wykres: {metric}",
   "Show current schema": "Pokaż bieżący schemat",
   "Show full migration assistant description": "Pokaż pełny opis asystenta migracji",

@@ -1663,6 +1663,7 @@
   "Shared-throughput database {database} has `{ru} RU/s` across `{count} collections`. {mono} consumes `{monoShare}%` of the pool.": "База данных с общей пропускной способностью {database} имеет '{ru} ЕЗ/с' в '{count} коллекциях'. {mono} использует{monoShare} % пула.",
   "Shared-throughput starvation": "Нехватка общей пропускной способности",
   "Shared-throughput starvation in {database}": "Нехватка общей пропускной способности в {database}",
+  "Show account health details": "Показать сведения о состоянии работоспособности учетной записи",
   "Show chart: {metric}": "Показать диаграмму: {metric}",
   "Show current schema": "Показать существующую схему",
   "Show full migration assistant description": "Показать полное описание помощника по миграции",

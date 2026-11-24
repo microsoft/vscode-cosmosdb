@@ -1663,6 +1663,7 @@
   "Shared-throughput database {database} has `{ru} RU/s` across `{count} collections`. {mono} consumes `{monoShare}%` of the pool.": "O banco de dados de taxa de transferência compartilhada {database} tem '{ru} RU/s' em '{count} coleções'. {mono} consome '{monoShare}%' do pool.",
   "Shared-throughput starvation": "Privação de taxa de transferência compartilhada",
   "Shared-throughput starvation in {database}": "Privação de taxa de transferência compartilhada em {database}",
+  "Show account health details": "Mostrar detalhes da integridade da conta",
   "Show chart: {metric}": "Mostre o gráfico: {metric}",
   "Show current schema": "Mostrar esquema atual",
   "Show full migration assistant description": "Mostrar descrição completa do assistente de migração",

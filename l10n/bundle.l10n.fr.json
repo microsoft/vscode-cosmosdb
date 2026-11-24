@@ -1663,6 +1663,7 @@
   "Shared-throughput database {database} has `{ru} RU/s` across `{count} collections`. {mono} consumes `{monoShare}%` of the pool.": "La base de données à débit partagé {database} dispose de `{ru} RU/s` répartis sur `{count} collections`. {mono} consomme `{monoShare}%` du pool.",
   "Shared-throughput starvation": "Manque de débit partagé",
   "Shared-throughput starvation in {database}": "Disette de débit partagé dans {database}",
+  "Show account health details": "Afficher les détails de l’état du compte",
   "Show chart: {metric}": "Afficher le graphique : {metric}",
   "Show current schema": "Afficher le schéma actuel",
   "Show full migration assistant description": "Afficher la description complète de l’Assistant Migration",

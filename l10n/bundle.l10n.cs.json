@@ -1663,6 +1663,7 @@
   "Shared-throughput database {database} has `{ru} RU/s` across `{count} collections`. {mono} consumes `{monoShare}%` of the pool.": "Databázový {database} se sdílenou propustností má '{ru} RU/s napříč '{count} kolekcemi. {mono} spotřebovává{monoShare} % fondu.",
   "Shared-throughput starvation": "Nedostatek kapacity ve sdílené propustnosti",
   "Shared-throughput starvation in {database}": "Nedostatek kapacity ve sdílené propustnosti v databázi {database}",
+  "Show account health details": "Zobrazit podrobnosti o stavu účtu",
   "Show chart: {metric}": "Zobrazit graf: {metric}",
   "Show current schema": "Zobrazit aktuální schéma",
   "Show full migration assistant description": "Zobrazit úplný popis pomocníka pro migraci",

@@ -7,13 +7,16 @@
 
 import { AriaLiveAnnouncer } from '@fluentui/react-components';
 import type * as FluentUI from '@fluentui/react-components';
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type ScenarioId } from '../models';
 import { getScenarioList, TRAIT_TONE } from '../scenarios';
-import { WorkloadPage } from './WorkloadPage';
+import { RESULTS_ANNOUNCEMENT_DELAY_MS, WorkloadPage } from './WorkloadPage';
+
+/** How long Fluent's DOM live-region fallback keeps each message before its next cycle (internal to Fluent). */
+const FLUENT_MESSAGE_DURATION_MS = 500;
 
 const announce = vi.hoisted(() => vi.fn());
 // Most tests observe announcements through a spy; `announcer.real` switches to Fluent's own announcer.
@@ -81,14 +84,21 @@ function snapshotSearchOnFocus() {
 }
 
 describe('WorkloadPage result status', () => {
+    afterEach(() => {
+        cleanup();
+        vi.useRealTimers();
+    });
+
     const allMatching = () => `${getScenarioList().length - 1} matching predefined scenarios`;
-    // The visible count and the announcement come from the same edit, with no delay in between.
-    const expectResult = (message: string) => {
+    // Filtering stays immediate; only the spoken summary waits for edits to settle.
+    const expectResult = async (message: string) => {
         expect(screen.getByText(message)).toBeVisible();
-        expect(announce).toHaveBeenLastCalledWith(message, expect.objectContaining({ polite: true }));
+        await waitFor(() =>
+            expect(announce).toHaveBeenLastCalledWith(message, expect.objectContaining({ polite: true })),
+        );
     };
 
-    it('shows the matching count without a live region and announces every search edit', async () => {
+    it('shows the matching count without a live region and announces settled search edits', async () => {
         const user = userEvent.setup();
         const { container } = render(<Workload />);
         const search = searchBox();
@@ -107,21 +117,22 @@ describe('WorkloadPage result status', () => {
         expect(announce).not.toHaveBeenCalled();
 
         fireEvent.change(search, { target: { value: 'transactions' } });
-        expectResult('2 matching predefined scenarios');
+        await expectResult('2 matching predefined scenarios');
         fireEvent.change(search, { target: { value: 'iot' } });
-        expectResult('1 matching predefined scenario');
+        await expectResult('1 matching predefined scenario');
         announce.mockClear();
         // Same count, different card: the new search still gets feedback.
         fireEvent.change(search, { target: { value: 'clickstream' } });
+        await expectResult('1 matching predefined scenario');
         expect(announce).toHaveBeenCalledExactlyOnceWith('1 matching predefined scenario', expect.anything());
-        expectResult('1 matching predefined scenario');
 
         fireEvent.change(search, { target: { value: 'no matching workload' } });
-        expectResult('No predefined scenarios match your filter. You can still choose a custom workload.');
+        await expectResult('No predefined scenarios match your filter. You can still choose a custom workload.');
         expect(screen.getAllByRole('radio')).toHaveLength(1);
         // Searching for the custom card itself leaves it visible without claiming that it does not match.
+        announce.mockClear();
         fireEvent.change(search, { target: { value: 'None of these fit' } });
-        expectResult('No predefined scenarios match your filter. You can still choose a custom workload.');
+        await expectResult('No predefined scenarios match your filter. You can still choose a custom workload.');
         expect(screen.getAllByRole('radio')).toEqual([screen.getByRole('radio', { name: 'None of these fit' })]);
         expect(search).toHaveFocus();
     });
@@ -131,12 +142,12 @@ describe('WorkloadPage result status', () => {
         render(<Workload />);
         const filterChip = toolbar().getByRole('button', { name: 'Write-heavy' });
         await user.click(filterChip);
-        expectResult('2 matching predefined scenarios');
+        await expectResult('2 matching predefined scenarios');
         expect(filterChip).toHaveFocus();
 
         const search = searchBox();
         await user.type(search, 'clickstream');
-        expectResult('1 matching predefined scenario');
+        await expectResult('1 matching predefined scenario');
         // Toggling the chip off and on keeps the count, so the pressed state alone is the feedback.
         const announced = announce.mock.calls.length;
         await user.click(filterChip);
@@ -144,6 +155,8 @@ describe('WorkloadPage result status', () => {
         await user.click(filterChip);
         expect(filterChip).toHaveAttribute('aria-pressed', 'true');
         expect(screen.getByText('1 matching predefined scenario')).toBeVisible();
+        await act(() => new Promise((resolve) => setTimeout(resolve, RESULTS_ANNOUNCEMENT_DELAY_MS)));
+        expect(announce).toHaveBeenCalledTimes(announced);
         // A separate announcement would be cut off by the focus move, so the search box's description carries the
         // result instead. It must already be current when focus lands, and Clear all must not hide while focused.
         const onFocus = snapshotSearchOnFocus();
@@ -166,6 +179,7 @@ describe('WorkloadPage result status', () => {
     });
 
     it('drops filter feedback still queued in the real announcer when Clear all is activated', async () => {
+        vi.useFakeTimers();
         // Without ariaNotify, Fluent queues messages that arrive while one is being read and delivers them later.
         expect('ariaNotify' in document).toBe(false);
         announcer.real = true;
@@ -176,27 +190,111 @@ describe('WorkloadPage result status', () => {
         );
         const liveRegion = document.querySelector<HTMLElement>('[aria-live]')!;
         const delivered: string[] = [];
-        new MutationObserver((records) => {
+        const observer = new MutationObserver((records) => {
             for (const record of records) {
                 for (const node of record.addedNodes) {
                     const text = (node as HTMLElement).innerText;
                     if (text) delivered.push(text);
                 }
             }
-        }).observe(liveRegion, { childList: true });
-        const flush = (ms: number) => act(() => new Promise((resolve) => setTimeout(resolve, ms)));
+        });
+        observer.observe(liveRegion, { childList: true });
+        const flush = (ms: number) => act(() => vi.advanceTimersByTimeAsync(ms));
 
         const search = searchBox();
         fireEvent.change(search, { target: { value: 'iot' } });
-        await flush(50);
+        await flush(RESULTS_ANNOUNCEMENT_DELAY_MS);
+        // Fluent writes the announcement to the live region on its own pending zero-delay cycle.
+        await act(() => vi.runOnlyPendingTimersAsync());
         expect(delivered).toEqual(['1 matching predefined scenario. ']);
         // Arrives while the first message is still being read, so Fluent holds it for the next cycle.
+        expect(RESULTS_ANNOUNCEMENT_DELAY_MS).toBeLessThan(FLUENT_MESSAGE_DURATION_MS);
         fireEvent.change(search, { target: { value: 'transactions' } });
+        await flush(RESULTS_ANNOUNCEMENT_DELAY_MS);
         fireEvent.click(clearButton());
         expect(search).toHaveFocus();
-        await flush(700);
+        await flush(FLUENT_MESSAGE_DURATION_MS * 2);
         // The restored count is read from the focused search box; the stale filtered count must never follow it.
         expect(delivered).toEqual(['1 matching predefined scenario. ']);
+        observer.disconnect();
+    });
+
+    describe('native ariaNotify', () => {
+        const ariaNotify = vi.fn();
+
+        beforeEach(() => {
+            vi.useFakeTimers();
+            announcer.real = true;
+            ariaNotify.mockReset();
+            Object.defineProperty(document, 'ariaNotify', { configurable: true, value: ariaNotify });
+        });
+
+        afterEach(() => {
+            Reflect.deleteProperty(document, 'ariaNotify');
+        });
+
+        it('coalesces rapid edits before notifying and still announces settled same-count searches', () => {
+            render(
+                <AriaLiveAnnouncer>
+                    <Workload />
+                </AriaLiveAnnouncer>,
+            );
+            expect(ariaNotify).not.toHaveBeenCalled();
+            const search = searchBox();
+            // Each edit lands just before the previous one would be announced, so the delay restarts every time.
+            fireEvent.change(search, { target: { value: 'i' } });
+            act(() => vi.advanceTimersByTime(RESULTS_ANNOUNCEMENT_DELAY_MS - 1));
+            fireEvent.change(search, { target: { value: 'io' } });
+            act(() => vi.advanceTimersByTime(RESULTS_ANNOUNCEMENT_DELAY_MS - 1));
+            fireEvent.change(search, { target: { value: 'iot' } });
+            expect(screen.getByText('1 matching predefined scenario')).toBeVisible();
+            act(() => vi.advanceTimersByTime(RESULTS_ANNOUNCEMENT_DELAY_MS - 1));
+            expect(ariaNotify).not.toHaveBeenCalled();
+            act(() => vi.advanceTimersByTime(1));
+            expect(ariaNotify).toHaveBeenCalledExactlyOnceWith('1 matching predefined scenario', {
+                priority: 'normal',
+            });
+
+            fireEvent.change(search, { target: { value: 'clickstream' } });
+            act(() => vi.advanceTimersByTime(RESULTS_ANNOUNCEMENT_DELAY_MS));
+            expect(ariaNotify).toHaveBeenCalledTimes(2);
+            expect(ariaNotify).toHaveBeenLastCalledWith('1 matching predefined scenario', { priority: 'normal' });
+        });
+
+        it('cancels pending feedback on Clear all', () => {
+            render(
+                <AriaLiveAnnouncer>
+                    <Workload />
+                </AriaLiveAnnouncer>,
+            );
+            const search = searchBox();
+            fireEvent.change(search, { target: { value: 'transactions' } });
+            act(() => vi.advanceTimersByTime(RESULTS_ANNOUNCEMENT_DELAY_MS - 1));
+            fireEvent.change(search, { target: { value: 'iot' } });
+            act(() => vi.advanceTimersByTime(RESULTS_ANNOUNCEMENT_DELAY_MS - 1));
+            expect(ariaNotify).not.toHaveBeenCalled();
+
+            fireEvent.click(clearButton());
+            expect(search).toHaveFocus();
+            expect(search).toHaveAccessibleDescription(`${allMatching()} Scenarios filter as you type.`);
+            expect(ariaNotify).toHaveBeenCalledExactlyOnceWith('', { priority: 'normal' });
+            ariaNotify.mockClear();
+            act(() => vi.advanceTimersByTime(RESULTS_ANNOUNCEMENT_DELAY_MS));
+            expect(ariaNotify).not.toHaveBeenCalled();
+        });
+
+        it('cancels pending feedback on unmount', () => {
+            const { unmount } = render(
+                <AriaLiveAnnouncer>
+                    <Workload />
+                </AriaLiveAnnouncer>,
+            );
+            fireEvent.change(searchBox(), { target: { value: 'iot' } });
+            act(() => vi.advanceTimersByTime(RESULTS_ANNOUNCEMENT_DELAY_MS - 1));
+            unmount();
+            act(() => vi.advanceTimersByTime(RESULTS_ANNOUNCEMENT_DELAY_MS));
+            expect(ariaNotify).not.toHaveBeenCalled();
+        });
     });
 });
 

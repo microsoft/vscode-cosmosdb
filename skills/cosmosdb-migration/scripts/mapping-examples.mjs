@@ -3,9 +3,10 @@
 import { isDeepStrictEqual } from 'node:util';
 import { encodeSourceIdentity, resolveItemId } from './identity-mapping.mjs';
 import { isPartitionKeyValue, readPartitionKeyValue } from './partition-key-values.mjs';
-import { directIdentityField, isFieldPathPrefix, sourceRefs, validateFieldPath } from './source-contract.mjs';
+import { directIdentityField, entitySource, isFieldPathPrefix, sourceRefs, validateFieldPath } from './source-contract.mjs';
+import { isValidTtl } from './validate-cosmos-model.mjs';
 
-export const DOCUMENT_MAPPING_VERSION = 2;
+export const DOCUMENT_MAPPING_VERSION = 3;
 const SYSTEM_FIELDS = new Set(['id', 'docType', '_rid', '_self', '_etag', '_attachments', '_ts']);
 const DOCUMENT_MODES = new Set(['preserve', 'reshape', 'projection']);
 const WORKLOAD_EVIDENCE = new Set([
@@ -157,7 +158,7 @@ export function executeFieldMapping(mapping, inputs, inventory) {
     return valueState(value);
 }
 
-export function executeDocumentMapping(inventory, entity, mappings, decision, source, { generatedId, partitionKeys = [] } = {}) {
+export function executeDocumentMapping(inventory, entity, mappings, decision, source, { generatedId, partitionKeys = [], defaultTtl } = {}) {
     if (!source || typeof source !== 'object' || Array.isArray(source)) throw new Error('Document example requires a complete source object');
     assertJson(source);
     const dataset = inventory.datasets.find(entry => entry.id === entity.sourceDataset);
@@ -167,6 +168,7 @@ export function executeDocumentMapping(inventory, entity, mappings, decision, so
     const nativeValue = nativeKey && readFieldValue(source, nativeKey.path);
     if (nativeKey && nativeValue.state !== 'value') throw new Error('Source identity is missing');
     const nativeId = nativeKey ? encodeSourceIdentity(entity, [nativeValue.value]) : undefined;
+    const ttlEnabled = defaultTtl !== undefined && !entity.isEmbeddedOnly;
     const targets = new Set();
     const mappedRoots = new Set();
     if (entity.identity?.sourceKey === 'rename') mappedRoots.add(nativeKey.path[0].name);
@@ -176,6 +178,7 @@ export function executeDocumentMapping(inventory, entity, mappings, decision, so
         const fixedDocType = mapping.target === 'docType' && mapping.operation === 'constant' &&
             attribute.source.generated === 'constant' && mapping.constant === entity.docType;
         if (targets.has(mapping.target) || (SYSTEM_FIELDS.has(mapping.target) && !fixedDocType)) throw new Error('Document mapping has a duplicate or reserved target');
+        if (ttlEnabled && mapping.target === 'ttl' && decision.itemTtl !== true) throw new Error('Mapping an item ttl override requires itemTtl: true');
         targets.add(mapping.target);
         const fields = mapping.inputs.map(reference => {
             if (reference.dataset !== dataset.id) throw new Error('Whole-document examples require explicit single-dataset inputs');
@@ -195,7 +198,8 @@ export function executeDocumentMapping(inventory, entity, mappings, decision, so
             const routingConstant = !fields.length && routing && mapping.operation === 'constant' &&
                 attribute.source.generated === 'constant';
             if (!routingConstant && !fixedDocType && (fields.length !== 1 || (root === undefined && !identity && !routing) ||
-                (root !== mapping.target && !identity && !routing && !SYSTEM_FIELDS.has(root)) ||
+                (root !== mapping.target && !identity && !routing && !SYSTEM_FIELDS.has(root) &&
+                    !(ttlEnabled && (root === 'ttl' || (decision.itemTtl === true && mapping.target === 'ttl')))) ||
                 (!['copy', 'date-iso8601', 'extended-json-string'].includes(mapping.operation) && !scalarJson))) {
                 throw new Error('Preserve mode keeps document names and nesting; projections or reshaping require a documented Cosmos DB benefit');
             }
@@ -209,7 +213,7 @@ export function executeDocumentMapping(inventory, entity, mappings, decision, so
             delete target[field.path[0].name];
         }
     }
-    for (const key of SYSTEM_FIELDS) {
+    for (const key of ttlEnabled ? [...SYSTEM_FIELDS, 'ttl'] : SYSTEM_FIELDS) {
         const collision = decision.mode === 'projection' ? Object.hasOwn(source, key) && !mappedRoots.has(key) : Object.hasOwn(target, key);
         if (collision) throw new Error(`Source property ${key} collides with target metadata; inventory and map it explicitly`);
     }
@@ -222,6 +226,7 @@ export function executeDocumentMapping(inventory, entity, mappings, decision, so
         });
     }
     target.docType = entity.docType;
+    if (ttlEnabled && Object.hasOwn(target, 'ttl') && !isValidTtl(target.ttl)) throw new Error('Invalid mapped item ttl override');
     if (!entity.isEmbeddedOnly) {
         if (entity.identity?.kind === 'generated-uuid') target.id = generatedId;
         if (entity.identity?.sourceKey === 'rename') target.id = nativeId;
@@ -280,7 +285,7 @@ function validateDocumentMappings(inventory, models, evidence) {
         if (!Array.isArray(decision.examples) || !decision.examples.length) throw new Error('Document mapping needs complete source-to-target examples');
         for (const example of decision.examples) {
             const result = executeDocumentMapping(inventory, entry.entity, mappings, decision, example.source, {
-                generatedId: example.output?.id, partitionKeys: entry.container.partitionKeys,
+                generatedId: example.output?.id, partitionKeys: entry.container.partitionKeys, defaultTtl: entry.container.defaultTtl,
             });
             if (!isDeepStrictEqual(result, example.output)) throw new Error('Whole-document mapping example loses, duplicates, or changes unaccounted source content');
             if (!entry.entity.isEmbeddedOnly) {
@@ -305,13 +310,47 @@ export function executeBehaviorExample(example) {
         assertJson(keys);
         return { supported: keys.every(key => isDeepStrictEqual(key, keys[0])) && keys.length <= 100 && bytes <= 2 * 1024 * 1024 };
     }
-    if (example.operation === 'ttl-relative') {
-        const { lastModifiedSeconds, ttl, sourceExpiresAtSeconds } = example.input ?? {};
-        if (![lastModifiedSeconds, ttl, sourceExpiresAtSeconds].every(Number.isFinite) || ttl <= 0) throw new Error('TTL example requires positive TTL and numeric timestamps');
-        const expiresAtSeconds = lastModifiedSeconds + ttl;
-        return { expiresAtSeconds, equivalent: expiresAtSeconds === sourceExpiresAtSeconds };
-    }
     throw new Error('Unsupported behavior example; this helper does not execute application hooks');
+}
+
+function validateExpirationExamples(semantic, examples, models, evidence) {
+    if (!['fixed', 'sliding'].includes(semantic.expirationBasis)) throw new Error('Preserved expiration requires a fixed or sliding source deadline');
+    const targets = models.flatMap(({ domainName, model }) => model.containers.flatMap(container =>
+        container.entities.filter(entity => semantic.datasets.includes(entitySource(entity)))
+            .map(entity => ({ domainName, container, entity }))));
+    if (!targets.length) throw new Error('Expiration evidence requires a modeled target');
+    const covered = new Set();
+    for (const example of examples) {
+        const matchesTarget = entry => entry.domain === example.domain && entry.container === example.container && entry.entity === example.entity;
+        const target = targets.find(({ domainName, container, entity }) =>
+            domainName === example.domain && container.name === example.container && entity.name === example.entity);
+        if (!target || target.entity.isEmbeddedOnly || !isValidTtl(target.container.defaultTtl)) throw new Error('Expiration requires a standalone target with TTL enabled');
+        const documents = evidence.documentMappings?.find(matchesTarget);
+        const identities = evidence.identityExamples.find(matchesTarget);
+        const mapping = evidence.fieldMappings.find(entry => matchesTarget(entry) && entry.target === 'ttl');
+        const { backfill, update } = example.input ?? {};
+        if (example.operation !== 'ttl-relative' || !isDeepStrictEqual(example.expected, { equivalent: true }) ||
+            !backfill || !update || update.lastModifiedSeconds <= backfill.lastModifiedSeconds ||
+            update.lastModifiedSeconds >= backfill.sourceExpiresAtSeconds ||
+            (semantic.expirationBasis === 'fixed' && update.sourceExpiresAtSeconds !== backfill.sourceExpiresAtSeconds)) {
+            throw new Error('Expiration evidence requires backfill and a later update before expiry, preserving the source deadline');
+        }
+        const routes = [backfill, update].map(stage => {
+            if (!Number.isSafeInteger(stage.exampleIndex) || stage.exampleIndex < 0 ||
+                !Number.isSafeInteger(stage.lastModifiedSeconds) || !Number.isSafeInteger(stage.sourceExpiresAtSeconds)) throw new Error('Invalid expiration example index or timestamps');
+            const item = documents ? documents.examples[stage.exampleIndex]?.output : identities?.cases[stage.exampleIndex]?.item;
+            if (!item) throw new Error('Expiration example must reference a mapped target item');
+            const override = Object.hasOwn(item, 'ttl');
+            if (!documents && (mapping || override) && !mapping?.examples.some(entry =>
+                isDeepStrictEqual(entry.output, override ? valueState(item.ttl) : missing))) throw new Error('Item ttl is not supported by an executable field mapping');
+            const ttl = override ? item.ttl : target.container.defaultTtl;
+            if (!isValidTtl(ttl) || ttl === -1 || stage.lastModifiedSeconds + ttl !== stage.sourceExpiresAtSeconds) throw new Error('Required source expiration is not preserved');
+            return [item.id, ...target.container.partitionKeys.map(key => readPartitionKeyValue(item, key.path))];
+        });
+        if (!isDeepStrictEqual(routes[0], routes[1])) throw new Error('Expiration examples must update the same target item');
+        covered.add(target);
+    }
+    if (covered.size !== targets.length) throw new Error('Expiration examples must cover every affected target');
 }
 
 export function validateMappingEvidence(inventory, models, evidence, owners) {
@@ -366,6 +405,7 @@ export function validateMappingEvidence(inventory, models, evidence, owners) {
         identities.delete(key);
     }
     if (identities.size) throw new Error('Every standalone entity needs an identity example');
+    validateDocumentMappings(inventory, models, evidence);
     const obligations = new Map(inventory.semantics.filter(semantic => semantic.datasets.some(id => owners.has(id))).map(semantic => [semantic.id, semantic]));
     if (!Array.isArray(evidence.behaviorDecisions)) throw new Error('Conversion requires behaviorDecisions');
     for (const decision of evidence.behaviorDecisions) {
@@ -380,14 +420,17 @@ export function validateMappingEvidence(inventory, models, evidence, owners) {
         if (decision.action === 'preserve' && semantic.required) {
             const operation = { atomicity: 'partition-batch', expiration: 'ttl-relative' }[semantic.kind];
             if (!operation || !Array.isArray(decision.examples) || !decision.examples.length) throw new Error('Required preservation lacks executable evidence; obtain an explicit replacement/waiver decision rather than claim parity');
-            for (const example of decision.examples) {
-                const actual = executeBehaviorExample(example);
-                if (example.operation !== operation || !isDeepStrictEqual(actual, example.expected) ||
-                    actual.supported === false || actual.equivalent === false) throw new Error('Required source behavior is not preserved');
+            if (semantic.kind === 'expiration') {
+                validateExpirationExamples(semantic, decision.examples, models, evidence);
+            } else {
+                for (const example of decision.examples) {
+                    const actual = executeBehaviorExample(example);
+                    if (example.operation !== operation || !isDeepStrictEqual(actual, example.expected) ||
+                        actual.supported === false) throw new Error('Required source behavior is not preserved');
+                }
             }
         }
         obligations.delete(decision.semantic);
     }
     if (obligations.size) throw new Error('Unresolved source behavior obligations require explicit decisions');
-    validateDocumentMappings(inventory, models, evidence);
 }

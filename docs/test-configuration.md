@@ -177,9 +177,28 @@ npm run eval:test
 
 # Requires Copilot authentication and access to both configured models.
 npm run eval
-
-# Run a single synthetic phase without downloading AdventureWorks.
-npm run eval -- --tag category=synthetic --tag phase=discovery --max-retries 0
+npm run eval -- --tag category=guidance
+# Fixed-deadline retention, item override collisions, and populated-container rollout
+npm run eval -- --tag contract=ttl-preservation --max-retries 0
+npm run eval -- --tag category=artifacts --tag phase=preflight
+# Check persisted project identity and artifact regeneration for an approved database switch.
+npm run eval -- --tag contract=target-switch --max-retries 0
+# Focused regressions for implied readiness cycles and unselected implementation mechanisms.
+npm run eval -- --tag regression=planning-quality --max-retries 0
+# Parser fallback explanations and the actual first-use permission request.
+npm run eval -- --tag contract=parser-consent --max-retries 0
+# Independent real-sample phases and inference; fetches the pinned application once.
+npm run eval -- --tag category=extended --max-retries 0
+# Run one phase from reviewed prerequisites, without rerunning earlier phases.
+npm run eval -- --tag category=extended --tag phase=provisioning --max-retries 0
+# Explicit opt-in: one conversation chaining discovery through planning.
+npm run eval -- --tag category=integration --max-retries 0
+# Opt-in handoff: fresh conversion, then a separate planning session using those exact outputs.
+npm run eval:handoff
+# Run the smaller suite without downloading the external sample.
+npm run eval -- --tag category!=extended
+# Optional model overrides, without changing the committed specs.
+npm run eval -- --model <agent-model> --judge-model <judge-model>
 ```
 
 The chained AdventureWorks integration and conversion-to-planning handoff remain opt-in.

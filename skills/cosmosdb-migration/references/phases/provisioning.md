@@ -302,8 +302,11 @@ summaries for embedding and relationship context that the canonical model omits.
    a required setting, record what is missing and how it will be applied and verified.
    Do not patch generated artifacts or mark provisioning complete with the requirement unmet.
    Before deployment, compare existing containers' TTL with the model. Obtain separate
-   approval before changing TTL on a populated container: enabling or shortening it can
-   immediately expire older items, including items with their own `ttl` overrides.
+   approval before changing TTL on a populated container. Enabling TTL activates existing
+   positive item overrides as well as any positive container default; either can immediately
+   expire older items based on their last modification. Shortening an already-enabled default
+   affects only items without a `ttl` property. Positive overrides keep their own duration;
+   an item with `ttl: -1` never expires automatically.
 
 Generate only synthetic sample data. Preserve modeled fields, including credential-named
 fields such as `password` or `token`, and populate sensitive fields with clearly fake,

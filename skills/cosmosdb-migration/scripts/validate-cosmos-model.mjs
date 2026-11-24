@@ -11,6 +11,10 @@ import { DIRECT_IDENTITY_ENCODINGS, isObjectIdSourceType, sourceRefs } from './s
 
 export { isObjectIdSourceType };
 
+export function isValidTtl(value) {
+    return value === -1 || (Number.isInteger(value) && value >= 1 && value <= 2147483647);
+}
+
 const ROOT_KEYS = new Set([
     'version',
     'databaseName',
@@ -657,7 +661,7 @@ function checkContainer(container, jsonPath, entityNames, capacityMode, errors, 
     checkUniqueKeyPolicy(container.uniqueKeyPolicy, `${jsonPath}.uniqueKeyPolicy`, errors);
     if (container.defaultTtl !== undefined) {
         const ttl = container.defaultTtl;
-        if (ttl !== -1 && !(Number.isInteger(ttl) && ttl >= 1 && ttl <= 2147483647)) {
+        if (!isValidTtl(ttl)) {
             addError(errors, `${jsonPath}.defaultTtl`, 'must be -1 or an integer from 1 to 2147483647 seconds');
         }
         if (container.indexingPolicy?.indexingMode === 'none') {

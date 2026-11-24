@@ -137,6 +137,8 @@ The example uses a fictional document-oriented database engine.
 - `semantics[]`: `{id,kind,datasets,description,required,status,evidence}`. Kind is
   `atomicity | concurrency | ordering | expiration | deletion | uniqueness | native`;
   status is `known | unresolved`; required is boolean. IDs are inventory-wide.
+  For required expiration to be preserved, record `expirationBasis:"fixed"` (absolute
+  deadline) or `"sliding"` (source writes reset the window), grounded in source evidence.
   Unknown native behavior stays an explicit obligation, not an empty constraints list.
 
 ### Readable field identifiers
@@ -275,10 +277,15 @@ Record one `documentMappings[]` entry per document-sourced target entity:
 Examples must be complete documents matching the actual entity mappings, not isolated field samples.
 `executeDocumentMapping` in `mapping-examples.mjs` replays the field mappings, preserves unaccounted root properties by default,
 checks metadata collisions, and resolves identity. It takes the inventory, entity, that entity's field mappings,
-document decision, source object, and optional `{partitionKeys, generatedId}`. A generated UUID example supplies
+document decision, source object, and optional `{partitionKeys, generatedId, defaultTtl}`. A generated UUID example supplies
 its already assigned ID; the helper does not generate production assignments. Source objects are not mutated.
 Copied subtrees preserve unlisted nested properties. A source `id`, `docType`, or Cosmos system-property collision
 must be inventoried and explicitly remapped; never silently overwrite or drop it.
+In TTL-enabled containers a standalone item's root `ttl` also needs an explicit mapping.
+Rename an unrelated source field in preserve mode, or set `itemTtl:true` on the document
+decision and map the intended override as an attribute. An override is `-1` (never expire)
+or an integer from 1 through 2147483647 seconds; omit the property to inherit the default.
+Nested properties named `ttl` are ordinary data.
 Fixed routing metadata may be supplied by a generated constant mapping (including a matching `docType` discriminator).
 This can preserve collection namespaces in a composite partition key without re-encoding otherwise compatible IDs.
 Examples from distinct target entities that collide on the same container, full partition tuple, and ID are rejected.
@@ -354,8 +361,26 @@ Cover every selected dataset's semantic obligation. Action is `preserve | replac
 Replacement, waiver, or an unresolved native obligation requires `{by,at}` approval (ISO timestamp).
 Required preservation must include a supported bounded executable check:
 `{operation:"partition-batch",input:{partitionKeys:[[...],...],payloadBytes:100},expected:{supported:true}}` or
-`{operation:"ttl-relative",input:{lastModifiedSeconds,ttl,sourceExpiresAtSeconds},
-expected:{expiresAtSeconds,equivalent:true}}`.
+for expiration, a `ttl-relative` example for each affected standalone target:
+
+```json
+{"operation":"ttl-relative","domain":"Sales","container":"orders","entity":"Order",
+ "input":{"backfill":{"exampleIndex":0,"lastModifiedSeconds":100,"sourceExpiresAtSeconds":130},
+          "update":{"exampleIndex":1,"lastModifiedSeconds":120,"sourceExpiresAtSeconds":130}},
+ "expected":{"equivalent":true}}
+```
+
+Each zero-based index selects a verified whole-document output for that entity, or an
+identity case's item for non-document sources (its override must match field-mapping evidence).
+Both writes must address the same item and partition; use **target write times** and source
+deadlines in integer epoch seconds. The update must occur before the original deadline.
+In the fixed-deadline example above, effective TTL must be 30 then 10 seconds. For a sliding
+30-second source window the second deadline would instead be 150. An unchanged target item
+shape can reuse an example index. The check uses the mapped root `ttl` or modeled container
+default, not a duration asserted by the behavior example. Disabled TTL and non-expiring
+items cannot demonstrate finite expiration. An embedded value cannot expire independently.
+Replace old arithmetic-only examples before claiming preservation.
+
 Partition tuples use JSON scalars or null; represent each missing/undefined component as
 `{state:"missing"}`. This evidence marker is not a document value or an SDK request value.
 Keep every configured component in order; a missing component is not a shorter prefix tuple.

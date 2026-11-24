@@ -40,6 +40,7 @@ export function getCosmosClient(
     let endpoint: string;
     let credentials: CosmosDBCredential[];
     let isEmulator: boolean;
+    let managedEmulator = false;
     let options: GetCosmosClientOptions | undefined;
     if (typeof arg1 === 'string') {
         // If the first argument is a string, it's the endpoint
@@ -53,6 +54,7 @@ export function getCosmosClient(
         endpoint = connection.endpoint;
         credentials = connection.credentials;
         isEmulator = connection.isEmulator;
+        managedEmulator = connection.managedEmulator === true;
         options = arg2 as GetCosmosClientOptions;
     } else {
         // Otherwise, it's an AccountInfo object
@@ -60,19 +62,22 @@ export function getCosmosClient(
         endpoint = accountInfo.endpoint;
         credentials = accountInfo.credentials;
         isEmulator = accountInfo.isEmulator;
+        managedEmulator = accountInfo.managedEmulator === true;
         options = arg2 as GetCosmosClientOptions;
     }
 
     const enableEndpointDiscovery: boolean | undefined = vscode.workspace
         .getConfiguration()
         .get<boolean>(ext.settingsKeys.enableEndpointDiscovery);
-    const connectionPolicy = {
-        enableEndpointDiscovery: enableEndpointDiscovery === undefined ? true : enableEndpointDiscovery,
-    };
 
     const keyCred = getCosmosDBKeyCredential(credentials);
 
     const { isLlmTool = false, ...clientOptions } = options ?? {};
+    const connectionPolicy = {
+        enableEndpointDiscovery: enableEndpointDiscovery ?? true,
+        ...clientOptions.connectionPolicy,
+        ...(managedEmulator ? { enableEndpointDiscovery: false } : {}),
+    };
     const agent =
         clientOptions.agent ??
         (isEmulator && endpoint.startsWith('https:') ? new https.Agent({ rejectUnauthorized: false }) : undefined);

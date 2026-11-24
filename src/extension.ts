@@ -42,6 +42,7 @@ import {
     registerSampleDataTool,
 } from './chat';
 import { registerE2eTestCommands } from './commands/e2eTestCommands/registerE2eTestCommands';
+import { registerManagedEmulatorCommands } from './commands/managedEmulatorCommands';
 import {
     affectsMigrationFeatureSetting,
     isMigrationFeatureEnabled,
@@ -62,6 +63,7 @@ import { ext } from './extensionVariables';
 import { MigrationAssistantTab } from './panels/MigrationAssistantTab';
 import { QueryEditorTab } from './panels/QueryEditorTab';
 import { FabricService } from './services/FabricService';
+import { activateManagedEmulator } from './services/managedEmulator/managedEmulatorExtension';
 import { SchemaFileStorage } from './services/SchemaFileStorage';
 import { CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
 import { FabricTreeNodeProvider } from './tree/fabric-resources-view/FabricTreeNodeProvider';
@@ -129,6 +131,7 @@ export async function activateInternal(
         ext.cosmosDBWorkspaceBranchDataProvider = new CosmosDBWorkspaceBranchDataProvider();
         ext.migrationWorkspaceBranchDataProvider = new MigrationWorkspaceBranchDataProvider();
         ext.fileSystem = new DatabasesFileSystem();
+        activateManagedEmulator(context);
 
         const cosmosDBShellSupport: CosmosDBShellExtension = new CosmosDBShellExtension();
         context.subscriptions.push(cosmosDBShellSupport);
@@ -141,6 +144,7 @@ export async function activateInternal(
         context.subscriptions.push(vscode.window.registerUriHandler({ handleUri: globalUriHandler }));
 
         registerCommands();
+        registerManagedEmulatorCommands();
 
         // Mirror the experimental migration feature toggle into a context key so package.json
         // `when` clauses can show/hide the migration commands. Kept in sync on config change below.

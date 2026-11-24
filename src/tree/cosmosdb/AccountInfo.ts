@@ -26,6 +26,7 @@ export interface AccountInfo {
     endpoint: string;
     id: string;
     isEmulator: boolean;
+    managedEmulator?: boolean;
     isServerless: boolean;
     name: string;
 }
@@ -140,5 +141,6 @@ async function getAccountInfoForAttached(account: CosmosDBAttachedAccountModel):
         isEmulator,
         isServerless,
         name,
+        ...(account.managedEmulator ? { managedEmulator: true } : {}),
     };
 }

@@ -18,6 +18,7 @@ export const WebviewRegistry = {
     cosmosDbAccountOverview: () => import('./cosmosdb/AccountOverview/AccountOverview').then((m) => m.AccountOverview),
     cosmosDbDataModeling: () => import('./cosmosdb/DataModeling/DataModelingWizard').then((m) => m.DataModelingWizard),
     cosmosDbDocument: () => import('./cosmosdb/Document/Document').then((m) => m.Document),
+    cosmosDbEmulatorSetup: () => import('./cosmosdb/EmulatorSetup/EmulatorSetup').then((m) => m.EmulatorSetup),
     cosmosDbMigration: () => import('./cosmosdb/Migration/MigrationAssistant').then((m) => m.MigrationAssistant),
     cosmosDbQuery: () => import('./cosmosdb/QueryEditor/QueryEditor').then((m) => m.QueryEditor),
 } as const satisfies Record<string, () => Promise<ComponentType>>;

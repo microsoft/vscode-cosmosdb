@@ -5,6 +5,7 @@
 
 import { UserCancelledError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
+import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { StorageNames, StorageService } from '../../services/StorageService';
 import { type CosmosDBAccountAttachedResourceItem } from '../../tree/cosmosdb/CosmosDBAccountAttachedResourceItem';
@@ -25,6 +26,12 @@ export async function cosmosDBRemoveConnection(
     }
 
     if (!node) {
+        return;
+    }
+    if (node.account.managedEmulator) {
+        void vscode.window.showInformationMessage(
+            l10n.t('Use Delete Emulator in Local Emulators to delete a managed emulator.'),
+        );
         return;
     }
 

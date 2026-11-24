@@ -8,6 +8,7 @@ export type CosmosDBAttachedAccountModel = {
     id: string;
     storageId: string;
     isEmulator: boolean;
+    managedEmulator?: boolean;
     name: string;
     tenantId?: string;
 };

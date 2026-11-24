@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { createHash } from 'node:crypto';
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -11,13 +12,17 @@ import { setTimeout } from 'node:timers/promises';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 
-// Usage: npm run feed:check -- [--visibility public|private] [--path <package-lock.json>]
+// --registry supplies the source registry for omitted URLs; public policy still requires npmjs.org.
 // Relative paths resolve from the working directory; project credentials come from .npmrc beside the lockfile.
 // Progress goes to stderr: plain logs in CI/redirected output, with a progress bar in interactive terminals.
 
 const MS_FEED = 'https://packagefeedproxy.microsoft.io/npm/';
 const NPM_HOST = 'registry.npmjs.org';
+const NPM_REGISTRY = `https://${NPM_HOST}/`;
 const CONCURRENCY = 8;
+const USAGE =
+    'Usage: npm run feed:check -- [--visibility public|private] [--path <package-lock.json>] [--registry <url>]';
+const DIGEST_LENGTHS = { sha1: 20, sha256: 32, sha384: 48, sha512: 64 };
 
 function createProgress(total, initialErrors) {
     const output = process.stderr;
@@ -88,8 +93,20 @@ function secureUrl(value) {
     return url;
 }
 
-export function planChecks(lock, visibility) {
+function parseIntegrity(value) {
+    const match = typeof value === 'string' && /^(sha1|sha256|sha384|sha512)-([A-Za-z0-9+/]+={0,2})$/.exec(value);
+    if (!match) return undefined;
+    const [, algorithm, digest] = match;
+    const bytes = Buffer.from(digest, 'base64');
+    if (bytes.length !== DIGEST_LENGTHS[algorithm] || bytes.toString('base64') !== digest) return undefined;
+    return { algorithm, value };
+}
+
+export function planChecks(lock, visibility, registry = NPM_REGISTRY) {
     if (!['public', 'private'].includes(visibility)) throw new Error('Invalid repository visibility');
+    const defaultRegistry = secureUrl(registry);
+    if (defaultRegistry.search) throw new Error('--registry must not contain a query string');
+    if (!defaultRegistry.pathname.endsWith('/')) defaultRegistry.pathname += '/';
     if (![2, 3].includes(lock.lockfileVersion) || !isObject(lock.packages)) {
         throw new Error('Expected a package-lock.json with lockfileVersion 2 or 3 and a packages object');
     }
@@ -134,9 +151,10 @@ export function planChecks(lock, visibility) {
             continue;
         }
         const label = `${name}@${version}`;
+        const omitted = !Object.hasOwn(entry, 'resolved');
         let url;
         try {
-            url = secureUrl(entry.resolved);
+            url = omitted ? defaultRegistry : secureUrl(entry.resolved);
         } catch {
             errors.push(`${label}: resolved must be an HTTPS registry tarball URL without embedded credentials`);
             continue;
@@ -148,20 +166,35 @@ export function planChecks(lock, visibility) {
             continue;
         }
         if (visibility === 'private' && npm) {
-            errors.push(`${label}: private repositories must resolve packages from a private feed`);
+            errors.push(
+                `${label}: private repositories must resolve packages from a private feed${omitted ? '; pass --registry for entries without resolved' : ''}`,
+            );
             continue;
         }
-        const key = visibility === 'public' ? name : url.href;
+        const metadata = visibility === 'public' || omitted;
+        const integrity = metadata ? parseIntegrity(entry.integrity) : undefined;
+        if (metadata && !integrity) {
+            errors.push(`${label}: missing or invalid lockfile integrity`);
+            continue;
+        }
+        const target = metadata ? new URL(encodeURIComponent(name), omitted ? url : NPM_REGISTRY) : url;
+        const key = `${metadata ? 'metadata' : 'tarball'}:${target.href}`;
         if (!checks.has(key)) {
             checks.set(key, {
-                url: visibility === 'public' ? MS_FEED + encodeURIComponent(name) : url.href,
+                url: target.href,
+                metadata,
                 name,
-                versions: new Set(),
+                versions: new Map(),
                 labels: new Set(),
             });
         }
-        checks.get(key).versions.add(version);
-        checks.get(key).labels.add(label);
+        const check = checks.get(key);
+        if (check.versions.has(version) && check.versions.get(version)?.value !== integrity?.value) {
+            errors.push(`${label}: conflicting lockfile integrity values`);
+            continue;
+        }
+        check.versions.set(version, integrity);
+        check.labels.add(label);
     }
     return { checks: [...checks.values()], errors, entries, links };
 }
@@ -218,21 +251,19 @@ export function authHeader(url, config, env = process.env) {
     throw new Error('The matching .npmrc credential is empty; authenticate the private feed first');
 }
 
-async function fetchOnce(target, visibility, config, fetchImpl) {
+async function fetchOnce(target, { mode, config, fetchImpl, validateUrl, algorithm, authOrigin }) {
     const initial = secureUrl(target);
     let url = initial;
-    let method = visibility === 'public' ? 'GET' : 'HEAD';
+    let method = mode === 'tarball' ? 'HEAD' : 'GET';
     const signal = AbortSignal.timeout(20_000);
     for (let redirects = 0; redirects <= 5;) {
+        validateUrl?.(url);
         const headers = {};
-        if (visibility === 'public') {
-            headers.accept = 'application/vnd.npm.install-v1+json';
-        } else {
-            // Never forward credentials to a different host, or outside their configured npm path scope.
-            const auth = url.origin === initial.origin ? authHeader(url, config) : undefined;
-            if (auth) headers.authorization = auth;
-            if (method === 'GET') headers.range = 'bytes=0-0';
-        }
+        if (mode === 'metadata') headers.accept = 'application/vnd.npm.install-v1+json';
+        if (mode === 'tarball' && method === 'GET') headers.range = 'bytes=0-0';
+        // Never forward credentials to a different origin, or outside their configured npm path scope.
+        const auth = url.origin === (authOrigin ?? initial.origin) ? authHeader(url, config) : undefined;
+        if (auth) headers.authorization = auth;
         let response;
         try {
             response = await fetchImpl(url.href, { method, headers, signal, redirect: 'manual' });
@@ -242,10 +273,10 @@ async function fetchOnce(target, visibility, config, fetchImpl) {
         if ([301, 302, 303, 307, 308].includes(response.status)) {
             const location = response.headers.get('location');
             await response.body?.cancel();
-            if (visibility === 'public') throw new Error('Unexpected metadata redirect from the MS feed');
+            if (mode === 'metadata') throw new Error('Unexpected registry metadata redirect');
             if (!location || redirects === 5) throw new Error('Invalid or excessive tarball redirects');
             url = secureUrl(new URL(location, url).href);
-            if (url.hostname === NPM_HOST) {
+            if (mode === 'tarball' && url.hostname === NPM_HOST) {
                 throw new Error('Private feed tarball redirects to a public registry');
             }
             redirects++;
@@ -256,18 +287,27 @@ async function fetchOnce(target, visibility, config, fetchImpl) {
             method = 'GET';
             continue;
         }
-        if (visibility === 'public' && response.ok) {
+        if (mode === 'metadata' && response.ok) {
             let body;
             try {
                 body = await response.text();
             } catch {
-                return { transientError: 'Network error or request timeout while reading MS feed metadata' };
+                return { transientError: 'Network error or request timeout while reading registry metadata' };
             }
             try {
                 return { status: response.status, metadata: JSON.parse(body) };
             } catch {
-                throw new Error('Invalid or incomplete JSON metadata from the MS feed');
+                throw new Error('Invalid or incomplete JSON metadata from the registry');
             }
+        }
+        if (mode === 'archive' && response.status === 200) {
+            const hash = createHash(algorithm);
+            try {
+                for await (const chunk of response.body) hash.update(chunk);
+            } catch {
+                return { transientError: 'Network error or request timeout while reading the tarball' };
+            }
+            return { status: response.status, integrity: `${algorithm}-${hash.digest('base64')}` };
         }
         const retryAfter = response.headers.get('retry-after');
         await response.body?.cancel();
@@ -275,9 +315,9 @@ async function fetchOnce(target, visibility, config, fetchImpl) {
     }
 }
 
-async function request(target, visibility, config, fetchImpl, sleep, onRetry) {
+async function request(target, { sleep, onRetry, ...options }) {
     for (let attempt = 0; attempt < 3; attempt++) {
-        const result = await fetchOnce(target, visibility, config, fetchImpl);
+        const result = await fetchOnce(target, options);
         if (result.transientError || result.status === 429 || result.status >= 500) {
             if (attempt === 2)
                 throw new Error(result.transientError ?? `Feed returned HTTP ${result.status} after retries`);
@@ -297,14 +337,73 @@ async function request(target, visibility, config, fetchImpl, sleep, onRetry) {
     }
 }
 
+function validateArchiveUrl(url, source, microsoft) {
+    const allowed = microsoft
+        ? !url.port &&
+          (url.origin === new URL(MS_FEED).origin ||
+              /^ms-feed-\d+\.pkgs\.visualstudio\.com$/.test(url.hostname) ||
+              url.hostname.endsWith('.vsblob.vsassets.io'))
+        : url.origin === source.origin ||
+          (source.hostname !== NPM_HOST && !url.port && url.hostname.endsWith('.vsblob.vsassets.io'));
+    if (!allowed) throw new Error('Tarball points to an unexpected host');
+}
+
+async function verifyMetadata(check, target, feed, lookup, failures) {
+    const result = await lookup(target, { mode: 'metadata' });
+    if (result.status === 404) throw new Error(`package missing from ${feed} (HTTP 404)`);
+    const versions = result.metadata?.versions;
+    if (!isObject(versions)) throw new Error(`${feed} metadata has no versions object`);
+    const latest = result.metadata['dist-tags']?.latest;
+    const latestAvailable = typeof latest === 'string' && versions[latest]?.dist?.tarball ? latest : 'not reported';
+    const source = new URL(target);
+    const verified = new Set();
+    for (const [version, expected] of check.versions) {
+        const label = `${check.name}@${version}`;
+        const dist = Object.hasOwn(versions, version) ? versions[version]?.dist : undefined;
+        if (!isObject(dist) || typeof dist.tarball !== 'string' || !dist.tarball) {
+            failures.push(
+                `${label}: version unavailable in ${feed}${feed === 'MS feed' ? ` (possibly still in quarantine; feed latest: ${latestAvailable})` : ''}`,
+            );
+            continue;
+        }
+        try {
+            const digests = typeof dist.integrity === 'string' ? dist.integrity.trim().split(/\s+/) : [];
+            const matchingAlgorithm = digests.filter(
+                (digest) => parseIntegrity(digest)?.algorithm === expected.algorithm,
+            );
+            let matches = matchingAlgorithm.includes(expected.value);
+            if (!matchingAlgorithm.length) {
+                // Some feeds only advertise SHA-1; verify the bytes with the lockfile's algorithm instead.
+                const archive = await lookup(dist.tarball, {
+                    mode: 'archive',
+                    algorithm: expected.algorithm,
+                    authOrigin: source.origin,
+                    validateUrl: (url) => validateArchiveUrl(url, source, feed === 'MS feed'),
+                });
+                if (!archive.integrity) throw new Error(`could not verify tarball integrity (HTTP ${archive.status})`);
+                matches = archive.integrity === expected.value;
+            }
+            if (!matches) {
+                failures.push(`${label}: integrity mismatch in ${feed} (does not match package-lock.json)`);
+            } else {
+                verified.add(version);
+            }
+        } catch (error) {
+            failures.push(`${label}: ${feed}: ${error.message}`);
+        }
+    }
+    return verified;
+}
+
 export async function checkPackages(
     lock,
     visibility,
-    { config = new Map(), fetchImpl = fetch, sleep = setTimeout } = {},
+    { registry, config = new Map(), fetchImpl = fetch, sleep = setTimeout } = {},
 ) {
-    const plan = planChecks(lock, visibility);
+    const plan = planChecks(lock, visibility, registry);
     const errors = [...plan.errors];
     const progress = createProgress(plan.checks.length, plan.errors);
+    const credentials = visibility === 'private' ? config : new Map();
     let next = 0;
     let passed = 0;
     async function worker() {
@@ -312,41 +411,39 @@ export async function checkPackages(
             const check = plan.checks[next++];
             const labels = [...check.labels].join(', ');
             const failures = [];
-            try {
-                const result = await request(
-                    check.url,
-                    visibility,
-                    config,
+            const lookup = (target, options) =>
+                request(target, {
+                    ...options,
+                    config: credentials,
                     fetchImpl,
                     sleep,
-                    (attempt, delay, reason) => {
+                    onRetry: (attempt, delay, reason) => {
                         progress.log(`Retry ${attempt}/3 for ${labels} in ${delay}ms: ${reason}`);
                     },
-                );
-                if (result.status === 404) {
-                    failures.push(
-                        `${labels}: ${visibility === 'public' ? 'package missing from MS feed' : 'resolved tarball missing from private feed'} (HTTP 404)`,
+                });
+            try {
+                if (check.metadata) {
+                    let verified = await verifyMetadata(
+                        check,
+                        check.url,
+                        visibility === 'public' ? 'npm registry' : 'private registry',
+                        lookup,
+                        failures,
                     );
-                } else if (visibility === 'public') {
-                    if (!isObject(result.metadata?.versions))
-                        throw new Error('MS feed metadata has no versions object');
-                    const latest = result.metadata['dist-tags']?.latest;
-                    const latestAvailable =
-                        typeof latest === 'string' && result.metadata.versions[latest]?.dist?.tarball
-                            ? latest
-                            : 'not reported';
-                    for (const version of check.versions) {
-                        const metadata = result.metadata.versions[version];
-                        if (!isObject(metadata) || !metadata.dist?.tarball) {
-                            failures.push(
-                                `${check.name}@${version}: version unavailable in MS feed (possibly still in quarantine; feed latest: ${latestAvailable})`,
-                            );
-                        } else {
-                            passed++;
-                        }
+                    if (visibility === 'public') {
+                        const target = MS_FEED + encodeURIComponent(check.name);
+                        verified = verified.intersection(
+                            await verifyMetadata(check, target, 'MS feed', lookup, failures),
+                        );
                     }
+                    passed += verified.size;
                 } else {
-                    passed += check.labels.size;
+                    const result = await lookup(check.url, { mode: 'tarball' });
+                    if (result.status === 404) {
+                        failures.push(`${labels}: resolved tarball missing from private feed (HTTP 404)`);
+                    } else {
+                        passed += check.labels.size;
+                    }
                 }
             } catch (error) {
                 failures.push(`${labels}: ${error.message}`);
@@ -369,8 +466,8 @@ export function formatReport(result, visibility) {
         '',
         `Repository policy: **${visibility}**`,
         visibility === 'public'
-            ? `Version availability: ${MS_FEED}`
-            : 'Availability: each private resolved tarball URL',
+            ? `Availability and integrity: ${NPM_REGISTRY} and ${MS_FEED}`
+            : 'Availability: each private resolved tarball URL; integrity: configured registry for omitted URLs',
         '',
         `Registry entries: ${result.entries}; local workspace links: ${result.links}; unique lookups: ${result.requests}; passed versions: ${result.passed}.`,
         '',
@@ -385,7 +482,7 @@ export function formatReport(result, visibility) {
                   '',
               ]
             : []),
-        'This check is read-only. It does not compare tarball integrity across registries.',
+        'This check is read-only.',
         '',
     ].join('\n');
 }
@@ -395,15 +492,17 @@ async function main() {
         options: {
             visibility: { type: 'string', default: 'public' },
             path: { type: 'string', default: 'package-lock.json' },
+            registry: { type: 'string', default: NPM_REGISTRY },
         },
     });
     const visibility = values.visibility;
     if (!['public', 'private'].includes(visibility) || !values.path.trim()) {
-        throw new Error('Usage: npm run feed:check -- [--visibility public|private] [--path <package-lock.json>]');
+        throw new Error(USAGE);
     }
     const lockPath = resolve(values.path);
     const lock = JSON.parse(readFileSync(lockPath, 'utf8'));
     const result = await checkPackages(lock, visibility, {
+        registry: values.registry,
         config: visibility === 'private' ? readNpmrc(dirname(lockPath)) : new Map(),
     });
     const report = formatReport(result, visibility);

@@ -356,6 +356,7 @@ async function verifyMetadata(check, target, feed, lookup, failures) {
     const latest = result.metadata['dist-tags']?.latest;
     const latestAvailable = typeof latest === 'string' && versions[latest]?.dist?.tarball ? latest : 'not reported';
     const source = new URL(target);
+    const validateUrl = (url) => validateArchiveUrl(url, source, feed === 'MS feed');
     const verified = new Set();
     for (const [version, expected] of check.versions) {
         const label = `${check.name}@${version}`;
@@ -367,6 +368,8 @@ async function verifyMetadata(check, target, feed, lookup, failures) {
             continue;
         }
         try {
+            const tarball = secureUrl(dist.tarball);
+            validateUrl(tarball);
             const digests = typeof dist.integrity === 'string' ? dist.integrity.trim().split(/\s+/) : [];
             const matchingAlgorithm = digests.filter(
                 (digest) => parseIntegrity(digest)?.algorithm === expected.algorithm,
@@ -374,11 +377,11 @@ async function verifyMetadata(check, target, feed, lookup, failures) {
             let matches = matchingAlgorithm.includes(expected.value);
             if (!matchingAlgorithm.length) {
                 // Some feeds only advertise SHA-1; verify the bytes with the lockfile's algorithm instead.
-                const archive = await lookup(dist.tarball, {
+                const archive = await lookup(tarball.href, {
                     mode: 'archive',
                     algorithm: expected.algorithm,
                     authOrigin: source.origin,
-                    validateUrl: (url) => validateArchiveUrl(url, source, feed === 'MS feed'),
+                    validateUrl,
                 });
                 if (!archive.integrity) throw new Error(`could not verify tarball integrity (HTTP ${archive.status})`);
                 matches = archive.integrity === expected.value;

@@ -124,6 +124,16 @@ test('uses an explicitly configured private registry for omitted URLs with path-
     assert.match((await checkPackages(lock(), 'private', feed)).errors.join('\n'), /--registry/);
 });
 
+test('rejects a public tarball advertised by a private registry even when the integrity matches', async () => {
+    const registry = 'https://private.example/npm/';
+    const metadata = `${registry}%40example%2Fpkg`;
+    const feed = mockFeed(new Map([[metadata, () => packument({ tarball: npmTarball, integrity })]]));
+    const result = await checkPackages(lock(), 'private', { ...feed, registry });
+    assert.match(result.errors.join('\n'), /private registry: Tarball points to an unexpected host/);
+    assert.equal(result.passed, 0);
+    assert.deepEqual(feed.calls, [[metadata, 'GET', undefined]]);
+});
+
 test('preserves explicit private tarball availability checks and rejects explicit private URLs in public repos', async () => {
     const tarball = 'https://private.example/npm/pkg.tgz';
     const feed = mockFeed(new Map([[tarball, () => new Response()]]));

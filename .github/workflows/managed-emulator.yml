@@ -68,12 +68,16 @@ jobs:
             [[ ${args[0]} == --remote=false ]] && args=("${args[@]:1}")
             command=${args[0]}
             case "$command" in
-              container|volume) command="$command ${args[1]}" ;;
+              container|volume) command="$command ${args[1]}"; [[ ${args[2]} == --attach ]] && command="$command --attach" ;;
               info|pull|--version) ;;
               *) command=other ;;
             esac
-            reason=$(grep -Eoi 'permission denied|operation not permitted|newuidmap|newgidmap|crun|conmon|apparmor|user namespace|cgroup|XDG_RUNTIME_DIR|mount|storage|lock|socket|re-exec|setresuid|lstat|chown|overlay|proc/self|pause process|runroot|graphroot|readlink|/ns/user' "$stderr" | sort -fu | paste -sd ' ' -)
-            printf '%s: exit %d (%s)\n' "$command" "$rc" "$reason" >> "$PODMAN_TRACE"
+            reason=$(grep -Eoi 'permission denied|operation not permitted|newuidmap|newgidmap|crun|conmon|apparmor|user namespace|cgroup|XDG_RUNTIME_DIR|mount|storage|lock|socket|re-exec|setresuid|lstat|chown|overlay|proc/self|pause process|runroot|graphroot|readlink|/ns/user|sd-bus|interactive authentication required|systemd|dbus|/dev/null|/dev/tty|open|create|chdir|reopen|setrlimit|keyring|exec|fchmod|seccomp|ioctl|/sys/fs' "$stderr" | paste -sd ' ' -)
+            nnp=$(awk '/^NoNewPrivs:/ { print $2 }' /proc/self/status)
+            bus=unset
+            [[ -n $DBUS_SESSION_BUS_ADDRESS ]] && bus=other
+            [[ -n $XDG_RUNTIME_DIR && $DBUS_SESSION_BUS_ADDRESS == "unix:path=$XDG_RUNTIME_DIR/bus" ]] && bus=user
+            printf '%s: exit %d (%s); NoNewPrivs=%s; bus=%s\n' "$command" "$rc" "$reason" "$nnp" "$bus" >> "$PODMAN_TRACE"
           fi
           exit "$rc"
           BASH

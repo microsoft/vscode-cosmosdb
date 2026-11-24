@@ -1,5 +1,22 @@
 # Change Log
 
+## 0.39.3 (Preview)
+
+### Fixed
+
+- Fixed **Data Modeler** load and save failures to preserve editing access, warn about invalid saved models, and offer retry actions without losing current edits after a save failure. Temporary edits made while saved work is unavailable are clearly marked as unsaved, with recommendations disabled until loading succeeds. ([#3602](https://github.com/microsoft/vscode-cosmosdb/pull/3602))
+- Fixed **Data Modeler** workload filtering announcements for screen readers, including search results, selected filters, and clearing filters. ([#3590](https://github.com/microsoft/vscode-cosmosdb/issues/3590))
+- Fixed the accessible label for the **Data Modeler** Arrays & nested collections dropdown. ([#3595](https://github.com/microsoft/vscode-cosmosdb/issues/3595))
+- Fixed **Account Overview** health details to open in a keyboard-accessible popover with focus restoration, and associated legend tooltips with their focusable labels. ([#3586](https://github.com/microsoft/vscode-cosmosdb/issues/3586), [#3597](https://github.com/microsoft/vscode-cosmosdb/issues/3597))
+- Added a persistent visible label to the **Account Overview** container and database search field. ([#3596](https://github.com/microsoft/vscode-cosmosdb/issues/3596))
+
+### Changed
+
+- Replaced repeated **Data Modeler** configuration prompts with tab-visit indicators and Review-page links to unvisited configuration tabs. ([#3506](https://github.com/microsoft/vscode-cosmosdb/issues/3506))
+- Updated the unit test runner and Extension Host activation test infrastructure.
+- Updated localization.
+- Updated dependencies.
+
 ## 0.39.2 (Preview)
 
 ### Fixed

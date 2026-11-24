@@ -283,7 +283,8 @@ skills-lock.json
 
 plans/
 
-# Vitest JUnit reporter output (CI uploads it as an artifact; we don't commit it)
+# Vitest reports and artifacts
+.vitest/
 junit.xml
 **/junit.xml
 

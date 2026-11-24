@@ -11,6 +11,30 @@
 // its `cleanup` in `afterEach` when imported under Vitest's globals, so the component test files do
 // not need to wire that up and node tests never have to import react-dom here.
 import '@testing-library/jest-dom/vitest';
+import { type WorkerGlobalState } from 'vitest';
+import * as vitestRuntime from 'vitest/runtime';
+import { installLoopbackNetworkGuard } from './vitest.network-guard';
+
+if (process.env.VITEST_ALLOW_EXTERNAL_NETWORK !== '1') {
+    // Vitest does not declare this internal export. Fail setup if the pinned runner API changes.
+    const { __INTERNAL } = vitestRuntime as typeof vitestRuntime & {
+        __INTERNAL?: { getWorkerState(): WorkerGlobalState };
+    };
+
+    if (typeof __INTERNAL?.getWorkerState !== 'function') {
+        throw new Error('The Vitest loopback guard requires the worker error reporter.');
+    }
+
+    installLoopbackNetworkGuard((error) => {
+        const worker = __INTERNAL.getWorkerState();
+
+        // Report through the active worker, including during teardown and when the caller catches the error.
+        void worker.rpc.onUnhandledError(
+            { name: error.name, message: error.message, stack: error.stack, VITEST_TEST_PATH: worker.filepath },
+            'Loopback Network Guard',
+        );
+    });
+}
 
 // jsdom does not implement ResizeObserver or matchMedia, both of which Fluent UI components and the
 // query-generation input rely on. Provide minimal stubs so component tests can render under jsdom.

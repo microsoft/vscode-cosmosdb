@@ -41,6 +41,14 @@ jobs:
             sudo apt-get install -y podman
           fi
           podman info --format '{{.Host.Security.Rootless}}' | grep -Fx true
+          # Electron can start a private D-Bus session under Xvfb. Rootless Podman needs the
+          # user systemd bus to start containers with its default cgroup manager.
+          user_bus="/run/user/$(id -u)/bus"
+          if [[ ! -S "$user_bus" ]]; then
+            sudo systemctl start "user@$(id -u).service"
+          fi
+          test -S "$user_bus"
+          echo "DBUS_SESSION_BUS_ADDRESS=unix:path=$user_bus" >> "$GITHUB_ENV"
       - name: Check persistence and loopback bindings
         env:
           COSMOSDB_MANAGED_TEST_ENGINE: ${{ matrix.engine }}
@@ -49,47 +57,9 @@ jobs:
         run: npm exec -- playwright install-deps chromium
       - name: Build production extension
         run: npm run vite-prod
-      - name: Trace Podman failures from the VS Code extension host
-        if: matrix.engine == 'podman'
-        run: |
-          export PODMAN_REAL="$(command -v podman)"
-          export PODMAN_TRACE="$RUNNER_TEMP/podman-e2e.log"
-          printf 'PODMAN_REAL=%s\nPODMAN_TRACE=%s\n' "$PODMAN_REAL" "$PODMAN_TRACE" >> "$GITHUB_ENV"
-          mkdir -p "$RUNNER_TEMP/podman-e2e"
-          cat > "$RUNNER_TEMP/podman-e2e/podman" <<'BASH'
-          #!/usr/bin/env bash
-          stderr=$(mktemp)
-          trap 'rm -f "$stderr"' EXIT
-          "$PODMAN_REAL" "$@" 2>"$stderr"
-          rc=$?
-          cat "$stderr" >&2
-          if [[ $rc != 0 ]]; then
-            args=("$@")
-            [[ ${args[0]} == --remote=false ]] && args=("${args[@]:1}")
-            command=${args[0]}
-            case "$command" in
-              container|volume) command="$command ${args[1]}"; [[ ${args[2]} == --attach ]] && command="$command --attach" ;;
-              info|pull|--version) ;;
-              *) command=other ;;
-            esac
-            reason=$(grep -Eoi 'permission denied|operation not permitted|newuidmap|newgidmap|crun|conmon|apparmor|user namespace|cgroup|XDG_RUNTIME_DIR|mount|storage|lock|socket|re-exec|setresuid|lstat|chown|overlay|proc/self|pause process|runroot|graphroot|readlink|/ns/user|sd-bus|interactive authentication required|systemd|dbus|/dev/null|/dev/tty|open|create|chdir|reopen|setrlimit|keyring|exec|fchmod|seccomp|ioctl|/sys/fs' "$stderr" | paste -sd ' ' -)
-            nnp=$(awk '/^NoNewPrivs:/ { print $2 }' /proc/self/status)
-            bus=unset
-            [[ -n $DBUS_SESSION_BUS_ADDRESS ]] && bus=other
-            [[ -n $XDG_RUNTIME_DIR && $DBUS_SESSION_BUS_ADDRESS == "unix:path=$XDG_RUNTIME_DIR/bus" ]] && bus=user
-            printf '%s: exit %d (%s); NoNewPrivs=%s; bus=%s\n' "$command" "$rc" "$reason" "$nnp" "$bus" >> "$PODMAN_TRACE"
-          fi
-          exit "$rc"
-          BASH
-          chmod +x "$RUNNER_TEMP/podman-e2e/podman"
-          echo "$RUNNER_TEMP/podman-e2e" >> "$GITHUB_PATH"
       - name: Create and browse a managed emulator in VS Code
         env:
           COSMOSDB_MANAGED_TEST_ENGINE: ${{ matrix.engine }}
           COSMOSDB_E2E_SKIP_EMULATOR: '1'
           COSMOSDB_E2E_SKIP_BUILD: '1'
         run: xvfb-run -a npm run e2e -- managed-emulator.spec.ts --workers=1
-      - name: Show Podman failure categories
-        if: failure() && matrix.engine == 'podman'
-        run: |
-          if [[ -f "$PODMAN_TRACE" ]]; then cat "$PODMAN_TRACE"; fi

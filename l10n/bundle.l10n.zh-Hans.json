@@ -1663,6 +1663,7 @@
   "Shared-throughput database {database} has `{ru} RU/s` across `{count} collections`. {mono} consumes `{monoShare}%` of the pool.": "共享吞吐量的数据库 {database} 在 `{count} collections` 之间共享 `{ru} RU/s`。{mono} 占用池的 `{monoShare}%`。",
   "Shared-throughput starvation": "共享吞吐量资源不足",
   "Shared-throughput starvation in {database}": "{database} 中的共享吞吐量资源不足",
+  "Show account health details": "显示帐户运行状况详细信息",
   "Show chart: {metric}": "显示图表: {metric}",
   "Show current schema": "显示当前架构",
   "Show full migration assistant description": "显示完整的迁移助手说明",

@@ -1663,6 +1663,7 @@
   "Shared-throughput database {database} has `{ru} RU/s` across `{count} collections`. {mono} consumes `{monoShare}%` of the pool.": "공유 처리량 데이터베이스 {database}의 `{count} collections`에 `{ru} RU/s`가 있습니다. {mono}은(는) 풀의 `{monoShare}%`을(를) 사용합니다.",
   "Shared-throughput starvation": "공유 처리량 부족",
   "Shared-throughput starvation in {database}": "{database}의 공유 처리량 부족",
+  "Show account health details": "계정 상태 세부 정보 보기",
   "Show chart: {metric}": "차트 표시: {metric}",
   "Show current schema": "현재 스키마 표시",
   "Show full migration assistant description": "전체 마이그레이션 도우미 설명 표시",

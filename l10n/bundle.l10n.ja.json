@@ -1663,6 +1663,7 @@
   "Shared-throughput database {database} has `{ru} RU/s` across `{count} collections`. {mono} consumes `{monoShare}%` of the pool.": "共有スループット データベース {database} には、`{count} collections` 全体で `{ru} RU/s` が割り当てられています。{mono} はプールの `{monoShare}%` を消費します。",
   "Shared-throughput starvation": "共有スループットの枯渇",
   "Shared-throughput starvation in {database}": "{database} での共有スループットの枯渇",
+  "Show account health details": "アカウントの正常性の詳細を表示",
   "Show chart: {metric}": "グラフの表示: {metric}",
   "Show current schema": "現在のスキーマを表示する",
   "Show full migration assistant description": "完全な移行アシスタントの説明を表示する",

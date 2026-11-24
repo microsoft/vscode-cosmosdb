@@ -1663,6 +1663,7 @@
   "Shared-throughput database {database} has `{ru} RU/s` across `{count} collections`. {mono} consumes `{monoShare}%` of the pool.": "Paylaşılan aktarım hızı kullanan {database} veritabanı, `{count} koleksiyon` arasında `{ru} RU/sn` sağlar. {mono}, havuzun `%{monoShare}` kadarını kullanır.",
   "Shared-throughput starvation": "Paylaşılan aktarım hızı yetersizliği",
   "Shared-throughput starvation in {database}": "{database} veritabanında paylaşılan aktarım hızı yetersizliği",
+  "Show account health details": "Hesap durumu ayrıntılarını göster",
   "Show chart: {metric}": "Grafiği göster: {metric}",
   "Show current schema": "Geçerli şemayı göster",
   "Show full migration assistant description": "Geçiş yardımcısının tam açıklamasını göster",

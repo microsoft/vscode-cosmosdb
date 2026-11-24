@@ -1663,6 +1663,7 @@
   "Shared-throughput database {database} has `{ru} RU/s` across `{count} collections`. {mono} consumes `{monoShare}%` of the pool.": "共用輸送量資料庫 {database} 在「{count} 個集合」中有 '{ru} RU/秒'。{mono} 會耗用 '{monoShare}%' 的集區。",
   "Shared-throughput starvation": "共用輸送量不足",
   "Shared-throughput starvation in {database}": "{database} 中的共用輸送量不足",
+  "Show account health details": "顯示帳戶健康狀態詳細資料",
   "Show chart: {metric}": "顯示圖表: {metric}",
   "Show current schema": "顯示目前的結構描述",
   "Show full migration assistant description": "顯示完整的移轉小幫手描述",

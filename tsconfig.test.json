@@ -5,7 +5,7 @@
     "moduleResolution": "NodeNext",
     "outDir": "out",
     "rootDir": ".",
-    "types": ["vitest/globals", "node"],
+    "types": ["node"],
     "composite": false
   },
   "include": ["test/**/*.ts"],

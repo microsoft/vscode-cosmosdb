@@ -1312,15 +1312,58 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(screen.getByRole('button', { name: 'Get Recommendation' })).toBeVisible();
     });
 
-    it('reports load failures without enabling edits or saving, and retries detection', async () => {
+    it('keeps a temporary model unsaved after load failure and restores saved work through Retry loading', async () => {
+        vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1024);
+        const saved = restored();
         client.dataModeling.loadState.query
-            .mockRejectedValueOnce(new Error('invalid file'))
-            .mockResolvedValue(restored());
+            .mockRejectedValueOnce(new Error('Load query failed'))
+            .mockResolvedValue(saved);
         render(<DataModelingWizard />);
-        await userEvent.click(await screen.findByRole('button', { name: 'Retry loading' }));
         await continueExisting();
+        expect(
+            screen.getByText(
+                'Could not load the saved data model. Changes to this temporary model will not be saved. Retry loading to restore the saved model and discard temporary changes.',
+            ),
+        ).toBeVisible();
+        expect(screen.getByRole('button', { name: 'Start' })).toBeDisabled();
         expect(client.dataModeling.confirm.mutate).not.toHaveBeenCalled();
         expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+        await userEvent.click(screen.getByRole('radio', { name: /Chat & Sessions/ }));
+        await userEvent.click(screen.getByRole('button', { name: 'Start' }));
+        expect(screen.getByRole('tab', { name: 'Data' })).toHaveAttribute('aria-selected', 'true');
+        for (const container of applyScenario(createInitialSnapshot().wizard, 'chat').dataModel.containers) {
+            expect(screen.getByRole('button', { name: `Edit ${container.entity}` })).toBeVisible();
+            await userEvent.click(screen.getByRole('tab', { name: 'Queries' }));
+            expect(screen.getByRole('tab', { name: 'Queries' })).toHaveAttribute('aria-selected', 'true');
+            await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+        }
+        expect(client.dataModeling.confirm.mutate).not.toHaveBeenCalled();
+        const recommendationButton = screen.getByRole('button', { name: 'Get Recommendation' });
+        const disabledReason = 'Retry loading the saved data model before requesting a recommendation.';
+        expect(recommendationButton).toBeDisabled();
+        expect(recommendationButton).toHaveTextContent('Get Recommendation');
+        expect(recommendationButton).toHaveAccessibleName('Get Recommendation');
+        expect(recommendationButton).toHaveAccessibleDescription(disabledReason);
+        expect(screen.getByText(disabledReason)).toBeVisible();
+        await userEvent.click(recommendationButton);
+        expect(client.dataModeling.requestRecommendation.mutate).not.toHaveBeenCalled();
+        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+        const retry = screen.getByRole('button', { name: 'Retry loading' });
+        expect(retry).toHaveTextContent('Retry loading');
+        expect(retry).toHaveAccessibleName('Retry loading');
+        await userEvent.click(retry);
+        await screen.findByRole('button', { name: 'Edit Orders' });
+        expect(screen.queryByRole('button', { name: 'Retry loading' })).not.toBeInTheDocument();
+        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+        fireEvent.change(screen.getByRole('spinbutton', { name: 'Average document size' }), {
+            target: { value: '2' },
+        });
+        await waitFor(() => expect(lastSave().wizard.dataModel.containers[0].document.avgSizeKb).toBe(2));
+        await userEvent.click(screen.getByRole('tab', { name: 'Queries' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+        await confirmAdvance();
+        expect(screen.getByRole('button', { name: 'Get Recommendation' })).toBeEnabled();
+        expect(screen.queryByText(disabledReason)).not.toBeInTheDocument();
     });
 
     it('surfaces a failed edit save and retries the updated state', async () => {

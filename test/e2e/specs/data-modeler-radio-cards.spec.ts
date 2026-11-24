@@ -136,7 +136,7 @@ test('Workload and Scale cards use native radio keyboard navigation, including f
         await expect(clear).toBeFocused();
         await expect(clear).toHaveText('Clear all');
         await expect(clear).toHaveAccessibleName('Clear all');
-        await expect(clear).toHaveAccessibleDescription('Clear the search text and selected traits');
+        await expect(clear).toHaveAccessibleDescription('Clear the search text and selected filters');
         await clear.press('Tab');
         await expect(orders).toBeFocused();
         await expect(orders).not.toBeChecked();
@@ -163,6 +163,10 @@ test('Workload and Scale cards use native radio keyboard navigation, including f
         await clear.press('Enter');
         await expect(filter).toBeFocused();
         await expect(filter).toHaveValue('');
+        // Focus lands on the search box, whose description carries the restored result count.
+        await expect(filter).toHaveAccessibleDescription(
+            /^\d+ matching predefined scenarios Scenarios filter as you type\.$/,
+        );
         await expect(clear).toBeHidden();
         await filter.press('Tab');
         await expect(firstTrait).toBeFocused();

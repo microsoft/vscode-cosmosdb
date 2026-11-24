@@ -7,7 +7,7 @@
 /*
  * Replaces @vscode/test-cli (which is mocha-only) with a thin wrapper around
  * @vscode/test-electron. Downloads VS Code, installs required extensions,
- * then runs our custom @vitest/runner-driven test entry inside the extension host.
+ * then runs our node:test entry inside the extension host.
  */
 
 import { downloadAndUnzipVSCode, resolveCliArgsFromVSCodeExecutablePath, runTests } from '@vscode/test-electron';
@@ -35,7 +35,7 @@ async function main() {
         process.exit(2);
     }
 
-    // Compiled vitest-runner entry that was produced by `npm run pretest`.
+    // Compiled test entry produced by `npm run pretest`.
     const extensionTestsPathRaw = path.resolve(repoRoot, 'out', 'test', 'index.js');
     if (!fs.existsSync(extensionTestsPathRaw)) {
         console.error(`Test entry not found at ${extensionTestsPathRaw} — did "pretest" run?`);

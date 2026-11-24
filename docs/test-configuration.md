@@ -1,9 +1,9 @@
 # Test Configuration Documentation
 
-This project uses **two test frameworks**:
+This project uses three test runners:
 
-- **Vitest** — unit tests (Node, mocked `vscode`) and integration tests
-  (real `vscode` API inside the Extension Host).
+- **Vitest** — unit tests in Node and jsdom, with `vscode` mocked.
+- **`node:test`** — Extension Host integration tests (real `vscode`) and standalone migration skill tests.
 - **Playwright** — end-to-end tests that drive the React webviews inside a
   real downloaded VS Code instance, against a Cosmos DB emulator in Docker.
 
@@ -12,12 +12,12 @@ This project uses **two test frameworks**:
 ```
 vscode-cosmosdb/
 ├── src/                          # Source code
-│   └── **/*.test.ts              # Vitest unit tests (run in Node, vscode is mocked)
+│   └── **/*.test.ts              # Vitest unit tests (run in Node or jsdom, vscode is mocked)
 ├── packages/*/src/
 │   └── **/*.test.ts              # Vitest unit tests for workspace packages
-├── test/                         # Integration tests (Vitest in Extension Host)
-│   ├── index.ts                  # Custom @vitest/runner entry executed inside VS Code
-│   ├── **/*.test.ts              # Vitest integration tests (real vscode API)
+├── test/                         # Integration tests (node:test in Extension Host)
+│   ├── index.ts                  # Test entry executed inside VS Code
+│   ├── **/*.test.ts              # Integration tests (real vscode API)
 │   └── e2e/                      # Playwright e2e suite (real VS Code + emulator)
 │       ├── fixtures/             # Worker-scoped vscodeApp / vscodeWindow / webview helpers
 │       ├── setup/                # globalSetup/Teardown, emulator lifecycle, activation handshake
@@ -39,18 +39,7 @@ vscode-cosmosdb/
 
 ---
 
-## 🎯 Why a Single Framework (Vitest)?
-
-We used to have Mocha for integration tests because `@vscode/test-cli` is mocha-only.
-That meant two runners and two different APIs (`suite/test/assert.ok` vs `describe/it/expect`).
-
-Instead, we drive `@vitest/runner.startTests()` directly from a small entry script in
-`test/index.ts` that runs inside the VS Code Extension Host. The result:
-
-- **One framework for extension tests** — `vitest` for unit and integration tests.
-- **One API for extension tests** — `import { describe, it, expect, beforeAll } from 'vitest';`
-- **Same speed** for unit tests — they don't pay the Electron launch cost.
-- **Real `vscode` module** for integration tests — they run inside Electron.
+## 🎯 Test suites
 
 ### Unit tests (`src/**/*.test.ts`, `packages/*/src/**/*.test.ts`)
 
@@ -117,7 +106,7 @@ environment (uses the mock `vscode`).
     "moduleResolution": "NodeNext",
     "outDir": "out",
     "rootDir": ".",
-    "types": ["node", "vitest/globals"]
+    "types": ["node"]
   },
   "include": ["test/**/*.ts"]
 }
@@ -147,6 +136,15 @@ npm run vitest:coverage # one-shot tests with Vitest coverage
 npm run vitest:ui      # Vitest watch UI (excludes migration skill tests)
 ```
 
+Vitest uses the default `forks` pool with per-file isolation. To compare pools or limit workers on your machine, use:
+
+```bash
+npx vitest run --pool=threads --maxWorkers=8
+npx vitest doctor src/webviews --maxWorkers=8
+```
+
+For debugging one file at a time without sharing test state, use `--no-file-parallelism` rather than `--no-isolate`.
+
 ### Integration tests (slow, real VS Code)
 
 ```bash
@@ -166,7 +164,7 @@ The script:
 2. Installs `ms-azuretools.vscode-azureresourcegroups` into that VS Code copy.
 3. Launches the Extension Host with `extensionTestsPath: out/test/index.js`.
 4. `out/test/index.js` globs `out/test/**/*.test.js` and runs them via
-   `@vitest/runner.startTests()`.
+   `node:test` without spawning a separate process.
 5. Exits with non-zero status if any test fails.
 
 ### Shell MCP integration
@@ -336,14 +334,13 @@ the real VS Code window) and the helpers under `test/e2e/fixtures/`. Do
 
 ## 🧩 Architectural Notes
 
-### Why a custom `@vitest/runner` entry instead of `startVitest()` ?
+### Why use `node:test` inside the Extension Host?
 
-The full `startVitest()` (the Vitest Node API) spins up a Vite dev server and a worker
-pool — neither is wanted when we're already running inside Electron. `@vitest/runner` is
-the headless test-collection/execution core: it accepts a tiny `VitestRunner` object
-that only needs an `importFile(filepath)` method, then drives `describe/it/beforeAll/…`
-exactly as Vitest does internally. About 80 lines of glue gives us the full Vitest API
-inside the extension host with zero extra processes.
+Vitest 5 bundles its runner, so tests imported from `vitest` no longer register with the standalone
+`@vitest/runner`. The full Vitest CLI runs tests in its own workers, where the real `vscode` API is not
+available. `node:test` with `isolation: 'none'` runs the compiled tests in the existing Extension Host.
+The entry point waits for the enclosing suite's result, not for the reporter stream to end: the stream
+normally ends when Node is about to exit, but VS Code waits for the entry point before shutting down.
 
 ### Why drop `@vscode/test-cli` ?
 
@@ -358,10 +355,8 @@ identical to what we had before.
 
 ### "Cannot find name 'describe'" in a test file
 
-- Make sure `import { describe, it, expect } from 'vitest';` is present at the top.
-- For integration tests, verify the file is under `test/**/*.test.ts`.
-- For unit tests, verify the file is under `src/**/*.test.ts` or
-  `packages/*/src/**/*.test.ts`.
+- For integration tests under `test/**/*.test.ts`, import `describe` and `it` from `node:test`.
+- For unit tests under `src/` or `packages/*/src/`, import test helpers from `vitest`.
 
 ### "ERR_MODULE_NOT_FOUND" when running `npm test`
 

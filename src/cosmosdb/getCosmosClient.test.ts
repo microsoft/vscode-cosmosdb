@@ -12,6 +12,8 @@ import { type CosmosDBCredential } from './CosmosDBCredential';
 import { createCosmosHttpClient } from './createCosmosHttpClient';
 import { getCosmosClient } from './getCosmosClient';
 import { type NoSqlQueryConnection } from './NoSqlQueryConnection';
+import { SilentCosmosAuthenticationError } from './SilentCosmosAuthenticationError';
+import { getAccessTokenForVSCode } from './utils/azureSessionHelper';
 
 vi.mock('@azure/cosmos', () => ({
     CosmosClient: vi.fn(function (_options: CosmosClientOptions) {}),
@@ -107,5 +109,26 @@ describe('Cosmos client transport configuration', () => {
         } finally {
             agent.destroy();
         }
+    });
+
+    it('does not prompt or log raw credential errors for diagnostic authentication', async () => {
+        vi.mocked(getAccessTokenForVSCode).mockRejectedValueOnce(new Error('sensitive auth details'));
+        getCosmosClient(
+            {
+                ...connection,
+                credentials: [{ type: AuthenticationMethod.entraId, tenantId: 'test-tenant' }],
+            },
+            { silentAuthentication: true },
+        );
+
+        const credential = vi.mocked(CosmosClient).mock.calls[0][0].aadCredentials!;
+        await expect(credential.getToken(['https://cosmos.azure.com/.default'])).rejects.toBeInstanceOf(
+            SilentCosmosAuthenticationError,
+        );
+        expect(getAccessTokenForVSCode).toHaveBeenCalledExactlyOnceWith(
+            ['https://cosmos.azure.com/.default'],
+            'test-tenant',
+            { silent: true },
+        );
     });
 });

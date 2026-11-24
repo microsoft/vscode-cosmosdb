@@ -16,11 +16,13 @@ import { AuthenticationMethod, getPreferredAuthenticationMethod } from './Authen
 import { getCosmosDBKeyCredential, type CosmosDBCredential } from './CosmosDBCredential';
 import { createCosmosHttpClient } from './createCosmosHttpClient';
 import { isNoSqlQueryConnection, type NoSqlQueryConnection } from './NoSqlQueryConnection';
+import { SilentCosmosAuthenticationError } from './SilentCosmosAuthenticationError';
 import { getAccessTokenForVSCode } from './utils/azureSessionHelper';
 
 export type GetCosmosClientOptions = Partial<CosmosClientOptions> & {
     wwwAuthenticate?: string; // Optional challenge for EntraID authentication
     isLlmTool?: boolean;
+    silentAuthentication?: boolean;
 };
 
 export function getCosmosClient(connection: NoSqlQueryConnection, options?: GetCosmosClientOptions): CosmosClient;
@@ -72,7 +74,7 @@ export function getCosmosClient(
 
     const keyCred = getCosmosDBKeyCredential(credentials);
 
-    const { isLlmTool = false, ...clientOptions } = options ?? {};
+    const { isLlmTool = false, silentAuthentication = false, wwwAuthenticate, ...clientOptions } = options ?? {};
     const agent =
         clientOptions.agent ??
         (isEmulator && endpoint.startsWith('https:') ? new https.Agent({ rejectUnauthorized: false }) : undefined);
@@ -96,7 +98,7 @@ export function getCosmosClient(
         commonProperties.key = keyCred?.key;
     } else if (nonKeyCredentials.length > 0) {
         commonProperties.aadCredentials = {
-            getToken: async (scopes, _options) => {
+            getToken: async (scopes, tokenOptions) => {
                 // Fix scopes for test environments
                 const normalizedAuthScopes = normalizeCosmosScopes(scopes);
 
@@ -114,20 +116,19 @@ export function getCosmosClient(
                                 return null;
 
                             case AuthenticationMethod.entraId: {
-                                const { wwwAuthenticate } = options || {};
                                 return await getAccessTokenForVSCode(
                                     wwwAuthenticate
                                         ? { scopes: normalizedAuthScopes, wwwAuthenticate }
                                         : normalizedAuthScopes,
                                     credential.tenantId,
-                                    { createIfNone: forcePrompt },
+                                    silentAuthentication ? { silent: true } : { createIfNone: forcePrompt },
                                 );
                             }
 
                             case AuthenticationMethod.managedIdentity: {
                                 const { clientId } = credential;
                                 const auth = new ManagedIdentityCredential({ clientId });
-                                return await auth.getToken(normalizedAuthScopes);
+                                return await auth.getToken(normalizedAuthScopes, tokenOptions);
                             }
 
                             default:
@@ -139,6 +140,7 @@ export function getCosmosClient(
                                 return null;
                         }
                     } catch (e) {
+                        if (silentAuthentication) return null;
                         const message = l10n.t('{type} auth failed: {error}', {
                             type: credential.type,
                             error: e instanceof Error ? e.message : String(e),
@@ -167,6 +169,10 @@ export function getCosmosClient(
                 for (let i = 1; i < credentials.length; i++) {
                     const result = await tryCredential(credentials[i], false);
                     if (result) return result;
+                }
+
+                if (silentAuthentication) {
+                    throw new SilentCosmosAuthenticationError();
                 }
 
                 // 3. Last resort - Try EntraID again with forced prompting

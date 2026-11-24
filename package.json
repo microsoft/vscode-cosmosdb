@@ -825,6 +825,11 @@
       },
       {
         "category": "Cosmos DB",
+        "command": "cosmosDB.diagnoseConnection",
+        "title": "%cosmosdb.command.connection.diagnose%"
+      },
+      {
+        "category": "Cosmos DB",
         "command": "cosmosDB.deleteAccount",
         "title": "%cosmosdb.command.account.delete%"
       },
@@ -1224,6 +1229,11 @@
           "command": "cosmosDB.copyConnectionString",
           "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)|vscode-fabric.view/ && viewItem =~ /treeitem[.]account(?![a-z.\\/])/i",
           "group": "2@1"
+        },
+        {
+          "command": "cosmosDB.diagnoseConnection",
+          "when": "view =~ /^azure(ResourceGroups|FocusView|Workspace)$/ && viewItem =~ /(^|;)treeItem[.]account(;|$)/i && viewItem =~ /(^|;)experience[.]Core(;|$)/i",
+          "group": "2@2"
         },
         {
           "//": "[Account] Refresh (workspace only)",

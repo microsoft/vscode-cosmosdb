@@ -23,6 +23,23 @@ There are several ways you can contribute to the [vscode-cosmosdb repository](ht
 
   - Debug: Select the `Launch Extension` configuration in the Debug side bar and press <kbd>F5</kbd> to start debugging the extension.
 
+## Network access in Vitest
+
+The root Vitest setup allows TCP connections to `127.0.0.1` and `::1`, resolves `localhost` only to those addresses,
+and preserves local IPC. Unexpected outbound TCP attempts fail the run, including during teardown and when application
+code handles the error.
+Mock external services in unit tests. This is a Node worker guard, not OS-level isolation: it does not restrict UDP or
+child processes.
+
+If a test deliberately needs external TCP, keep it out of the default unit run and enable external networking only for
+its targeted invocation, for example:
+
+```shell
+npx cross-env VITEST_ALLOW_EXTERNAL_NETWORK=1 vitest run path/to/integration.test.ts -t "test name"
+```
+
+The opt-in applies to that entire Vitest process, so do not set it for the regular unit suite.
+
 This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
 For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/)
 or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.

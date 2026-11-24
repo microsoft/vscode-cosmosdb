@@ -6,7 +6,7 @@ import { isPartitionKeyValue, readPartitionKeyValue } from './partition-key-valu
 import { directIdentityField, entitySource, isFieldPathPrefix, sourceRefs, validateFieldPath } from './source-contract.mjs';
 import { isValidTtl } from './validate-cosmos-model.mjs';
 
-export const DOCUMENT_MAPPING_VERSION = 3;
+export const DOCUMENT_MAPPING_VERSION = 4;
 const SYSTEM_FIELDS = new Set(['id', 'docType', '_rid', '_self', '_etag', '_attachments', '_ts']);
 const DOCUMENT_MODES = new Set(['preserve', 'reshape', 'projection']);
 const WORKLOAD_EVIDENCE = new Set([
@@ -315,8 +315,13 @@ export function executeBehaviorExample(example) {
 
 function validateExpirationExamples(semantic, examples, models, evidence) {
     if (!['fixed', 'sliding'].includes(semantic.expirationBasis)) throw new Error('Preserved expiration requires a fixed or sliding source deadline');
+    const declaredTargets = (evidence.sourceDispositions ?? [])
+        .filter(disposition => semantic.datasets.includes(entitySource(disposition)))
+        .flatMap(disposition => disposition.targets);
     const targets = models.flatMap(({ domainName, model }) => model.containers.flatMap(container =>
-        container.entities.filter(entity => semantic.datasets.includes(entitySource(entity)))
+        container.entities.filter(entity => semantic.datasets.includes(entitySource(entity)) ||
+            declaredTargets.some(target => target.domain === domainName && target.container === container.name && target.entity === entity.name) ||
+            entity.attributes.some(attribute => sourceRefs(attribute.source).some(ref => semantic.datasets.includes(ref.dataset))))
             .map(entity => ({ domainName, container, entity }))));
     if (!targets.length) throw new Error('Expiration evidence requires a modeled target');
     const covered = new Set();
@@ -338,14 +343,16 @@ function validateExpirationExamples(semantic, examples, models, evidence) {
         const routes = [backfill, update].map(stage => {
             if (!Number.isSafeInteger(stage.exampleIndex) || stage.exampleIndex < 0 ||
                 !Number.isSafeInteger(stage.lastModifiedSeconds) || !Number.isSafeInteger(stage.sourceExpiresAtSeconds)) throw new Error('Invalid expiration example index or timestamps');
-            const item = documents ? documents.examples[stage.exampleIndex]?.output : identities?.cases[stage.exampleIndex]?.item;
+            const identityCase = identities?.cases[stage.exampleIndex];
+            const item = documents ? documents.examples[stage.exampleIndex]?.output : identityCase?.item;
             if (!item) throw new Error('Expiration example must reference a mapped target item');
             const override = Object.hasOwn(item, 'ttl');
             if (!documents && (mapping || override) && !mapping?.examples.some(entry =>
                 isDeepStrictEqual(entry.output, override ? valueState(item.ttl) : missing))) throw new Error('Item ttl is not supported by an executable field mapping');
             const ttl = override ? item.ttl : target.container.defaultTtl;
             if (!isValidTtl(ttl) || ttl === -1 || stage.lastModifiedSeconds + ttl !== stage.sourceExpiresAtSeconds) throw new Error('Required source expiration is not preserved');
-            return [item.id, ...target.container.partitionKeys.map(key => readPartitionKeyValue(item, key.path))];
+            const id = documents ? item.id : identityCase.id;
+            return [id, ...target.container.partitionKeys.map(key => readPartitionKeyValue(item, key.path))];
         });
         if (!isDeepStrictEqual(routes[0], routes[1])) throw new Error('Expiration examples must update the same target item');
         covered.add(target);

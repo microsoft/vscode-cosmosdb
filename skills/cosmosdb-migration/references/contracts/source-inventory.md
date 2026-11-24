@@ -372,7 +372,9 @@ for expiration, a `ttl-relative` example for each affected standalone target:
 
 Each zero-based index selects a verified whole-document output for that entity, or an
 identity case's item for non-document sources (its override must match field-mapping evidence).
-Both writes must address the same item and partition; use **target write times** and source
+Include projected and consolidated copies identified by source dispositions or field lineage,
+even when their primary dataset differs. Both writes must have the same resolved item ID
+and complete partition key; use **target write times** and source
 deadlines in integer epoch seconds. The update must occur before the original deadline.
 In the fixed-deadline example above, effective TTL must be 30 then 10 seconds. For a sliding
 30-second source window the second deadline would instead be 150. An unchanged target item

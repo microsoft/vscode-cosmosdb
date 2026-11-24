@@ -307,6 +307,9 @@ summaries for embedding and relationship context that the canonical model omits.
    expire older items based on their last modification. Shortening an already-enabled default
    affects only items without a `ttl` property. Positive overrides keep their own duration;
    an item with `ttl: -1` never expires automatically.
+   When TTL is enabled, seed items may carry a root `ttl` only if their entity models that
+   override. Use `-1` or an integer from 1 to 2147483647 seconds; omit an optional override
+   to inherit the container default.
 
 Generate only synthetic sample data. Preserve modeled fields, including credential-named
 fields such as `password` or `token`, and populate sensitive fields with clearly fake,

@@ -340,6 +340,62 @@ test('expiration preservation replays backfill and update against the modeled ta
     assert.throws(validate, /same target item/u);
 });
 
+test('expiration evidence for non-document sources uses resolved IDs and covers derived copies', t => {
+    const data = fixture(workspace(t));
+    data.inventory.datasets[0].kind = 'other';
+    data.evidence.documentMappings = [];
+    data.model.containers[0].defaultTtl = 30;
+    const cases = [data.item.sourceId, '507f1f77bcf86cd799439012'].map(sourceId => {
+        const item = { sourceId, tenant: 'a' };
+        return { item, id: resolveItemId(data.entity, item) };
+    });
+    data.evidence.identityExamples[0].cases = cases;
+    data.inventory.semantics.push({ id: 'retention', kind: 'expiration', required: true, datasets: ['orders'], expirationBasis: 'sliding' });
+    const example = { domain: 'Orders', container: 'Orders', entity: 'Order', operation: 'ttl-relative', expected: { equivalent: true },
+        input: { backfill: { exampleIndex: 0, lastModifiedSeconds: 100, sourceExpiresAtSeconds: 130 },
+            update: { exampleIndex: 1, lastModifiedSeconds: 120, sourceExpiresAtSeconds: 150 } } };
+    const examples = [example];
+    data.evidence.behaviorDecisions = [{ semantic: 'retention', action: 'preserve', rationale: 'Sliding retention', implementation: 'Container TTL', examples }];
+    const validate = () => validateMappingEvidence(data.inventory, data.models, data.evidence, new Map([['orders', 'Orders'], ['archive', 'Orders']]));
+    assert.throws(validate, /same target item/u);
+    example.input.update.exampleIndex = 0;
+    assert.doesNotThrow(validate);
+
+    const copy = structuredClone(data.entity);
+    copy.name = 'ArchiveEntry';
+    copy.sourceDataset = 'archive';
+    data.inventory.datasets.push({ ...data.inventory.datasets[0], id: 'archive' });
+    data.model.containers.push({ ...data.model.containers[0], name: 'Archive', entities: [copy] });
+    const target = { domain: 'Orders', container: 'Archive', entity: copy.name };
+    data.evidence.fieldMappings.push(...data.evidence.fieldMappings.map(mapping => ({ ...mapping, ...target })));
+    data.evidence.identityExamples.push({ ...target, cases: cases.map(({ item }) => ({ item, id: resolveItemId(copy, item) })) });
+    assert.throws(validate, /every affected target/u);
+    data.evidence.sourceDispositions = [{ sourceDataset: 'orders', targets: [{ domain: 'Orders', container: 'Orders', entity: 'Order', kind: 'authoritative' },
+        { ...target, kind: 'projection' }] }];
+    assert.throws(validate, /every affected target/u);
+    examples.push({ ...example, ...target });
+    assert.doesNotThrow(validate);
+    delete data.model.containers[1].defaultTtl;
+    assert.throws(validate, /TTL enabled/u);
+});
+
+test('provisioning samples allow only declared, valid root TTL overrides in enabled containers', t => {
+    const data = fixture(workspace(t));
+    const container = data.root.containers[0];
+    const check = fields => validateSampleData(data.root, {
+        sampleData: [{ containerName: container.name, items: [{ ...data.item, ...fields }] }],
+    }, undefined, data.inventory);
+    assert.deepEqual(check({ ttl: 0 }), []);
+    container.defaultTtl = -1;
+    assert.deepEqual(check({ details: { ttl: 0 } }), []);
+    assert(check({ ttl: 60 }).some(error => error.path.endsWith('.ttl') && error.message.includes('declared')));
+    container.entities[0].attributes.push({ target: 'ttl', type: 'number', optional: true, nullable: true, source: { generated: 'constant', type: 'number' } });
+    for (const ttl of [0, 1.5, 2147483648, null]) {
+        assert(check({ ttl }).some(error => error.path.endsWith('.ttl') && error.message.includes('2147483647')));
+    }
+    for (const fields of [{}, { ttl: 1 }, { ttl: -1 }, { ttl: 2147483647 }]) assert.deepEqual(check(fields), []);
+});
+
 test('batch evidence distinguishes null from missing components without shortening hierarchical keys', () => {
     for (const [partitionKeys, supported] of [
         [[[null], [null]], true],

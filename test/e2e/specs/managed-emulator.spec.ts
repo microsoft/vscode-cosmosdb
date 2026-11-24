@@ -4,7 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { expect, test } from '../fixtures/vscode';
-import { closeAllEditorTabs, getWebviewByPredicate, runCommand } from '../fixtures/webviewHelpers';
+import {
+    closeAllEditorTabs,
+    getWebviewByPredicate,
+    resetNativeDialogStubs,
+    runCommand,
+    stubMessageBoxButton,
+} from '../fixtures/webviewHelpers';
 
 test('opens the managed emulator webview and offers both engines', async ({ vscodeWindow }) => {
     try {
@@ -29,7 +35,7 @@ test('opens the managed emulator webview and offers both engines', async ({ vsco
 const selectedEngine = process.env.COSMOSDB_MANAGED_TEST_ENGINE;
 const engineLabel = selectedEngine === 'podman' ? 'Podman' : 'Docker';
 
-test('creates and browses a managed emulator without asking for credentials', async ({ vscodeWindow }) => {
+test('creates and browses a managed emulator without asking for credentials', async ({ vscodeApp, vscodeWindow }) => {
     test.skip(selectedEngine !== 'docker' && selectedEngine !== 'podman', 'Requires a live container engine');
     test.setTimeout(20 * 60_000);
     const row = vscodeWindow.locator('.monaco-list-row[aria-label^="Azure Cosmos DB Emulator (NoSQL)"]').first();
@@ -54,16 +60,20 @@ test('creates and browses a managed emulator without asking for credentials', as
         await expect(row).toBeVisible();
         await expect(vscodeWindow.locator('.monaco-list-row[aria-label^="Create Database"]').first()).toBeVisible();
     } finally {
-        if (await row.isVisible()) {
-            await row.click({ button: 'right' });
-            const remove = vscodeWindow
-                .locator('.context-view .monaco-menu')
-                .getByText('Delete Emulator…', { exact: true });
-            await remove.hover();
-            await vscodeWindow.keyboard.press('Enter');
-            await vscodeWindow.getByRole('button', { name: 'Delete emulator and data' }).click();
-            await expect(row).toHaveCount(0);
+        try {
+            if (await row.isVisible()) {
+                await stubMessageBoxButton(vscodeApp, '^Delete emulator and data$');
+                await row.click({ button: 'right' });
+                const remove = vscodeWindow
+                    .locator('.context-view .monaco-menu')
+                    .getByText('Delete Emulator…', { exact: true });
+                await remove.hover();
+                await vscodeWindow.keyboard.press('Enter');
+                await expect(row).toHaveCount(0);
+            }
+        } finally {
+            await resetNativeDialogStubs(vscodeApp);
+            await closeAllEditorTabs(vscodeWindow);
         }
-        await closeAllEditorTabs(vscodeWindow);
     }
 });

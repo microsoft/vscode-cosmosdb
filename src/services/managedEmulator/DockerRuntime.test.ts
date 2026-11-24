@@ -86,6 +86,44 @@ describe('CliContainerRuntime', () => {
         ]);
     });
 
+    it.each([
+        ['docker', '/socket:uid=1000,gid=1000,mode=0755'],
+        ['podman', '/socket:mode=1777,notmpcopyup'],
+    ] as const)('creates a writable, ephemeral socket directory with %s mount options', async (engine, socketMount) => {
+        vi.stubEnv('DOCKER_HOST', 'unix:///var/run/docker.sock');
+        vi.stubEnv('DOCKER_CONTEXT', '');
+        const command = vi
+            .fn<EngineCommand>()
+            .mockResolvedValueOnce(
+                engine === 'docker'
+                    ? 'linux 28.1.0 engine'
+                    : JSON.stringify({
+                          host: { os: 'linux', hostname: 'local', security: { rootless: true } },
+                          store: { graphRoot: '/test/engine' },
+                          version: { Version: '4.9.5' },
+                      }),
+            )
+            .mockResolvedValueOnce('vscode-cosmosdb-instance-data')
+            .mockResolvedValueOnce(
+                JSON.stringify([
+                    {
+                        Name: 'vscode-cosmosdb-instance-data',
+                        Labels: {
+                            'com.microsoft.vscode-cosmosdb.emulator': lease.id,
+                            'com.microsoft.vscode-cosmosdb.emulator.operation': lease.volumeOperation,
+                        },
+                    },
+                ]),
+            )
+            .mockResolvedValueOnce('emulator-container');
+        const session = await new CliContainerRuntime(command, 'linux').connect(engine);
+        await session.createContainer({ ...lease, engine });
+        const args = command.mock.lastCall?.[1] ?? [];
+        const mountIndex = args.indexOf('--tmpfs');
+        expect(mountIndex).toBeGreaterThan(-1);
+        expect(args[mountIndex + 1]).toBe(socketMount);
+    });
+
     it('redacts keys, authentication headers and passwords before exposing logs', () => {
         expect(
             maskEmulatorLogs(`Ready\n${wellKnownEmulatorPassword}\nAuthorization: sensitive\n"password":"secret"`),

@@ -330,6 +330,9 @@ class CliSession implements ContainerSession {
 
     public async createContainer(lease: EmulatorLease): Promise<void> {
         await this.requireVolume(lease);
+        // Podman rejects uid/gid on tmpfs. A sticky, empty directory lets the unprivileged emulator create its socket.
+        const socketMount =
+            this.engine === 'podman' ? '/socket:mode=1777,notmpcopyup' : '/socket:uid=1000,gid=1000,mode=0755';
         await this.run(
             [
                 'container',
@@ -351,7 +354,7 @@ class CliSession implements ContainerSession {
                 '--mount',
                 `type=volume,source=${volume(lease)},target=${dataPath}`,
                 '--tmpfs',
-                '/socket:uid=1000,gid=1000,mode=0755',
+                socketMount,
                 emulatorImage,
             ],
             { timeout: 90_000 },

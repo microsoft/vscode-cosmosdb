@@ -57,7 +57,9 @@ test('creates and browses a managed emulator without asking for credentials', as
         const done = wizard.getByRole('heading', { name: 'Done' });
         const error = wizard.getByRole('alert');
         await expect(done.or(error).first()).toBeVisible({ timeout: 17 * 60_000 });
-        await expect(error).toHaveCount(0);
+        if (await error.isVisible()) {
+            throw new Error(`${engineLabel} setup failed: ${await error.innerText()}`);
+        }
         await expect(done).toBeVisible();
         const open = wizard.getByRole('button', { name: 'Open connection' });
         await expect(open).toHaveText('Open connection');

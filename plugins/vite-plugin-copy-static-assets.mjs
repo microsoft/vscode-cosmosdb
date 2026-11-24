@@ -38,7 +38,8 @@ export function copyStaticAssets({ targets }) {
 
                 const matches = await Array.fromAsync(glob(src, { cwd: root }));
                 if (matches.length === 0) {
-                    if (this.meta.watchMode && watchDir && matchedTargets.has(target)) {
+                    // Rolldown keeps previously registered paths watched even after deletion.
+                    if (this.meta.watchMode && matchedTargets.has(target)) {
                         continue;
                     }
                     throw new Error(`No static assets matched "${src}" in "${root}".`);

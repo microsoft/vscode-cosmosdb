@@ -90,7 +90,7 @@ the [`copyStaticAssets` plugin](../plugins/vite-plugin-copy-static-assets.mjs) t
 Bundles under `dist/l10n/l10n` are not found by VS Code, leaving both host and webview translations unavailable.
 With `npm run vite-watch:ext`, editing a shipped localization file or changing a file under a copied directory such as
 `resources` or `skills` triggers a rebuild. If a file is removed or renamed during the watch session, the copy plugin
-removes its stale copy without clearing shared webview output.
+removes its stale copy without clearing shared webview output. Recreating a watched file copies it again.
 
 `src/localizationPackaging.test.ts` exercises the real copy plugin in development and production modes. It checks
 representative extension assets and verifies that every locale shipped with a localized manifest has its unchanged

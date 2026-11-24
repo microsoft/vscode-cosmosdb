@@ -76,6 +76,11 @@ it('refreshes copied assets after edits, additions, renames, and deletions', asy
             await rm(path.join(root, 'locales', 'fr.json'));
             await rm(path.join(root, 'locales', 'de.json'));
             await expect.poll(() => readdir(path.join(outDir, 'locales')), { timeout: 4_000 }).toEqual([]);
+
+            await rm(manifest);
+            await expect.poll(() => readdir(outDir), { timeout: 4_000 }).not.toContain('manifest.json');
+            await writeFile(manifest, '{"restored":true}\n');
+            await expectCopied('manifest.json', '{"restored":true}\n');
         } finally {
             await watcher.close();
         }

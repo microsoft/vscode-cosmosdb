@@ -59,11 +59,19 @@ export function createManagedEmulatorItem(
     const id = `${parentId}/${storageId}`;
     const name = managedEmulatorName();
     const experience = getExperienceFromApi(API.Core);
-    if (instance.status === 'running' && experience && connectionString) {
+    if (instance.status === 'running' && experience && connectionString && instance.certificate) {
         return makeFilterable(
             makeSortable(
                 new ManagedNoSqlItem(
-                    { id, storageId, name, isEmulator: true, managedEmulator: true, connectionString },
+                    {
+                        id,
+                        storageId,
+                        name,
+                        isEmulator: true,
+                        managedEmulator: true,
+                        managedEmulatorCertificate: instance.certificate,
+                        connectionString,
+                    },
                     experience,
                     instance.id,
                 ),

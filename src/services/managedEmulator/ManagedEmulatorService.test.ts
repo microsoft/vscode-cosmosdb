@@ -27,6 +27,7 @@ function fixture() {
             calls.push('create');
         }),
         container: vi.fn<ContainerSession['container']>().mockResolvedValue({ id: 'container-id', running: true }),
+        certificate: vi.fn(async () => 'test-certificate'),
         start: vi.fn(async () => {
             calls.push('start');
         }),
@@ -96,6 +97,16 @@ describe('ManagedEmulatorService', () => {
         expect(test.session.createContainer).toHaveBeenCalledOnce();
         expect(test.session.pull).toHaveBeenCalledOnce();
         expect(await reloaded.reconcile()).toMatchObject({ id: pending!.id, status: 'running' });
+    });
+
+    it('returns the current container certificate only to callers that request it', async () => {
+        const test = fixture();
+        await test.provision();
+        expect(await test.service.reconcile()).not.toHaveProperty('certificate');
+        expect(test.session.certificate).not.toHaveBeenCalled();
+        expect(await test.service.reconcile(true)).toMatchObject({ certificate: 'test-certificate' });
+        test.session.certificate.mockResolvedValueOnce('rotated-certificate');
+        expect(await test.service.reconcile(true)).toMatchObject({ certificate: 'rotated-certificate' });
     });
 
     it('does not pull or remove Docker resources if a port conflicts', async () => {

@@ -36,7 +36,7 @@ export class LocalCoreEmulatorsItem implements TreeElement, TreeElementWithConte
             WorkspaceResourceType.AttachedAccounts,
         );
 
-        const { instance, error } = await readManagedEmulator();
+        const { instance, error } = await readManagedEmulator(true);
         const children = await this.getChildrenEmulatorOnlyImpl(allItems);
         if (instance) {
             const secret = allItems.find(

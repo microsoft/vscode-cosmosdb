@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { execFile, type ExecFileOptions } from 'child_process';
-import { createHash } from 'crypto';
+import { createHash, X509Certificate } from 'crypto';
 import { createServer, type Server } from 'net';
 import { z } from 'zod';
 import { wellKnownEmulatorPassword } from '../../cosmosdb/cosmosdb-shared-constants';
@@ -37,6 +37,7 @@ export interface ContainerSession {
     requireVolume(lease: EmulatorLease): Promise<void>;
     createContainer(lease: EmulatorLease): Promise<void>;
     container(lease: EmulatorLease): Promise<Container | undefined>;
+    certificate(lease: EmulatorLease, signal?: AbortSignal): Promise<string>;
     start(lease: EmulatorLease): Promise<void>;
     stop(lease: EmulatorLease): Promise<void>;
     removeContainer(lease: EmulatorLease): Promise<void>;
@@ -348,7 +349,7 @@ class CliSession implements ContainerSession {
                 '--publish',
                 `${loopback}:${lease.ports.explorer}:1234`,
                 '--env',
-                'PROTOCOL=https-insecure',
+                'PROTOCOL=https',
                 '--env',
                 `DATA_PATH=${dataPath}`,
                 '--mount',
@@ -363,6 +364,23 @@ class CliSession implements ContainerSession {
 
     public async container(lease: EmulatorLease): Promise<Container | undefined> {
         return this.inspectContainer(lease, 'emulator');
+    }
+
+    public async certificate(lease: EmulatorLease, signal?: AbortSignal): Promise<string> {
+        const container = await this.container(lease);
+        if (!container?.running) throw new EmulatorError('missing');
+        // Read only the public CA from the owned container, not from the published port or the host trust store.
+        const pem = await this.run(['container', 'exec', container.id, 'cat', '/scripts/certs/rootCA.crt'], {
+            signal,
+            timeout: 4_000,
+        });
+        try {
+            const ca = new X509Certificate(pem);
+            if (ca.ca && ca.verify(ca.publicKey)) return ca.toString();
+        } catch {
+            throw new EmulatorError('certificate');
+        }
+        throw new EmulatorError('certificate');
     }
 
     private async inspectContainer(lease: EmulatorLease, role: 'emulator' | 'init'): Promise<Container | undefined> {

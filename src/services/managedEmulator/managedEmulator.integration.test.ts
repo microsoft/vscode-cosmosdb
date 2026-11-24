@@ -6,7 +6,6 @@
 import { CosmosClient } from '@azure/cosmos';
 import { execFile } from 'child_process';
 import { mkdtemp, rmdir } from 'fs/promises';
-import { Agent } from 'https';
 import { tmpdir } from 'os';
 import path from 'path';
 import { promisify } from 'util';
@@ -14,6 +13,7 @@ import { expect, it } from 'vitest';
 import { wellKnownEmulatorPassword } from '../../cosmosdb/cosmosdb-shared-constants';
 import { CliContainerRuntime } from './DockerRuntime';
 import { FileEmulatorLeaseStore } from './EmulatorLeaseStore';
+import { createManagedEmulatorAgent } from './emulatorTls';
 import { probeEmulator } from './managedEmulatorExtension';
 import { ManagedEmulatorService } from './ManagedEmulatorService';
 import { emulatorEndpoint } from './model';
@@ -37,17 +37,27 @@ it.skipIf(!engine)('preserves NoSQL data across reload and managed recreation', 
         deleteConnection: async () => {},
     };
     const service = new ManagedEmulatorService(deps);
-    const agent = new Agent({ rejectUnauthorized: false });
-    const client = new CosmosClient({
-        endpoint: emulatorEndpoint(ports),
-        key: wellKnownEmulatorPassword,
-        agent,
-        connectionPolicy: { enableEndpointDiscovery: false },
-    });
+    const withClient = async <T>(state: ManagedEmulatorService, action: (client: CosmosClient) => Promise<T>) => {
+        const instance = await state.reconcile(true);
+        const endpoint = emulatorEndpoint(ports);
+        const agent = createManagedEmulatorAgent(endpoint, instance?.certificate);
+        const client = new CosmosClient({
+            endpoint,
+            key: wellKnownEmulatorPassword,
+            agent,
+            connectionPolicy: { enableEndpointDiscovery: false },
+        });
+        try {
+            return await action(client);
+        } finally {
+            client.dispose();
+            agent.destroy();
+        }
+    };
 
     try {
         await service.provision(engine, ports, signal, () => {});
-        const { database } = await client.databases.create({ id: 'managed-test' });
+        await withClient(service, (client) => client.databases.create({ id: 'managed-test' }));
         const instance = await service.reconcile();
         if (!instance) throw new Error('No managed instance was persisted');
         const lease = await store.read();
@@ -67,15 +77,17 @@ it.skipIf(!engine)('preserves NoSQL data across reload and managed recreation', 
         expect((await reloaded.reconcile())?.status).toBe('stopped');
         await reloaded.act(instance.id, 'start', signal);
         await reloaded.act(instance.id, 'restart', signal);
-        expect((await database.read()).resource?.id).toBe('managed-test');
+        expect((await withClient(reloaded, (client) => client.database('managed-test').read())).resource?.id).toBe(
+            'managed-test',
+        );
         await session.removeContainer(lease);
         expect((await reloaded.reconcile())?.status).toBe('missing');
         await reloaded.act(instance.id, 'start', signal);
-        expect((await database.read()).resource?.id).toBe('managed-test');
+        expect((await withClient(reloaded, (client) => client.database('managed-test').read())).resource?.id).toBe(
+            'managed-test',
+        );
         expect(await reloaded.reconcile()).toMatchObject({ id: instance.id, status: 'running' });
     } finally {
-        client.dispose();
-        agent.destroy();
         const lease = await store.read();
         if (lease) await service.act(lease.id, 'delete', signal);
         await rmdir(directory);

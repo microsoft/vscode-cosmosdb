@@ -45,14 +45,20 @@ test('creates and browses a managed emulator without asking for credentials', as
             frame.getByRole('heading', { name: 'Introduction' }).isVisible(),
         );
         await wizard.getByRole('button', { name: 'Continue' }).click();
-        await wizard.getByRole('radio', { name: engineLabel, exact: true }).check();
+        const engine = wizard.getByRole('radio', { name: engineLabel, exact: true });
+        await engine.check();
+        await expect(engine).toBeChecked();
         await wizard.getByRole('spinbutton', { name: 'Cosmos DB endpoint port' }).fill('18082');
         await wizard.getByRole('spinbutton', { name: 'Data Explorer port' }).fill('11235');
         const start = wizard.getByRole('button', { name: 'Start setup' });
         await expect(start).toHaveText('Start setup');
         await expect(start).toHaveAccessibleName('Start setup');
         await start.click();
-        await expect(wizard.getByRole('heading', { name: 'Done' })).toBeVisible({ timeout: 17 * 60_000 });
+        const done = wizard.getByRole('heading', { name: 'Done' });
+        const error = wizard.getByRole('alert');
+        await expect(done.or(error).first()).toBeVisible({ timeout: 17 * 60_000 });
+        await expect(error).toHaveCount(0);
+        await expect(done).toBeVisible();
         const open = wizard.getByRole('button', { name: 'Open connection' });
         await expect(open).toHaveText('Open connection');
         await expect(open).toHaveAccessibleName('Open connection');

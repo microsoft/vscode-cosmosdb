@@ -5,7 +5,6 @@
 
 import { CosmosClient } from '@azure/cosmos';
 import * as l10n from '@vscode/l10n';
-import { Agent } from 'https';
 import { setTimeout } from 'timers/promises';
 import * as vscode from 'vscode';
 import { API } from '../../AzureDBExperiences';
@@ -16,6 +15,7 @@ import { revealAttachedAccounts } from '../../utils/revealAttachedAccounts';
 import { StorageNames, StorageService } from '../StorageService';
 import { CliContainerRuntime } from './DockerRuntime';
 import { FileEmulatorLeaseStore } from './EmulatorLeaseStore';
+import { createManagedEmulatorAgent } from './emulatorTls';
 import { ManagedEmulatorService, type EmulatorInstance } from './ManagedEmulatorService';
 import { describeEmulatorError, emulatorEndpoint, managedStorageId, type EmulatorPorts } from './model';
 
@@ -44,9 +44,11 @@ export async function revealManagedEmulator(id: string): Promise<void> {
     });
 }
 
-export async function readManagedEmulator(): Promise<{ instance?: EmulatorInstance; error?: string }> {
+export async function readManagedEmulator(
+    includeCertificate = false,
+): Promise<{ instance?: EmulatorInstance; error?: string }> {
     try {
-        return { instance: await service?.reconcile() };
+        return { instance: await service?.reconcile(includeCertificate) };
     } catch (error) {
         return {
             instance: error instanceof Error && 'instance' in error ? (error.instance as EmulatorInstance) : undefined,
@@ -55,28 +57,34 @@ export async function readManagedEmulator(): Promise<{ instance?: EmulatorInstan
     }
 }
 
-export async function probeEmulator(ports: EmulatorPorts, signal: AbortSignal): Promise<boolean> {
-    const agent = new Agent({ rejectUnauthorized: false });
-    const client = new CosmosClient({
-        endpoint: emulatorEndpoint(ports),
-        key: wellKnownEmulatorPassword,
-        agent,
-        connectionPolicy: { enableEndpointDiscovery: false, retryOptions: { maxRetryAttemptCount: 0 } },
-    });
-    try {
-        while (!signal.aborted) {
+export async function probeEmulator(
+    ports: EmulatorPorts,
+    readCertificate: () => Promise<string>,
+    signal: AbortSignal,
+): Promise<boolean> {
+    const endpoint = emulatorEndpoint(ports);
+    while (!signal.aborted) {
+        try {
+            const agent = createManagedEmulatorAgent(endpoint, await readCertificate());
+            const client = new CosmosClient({
+                endpoint,
+                key: wellKnownEmulatorPassword,
+                agent,
+                connectionPolicy: { enableEndpointDiscovery: false, retryOptions: { maxRetryAttemptCount: 0 } },
+            });
             try {
                 await client.getDatabaseAccount({ abortSignal: AbortSignal.any([signal, AbortSignal.timeout(4_000)]) });
                 return !signal.aborted;
-            } catch {
-                if (!signal.aborted) await setTimeout(1_000, undefined, { signal }).catch(() => undefined);
+            } finally {
+                client.dispose();
+                agent.destroy();
             }
+        } catch {
+            // The image regenerates the CA at startup. Retry with a fresh copy until the SDK is ready or we time out.
+            if (!signal.aborted) await setTimeout(1_000, undefined, { signal }).catch(() => undefined);
         }
-        return false;
-    } finally {
-        client.dispose();
-        agent.destroy();
     }
+    return false;
 }
 
 export function activateManagedEmulator(context: vscode.ExtensionContext): void {

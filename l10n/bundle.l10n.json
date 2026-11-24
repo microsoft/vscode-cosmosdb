@@ -508,6 +508,7 @@
   "Could not save the modeling advisor state. Keep this tab open and retry.": "Could not save the modeling advisor state. Keep this tab open and retry.",
   "Could not save your inputs before requesting a recommendation. Please retry.": "Could not save your inputs before requesting a recommendation. Please retry.",
   "Could not stop waiting for the recommendation. Please try again.": "Could not stop waiting for the recommendation. Please try again.",
+  "Could not verify the managed emulator certificate. Check the emulator logs, then reconnect.": "Could not verify the managed emulator certificate. Check the emulator logs, then reconnect.",
   "Create a brand new document in the container from a separate editor tab.": "Create a brand new document in the container from a separate editor tab.",
   "Create a container in database {database}.": "Create a container in database {database}.",
   "Create a Podman machine and start it, then check again.": "Create a Podman machine and start it, then check again.",

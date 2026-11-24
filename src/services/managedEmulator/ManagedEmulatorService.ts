@@ -21,7 +21,11 @@ import {
 export interface ManagedEmulatorDependencies {
     readonly store: EmulatorLeaseStore;
     readonly runtime: ContainerRuntime;
-    readonly probe: (ports: EmulatorPorts, signal: AbortSignal) => Promise<boolean>;
+    readonly probe: (
+        ports: EmulatorPorts,
+        readCertificate: () => Promise<string>,
+        signal: AbortSignal,
+    ) => Promise<boolean>;
     readonly saveConnection: (lease: EmulatorLease) => Promise<void>;
     readonly deleteConnection: (lease: EmulatorLease) => Promise<void>;
     readonly readyTimeoutMs?: number;
@@ -33,6 +37,7 @@ export interface EmulatorInstance {
     readonly ports: EmulatorPorts;
     readonly stage: SetupStage;
     readonly engine: ContainerEngine;
+    readonly certificate?: string;
     readonly error?: string;
 }
 
@@ -52,7 +57,7 @@ export class ManagedEmulatorService {
         return engines.filter((_, index) => available[index]);
     }
 
-    public async reconcile(): Promise<EmulatorInstance | undefined> {
+    public async reconcile(includeCertificate = false): Promise<EmulatorInstance | undefined> {
         const lease = await this.deps.store.read();
         if (!lease) return undefined;
         const view = (status: EmulatorStatus): EmulatorInstance => ({
@@ -86,7 +91,10 @@ export class ManagedEmulatorService {
                 if (!container) return view('missing');
                 if (!container.running) return view('stopped');
                 await session.requireVolume(lease);
-                return view(lease.phase === 'waiting' ? 'waiting' : 'running');
+                if (lease.phase === 'waiting') return view('waiting');
+                return includeCertificate
+                    ? { ...view('running'), certificate: await session.certificate(lease) }
+                    : view('running');
             });
         } catch (error) {
             if (error instanceof EmulatorError && error.problem === 'busy') return view('busy');
@@ -241,9 +249,11 @@ export class ManagedEmulatorService {
         if (!original?.running) throw new EmulatorError('missing');
         await this.deps.store.write({ ...lease, phase: 'waiting', stage: 'readiness' });
         report({ stage: 'readiness', state: 'active' });
+        const readinessSignal = AbortSignal.any([signal, AbortSignal.timeout(this.deps.readyTimeoutMs ?? 180_000)]);
         const ready = await this.deps.probe(
             lease.ports,
-            AbortSignal.any([signal, AbortSignal.timeout(this.deps.readyTimeoutMs ?? 180_000)]),
+            () => session.certificate(lease, readinessSignal),
+            readinessSignal,
         );
         checkCancellation(signal);
         if (!ready) {

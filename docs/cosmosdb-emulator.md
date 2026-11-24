@@ -20,7 +20,8 @@ VS Code if the installer changed `PATH`.
 The wizard checks and publishes the SDK endpoint (`8081`) and Data Explorer (`1234`) on `127.0.0.1`
 by default. If a port is occupied, choose a different one. Setup creates a managed data volume and
 saves the connection without asking for a key. If verification times out, **Wait longer** retries
-the SDK check against the same container.
+the SDK check against the same container. VS Code trusts the emulator's certificate only for
+that managed connection; setup does not change the system or VS Code certificate store.
 
 The managed node exposes lifecycle actions. Stop, restart, reloading VS Code, and recreating a
 missing container retain the named volume. **Delete Emulator** permanently removes the managed

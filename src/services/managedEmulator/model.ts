@@ -35,6 +35,7 @@ export type EmulatorProblem =
     | 'storage'
     | 'existing'
     | 'missing'
+    | 'certificate'
     | 'readiness'
     | 'cancelled';
 
@@ -88,6 +89,10 @@ export function describeEmulatorError(error: unknown): string {
             );
         case 'readiness':
             return l10n.t('The Cosmos DB SDK could not connect yet. Check the logs, or select Wait longer.');
+        case 'certificate':
+            return l10n.t(
+                'Could not verify the managed emulator certificate. Check the emulator logs, then reconnect.',
+            );
         case 'cancelled':
             return l10n.t('Emulator setup was cancelled.');
         case 'storage':

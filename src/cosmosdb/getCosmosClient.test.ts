@@ -75,6 +75,40 @@ describe('Cosmos client transport configuration', () => {
         expect(createCosmosHttpClient).not.toHaveBeenCalled();
     });
 
+    it('uses only the managed emulator CA and disables endpoint discovery for managed connections', () => {
+        getCosmosClient(
+            {
+                ...connection,
+                endpoint: 'https://127.0.0.1:18081/',
+                isEmulator: true,
+                managedEmulator: true,
+                managedEmulatorCertificate: 'test-ca',
+            },
+            { httpClient: { sendRequest: vi.fn() }, connectionPolicy: { enableEndpointDiscovery: true } },
+        );
+        const options = vi.mocked(CosmosClient).mock.calls[0][0];
+        expect(options.agent).toMatchObject({ options: { ca: 'test-ca', rejectUnauthorized: true } });
+        expect(options.httpClient).toBeUndefined();
+        expect(options.connectionPolicy?.enableEndpointDiscovery).toBe(false);
+    });
+
+    it.each([
+        { endpoint: 'https://127.0.0.1:18081/', certificate: undefined },
+        { endpoint: 'https://example.com:18081/', certificate: 'test-ca' },
+        { endpoint: 'http://127.0.0.1:18081/', certificate: 'test-ca' },
+    ])('rejects a managed connection without a verified local TLS configuration', ({ endpoint, certificate }) => {
+        expect(() =>
+            getCosmosClient({
+                ...connection,
+                endpoint,
+                isEmulator: true,
+                managedEmulator: true,
+                managedEmulatorCertificate: certificate,
+            }),
+        ).toThrow('certificate');
+        expect(CosmosClient).not.toHaveBeenCalled();
+    });
+
     it('defers agent selection to VS Code for non-emulators', () => {
         getCosmosClient(connection);
 

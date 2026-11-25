@@ -18,6 +18,7 @@ import { CosmosDBAccountResourceItemBase } from '../azure-resources-view/cosmosd
 import { type TreeElement } from '../TreeElement';
 import { TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { getAccountInfo, type AccountInfo } from './AccountInfo';
+import { cosmosDBConnectionTargetContext } from './connectionDiagnosticsTarget';
 import { type CosmosDBAccountModel } from './models/CosmosDBAccountModel';
 import { type DatabaseResource } from './models/CosmosDBTypes';
 
@@ -35,7 +36,7 @@ export abstract class CosmosDBAccountResourceItem extends CosmosDBAccountResourc
         // accounts, which share the same base contextValue but have no ARM subscription/resource
         // group). Menu items that require `AzureResourceMetadata` (e.g. Account Overview) should
         // gate on this marker instead of the generic `treeItem.account` contextValue.
-        const contextValues = [this.contextValue, 'hasArmMetadata'];
+        const contextValues = [this.contextValue, 'hasArmMetadata', cosmosDBConnectionTargetContext];
         if (this.supportsDatabaseHub) {
             contextValues.push('supportsDatabaseHub');
         }

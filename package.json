@@ -1232,7 +1232,7 @@
         },
         {
           "command": "cosmosDB.diagnoseConnection",
-          "when": "view =~ /^azure(ResourceGroups|FocusView|Workspace)$/ && viewItem =~ /(^|;)treeItem[.]account(;|$)/i && viewItem =~ /(^|;)experience[.]Core(;|$)/i",
+          "when": "view =~ /^azure(ResourceGroups|FocusView|Workspace)$/ && viewItem =~ /(^|;)cosmosDBConnectionTarget(;|$)/",
           "group": "2@2"
         },
         {

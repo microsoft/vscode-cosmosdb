@@ -19,19 +19,11 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { API } from '../AzureDBExperiences';
 import { ext } from '../extensionVariables';
+import { getConnectionDiagnosticsTarget } from './cosmosdb/connectionDiagnosticsTarget';
 import { type FabricArtifact } from './fabric/models/FabricArtifact';
 import { type TreeElement } from './TreeElement';
 import { isTreeElementWithContextValue, TreeElementWithContextValue } from './TreeElementWithContextValue';
 import { isTreeElementWithExperience } from './TreeElementWithExperience';
-
-function supportsConnectionDiagnostics(element: TreeElement): boolean {
-    return (
-        isTreeElementWithExperience(element) &&
-        element.experience?.api === API.Core &&
-        isTreeElementWithContextValue(element) &&
-        element.contextValue.split(';').includes('treeItem.account')
-    );
-}
 
 /**
  * Abstract base class that implements a cached tree data provider for Visual Studio Code extensions.
@@ -130,7 +122,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                         if (isTreeElementWithContextValue(element)) {
                             context.telemetry.properties.parentContext = element.contextValue;
                         }
-                        if (supportsConnectionDiagnostics(element)) {
+                        if (getConnectionDiagnosticsTarget(element)) {
                             context.telemetry.maskEntireErrorMessage = true;
                         }
                         if (isTreeElementWithExperience(element)) {
@@ -165,7 +157,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                 )) ?? []
             );
         } catch (error) {
-            if (supportsConnectionDiagnostics(element)) {
+            if (getConnectionDiagnosticsTarget(element)) {
                 return [
                     createGenericElement({
                         contextValue: TreeElementWithContextValue.createContextValue([this.contextValue, 'item.error']),

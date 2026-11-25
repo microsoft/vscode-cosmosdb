@@ -11,6 +11,7 @@ export type Finding =
     | 'settingsRead'
     | 'settingsUnavailable'
     | 'settingsNotApplicable'
+    | 'apiProbeUnavailable'
     | 'connected'
     | 'missingCredentials'
     | 'authentication'

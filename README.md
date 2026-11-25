@@ -201,14 +201,15 @@ For local setup instructions and connection details, see [Azure Cosmos DB Emulat
 
 ## Diagnose a connection
 
-Right-click a Cosmos DB for NoSQL account, saved connection, or local emulator and choose **Diagnose Connection**.
+Right-click a Cosmos DB account, saved connection, or local emulator and choose **Diagnose Connection**.
 You can also run **Cosmos DB: Diagnose Connection** from the Command Palette or select the diagnosis action
 when the account cannot load databases in the tree.
 
 The diagnostic runs where the VS Code extension runs (locally, in WSL, over SSH, or in a dev container).
-It uses the Cosmos DB SDK to read database metadata without reading documents or changing resources. For accounts selected
-from Azure Resources, it also checks the available Azure Resource Manager network settings. A direct DNS result is
-informational: a proxy can use a different route or resolver.
+For accounts selected from Azure Resources, it checks the available Azure Resource Manager network settings. It checks
+DNS for the available account endpoint; a proxy can use a different route or resolver. For NoSQL connections it also uses
+the Cosmos DB SDK to read database metadata without reading documents or changing resources. For other APIs the data-plane
+check is skipped: account settings and DNS do not confirm that the API itself is reachable.
 
 If Cosmos DB reports an outgoing IP that was blocked, the panel shows it locally so you can check the IP allowlist.
 For Private Link, check private DNS and routing before changing the allowlist. The diagnostic does not change network

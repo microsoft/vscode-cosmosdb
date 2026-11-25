@@ -18,9 +18,11 @@ import { compareResourceIds } from '../../utils/strings';
 import { rejectOnTimeout, TimeoutError } from '../../utils/timeout';
 import { CosmosDBAccountResourceItemBase } from '../azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
 import { type TreeElement } from '../TreeElement';
+import { TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithStorageId } from '../TreeElementWithStorageId';
 import { type CosmosDBAttachedAccountModel } from '../workspace-view/cosmosdb/CosmosDBAttachedAccountModel';
 import { getAccountInfo, type AccountInfo } from './AccountInfo';
+import { cosmosDBConnectionTargetContext } from './connectionDiagnosticsTarget';
 import { type DatabaseResource } from './models/CosmosDBTypes';
 
 export abstract class CosmosDBAccountAttachedResourceItem
@@ -28,6 +30,7 @@ export abstract class CosmosDBAccountAttachedResourceItem
     implements TreeElementWithStorageId
 {
     declare public readonly account: CosmosDBAttachedAccountModel;
+    declare public readonly contextValue: string;
 
     public get storageId(): string {
         return this.account.storageId;
@@ -38,6 +41,10 @@ export abstract class CosmosDBAccountAttachedResourceItem
 
     protected constructor(account: CosmosDBAttachedAccountModel, experience: Experience) {
         super(account, experience);
+        this.contextValue = TreeElementWithContextValue.createContextValue([
+            this.contextValue,
+            cosmosDBConnectionTargetContext,
+        ]);
     }
 
     public async getChildren(): Promise<TreeElement[]> {
@@ -51,7 +58,10 @@ export abstract class CosmosDBAccountAttachedResourceItem
             // no databases in there:
             return [
                 createGenericElement({
-                    contextValue: this.contextValue,
+                    contextValue: this.contextValue
+                        .split(';')
+                        .filter((tag) => tag !== cosmosDBConnectionTargetContext)
+                        .join(';'),
                     id: `${this.id}/no-databases`,
                     label: l10n.t('Create Database…'),
                     iconPath: new vscode.ThemeIcon('plus'),

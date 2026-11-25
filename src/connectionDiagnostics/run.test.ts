@@ -34,6 +34,7 @@ vi.mock('@microsoft/vscode-azext-utils', () => ({
 
 const attached: DiagnosticsTarget = {
     kind: 'attached',
+    probe: 'nosql',
     account: {
         id: 'attachment',
         storageId: 'storage',
@@ -41,6 +42,18 @@ const attached: DiagnosticsTarget = {
         connectionString: 'AccountEndpoint=https://example.test/;AccountKey=secret;',
         isEmulator: false,
     },
+};
+
+const cloud: Extract<DiagnosticsTarget, { kind: 'azure' }> = {
+    kind: 'azure',
+    probe: 'nosql',
+    account: {
+        id: 'resource',
+        name: 'account',
+        resourceGroup: 'group',
+        subscription: { subscriptionId: 'subscription', tenantId: 'tenant' },
+        raw: {},
+    } as Extract<DiagnosticsTarget, { kind: 'azure' }>['account'],
 };
 
 async function diagnose(target: DiagnosticsTarget, controller = new AbortController()) {
@@ -89,16 +102,6 @@ describe('diagnosing a NoSQL connection', () => {
             code: 403,
             message: 'Request originated from client VNET through private endpoint.',
         });
-        const cloud: DiagnosticsTarget = {
-            kind: 'azure',
-            account: {
-                id: 'resource',
-                name: 'account',
-                resourceGroup: 'group',
-                subscription: { subscriptionId: 'subscription', tenantId: 'tenant' },
-                raw: {},
-            } as Extract<DiagnosticsTarget, { kind: 'azure' }>['account'],
-        };
         const states = await diagnose(cloud);
         expect(io.listReadOnlyKeys).not.toHaveBeenCalled();
         expect(io.listKeys).not.toHaveBeenCalled();
@@ -113,6 +116,40 @@ describe('diagnosing a NoSQL connection', () => {
         expect(JSON.stringify(states)).not.toContain('203.0.113.45');
     });
 
+    it('runs ARM and DNS checks without retrieving credentials or sending a NoSQL request for other APIs', async () => {
+        io.get.mockResolvedValue({
+            documentEndpoint: 'https://example.test/',
+            publicNetworkAccess: 'Disabled',
+        });
+        const states = await diagnose({ ...cloud, probe: 'network' });
+        expect(io.get).toHaveBeenCalledOnce();
+        expect(io.listReadOnlyKeys).not.toHaveBeenCalled();
+        expect(io.listKeys).not.toHaveBeenCalled();
+        expect(io.readAll).not.toHaveBeenCalled();
+        expect(io.lookup).toHaveBeenCalledExactlyOnceWith('example.test', { all: true });
+        expect(states.at(-1)).toMatchObject({
+            phase: 'completed',
+            checks: [
+                { finding: 'endpointReady' },
+                { finding: 'settingsRead', network: { publicAccess: 'disabled' } },
+                { finding: 'apiProbeUnavailable', status: 'skipped' },
+                { finding: 'privateDns' },
+            ],
+        });
+    });
+
+    it('keeps the API probe skipped for a saved non-NoSQL connection', async () => {
+        const states = await diagnose({ ...attached, probe: 'network' });
+        expect(io.get).not.toHaveBeenCalled();
+        expect(io.readAll).not.toHaveBeenCalled();
+        expect(states.at(-1)?.checks).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({ finding: 'settingsNotApplicable' }),
+                expect.objectContaining({ finding: 'apiProbeUnavailable', status: 'skipped' }),
+                expect.objectContaining({ finding: 'privateDns' }),
+            ]),
+        );
+    });
     it('rejects insecure cloud endpoints without sending credentials', async () => {
         const states = await diagnose({
             ...attached,

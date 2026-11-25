@@ -18,6 +18,9 @@ export function stepLabel(step: Step): string {
 export function phaseLabel(state: DiagnosticsState): string {
     if (state.phase === 'cancelled') return l10n.t('Connection diagnostics cancelled.');
     if (state.phase === 'running') return l10n.t('Connection diagnostics running.');
+    if (state.checks.some((check) => check.finding === 'apiProbeUnavailable')) {
+        return l10n.t('Diagnostics complete. Data-plane access was not tested.');
+    }
     return state.checks.some((check) => check.finding === 'connected')
         ? l10n.t('Connected to Cosmos DB.')
         : l10n.t('Could not verify access to Cosmos DB.');
@@ -37,6 +40,9 @@ export function checkText(check: CheckResult, kind: DiagnosticsState['kind']): s
             kind === 'emulator'
                 ? l10n.t('Azure network rules do not apply to the local emulator.')
                 : l10n.t('Azure network settings cannot be read from a connection string alone.'),
+        apiProbeUnavailable: l10n.t(
+            'The data-plane probe is only available for NoSQL connections. Network settings and DNS do not verify access to this API.',
+        ),
         connected: l10n.t('The SDK read database metadata. No documents were read.'),
         missingCredentials: l10n.t(
             'No account key was available. Check the saved connection or your permission to retrieve an Azure account key.',

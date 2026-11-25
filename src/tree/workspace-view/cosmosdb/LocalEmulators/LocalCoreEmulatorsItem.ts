@@ -21,8 +21,9 @@ import { type CosmosDBAttachedAccountModel } from '../CosmosDBAttachedAccountMod
 import { NewCoreEmulatorConnectionItem } from './NewCoreEmulatorConnectionItem';
 
 export class LocalCoreEmulatorsItem implements TreeElement, TreeElementWithContextValue {
+    public static readonly groupContextValue = 'treeItem.localEmulators';
     public readonly id: string;
-    public readonly contextValue: string = 'treeItem.newConnection';
+    public readonly contextValue: string = `treeItem.newConnection;${LocalCoreEmulatorsItem.groupContextValue}`;
 
     constructor(public readonly parentId: string) {
         this.id = `${parentId}/localEmulators`;

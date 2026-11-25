@@ -20,9 +20,10 @@ import { createCosmosDBManagementClient } from '../utils/azureClients';
 import { classifyAccessError } from './classify';
 import { type CheckResult, type DiagnosticsState, type NetworkSummary, type Step, type TargetKind } from './model';
 
-export type DiagnosticsTarget =
+export type DiagnosticsTarget = (
     | { kind: 'azure'; account: CosmosDBAccountModel }
-    | { kind: 'attached' | 'emulator'; account: CosmosDBAttachedAccountModel };
+    | { kind: 'attached' | 'emulator'; account: CosmosDBAttachedAccountModel }
+) & { probe: 'nosql' | 'network' };
 
 const PRIVATE_ADDRESSES = new BlockList();
 for (const [address, prefix] of [
@@ -143,7 +144,7 @@ export async function runDiagnostics(
     try {
         begin('target');
         parent.throwIfAborted();
-        const mode = getPreferredAuthenticationMethod();
+        const mode = target.probe === 'nosql' ? getPreferredAuthenticationMethod() : undefined;
         let endpoint: string | undefined;
         let key: string | undefined;
         let tenantId: string | undefined;
@@ -197,62 +198,71 @@ export async function runDiagnostics(
             finding: url ? 'endpointReady' : 'invalidEndpoint',
             status: url ? 'passed' : 'failed',
         });
+        if (target.probe === 'network') {
+            checks.push({ step: 'access', finding: 'apiProbeUnavailable', status: 'skipped' });
+        }
         if (!url) return;
 
-        begin('access');
-        const emulator = target.kind === 'emulator';
-        const localAuthDisabled = checks.find((check) => check.step === 'accountSettings')?.network?.localAuthDisabled;
-        const useKey =
-            emulator || mode === AuthenticationMethod.accountKey || (mode === AuthenticationMethod.auto && !!key);
-        const auth = useKey ? 'key' : mode === AuthenticationMethod.managedIdentity ? 'identity' : 'entra';
-        const credential: CosmosDBCredential | undefined =
-            auth === 'key'
-                ? key
-                    ? { type: AuthenticationMethod.accountKey, key }
-                    : undefined
-                : auth === 'identity'
-                  ? {
-                        type: AuthenticationMethod.managedIdentity,
-                        clientId: vscode.workspace
-                            .getConfiguration()
-                            .get<string>(ext.settingsKeys.authManagedIdentityClientId),
-                    }
-                  : { type: AuthenticationMethod.entraId, tenantId };
+        if (target.probe === 'nosql') {
+            begin('access');
+            const emulator = target.kind === 'emulator';
+            const localAuthDisabled = checks.find((check) => check.step === 'accountSettings')?.network
+                ?.localAuthDisabled;
+            const useKey =
+                emulator || mode === AuthenticationMethod.accountKey || (mode === AuthenticationMethod.auto && !!key);
+            const auth = useKey ? 'key' : mode === AuthenticationMethod.managedIdentity ? 'identity' : 'entra';
+            const credential: CosmosDBCredential | undefined =
+                auth === 'key'
+                    ? key
+                        ? { type: AuthenticationMethod.accountKey, key }
+                        : undefined
+                    : auth === 'identity'
+                      ? {
+                            type: AuthenticationMethod.managedIdentity,
+                            clientId: vscode.workspace
+                                .getConfiguration()
+                                .get<string>(ext.settingsKeys.authManagedIdentityClientId),
+                        }
+                      : { type: AuthenticationMethod.entraId, tenantId };
 
-        let access: CheckResult;
-        if (!credential) {
-            access = {
-                step: 'access',
-                finding: localAuthDisabled ? 'localAuthDisabled' : 'missingCredentials',
-                status: 'failed',
-                auth,
-            };
-        } else {
-            const agent = emulator && url.protocol === 'https:' ? new Agent({ rejectUnauthorized: false }) : undefined;
-            try {
-                const client = getCosmosClient(url.href, [credential], emulator, {
-                    agent,
-                    silentAuthentication: true,
-                    connectionPolicy: { retryOptions: { maxRetryAttemptCount: 0 } },
-                });
+            let access: CheckResult;
+            if (!credential) {
+                access = {
+                    step: 'access',
+                    finding: localAuthDisabled ? 'localAuthDisabled' : 'missingCredentials',
+                    status: 'failed',
+                    auth,
+                };
+            } else {
+                const agent =
+                    emulator && url.protocol === 'https:' ? new Agent({ rejectUnauthorized: false }) : undefined;
                 try {
-                    await bounded(parent, 12_000, (abortSignal) =>
-                        client.databases.readAll({ maxItemCount: 1, abortSignal }).fetchNext(),
-                    );
-                    access = { step: 'access', finding: 'connected', status: 'passed', auth };
+                    const client = getCosmosClient(url.href, [credential], emulator, {
+                        agent,
+                        silentAuthentication: true,
+                        connectionPolicy: { retryOptions: { maxRetryAttemptCount: 0 } },
+                    });
+                    try {
+                        await bounded(parent, 12_000, (abortSignal) =>
+                            client.databases.readAll({ maxItemCount: 1, abortSignal }).fetchNext(),
+                        );
+                        access = { step: 'access', finding: 'connected', status: 'passed', auth };
+                    } finally {
+                        client.dispose();
+                    }
+                } catch (error) {
+                    parent.throwIfAborted();
+                    const classification =
+                        error instanceof StepTimeoutError
+                            ? { finding: 'timedOut' as const }
+                            : classifyAccessError(error);
+                    access = { step: 'access', ...classification, status: 'failed', auth };
                 } finally {
-                    client.dispose();
+                    agent?.destroy();
                 }
-            } catch (error) {
-                parent.throwIfAborted();
-                const classification =
-                    error instanceof StepTimeoutError ? { finding: 'timedOut' as const } : classifyAccessError(error);
-                access = { step: 'access', ...classification, status: 'failed', auth };
-            } finally {
-                agent?.destroy();
             }
+            checks.push(access);
         }
-        checks.push(access);
 
         begin('dns');
         try {

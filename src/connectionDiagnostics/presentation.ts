@@ -5,7 +5,7 @@
 
 import * as l10n from '@vscode/l10n';
 import { checkHelpTopics, diagnosticsHelpUrls, helpLabel } from './help';
-import { type CheckResult, type DiagnosticsState, type Finding, type Step } from './model';
+import { type CheckResult, type DiagnosticsState, type Finding, getPrimaryDataCheck, type Step } from './model';
 
 export function stepLabel(step: Step): string {
     return {
@@ -20,13 +20,15 @@ export function stepLabel(step: Step): string {
 export function phaseLabel(state: DiagnosticsState): string {
     if (state.phase === 'cancelled') return l10n.t('Connection diagnostics cancelled.');
     if (state.phase === 'running') return l10n.t('Connection diagnostics running.');
-    if (state.checks.some((check) => check.finding === 'dataRbac')) {
+    const result = getPrimaryDataCheck(state);
+    if (result?.finding === 'querySucceeded') {
+        return l10n.t('Query access to the selected container verified.');
+    }
+    if (result?.finding === 'dataRbac') {
         return l10n.t('Cosmos DB data role required.');
     }
     if (state.scope === 'container') {
-        return state.checks.some((check) => check.finding === 'querySucceeded')
-            ? l10n.t('Query access to the selected container verified.')
-            : l10n.t('Could not verify query access to the selected container.');
+        return l10n.t('Could not verify query access to the selected container.');
     }
     if (state.checks.some((check) => check.finding === 'apiProbeUnavailable')) {
         return l10n.t('Diagnostics complete. Data-plane access was not tested.');
@@ -85,11 +87,8 @@ export function checkText(
             'The data-plane probe is only available for NoSQL connections. Network settings and DNS do not verify access to this API.',
         ),
         connected: l10n.t('The SDK read database metadata. No documents were read.'),
-        accountMetadataRead: l10n.t(
-            'The SDK read account metadata. This does not verify permission to query the container.',
-        ),
         querySucceeded: l10n.t('The SDK ran a read-only query that returns no document contents.'),
-        queryNotRun: l10n.t('The query was not attempted because the account metadata check did not pass.'),
+        queryNotRun: l10n.t('The query was not attempted because the data-plane access check did not pass.'),
         missingCredentials: l10n.t(
             'No usable credentials were available. Check the configured authentication method or the saved connection.',
         ),
@@ -105,9 +104,13 @@ export function checkText(
                 ? l10n.t(
                       'The identity lacks the required Cosmos DB data permissions for this query. Check the data role and its scope for this container.',
                   )
-                : l10n.t(
-                      'The identity lacks Cosmos DB data-plane permissions. Check its Cosmos DB data role and scope, including the readMetadata action. Azure management roles alone are not sufficient.',
-                  ),
+                : check.failureStage === 'listDatabases'
+                  ? l10n.t(
+                        'The identity cannot list databases at account scope. This does not determine permissions on an individual container.',
+                    )
+                  : l10n.t(
+                        'The identity lacks Cosmos DB data-plane permissions. Check its Cosmos DB data role and scope, including the readMetadata action. Azure management roles alone are not sufficient.',
+                    ),
         dataPlaneOperationDenied: l10n.t(
             'Cosmos DB reported an operation that cannot be authorized by an Entra token on the data plane. This is not an IP firewall diagnosis.',
         ),

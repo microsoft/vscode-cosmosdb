@@ -15,7 +15,6 @@ export type Finding =
     | 'settingsNotApplicable'
     | 'apiProbeUnavailable'
     | 'connected'
-    | 'accountMetadataRead'
     | 'querySucceeded'
     | 'queryNotRun'
     | 'missingCredentials'
@@ -81,4 +80,11 @@ export interface DiagnosticsState {
     checks: CheckResult[];
     /** Shareable trace only. Actual endpoints are kept in the local Output channel. */
     trace?: { runId: string; lines: readonly string[]; checkDurations?: Partial<Record<Step, number>> };
+}
+
+export function getPrimaryDataCheck(state: DiagnosticsState): CheckResult | undefined {
+    return (
+        state.checks.find(({ step, status }) => step === 'query' && status !== 'skipped') ??
+        state.checks.find(({ step }) => step === 'access')
+    );
 }

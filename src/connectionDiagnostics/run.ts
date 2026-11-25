@@ -28,6 +28,22 @@ export type DiagnosticsTarget =
     | AccountDiagnosticsTarget
     | { kind: 'queryEditor'; probe: 'query'; connection: NoSqlQueryConnection };
 
+export type DiagnosticsAzureAccount = Pick<CosmosDBAccountModel, 'id' | 'name' | 'resourceGroup' | 'subscription'>;
+
+export function getDiagnosticsAzureAccount(target: DiagnosticsTarget): DiagnosticsAzureAccount | undefined {
+    if (target.kind === 'azure') return target.account;
+    const metadata =
+        target.kind === 'queryEditor' && !target.connection.isEmulator ? target.connection.azureMetadata : undefined;
+    return (
+        metadata && {
+            id: metadata.accountId,
+            name: metadata.accountName,
+            resourceGroup: metadata.resourceGroup,
+            subscription: metadata.subscription,
+        }
+    );
+}
+
 const containerProbe = 'SELECT TOP 1 VALUE 1 FROM c';
 
 const authLabels = {
@@ -139,7 +155,7 @@ function shouldCheckDnsAfterAccess(checks: readonly CheckResult[]): boolean {
     }
 }
 
-async function readArmAccount(account: CosmosDBAccountModel, signal: AbortSignal) {
+async function readArmAccount(account: DiagnosticsAzureAccount, signal: AbortSignal) {
     return callWithTelemetryAndErrorHandling('cosmosDB.diagnostics.readAccount', async (context) => {
         context.errorHandling.suppressDisplay = true;
         context.telemetry.maskEntireErrorMessage = true;
@@ -158,14 +174,15 @@ export async function runDiagnostics(
     target: DiagnosticsTarget,
     parent: AbortSignal,
     publish: (state: DiagnosticsState) => void,
-    onRbacPrincipal?: (principalId: string) => void,
+    onRbacPrincipal?: (principalId: string, account: DiagnosticsAzureAccount) => void,
 ): Promise<void> {
     const emulator = target.kind === 'emulator' || (target.kind === 'queryEditor' && target.connection.isEmulator);
-    const kind = emulator ? 'emulator' : target.kind;
+    const azureAccount = getDiagnosticsAzureAccount(target);
+    const kind = azureAccount ? 'azure' : emulator ? 'emulator' : target.kind;
     const scope = target.probe === 'query' ? 'container' : undefined;
     const trace = new DiagnosticsRunTrace(kind, target.probe);
     const checks: CheckResult[] = [];
-    let active: Step = target.kind === 'azure' ? 'accountSettings' : 'target';
+    let active: Step = azureAccount ? 'accountSettings' : 'target';
     const begin = (step: Step) => {
         active = step;
         trace.recordChecks(checks);
@@ -179,14 +196,18 @@ export async function runDiagnostics(
         let endpoint: string | undefined;
         let key: string | undefined;
         let tenantId: string | undefined;
-        if (target.kind === 'azure') {
-            const rawEndpoint: unknown = target.account.raw?.properties?.documentEndpoint;
-            endpoint = typeof rawEndpoint === 'string' ? rawEndpoint : undefined;
-            tenantId = target.account.subscription.tenantId;
+        if (azureAccount) {
+            if (target.kind === 'queryEditor') {
+                endpoint = target.connection.endpoint;
+            } else if (target.kind === 'azure') {
+                const rawEndpoint: unknown = target.account.raw?.properties?.documentEndpoint;
+                endpoint = typeof rawEndpoint === 'string' ? rawEndpoint : undefined;
+                tenantId = target.account.subscription.tenantId;
+            }
             try {
-                arm = await bounded(parent, 6_000, (signal) => readArmAccount(target.account, signal));
+                arm = await bounded(parent, 6_000, (signal) => readArmAccount(azureAccount, signal));
                 if (arm) {
-                    endpoint = arm.databaseAccount.documentEndpoint ?? endpoint;
+                    if (target.kind === 'azure') endpoint = arm.databaseAccount.documentEndpoint ?? endpoint;
                     const network = summarizeNetwork(arm.databaseAccount);
                     checks.push({ step: 'accountSettings', finding: 'settingsRead', status: 'passed', network });
                 } else {
@@ -199,7 +220,8 @@ export async function runDiagnostics(
             begin('target');
         } else if (target.kind === 'queryEditor') {
             endpoint = target.connection.endpoint;
-        } else {
+            checks.push({ step: 'accountSettings', finding: 'settingsNotApplicable', status: 'skipped' });
+        } else if (target.kind !== 'azure') {
             try {
                 const parsed = parseCosmosDBConnectionString(target.account.connectionString);
                 ({ documentEndpoint: endpoint, masterKey: key } = parsed);
@@ -228,6 +250,46 @@ export async function runDiagnostics(
             let stage: FailureStage = 'credentials';
             let lastRequest: FailureStage | undefined;
             let lastHttp: CheckResult['http'];
+            const recordFailure = (error: unknown): CheckResult => {
+                parent.throwIfAborted();
+                const sdkHttp = getHttpFailure(error);
+                const http =
+                    sdkHttp && sdkHttp.status === lastHttp?.status && sdkHttp.substatus === undefined
+                        ? lastHttp
+                        : sdkHttp;
+                const classification =
+                    error instanceof StepTimeoutError
+                        ? { finding: 'timedOut' as const }
+                        : stage === 'query' && http?.status === 404 && lastRequest !== 'accountMetadata'
+                          ? { finding: 'containerUnavailable' as const }
+                          : classifyAccessError(error, http);
+                const needsRole = classification.finding === 'dataRbac';
+                const failureStage =
+                    classification.finding === 'tokenUnavailable' || stage === 'credentials'
+                        ? 'credentials'
+                        : (lastRequest ?? stage);
+                if (
+                    needsRole &&
+                    azureAccount &&
+                    (target.kind !== 'queryEditor' || (stage !== 'query' && lastRequest === 'accountMetadata')) &&
+                    validEndpoint(arm?.databaseAccount.documentEndpoint, false)?.origin === url.origin &&
+                    principalId &&
+                    auth !== 'key' &&
+                    matchesDeniedPrincipal(error, principalId)
+                ) {
+                    onRbacPrincipal?.(principalId, azureAccount);
+                }
+                const result: CheckResult = {
+                    step: stage === 'query' ? 'query' : 'access',
+                    ...classification,
+                    status: needsRole ? 'info' : 'failed',
+                    ...(stage === 'query' ? {} : { auth }),
+                    failureStage,
+                    ...(http ? { http } : {}),
+                };
+                checks.push(result);
+                return result;
+            };
             const probeOptions = {
                 onHttpRequest: (request) => {
                     lastRequest = sdkStage(request);
@@ -293,12 +355,22 @@ export async function runDiagnostics(
                         try {
                             lastRequest = undefined;
                             lastHttp = undefined;
-                            if (target.kind === 'queryEditor') {
-                                stage = 'accountMetadata';
+                            stage = 'listDatabases';
+                            let listingFailure: CheckResult | undefined;
+                            try {
                                 await bounded(parent, 12_000, (abortSignal) =>
-                                    client.getDatabaseAccount({ abortSignal }),
+                                    client.databases.readAll({ maxItemCount: 1, abortSignal }).fetchNext(),
                                 );
-                                checks.push({ step: 'access', finding: 'accountMetadataRead', status: 'passed', auth });
+                                checks.push({ step: 'access', finding: 'connected', status: 'passed', auth });
+                            } catch (error) {
+                                listingFailure = recordFailure(error);
+                            }
+                            // A role scoped to one container may allow queries without permitting account-wide listing.
+                            if (
+                                target.kind === 'queryEditor' &&
+                                (!listingFailure ||
+                                    (listingFailure.finding === 'dataRbac' && lastRequest === 'listDatabases'))
+                            ) {
                                 begin('query');
                                 stage = 'query';
                                 lastRequest = undefined;
@@ -312,12 +384,6 @@ export async function runDiagnostics(
                                         .fetchNext(),
                                 );
                                 checks.push({ step: 'query', finding: 'querySucceeded', status: 'passed' });
-                            } else {
-                                stage = 'listDatabases';
-                                await bounded(parent, 12_000, (abortSignal) =>
-                                    client.databases.readAll({ maxItemCount: 1, abortSignal }).fetchNext(),
-                                );
-                                checks.push({ step: 'access', finding: 'connected', status: 'passed', auth });
                             }
                         } finally {
                             client.dispose();
@@ -327,41 +393,7 @@ export async function runDiagnostics(
                     }
                 }
             } catch (error) {
-                parent.throwIfAborted();
-                const sdkHttp = getHttpFailure(error);
-                const http =
-                    sdkHttp && sdkHttp.status === lastHttp?.status && sdkHttp.substatus === undefined
-                        ? lastHttp
-                        : sdkHttp;
-                const classification =
-                    error instanceof StepTimeoutError
-                        ? { finding: 'timedOut' as const }
-                        : stage === 'query' && http?.status === 404 && lastRequest !== 'accountMetadata'
-                          ? { finding: 'containerUnavailable' as const }
-                          : classifyAccessError(error, http);
-                const needsRole = classification.finding === 'dataRbac';
-                if (
-                    needsRole &&
-                    target.kind === 'azure' &&
-                    arm?.databaseAccount.documentEndpoint &&
-                    principalId &&
-                    auth !== 'key' &&
-                    matchesDeniedPrincipal(error, principalId)
-                ) {
-                    onRbacPrincipal?.(principalId);
-                }
-                const failureStage =
-                    classification.finding === 'tokenUnavailable' || stage === 'credentials'
-                        ? 'credentials'
-                        : (lastRequest ?? stage);
-                checks.push({
-                    step: stage === 'query' ? 'query' : 'access',
-                    ...classification,
-                    status: needsRole ? 'info' : 'failed',
-                    ...(stage === 'query' ? {} : { auth }),
-                    failureStage,
-                    ...(http ? { http } : {}),
-                });
+                recordFailure(error);
             }
             if (target.probe === 'query' && !checks.some(({ step }) => step === 'query')) {
                 checks.push({ step: 'query', finding: 'queryNotRun', status: 'skipped' });

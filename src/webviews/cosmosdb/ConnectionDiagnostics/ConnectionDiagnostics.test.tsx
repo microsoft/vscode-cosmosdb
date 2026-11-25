@@ -174,40 +174,57 @@ it('shows the name-resolution evidence when the DNS check ran', async () => {
     expect(within(list).getByText(/DNS does not show which route the SDK used/)).toBeVisible();
 });
 
-it('groups role assignment and documentation under the access check and restores focus after assignment', async () => {
-    client.state.query.mockResolvedValue({
-        ...completed,
-        kind: 'azure',
-        canAddDataRole: true,
-        checks: [{ step: 'access', status: 'info', finding: 'dataRbac', auth: 'entra' }],
-    } satisfies DiagnosticsState);
-    client.addDataRole.mutate.mockResolvedValueOnce('cancelled').mockResolvedValueOnce('assigned');
-    const user = userEvent.setup();
-    renderPanel();
+it.each([undefined, 'container'] as const)(
+    'groups role actions under the access check and restores focus (scope: %s)',
+    async (scope) => {
+        client.state.query.mockResolvedValue({
+            ...completed,
+            kind: 'azure',
+            scope,
+            canAddDataRole: true,
+            checks: [
+                { step: 'access', status: 'info', finding: 'dataRbac', auth: 'entra' },
+                ...(scope ? [{ step: 'query', status: 'skipped', finding: 'queryNotRun' } as const] : []),
+            ],
+        } satisfies DiagnosticsState);
+        client.addDataRole.mutate.mockResolvedValueOnce('cancelled').mockResolvedValueOnce('assigned');
+        const user = userEvent.setup();
+        renderPanel();
 
-    const summary = await screen.findByRole('region', { name: 'Cosmos DB data role required.' });
-    expect(screen.getByText(/The identity lacks Cosmos DB data-plane permissions/)).toBeVisible();
-    expect(within(summary).queryByText(/The identity lacks Cosmos DB data-plane permissions/)).not.toBeInTheDocument();
-    const row = screen.getByText('Cosmos DB data-plane access').closest('[role="listitem"]');
-    const add = screen.getByRole('button', { name: 'Add Data Contributor role' });
-    const docs = screen.getByRole('button', { name: 'Learn about Cosmos DB data-plane roles' });
-    expect(add).toHaveTextContent('Add Data Contributor role');
-    expect(docs).toHaveTextContent('Learn about Cosmos DB data-plane roles');
-    expect(row).toContainElement(add);
-    expect(row).toContainElement(docs);
-    expect(summary).not.toContainElement(add);
-    expect(summary).not.toContainElement(docs);
-    add.focus();
-    await user.keyboard('{Enter}');
-    expect(client.addDataRole.mutate).toHaveBeenCalledExactlyOnceWith({ runId: completed.trace?.runId });
-    expect(add).toHaveFocus();
-    await user.keyboard('{Enter}');
-    const feedback = await screen.findByText(/Role assigned\. Wait for the permission/);
-    expect(feedback).toBeVisible();
-    expect(row).toContainElement(feedback);
-    expect(add).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Re-run' })).toHaveFocus();
-});
+        const summary = await screen.findByRole('region', { name: 'Cosmos DB data role required.' });
+        expect(screen.getByText(/The identity lacks Cosmos DB data-plane permissions/)).toBeVisible();
+        const checks = within(screen.getByRole('list', { name: 'Connection checks' }));
+        const queryRow = expect.stringContaining('Selected container query');
+        expect(checks.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+            expect.stringContaining('Azure account settings (control plane)'),
+            expect.stringContaining('Connection endpoint'),
+            expect.stringContaining('Cosmos DB data-plane access'),
+            ...(scope ? [queryRow] : []),
+        ]);
+        expect(
+            within(summary).queryByText(/The identity lacks Cosmos DB data-plane permissions/),
+        ).not.toBeInTheDocument();
+        const row = screen.getByText('Cosmos DB data-plane access').closest('[role="listitem"]');
+        const add = screen.getByRole('button', { name: 'Add Data Contributor role' });
+        const docs = screen.getByRole('button', { name: 'Learn about Cosmos DB data-plane roles' });
+        expect(add).toHaveTextContent('Add Data Contributor role');
+        expect(docs).toHaveTextContent('Learn about Cosmos DB data-plane roles');
+        expect(row).toContainElement(add);
+        expect(row).toContainElement(docs);
+        expect(summary).not.toContainElement(add);
+        expect(summary).not.toContainElement(docs);
+        add.focus();
+        await user.keyboard('{Enter}');
+        expect(client.addDataRole.mutate).toHaveBeenCalledExactlyOnceWith({ runId: completed.trace?.runId });
+        expect(add).toHaveFocus();
+        await user.keyboard('{Enter}');
+        const feedback = await screen.findByText(/Role assigned\. Wait for the permission/);
+        expect(feedback).toBeVisible();
+        expect(row).toContainElement(feedback);
+        expect(add).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Re-run' })).toHaveFocus();
+    },
+);
 
 it('shows progress, preserves button focus, and can cancel and rerun', async () => {
     const cancelled: DiagnosticsState = { kind: 'attached', phase: 'cancelled', checks: [] };

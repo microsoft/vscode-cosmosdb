@@ -8,7 +8,7 @@ import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils
 import { randomUUID } from 'node:crypto';
 import { ext } from '../extensionVariables';
 import { getHttpFailure } from './classify';
-import { type DiagnosticsState, type FailureStage, type ProbeKind, type Step } from './model';
+import { type DiagnosticsState, type FailureStage, getPrimaryDataCheck, type ProbeKind, type Step } from './model';
 
 const maxHttpResponses = 16;
 
@@ -103,8 +103,7 @@ export async function reportDiagnosticsOutcome(
         context.errorHandling.rethrow = false;
         context.telemetry.maskEntireErrorMessage = true;
         const access = state.checks.find(({ step }) => step === 'access');
-        const query = state.checks.find(({ step }) => step === 'query');
-        const evaluated = query?.status === 'skipped' ? access : (query ?? access);
+        const evaluated = getPrimaryDataCheck(state);
         const outcome =
             state.phase === 'cancelled'
                 ? 'cancelled'

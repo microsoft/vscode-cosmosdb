@@ -40,7 +40,12 @@ import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { checkHelpTopics, type DiagnosticsHelpTopic, helpLabel } from '../../../connectionDiagnostics/help';
-import { type CheckResult, type DiagnosticsState, type Step } from '../../../connectionDiagnostics/model';
+import {
+    type CheckResult,
+    type DiagnosticsState,
+    getPrimaryDataCheck,
+    type Step,
+} from '../../../connectionDiagnostics/model';
 import {
     checkEvidence,
     checkText,
@@ -53,7 +58,6 @@ import { useDiagnosticsStyles } from './styles';
 
 const azureSteps: readonly Step[] = ['accountSettings', 'target', 'access', 'dns'];
 const savedSteps: readonly Step[] = ['target', 'accountSettings', 'access', 'dns'];
-const containerSteps: readonly Step[] = ['target', 'access', 'query', 'dns'];
 
 type PanelStyles = ReturnType<typeof useDiagnosticsStyles>;
 type OpenHelp = (topic: DiagnosticsHelpTopic) => void;
@@ -157,9 +161,16 @@ function DiagnosticsSummary({ state, styles }: { state: DiagnosticsState; styles
     const titleId = useId('diagnostics-summary');
     const failure = state.checks.find((check) => check.status === 'failed');
     const cancelled = state.phase === 'cancelled';
-    const connected = state.checks.some((check) => check.finding === 'connected' || check.finding === 'querySucceeded');
-    const needsRole = state.checks.find((check) => check.finding === 'dataRbac');
-    const intent = cancelled ? 'info' : needsRole ? 'warning' : failure ? 'error' : connected ? 'success' : 'info';
+    const result = getPrimaryDataCheck(state);
+    const intent = cancelled
+        ? 'info'
+        : result?.finding === 'dataRbac'
+          ? 'warning'
+          : failure
+            ? 'error'
+            : result?.status === 'passed'
+              ? 'success'
+              : 'info';
     return (
         <section aria-labelledby={titleId}>
             <MessageBar
@@ -172,7 +183,7 @@ function DiagnosticsSummary({ state, styles }: { state: DiagnosticsState; styles
                         <MessageBarTitle>{phaseLabel(state)}</MessageBarTitle>
                     </h3>
                     {cancelled && <Text>{l10n.t('You cancelled the diagnosis. The results so far are kept.')}</Text>}
-                    {!cancelled && !connected && (
+                    {!cancelled && result?.status !== 'passed' && (
                         <>
                             <Divider />
                             <Text>
@@ -373,8 +384,11 @@ export function ConnectionDiagnostics() {
         }
     }
 
+    const baseSteps = state?.kind === 'azure' ? azureSteps : savedSteps;
     const plannedSteps =
-        state?.scope === 'container' ? containerSteps : state?.kind === 'azure' ? azureSteps : savedSteps;
+        state?.scope === 'container'
+            ? baseSteps.flatMap((step): Step[] => (step === 'dns' ? ['query', 'dns'] : [step]))
+            : baseSteps;
     const steps = plannedSteps.filter(
         (step) => step !== 'dns' || state?.active === step || state?.checks.some((check) => check.step === step),
     );

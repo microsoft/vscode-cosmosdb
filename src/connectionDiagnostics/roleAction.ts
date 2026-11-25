@@ -8,13 +8,13 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { addRbacContributorPermission } from '../cosmosdb/utils/rbacUtils';
 import { ext } from '../extensionVariables';
-import { type CosmosDBAccountModel } from '../tree/cosmosdb/models/CosmosDBAccountModel';
+import { type DiagnosticsAzureAccount } from './run';
 
 export type RoleActionOutcome = 'assigned' | 'cancelled' | 'unavailable' | 'denied' | 'failed';
 
 export async function assignDiagnosticsDataRole(
     context: IActionContext,
-    account: CosmosDBAccountModel,
+    account: DiagnosticsAzureAccount,
     principalId: string,
     isCurrent: () => boolean,
 ): Promise<RoleActionOutcome> {

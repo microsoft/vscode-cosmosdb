@@ -17,7 +17,12 @@ import {
     showDiagnosticsReport,
 } from '../connectionDiagnostics/reportActions';
 import { assignDiagnosticsDataRole, type RoleActionOutcome } from '../connectionDiagnostics/roleAction';
-import { type DiagnosticsTarget, runDiagnostics } from '../connectionDiagnostics/run';
+import {
+    type DiagnosticsAzureAccount,
+    type DiagnosticsTarget,
+    getDiagnosticsAzureAccount,
+    runDiagnostics,
+} from '../connectionDiagnostics/run';
 import { maskConnectionTelemetry } from '../cosmosdb/maskConnectionTelemetry';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { ext } from '../extensionVariables';
@@ -98,7 +103,7 @@ export class ConnectionDiagnosticsTab extends BaseTab {
     private state: DiagnosticsState;
     private controller?: AbortController;
     private applyingRole = false;
-    private roleTarget?: { account: Extract<DiagnosticsTarget, { kind: 'azure' }>['account']; principalId: string };
+    private roleTarget?: { account: DiagnosticsAzureAccount; principalId: string };
 
     private constructor(
         panel: vscode.WebviewPanel,
@@ -113,7 +118,11 @@ export class ConnectionDiagnosticsTab extends BaseTab {
             this.telemetryContext.addMaskedValue([target.account.id, target.account.name]);
         }
         this.state = {
-            kind: target.kind === 'queryEditor' && target.connection.isEmulator ? 'emulator' : target.kind,
+            kind: getDiagnosticsAzureAccount(target)
+                ? 'azure'
+                : target.kind === 'queryEditor' && target.connection.isEmulator
+                  ? 'emulator'
+                  : target.kind,
             scope: target.kind === 'queryEditor' ? 'container' : undefined,
             phase: 'running',
             checks: [],
@@ -183,9 +192,8 @@ export class ConnectionDiagnosticsTab extends BaseTab {
                 this.state = state;
                 if (state.phase !== 'running') this.controller = undefined;
             },
-            (principalId) => {
-                if (!this.isDisposed && target.kind === 'azure')
-                    this.roleTarget = { account: target.account, principalId };
+            (principalId, account) => {
+                if (!this.isDisposed) this.roleTarget = { account, principalId };
             },
         );
     }
@@ -197,8 +205,7 @@ export class ConnectionDiagnosticsTab extends BaseTab {
             this.state.phase === 'completed' &&
             runId === this.state.trace?.runId &&
             roleTarget === this.roleTarget &&
-            this.target.kind === 'azure' &&
-            roleTarget?.account.id === this.target.account.id;
+            roleTarget?.account.id === getDiagnosticsAzureAccount(this.target)?.id;
         if (!roleTarget || this.applyingRole || !isCurrent()) return 'unavailable';
         this.applyingRole = true;
         try {

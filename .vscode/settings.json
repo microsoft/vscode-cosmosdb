@@ -19,7 +19,8 @@
     ".vscode-test": true
   },
   "typescript.preferences.importModuleSpecifier": "relative",
-  "typescript.tsdk": "node_modules/typescript/lib",
+  "js/ts.experimental.useTsgo": true,
+  "js/ts.tsdk.path": "./node_modules/typescript",
   "vitest.configFiles": ["vitest.config.ts"],
   "vscode-nmake-tools.workspaceBuildDirectories": ["."],
   "vscode-nmake-tools.installOsRepoRustHelperExtension": false,

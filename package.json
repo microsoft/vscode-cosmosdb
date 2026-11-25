@@ -57,7 +57,6 @@
   ],
   "scripts": {
     "build": "concurrently -n tsc,vitest,test -c cyan,magenta,yellow \"tsc --noEmit\" \"tsc -p tsconfig.vitest.json --noEmit\" \"tsc -p tsconfig.test.json --noEmit\"",
-    "build:go": "concurrently -n tsgo,vitest,test -c cyan,magenta,yellow \"tsgo --noEmit\" \"tsgo -p tsconfig.vitest.json --noEmit\" \"tsgo -p tsconfig.test.json --noEmit\"",
     "clean": "git clean -dfx",
     "compile": "tsc -watch",
     "package": "node scripts/package-vsix.mjs",
@@ -150,7 +149,7 @@
     "react-refresh": "~0.19.0",
     "rimraf": "~6.1.0",
     "sass": "~1.106.1",
-    "typescript": "~6.0.2",
+    "typescript": "~7.0.2",
     "vite": "~8.3.0",
     "vite-bundle-analyzer": "~1.3.7",
     "vitest": "~5.1.0"

@@ -6,10 +6,13 @@
 // @vitest-environment jsdom
 
 import { AriaLiveAnnouncer, FluentProvider, webLightTheme } from '@fluentui/react-components';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { type PropsWithChildren } from 'react';
+import { createRoot } from 'react-dom/client';
 import { beforeEach, expect, it, onTestFinished, vi } from 'vitest';
 import { type DiagnosticsState } from '../../../connectionDiagnostics/model';
+import { render as renderWebview } from '../../index';
 import { ConnectionDiagnostics } from './ConnectionDiagnostics';
 
 const client = vi.hoisted(() => ({
@@ -23,7 +26,11 @@ const client = vi.hoisted(() => ({
     openHelp: { mutate: vi.fn() },
     addDataRole: { mutate: vi.fn() },
 }));
-vi.mock('@microsoft/vscode-ext-webview/react', () => ({ useTrpcClient: () => client }));
+vi.mock('@microsoft/vscode-ext-webview/react', () => ({
+    useTrpcClient: () => client,
+    WithWebviewContext: ({ children }: PropsWithChildren) => children,
+}));
+vi.mock('react-dom/client', { spy: true });
 
 beforeEach(() => vi.resetAllMocks());
 
@@ -59,6 +66,46 @@ function renderPanel() {
         </FluentProvider>,
     );
 }
+
+it('does not autofocus the scroll region on webview mount but keeps it keyboard reachable', async () => {
+    client.state.query.mockResolvedValue(completed);
+    const container = document.createElement('div');
+    container.id = 'diagnostics-root';
+    document.body.append(container);
+    // Tabster uses layout to decide which elements can receive focus, but jsdom has no layout.
+    const bounds = vi.spyOn(document.body, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 1024, 768));
+    const offsetParent = vi.spyOn(HTMLElement.prototype, 'offsetParent', 'get').mockImplementation(function (
+        this: HTMLElement,
+    ) {
+        return this.parentElement;
+    });
+    vi.stubGlobal('l10n_bundle', {});
+    onTestFinished(() => {
+        const root = vi.mocked(createRoot).mock.results[0]?.value;
+        act(() => root?.unmount());
+        container.remove();
+        bounds.mockRestore();
+        offsetParent.mockRestore();
+        vi.unstubAllGlobals();
+    });
+
+    renderWebview(
+        'cosmosDbConnectionDiagnostics',
+        { postMessage: vi.fn(), getState: () => undefined, setState: (state) => state },
+        container.id,
+    );
+    const heading = await screen.findByRole('heading', { name: 'Connection Diagnostics' });
+    const scrollRegion = heading.closest('[tabindex="0"]');
+    expect(scrollRegion).toBeInTheDocument();
+    expect(document.body).toHaveFocus();
+
+    const action = await screen.findByRole('button', { name: 'Configure the Cosmos DB IP firewall' });
+    const user = userEvent.setup();
+    await user.tab();
+    expect(scrollRegion).toHaveFocus();
+    await user.tab();
+    expect(action).toHaveFocus();
+});
 
 it('shows the outcome and check findings without a disclosure', async () => {
     client.state.query.mockResolvedValue({ ...completed, finishedAt: Date.now() });

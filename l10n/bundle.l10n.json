@@ -2088,7 +2088,7 @@
   "Time spent to write query result set to response buffer": "Time spent to write query result set to response buffer",
   "Time-correlated": "Time-correlated",
   "TLS negotiation failed. Check the certificate trust chain and any intercepting proxy.": "TLS negotiation failed. Check the certificate trust chain and any intercepting proxy.",
-  "TLS negotiation failed. Verify the emulator protocol, port, and certificate configuration.": "TLS negotiation failed. Verify the emulator protocol, port, and certificate configuration.",
+  "TLS negotiation failed. Check the emulator protocol and port, and make sure the VS Code extension host trusts the emulator certificate.": "TLS negotiation failed. Check the emulator protocol and port, and make sure the VS Code extension host trusts the emulator certificate.",
   "To generate an accurate query, Copilot needs to sample your container schema by reading a few documents. This will consume a small number of Request Units (RUs).": "To generate an accurate query, Copilot needs to sample your container schema by reading a few documents. This will consume a small number of Request Units (RUs).",
   "TODO: Share the steps needed to reliably reproduce the problem. Please include actual and expected results.": "TODO: Share the steps needed to reliably reproduce the problem. Please include actual and expected results.",
   "Tool calling is not supported": "Tool calling is not supported",

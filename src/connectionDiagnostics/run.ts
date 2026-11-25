@@ -336,8 +336,9 @@ export async function runDiagnostics(
                         failureStage: stage,
                     });
                 } else {
+                    // The shared client accepts self-signed emulator certificates by default. Diagnostics must check trust.
                     const agent =
-                        emulator && url.protocol === 'https:' ? new Agent({ rejectUnauthorized: false }) : undefined;
+                        emulator && url.protocol === 'https:' ? new Agent({ rejectUnauthorized: true }) : undefined;
                     const clientOptions = {
                         ...probeOptions,
                         agent,

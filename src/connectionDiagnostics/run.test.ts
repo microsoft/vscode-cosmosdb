@@ -389,7 +389,41 @@ describe('diagnosing a NoSQL connection', () => {
         );
         expect(renderReport(state)).toContain('The emulator connection was refused.');
         expect(renderReport(state)).not.toContain('localhost');
+        expect(io.getCosmosClient.mock.lastCall?.[3].agent).toBeUndefined();
     });
+
+    it.each(['saved emulator', 'Query Editor'] as const)(
+        'validates the HTTPS emulator certificate when started from %s',
+        async (source) => {
+            const endpoint = 'https://localhost:8081/';
+            const target: DiagnosticsTarget =
+                source === 'Query Editor'
+                    ? { ...queryTarget, connection: { ...queryTarget.connection, endpoint, isEmulator: true } }
+                    : {
+                          ...attached,
+                          kind: 'emulator',
+                          account: {
+                              ...attached.account,
+                              isEmulator: true,
+                              connectionString: `AccountEndpoint=${endpoint};AccountKey=secret;`,
+                          },
+                      };
+            io.getCosmosClient.mockReturnValueOnce({ databases: { readAll: io.readAll }, dispose: io.dispose });
+            io.fetchNext.mockRejectedValueOnce({ code: 'DEPTH_ZERO_SELF_SIGNED_CERT' });
+
+            const state = (await diagnose(target)).at(-1)!;
+
+            const optionsIndex = source === 'Query Editor' ? 1 : 3;
+            expect(io.getCosmosClient.mock.lastCall?.[optionsIndex]).toMatchObject({
+                agent: { options: { rejectUnauthorized: true } },
+            });
+            expect(state.checks).toContainEqual(
+                expect.objectContaining({ step: 'access', status: 'failed', finding: 'tlsFailure' }),
+            );
+            expect(renderReport(state)).toContain('VS Code extension host trusts the emulator certificate');
+            expect(io.getCosmosClient).toHaveBeenCalledTimes(1);
+        },
+    );
 
     it.each([true, false])('checks metadata and query access independently (query succeeds: %s)', async (success) => {
         const fetchPage = vi.fn().mockImplementation(() => {

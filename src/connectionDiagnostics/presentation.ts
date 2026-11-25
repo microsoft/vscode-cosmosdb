@@ -135,7 +135,9 @@ export function checkText(
         ),
         tlsFailure:
             kind === 'emulator'
-                ? l10n.t('TLS negotiation failed. Verify the emulator protocol, port, and certificate configuration.')
+                ? l10n.t(
+                      'TLS negotiation failed. Check the emulator protocol and port, and make sure the VS Code extension host trusts the emulator certificate.',
+                  )
                 : l10n.t('TLS negotiation failed. Check the certificate trust chain and any intercepting proxy.'),
         transportFailure:
             kind === 'emulator'

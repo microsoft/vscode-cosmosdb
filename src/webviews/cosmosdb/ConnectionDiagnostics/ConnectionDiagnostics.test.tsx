@@ -68,7 +68,7 @@ it('shows the outcome and makes check details available from the keyboard', asyn
     expect(screen.getByRole('heading', { name: 'Connection Diagnostics' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Saved account' })).toBeVisible();
     expect(screen.getByText('Checked a few seconds ago')).toBeVisible();
-    expect(within(summary).getByText(/Check public network access and the IP allowlist/)).toBeVisible();
+    expect(within(summary).queryByText(/Check public network access and the IP allowlist/)).not.toBeInTheDocument();
     expect(within(summary).getByText(/Contacting support\?/)).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Add Data Contributor role' })).not.toBeInTheDocument();
     const list = screen.getByRole('list', { name: 'Connection checks' });
@@ -76,16 +76,18 @@ it('shows the outcome and makes check details available from the keyboard', asyn
     const localIp = within(list).getByText('Outgoing IP reported by Cosmos DB: 203.0.113.45');
     expect(details).toHaveTextContent('Details');
     expect(details).toHaveAccessibleName('Details for Cosmos DB data-plane access');
-    expect(within(list).getByText('Authentication method: Microsoft Entra ID', { exact: true })).toBeVisible();
+    expect(within(list).getByText(/Authentication method: Microsoft Entra ID/)).toBeVisible();
+    expect(within(list).getByText(/Check public network access and the IP allowlist/)).toBeVisible();
     expect(within(list).getByText('120 ms')).toBeVisible();
-    expect(localIp).not.toBeVisible();
-    details.focus();
-    await user.keyboard('{Enter}');
     expect(details).toHaveAttribute('aria-expanded', 'true');
     expect(localIp).toBeVisible();
-    await user.keyboard(' ');
+    details.focus();
+    await user.keyboard('{Enter}');
     expect(details).toHaveAttribute('aria-expanded', 'false');
     expect(localIp).not.toBeVisible();
+    await user.keyboard(' ');
+    expect(details).toHaveAttribute('aria-expanded', 'true');
+    expect(localIp).toBeVisible();
 });
 
 it('distinguishes an ARM read from a data-plane firewall denial without showing a redundant DNS step', async () => {
@@ -93,7 +95,19 @@ it('distinguishes an ARM read from a data-plane firewall denial without showing 
         ...completed,
         kind: 'azure',
         checks: [
-            { step: 'accountSettings', status: 'passed', finding: 'settingsRead' },
+            {
+                step: 'accountSettings',
+                status: 'passed',
+                finding: 'settingsRead',
+                network: {
+                    publicAccess: 'enabled',
+                    ipRules: 6,
+                    vnetFilterEnabled: false,
+                    vnetRules: 0,
+                    privateEndpoints: 0,
+                    localAuthDisabled: true,
+                },
+            },
             { step: 'access', status: 'failed', finding: 'firewallUnknown', auth: 'entra' },
         ],
     } satisfies DiagnosticsState);
@@ -101,18 +115,26 @@ it('distinguishes an ARM read from a data-plane firewall denial without showing 
     const user = userEvent.setup();
     renderPanel();
     const summary = await screen.findByRole('region', { name: 'Could not verify Cosmos DB data-plane access.' });
-    expect(within(summary).getByText(/Control-plane access was verified through Azure Resource Manager/)).toBeVisible();
-    expect(within(summary).getByText(/does not tell you whether your identity has a data role/)).toBeVisible();
+    expect(within(summary).queryByText(/Control-plane access was verified through Azure Resource Manager/)).toBeNull();
     expect(screen.queryByRole('button', { name: 'Add Data Contributor role' })).not.toBeInTheDocument();
-    const docs = within(summary).getByRole('button', { name: 'Troubleshoot Cosmos DB HTTP 403' });
+    const list = screen.getByRole('list', { name: 'Connection checks' });
+    expect(screen.getByText(/does not tell you whether your identity has a data role/)).toBeVisible();
+    const docs = screen.getByRole('button', { name: 'Troubleshoot Cosmos DB HTTP 403' });
+    expect(list).toContainElement(docs);
+    expect(summary).not.toContainElement(docs);
     docs.focus();
     await user.keyboard('{Enter}');
     expect(client.openHelp.mutate).toHaveBeenCalledExactlyOnceWith('forbidden');
     expect(await screen.findByText('Could not open the troubleshooting documentation in your browser.')).toBeVisible();
     expect(docs).toHaveFocus();
 
-    const list = screen.getByRole('list', { name: 'Connection checks' });
     expect(within(list).getByText('Azure account settings (control plane)')).toBeVisible();
+    const armNote = within(list).getByText(/Control-plane access was verified through Azure Resource Manager/);
+    expect(armNote).not.toBeVisible();
+    await user.click(within(list).getByRole('button', { name: 'Details for Azure account settings (control plane)' }));
+    expect(armNote).toBeVisible();
+    expect(within(list).getByText(/Public network access: Enabled/)).toBeVisible();
+    expect(within(list).getByText(/IP rules: 6/)).toBeVisible();
     expect(within(list).queryByText('Server address (DNS)')).not.toBeInTheDocument();
 });
 
@@ -134,9 +156,9 @@ it.each(['click', 'Enter', 'Space'])('opens documentation once via the host on %
     client.openHelp.mutate.mockResolvedValue(true);
     const user = userEvent.setup();
     renderPanel();
-    const summary = await screen.findByRole('region', { name: 'Could not verify Cosmos DB data-plane access.' });
     const label = 'Troubleshoot Cosmos DB HTTP 403';
-    const docs = within(summary).getByText(label);
+    const docs = await screen.findByRole('button', { name: label });
+    expect(docs).toHaveTextContent(label);
     if (activation === 'click') {
         await user.click(docs);
     } else {
@@ -183,6 +205,8 @@ it('shows confirmed RBAC as an inline action and returns focus to Re-run after a
     renderPanel();
 
     const summary = await screen.findByRole('region', { name: 'Cosmos DB data role required.' });
+    expect(screen.getByText(/The identity lacks Cosmos DB data-plane permissions/)).toBeVisible();
+    expect(within(summary).queryByText(/The identity lacks Cosmos DB data-plane permissions/)).not.toBeInTheDocument();
     const add = within(summary).getByRole('button', { name: 'Add Data Contributor role' });
     expect(add).toHaveTextContent('Add Data Contributor role');
     add.focus();

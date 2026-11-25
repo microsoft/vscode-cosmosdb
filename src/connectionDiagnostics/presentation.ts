@@ -30,13 +30,6 @@ export function phaseLabel(state: DiagnosticsState): string {
         : l10n.t('Could not verify Cosmos DB data-plane access.');
 }
 
-export function controlPlaneNote(state: DiagnosticsState): string | undefined {
-    if (state.phase !== 'completed' || !state.checks.some(({ finding }) => finding === 'settingsRead')) return;
-    return l10n.t(
-        'Control-plane access was verified through Azure Resource Manager. It does not grant or verify data-plane access.',
-    );
-}
-
 function authText(method: NonNullable<CheckResult['auth']>): string {
     const label = {
         key: l10n.t('Account key'),
@@ -76,13 +69,19 @@ export function checkEvidence(check: CheckResult): string {
     }
 }
 
-export function checkText(check: CheckResult, kind: DiagnosticsState['kind']): string {
+export function checkText(
+    check: CheckResult,
+    kind: DiagnosticsState['kind'],
+    { omitRowEvidence = false }: { omitRowEvidence?: boolean } = {},
+): string {
     const descriptions: Record<Finding, string> = {
         endpointReady: l10n.t('The connection endpoint is valid.'),
         invalidEndpoint: l10n.t(
             'Could not resolve a valid endpoint. Check the saved connection or your Azure account access.',
         ),
-        settingsRead: l10n.t('Account settings were read from Azure Resource Manager.'),
+        settingsRead: l10n.t(
+            'Control-plane access was verified through Azure Resource Manager. It does not grant or verify data-plane access.',
+        ),
         settingsUnavailable: l10n.t(
             'Could not read Azure account settings. This does not establish whether the data endpoint is reachable.',
         ),
@@ -164,11 +163,15 @@ export function checkText(check: CheckResult, kind: DiagnosticsState['kind']): s
             'Local name resolution was inconclusive. A proxy may resolve the hostname independently.',
         ),
     };
+    const rowEvidence = omitRowEvidence ? checkEvidence(check) : undefined;
     const parts = [descriptions[check.finding]];
-    if (check.auth) parts.push(authText(check.auth));
+    if (check.auth) {
+        const auth = authText(check.auth);
+        if (auth !== rowEvidence) parts.push(auth);
+    }
     if (check.network) {
         const network = check.network;
-        parts.push(publicAccessText(network));
+        if (!omitRowEvidence) parts.push(publicAccessText(network));
         parts.push(
             l10n.t(
                 'IP rules: {0}; virtual network rules: {1}; private endpoint connections: {2}.',
@@ -193,13 +196,11 @@ export function statusLabel(status: CheckResult['status']): string {
 }
 
 export function renderReport(state: DiagnosticsState): string {
-    const controlPlane = controlPlaneNote(state);
     const help = [...new Set(state.checks.flatMap((check) => checkHelpTopics(check, state.kind)))];
     return [
         `# ${l10n.t('Cosmos DB connection diagnostics')}`,
         '',
         phaseLabel(state),
-        ...(controlPlane ? ['', controlPlane] : []),
         '',
         ...state.checks.map(
             (check) => `- ${stepLabel(check.step)} (${statusLabel(check.status)}) — ${checkText(check, state.kind)}`,

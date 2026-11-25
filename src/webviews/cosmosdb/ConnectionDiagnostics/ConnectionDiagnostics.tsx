@@ -39,7 +39,6 @@ import { type CheckResult, type DiagnosticsState, type Step } from '../../../con
 import {
     checkEvidence,
     checkText,
-    controlPlaneNote,
     phaseLabel,
     statusLabel,
     stepLabel,
@@ -80,8 +79,10 @@ function CheckRow({
     openHelp: OpenHelp;
 }) {
     const detailsId = useId('diagnostics-details');
-    const [expanded, setExpanded] = useState(false);
+    const [userExpanded, setUserExpanded] = useState<boolean>();
     const check = state?.checks.find((result) => result.step === step);
+    const expanded =
+        userExpanded ?? (state?.phase === 'completed' && (check?.status === 'failed' || check?.finding === 'dataRbac'));
     const active = state?.active === step;
     const duration = check?.status !== 'skipped' ? state?.trace?.checkDurations?.[step] : undefined;
     const label = stepLabel(step);
@@ -117,12 +118,12 @@ function CheckRow({
                             aria-label={l10n.t('Details for {0}', label)}
                             aria-expanded={expanded}
                             aria-controls={detailsId}
-                            onClick={() => setExpanded((value) => !value)}
+                            onClick={() => setUserExpanded(!expanded)}
                         >
                             {l10n.t('Details')}
                         </Link>
                         <span id={detailsId} hidden={!expanded} className={styles.details}>
-                            <span>{checkText(check, state.kind)}</span>
+                            <span>{checkText(check, state.kind, { omitRowEvidence: true })}</span>
                             {check.observedClientIp && (
                                 <span>{l10n.t('Outgoing IP reported by Cosmos DB: {0}', check.observedClientIp)}</span>
                             )}
@@ -142,32 +143,18 @@ function DiagnosticsSummary({
     styles,
     roleAction,
     roleFeedback,
-    openHelp,
 }: {
     state: DiagnosticsState;
     styles: PanelStyles;
     roleAction: ReactNode;
     roleFeedback?: string;
-    openHelp: OpenHelp;
 }) {
     const titleId = useId('diagnostics-summary');
     const failure = state.checks.find((check) => check.status === 'failed');
-    const keyCheck = state.checks.find(
-        (check) => check.finding === 'connected' || check.finding === 'apiProbeUnavailable',
-    );
     const cancelled = state.phase === 'cancelled';
-    const connected = keyCheck?.finding === 'connected';
+    const connected = state.checks.some((check) => check.finding === 'connected');
     const needsRole = state.checks.find((check) => check.finding === 'dataRbac');
-    const primaryFinding = needsRole ?? failure;
-    const help = primaryFinding ? checkHelpTopics(primaryFinding, state.kind) : [];
-    const controlPlane = controlPlaneNote(state);
     const intent = cancelled ? 'info' : needsRole ? 'warning' : failure ? 'error' : connected ? 'success' : 'info';
-    const secondary = state.checks.find(
-        (check) =>
-            check.finding === 'settingsUnavailable' ||
-            check.finding === 'unresolvedDns' ||
-            check.finding === 'mixedDns',
-    );
     return (
         <section aria-labelledby={titleId}>
             <MessageBar
@@ -179,11 +166,9 @@ function DiagnosticsSummary({
                     <h3 id={titleId} className={styles.summaryTitle}>
                         <MessageBarTitle>{phaseLabel(state)}</MessageBarTitle>
                     </h3>
-                    {cancelled ? (
-                        <Text>{l10n.t('You cancelled the diagnosis. The results so far are kept.')}</Text>
-                    ) : needsRole ? (
+                    {cancelled && <Text>{l10n.t('You cancelled the diagnosis. The results so far are kept.')}</Text>}
+                    {!cancelled && needsRole && (
                         <>
-                            <Text>{checkText(needsRole, state.kind)}</Text>
                             {!state.canAddDataRole && !roleFeedback && (
                                 <Text>
                                     {l10n.t(
@@ -193,20 +178,9 @@ function DiagnosticsSummary({
                             )}
                             <output>{roleFeedback}</output>
                         </>
-                    ) : failure ? (
-                        <Text>{checkText(failure, state.kind)}</Text>
-                    ) : (
-                        keyCheck && <Text>{checkText(keyCheck, state.kind)}</Text>
-                    )}
-                    {controlPlane && <Text>{controlPlane}</Text>}
-                    {!cancelled && !failure && secondary && (
-                        <Text>
-                            {l10n.t('Also detected:')} {checkText(secondary, state.kind)}
-                        </Text>
                     )}
                     {!cancelled && !connected && (
                         <>
-                            <HelpLinks topics={help} openHelp={openHelp} />
                             <Divider />
                             <Text>
                                 {l10n.t(
@@ -454,7 +428,6 @@ export function ConnectionDiagnostics() {
                             <DiagnosticsSummary
                                 state={state}
                                 styles={styles}
-                                openHelp={(topic) => void openHelp(topic)}
                                 roleFeedback={roleFeedback}
                                 roleAction={
                                     state.canAddDataRole && (

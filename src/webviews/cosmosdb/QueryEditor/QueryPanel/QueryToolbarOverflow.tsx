@@ -11,6 +11,7 @@ import {
     MenuTrigger,
     Overflow,
     OverflowItem,
+    tokens,
     Toolbar,
     type ToolbarProps,
     useOverflowMenu,
@@ -155,7 +156,10 @@ export const QueryToolbarOverflow = (props: Partial<ToolbarProps>) => {
                     <ConnectionButton type={'button'} />
                 </OverflowItem>
                 <OverflowItem id="12">
-                    <DiagnoseConnectionButton type="button" />
+                    {/* Overflow measures the item width, including padding but not gap or margin. */}
+                    <div style={{ paddingInlineStart: tokens.spacingHorizontalS }}>
+                        <DiagnoseConnectionButton type="button" />
+                    </div>
                 </OverflowItem>
                 <OverflowMenu />
             </Toolbar>

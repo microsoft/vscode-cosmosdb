@@ -274,7 +274,11 @@ export async function runDiagnostics(
                   : privateCount === addresses.length
                     ? 'privateDns'
                     : 'mixedDns';
-            checks.push({ step: 'dns', finding, status: 'info' });
+            checks.push({
+                step: 'dns',
+                finding,
+                status: finding === 'publicDns' || finding === 'privateDns' ? 'passed' : 'info',
+            });
         } catch {
             parent.throwIfAborted();
             checks.push({ step: 'dns', finding: 'unresolvedDns', status: 'info' });

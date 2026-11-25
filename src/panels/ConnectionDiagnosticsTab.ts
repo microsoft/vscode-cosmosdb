@@ -9,6 +9,7 @@ import { attachTrpc } from '@microsoft/vscode-ext-webview/host';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { z } from 'zod';
+import { diagnosticsHelpUrls, type DiagnosticsHelpTopic } from '../connectionDiagnostics/help';
 import { type DiagnosticsState } from '../connectionDiagnostics/model';
 import {
     copyDiagnosticsReport,
@@ -57,6 +58,18 @@ export const connectionDiagnosticsRouter = diagnosticsRouter({
     copy: reportProcedure('copy'),
     save: reportProcedure('save'),
     showOutput: diagnosticsAction.mutation(() => ext.outputChannel.show(true)),
+    openHelp: diagnosticsAction
+        .input(z.enum(Object.keys(diagnosticsHelpUrls) as [DiagnosticsHelpTopic, ...DiagnosticsHelpTopic[]]))
+        .mutation(async ({ ctx, input }) => {
+            try {
+                if (await vscode.env.openExternal(vscode.Uri.parse(diagnosticsHelpUrls[input]))) return true;
+            } catch {
+                // Only the bounded topic and outcome are recorded; browser errors may contain local paths.
+            }
+            if (ctx.actionContext) ctx.actionContext.telemetry.properties.result = 'Failed';
+            ext.outputChannel.warn(`[Connection diagnostics] Could not open help topic: ${input}`);
+            return false;
+        }),
     addDataRole: diagnosticsAction.input(z.object({ runId: z.string().uuid() })).mutation(async ({ ctx, input }) => {
         if (!ctx.actionContext) return 'unavailable' as const;
         const state = ctx.getState();

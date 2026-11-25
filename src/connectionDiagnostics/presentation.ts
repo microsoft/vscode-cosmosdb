@@ -4,14 +4,15 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
+import { checkHelpTopics, diagnosticsHelpUrls, helpLabel } from './help';
 import { type CheckResult, type DiagnosticsState, type Finding, type Step } from './model';
 
 export function stepLabel(step: Step): string {
     return {
         target: l10n.t('Connection endpoint'),
-        accountSettings: l10n.t('Azure account settings'),
-        access: l10n.t('Cosmos DB access'),
-        dns: l10n.t('Extension host DNS'),
+        accountSettings: l10n.t('Azure account settings (control plane)'),
+        access: l10n.t('Cosmos DB data-plane access'),
+        dns: l10n.t('Server address (DNS)'),
     }[step];
 }
 
@@ -25,8 +26,15 @@ export function phaseLabel(state: DiagnosticsState): string {
         return l10n.t('Diagnostics complete. Data-plane access was not tested.');
     }
     return state.checks.some((check) => check.finding === 'connected')
-        ? l10n.t('Connected to Cosmos DB.')
-        : l10n.t('Could not verify access to Cosmos DB.');
+        ? l10n.t('Cosmos DB data-plane access verified.')
+        : l10n.t('Could not verify Cosmos DB data-plane access.');
+}
+
+export function controlPlaneNote(state: DiagnosticsState): string | undefined {
+    if (state.phase !== 'completed' || !state.checks.some(({ finding }) => finding === 'settingsRead')) return;
+    return l10n.t(
+        'Control-plane access was verified through Azure Resource Manager. It does not grant or verify data-plane access.',
+    );
 }
 
 function authText(method: NonNullable<CheckResult['auth']>): string {
@@ -50,6 +58,7 @@ function publicAccessText(network: NonNullable<CheckResult['network']>): string 
 
 export function checkEvidence(check: CheckResult): string {
     if (check.network) return publicAccessText(check.network);
+    if (check.finding === 'dataRbac') return l10n.t('Data-plane role required');
     if (check.auth) return authText(check.auth);
     switch (check.finding) {
         case 'endpointReady':
@@ -57,13 +66,11 @@ export function checkEvidence(check: CheckResult): string {
         case 'privateDns':
             return l10n.t('Private or local addresses');
         case 'publicDns':
-            return l10n.t('Public addresses');
+            return l10n.t('Resolved to public IP addresses');
         case 'mixedDns':
             return l10n.t('Public and private addresses');
         case 'unresolvedDns':
             return l10n.t('Name resolution inconclusive');
-        case 'dataRbac':
-            return l10n.t('Data-plane role required');
         default:
             return statusLabel(check.status);
     }
@@ -112,7 +119,7 @@ export function checkText(check: CheckResult, kind: DiagnosticsState['kind']): s
             'Cosmos DB blocked the private endpoint route. Check the private endpoint approval, account association, private DNS, and routing from the extension host.',
         ),
         firewallUnknown: l10n.t(
-            'Cosmos DB reported a firewall block. Check public access, IP rules, virtual network rules, and private endpoint configuration for the route you expected.',
+            'Cosmos DB reported a firewall block without identifying the route. Check public network access and the IP rules for your outgoing address, or the virtual network and private endpoint settings if you expected a private route. This result does not tell you whether your identity has a data role.',
         ),
         forbiddenUnknown: l10n.t(
             'The request was forbidden, but the response did not identify a cause. Check network rules and Cosmos DB data-plane permissions separately.',
@@ -148,7 +155,7 @@ export function checkText(check: CheckResult, kind: DiagnosticsState['kind']): s
             'The extension host resolved private or local addresses. This does not verify the proxy route or Private Link connection.',
         ),
         publicDns: l10n.t(
-            'The extension host resolved public addresses. If you expected a direct Private Link connection, check private DNS. A proxy may resolve this hostname differently.',
+            'The extension host resolved the hostname to public IP addresses. This is expected for public access. DNS does not show which route the SDK used or whether Cosmos DB permits the connection. A proxy can resolve the hostname separately.',
         ),
         mixedDns: l10n.t(
             'The extension host resolved both public and private addresses. Check DNS if you expected to use Private Link.',
@@ -186,14 +193,25 @@ export function statusLabel(status: CheckResult['status']): string {
 }
 
 export function renderReport(state: DiagnosticsState): string {
+    const controlPlane = controlPlaneNote(state);
+    const help = [...new Set(state.checks.flatMap((check) => checkHelpTopics(check, state.kind)))];
     return [
         `# ${l10n.t('Cosmos DB connection diagnostics')}`,
         '',
         phaseLabel(state),
+        ...(controlPlane ? ['', controlPlane] : []),
         '',
         ...state.checks.map(
             (check) => `- ${stepLabel(check.step)} (${statusLabel(check.status)}) — ${checkText(check, state.kind)}`,
         ),
+        ...(help.length
+            ? [
+                  '',
+                  `## ${l10n.t('Troubleshooting documentation')}`,
+                  '',
+                  ...help.map((topic) => `- [${helpLabel(topic)}](${diagnosticsHelpUrls[topic]})`),
+              ]
+            : []),
         ...(state.trace
             ? [
                   '',

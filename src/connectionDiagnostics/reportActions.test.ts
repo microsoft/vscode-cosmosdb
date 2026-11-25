@@ -57,6 +57,11 @@ it('opens a read-only editor with the same redacted Markdown that copy and save 
     expect(await showDiagnosticsReport(completed)).toBe('done');
     const expected = renderReport(completed);
     expect(expected).toContain('sdk target=configured operation=listDatabases status=403');
+    expect(expected).toContain('Control-plane access was verified through Azure Resource Manager.');
+    expect(expected).toContain('Could not verify Cosmos DB data-plane access.');
+    expect(expected).toContain(
+        '[Configure the Cosmos DB IP firewall](https://learn.microsoft.com/azure/cosmos-db/how-to-configure-firewall)',
+    );
     expect(expected).not.toContain('203.0.113.10');
     expect(expected).not.toContain('private account');
     expect(io.openReadOnly).toHaveBeenCalledExactlyOnceWith(

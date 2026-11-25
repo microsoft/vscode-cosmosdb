@@ -246,7 +246,7 @@ describe('diagnosing a NoSQL connection', () => {
         expect(report).toContain('Check log');
         expect(report).toContain(`Run ID: ${state.trace?.runId}`);
         expect(report).toContain('sdk target=alternate operation=listDatabases status=403 substatus=1000');
-        expect(report).toContain('check=dns status=info');
+        expect(report).toContain('check=dns status=passed finding=privateDns');
         expect(report).toContain('finished phase=completed');
         expect(local).not.toMatch(/secret=query|sensitive-auth-header|raw-response/);
         expect(report + JSON.stringify(runEvents)).not.toMatch(
@@ -281,6 +281,7 @@ describe('diagnosing a NoSQL connection', () => {
             ipRules: [{ ipAddressOrRange: '203.0.113.45' }],
             privateEndpointConnections: [{}],
         });
+
         io.fetchNext.mockRejectedValue({
             code: 403,
             message: 'Request originated from client VNET through private endpoint.',
@@ -303,6 +304,19 @@ describe('diagnosing a NoSQL connection', () => {
             ],
         });
         expect(JSON.stringify(states)).not.toContain('203.0.113.45');
+    });
+
+    it('reports successful public DNS lookup independently of a blocked data-plane request', async () => {
+        io.get.mockResolvedValue({ documentEndpoint: 'https://example.test/', disableLocalAuth: true });
+        io.lookup.mockResolvedValue([{ address: '203.0.113.1', family: 4 }]);
+        io.fetchNext.mockRejectedValue({ code: 403, message: 'Blocked by your Cosmos DB account firewall settings.' });
+        const state = (await diagnose(cloud)).at(-1)!;
+        expect(state.checks).toEqual([
+            expect.objectContaining({ step: 'target', status: 'passed' }),
+            expect.objectContaining({ step: 'accountSettings', status: 'passed' }),
+            expect.objectContaining({ step: 'access', status: 'failed', finding: 'firewallUnknown' }),
+            { step: 'dns', status: 'passed', finding: 'publicDns' },
+        ]);
     });
 
     it('runs ARM and DNS checks without retrieving credentials or sending a NoSQL request for other APIs', async () => {

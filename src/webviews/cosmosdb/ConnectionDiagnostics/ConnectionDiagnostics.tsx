@@ -34,10 +34,17 @@ import {
 import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
+import {
+    checkHelpTopics,
+    type DiagnosticsHelpTopic,
+    diagnosticsHelpUrls,
+    helpLabel,
+} from '../../../connectionDiagnostics/help';
 import { type CheckResult, type DiagnosticsState, type Step } from '../../../connectionDiagnostics/model';
 import {
     checkEvidence,
     checkText,
+    controlPlaneNote,
     phaseLabel,
     statusLabel,
     stepLabel,
@@ -49,6 +56,22 @@ const azureSteps: readonly Step[] = ['accountSettings', 'target', 'access', 'dns
 const savedSteps: readonly Step[] = ['target', 'accountSettings', 'access', 'dns'];
 
 type PanelStyles = ReturnType<typeof useDiagnosticsStyles>;
+type OpenHelp = (topic: DiagnosticsHelpTopic) => void;
+
+function HelpLinks({ topics, openHelp }: { topics: readonly DiagnosticsHelpTopic[]; openHelp: OpenHelp }) {
+    return topics.map((topic) => (
+        <Link
+            key={topic}
+            href={diagnosticsHelpUrls[topic]}
+            onClick={(event) => {
+                event.preventDefault();
+                openHelp(topic);
+            }}
+        >
+            {helpLabel(topic)}
+        </Link>
+    ));
+}
 
 function rowStatus(check: CheckResult | undefined, active: boolean) {
     if (active) return 'active';
@@ -57,7 +80,17 @@ function rowStatus(check: CheckResult | undefined, active: boolean) {
     return check?.status === 'info' ? 'warning' : 'pending';
 }
 
-function CheckRow({ step, state, styles }: { step: Step; state: DiagnosticsState | undefined; styles: PanelStyles }) {
+function CheckRow({
+    step,
+    state,
+    styles,
+    openHelp,
+}: {
+    step: Step;
+    state: DiagnosticsState | undefined;
+    styles: PanelStyles;
+    openHelp: OpenHelp;
+}) {
     const detailsId = useId('diagnostics-details');
     const [expanded, setExpanded] = useState(false);
     const check = state?.checks.find((result) => result.step === step);
@@ -105,6 +138,7 @@ function CheckRow({ step, state, styles }: { step: Step; state: DiagnosticsState
                             {check.observedClientIp && (
                                 <span>{l10n.t('Outgoing IP reported by Cosmos DB: {0}', check.observedClientIp)}</span>
                             )}
+                            <HelpLinks topics={checkHelpTopics(check, state.kind)} openHelp={openHelp} />
                         </span>
                     </>
                 ) : state && state.phase !== 'running' ? (
@@ -120,11 +154,13 @@ function DiagnosticsSummary({
     styles,
     roleAction,
     roleFeedback,
+    openHelp,
 }: {
     state: DiagnosticsState;
     styles: PanelStyles;
     roleAction: ReactNode;
     roleFeedback?: string;
+    openHelp: OpenHelp;
 }) {
     const titleId = useId('diagnostics-summary');
     const failure = state.checks.find((check) => check.status === 'failed');
@@ -134,6 +170,9 @@ function DiagnosticsSummary({
     const cancelled = state.phase === 'cancelled';
     const connected = keyCheck?.finding === 'connected';
     const needsRole = state.checks.find((check) => check.finding === 'dataRbac');
+    const primaryFinding = needsRole ?? failure;
+    const help = primaryFinding ? checkHelpTopics(primaryFinding, state.kind) : [];
+    const controlPlane = controlPlaneNote(state);
     const intent = cancelled ? 'info' : needsRole ? 'warning' : failure ? 'error' : connected ? 'success' : 'info';
     const secondary = state.checks.find(
         (check) =>
@@ -171,6 +210,7 @@ function DiagnosticsSummary({
                     ) : (
                         keyCheck && <Text>{checkText(keyCheck, state.kind)}</Text>
                     )}
+                    {controlPlane && <Text>{controlPlane}</Text>}
                     {!cancelled && !failure && secondary && (
                         <Text>
                             {l10n.t('Also detected:')} {checkText(secondary, state.kind)}
@@ -178,6 +218,7 @@ function DiagnosticsSummary({
                     )}
                     {!cancelled && !connected && (
                         <>
+                            <HelpLinks topics={help} openHelp={openHelp} />
                             <Divider />
                             <Text>
                                 {l10n.t(
@@ -214,6 +255,7 @@ export function ConnectionDiagnostics() {
     const [state, setState] = useState<DiagnosticsState>();
     const [revision, setRevision] = useState(0);
     const [failure, setFailure] = useState<string>();
+    const [helpFailure, setHelpFailure] = useState<string>();
     const [needsRefresh, setNeedsRefresh] = useState(false);
     const [reportFeedback, setReportFeedback] = useState<{ intent: 'success' | 'error'; text: string }>();
     const [roleFeedback, setRoleFeedback] = useState<string>();
@@ -268,6 +310,7 @@ export function ConnectionDiagnostics() {
     async function runAction() {
         setPending(true);
         setFailure(undefined);
+        setHelpFailure(undefined);
         setReportFeedback(undefined);
         try {
             if (needsRefresh) {
@@ -291,6 +334,16 @@ export function ConnectionDiagnostics() {
         } finally {
             setPending(false);
         }
+    }
+
+    async function openHelp(topic: DiagnosticsHelpTopic) {
+        setHelpFailure(undefined);
+        try {
+            if (await client.openHelp.mutate(topic)) return;
+        } catch {
+            // A failed RPC uses the same on-screen message as a browser launch failure.
+        }
+        setHelpFailure(l10n.t('Could not open the troubleshooting documentation in your browser.'));
     }
 
     async function addDataRole() {
@@ -398,13 +451,20 @@ export function ConnectionDiagnostics() {
                             }}
                         >
                             {steps.map((step) => (
-                                <CheckRow key={`${revision}-${step}`} step={step} state={state} styles={styles} />
+                                <CheckRow
+                                    key={`${revision}-${step}`}
+                                    step={step}
+                                    state={state}
+                                    styles={styles}
+                                    openHelp={(topic) => void openHelp(topic)}
+                                />
                             ))}
                         </StatusList>
                         {ready && (
                             <DiagnosticsSummary
                                 state={state}
                                 styles={styles}
+                                openHelp={(topic) => void openHelp(topic)}
                                 roleFeedback={roleFeedback}
                                 roleAction={
                                     state.canAddDataRole && (
@@ -422,6 +482,11 @@ export function ConnectionDiagnostics() {
                         {failure && (
                             <MessageBar intent="error">
                                 <MessageBarBody>{failure}</MessageBarBody>
+                            </MessageBar>
+                        )}
+                        {helpFailure && (
+                            <MessageBar intent="error">
+                                <MessageBarBody>{helpFailure}</MessageBarBody>
                             </MessageBar>
                         )}
                         {reportFeedback && (

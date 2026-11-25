@@ -5,6 +5,7 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { beforeEach, expect, it, vi } from 'vitest';
+import * as vscode from 'vscode';
 import { type DiagnosticsState } from '../connectionDiagnostics/model';
 import { connectionDiagnosticsRouter } from './ConnectionDiagnosticsTab';
 
@@ -14,8 +15,10 @@ const mocks = vi.hoisted(() => ({
     preview: vi.fn(),
     copy: vi.fn(),
     save: vi.fn(),
+    openExternal: vi.fn(),
 }));
 
+vi.mock('vscode', () => ({ env: { openExternal: mocks.openExternal }, Uri: { parse: (url: string) => url } }));
 vi.mock('@microsoft/vscode-azext-utils', () => ({
     callWithTelemetryAndErrorHandling: async (
         event: string,
@@ -106,6 +109,7 @@ it('only handles role requests for a current, eligible RBAC finding', async () =
         cancel: vi.fn(),
         addDataRole,
     });
+
     await expect(caller.addDataRole({ runId })).resolves.toBe('unavailable');
     current = { ...current, checks: [{ step: 'access', status: 'info', finding: 'dataRbac' }] };
     await expect(caller.addDataRole({ runId: '8ff951bf-6c50-4130-b529-8af6db41373a' })).resolves.toBe('unavailable');
@@ -115,5 +119,29 @@ it('only handles role requests for a current, eligible RBAC finding', async () =
     expect(mocks.track).toHaveBeenLastCalledWith(
         'cosmosDB.rpc.mutation.connectionDiagnostics.addDataRole',
         expect.objectContaining({ properties: { diagnosticsRunId: runId, roleActionOutcome: 'assigned' } }),
+    );
+});
+
+it('opens an allowlisted help topic and never opens an arbitrary URL', async () => {
+    mocks.openExternal.mockResolvedValue(true);
+    const caller = connectionDiagnosticsRouter.createCaller({
+        getState: () => state,
+        rerun: vi.fn(),
+        cancel: vi.fn(),
+        addDataRole: vi.fn(),
+    });
+    await expect(caller.openHelp('forbidden')).resolves.toBe(true);
+    expect(mocks.openExternal).toHaveBeenCalledExactlyOnceWith(
+        vscode.Uri.parse('https://learn.microsoft.com/azure/cosmos-db/troubleshoot-forbidden'),
+    );
+    // tRPC callers are typed; simulate an invalid payload arriving from a webview.
+    // @ts-expect-error This is not an allowed diagnostics help topic.
+    await expect(caller.openHelp('https://example.test')).rejects.toThrow();
+    expect(mocks.openExternal).toHaveBeenCalledOnce();
+    mocks.openExternal.mockRejectedValueOnce(new Error('unshareable browser error'));
+    await expect(caller.openHelp('privateLink')).resolves.toBe(false);
+    expect(mocks.track).toHaveBeenLastCalledWith(
+        'cosmosDB.rpc.mutation.connectionDiagnostics.openHelp',
+        expect.objectContaining({ properties: { result: 'Failed' } }),
     );
 });

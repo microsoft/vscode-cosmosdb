@@ -9,7 +9,11 @@ import { attachTrpc } from '@microsoft/vscode-ext-webview/host';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type DiagnosticsState } from '../connectionDiagnostics/model';
-import { copyDiagnosticsReport, saveDiagnosticsReport } from '../connectionDiagnostics/reportActions';
+import {
+    copyDiagnosticsReport,
+    saveDiagnosticsReport,
+    showDiagnosticsReport,
+} from '../connectionDiagnostics/reportActions';
 import { type DiagnosticsTarget, runDiagnostics } from '../connectionDiagnostics/run';
 import { ext } from '../extensionVariables';
 import { BaseTab } from './BaseTab';
@@ -22,9 +26,9 @@ export type DiagnosticsRouterContext = BaseRouterContext & {
     cancel(): void;
 };
 
-const reportActions = { copy: copyDiagnosticsReport, save: saveDiagnosticsReport };
+const reportActions = { showReport: showDiagnosticsReport, copy: copyDiagnosticsReport, save: saveDiagnosticsReport };
 
-function reportProcedure(action: 'copy' | 'save') {
+function reportProcedure(action: keyof typeof reportActions) {
     return diagnosticsAction.mutation(async ({ ctx }) => {
         const state = ctx.getState();
         const outcome = await reportActions[action](state);
@@ -46,6 +50,7 @@ export const connectionDiagnosticsRouter = diagnosticsRouter({
         return ctx.getState();
     }),
     cancel: diagnosticsAction.mutation(({ ctx }) => ctx.cancel()),
+    showReport: reportProcedure('showReport'),
     copy: reportProcedure('copy'),
     save: reportProcedure('save'),
     showOutput: diagnosticsAction.mutation(() => ext.outputChannel.show(true)),
@@ -67,7 +72,7 @@ export class ConnectionDiagnosticsTab extends BaseTab {
         this.state = { kind: target.kind, phase: 'running', checks: [] };
         try {
             const context: DiagnosticsRouterContext = {
-                getState: () => this.state,
+                getState: () => ({ ...this.state, connectionName: this.target.account.name }),
                 rerun: () => this.startRun(),
                 cancel: () => this.controller?.abort(),
             };

@@ -16,6 +16,7 @@ export class DiagnosticsRunTrace {
     private readonly startedAt = performance.now();
     private readonly lines: string[] = [];
     private readonly stepStartedAt = new Map<Step, number>();
+    private readonly checkDurations: Partial<Record<Step, number>> = {};
     private readonly finishedSteps = new Set<Step>();
     private httpResponses = 0;
     private finished = false;
@@ -55,7 +56,9 @@ export class DiagnosticsRunTrace {
             if (this.finishedSteps.has(step)) continue;
             this.finishedSteps.add(step);
             const startedAt = this.stepStartedAt.get(step);
-            const duration = startedAt === undefined ? '' : ` durationMs=${Math.round(performance.now() - startedAt)}`;
+            const durationMs = startedAt === undefined ? undefined : Math.round(performance.now() - startedAt);
+            if (durationMs !== undefined) this.checkDurations[step] = durationMs;
+            const duration = durationMs === undefined ? '' : ` durationMs=${durationMs}`;
             this.write(`check=${step} status=${status} finding=${finding}${auth ? ` auth=${auth}` : ''}${duration}`);
         }
     }
@@ -68,7 +71,7 @@ export class DiagnosticsRunTrace {
     }
 
     public snapshot(): NonNullable<DiagnosticsState['trace']> {
-        return { runId: this.runId, lines: [...this.lines] };
+        return { runId: this.runId, lines: [...this.lines], checkDurations: { ...this.checkDurations } };
     }
 
     private write(line: string, outputOnly = ''): void {

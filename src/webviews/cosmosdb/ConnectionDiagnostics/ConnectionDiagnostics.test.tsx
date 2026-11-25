@@ -6,9 +6,9 @@
 // @vitest-environment jsdom
 
 import { AriaLiveAnnouncer, FluentProvider, webLightTheme } from '@fluentui/react-components';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vitest';
 import { type DiagnosticsState } from '../../../connectionDiagnostics/model';
 import { ConnectionDiagnostics } from './ConnectionDiagnostics';
 
@@ -16,6 +16,7 @@ const client = vi.hoisted(() => ({
     state: { query: vi.fn() },
     rerun: { mutate: vi.fn() },
     cancel: { mutate: vi.fn() },
+    showReport: { mutate: vi.fn() },
     copy: { mutate: vi.fn() },
     save: { mutate: vi.fn() },
     showOutput: { mutate: vi.fn() },
@@ -23,16 +24,22 @@ const client = vi.hoisted(() => ({
 vi.mock('@microsoft/vscode-ext-webview/react', () => ({ useTrpcClient: () => client }));
 
 beforeEach(() => vi.resetAllMocks());
-afterEach(() => vi.restoreAllMocks());
 
 const completed: DiagnosticsState = {
     kind: 'attached',
+    connectionName: 'Saved account',
     phase: 'completed',
     checks: [
         { step: 'target', status: 'passed', finding: 'endpointReady' },
-        { step: 'access', status: 'failed', finding: 'firewallPublic', observedClientIp: '203.0.113.45' },
+        {
+            step: 'access',
+            status: 'failed',
+            finding: 'firewallPublic',
+            auth: 'entra',
+            observedClientIp: '203.0.113.45',
+        },
     ],
-    trace: { runId: 'local-run-id', lines: ['sdk target=alternate operation=listDatabases status=403'] },
+    trace: { runId: 'local-run-id', lines: [], checkDurations: { access: 120 } },
 };
 const running: DiagnosticsState = {
     kind: 'attached',
@@ -52,16 +59,22 @@ function renderPanel() {
 }
 
 it('shows the outcome and makes check details available from the keyboard', async () => {
-    client.state.query.mockResolvedValue(completed);
+    client.state.query.mockResolvedValue({ ...completed, finishedAt: Date.now() });
     const user = userEvent.setup();
     renderPanel();
     const summary = await screen.findByRole('region', { name: 'Could not verify access to Cosmos DB.' });
+    expect(screen.getByRole('heading', { name: 'Connection Diagnostics' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Saved account' })).toBeVisible();
+    expect(screen.getByText('Checked a few seconds ago')).toBeVisible();
     expect(within(summary).getByText(/Check public network access and the IP allowlist/)).toBeVisible();
+    expect(within(summary).getByText(/Contacting support\?/)).toBeVisible();
     const list = screen.getByRole('list', { name: 'Connection checks' });
-    const details = within(list).getByRole('button', { name: 'Details — Cosmos DB access' });
+    const details = within(list).getByRole('button', { name: 'Details for Cosmos DB access' });
     const localIp = within(list).getByText('Outgoing IP reported by Cosmos DB: 203.0.113.45');
     expect(details).toHaveTextContent('Details');
-    expect(details).toHaveAccessibleName('Details — Cosmos DB access');
+    expect(details).toHaveAccessibleName('Details for Cosmos DB access');
+    expect(within(list).getByText('Authentication method: Microsoft Entra ID', { exact: true })).toBeVisible();
+    expect(within(list).getByText('120 ms')).toBeVisible();
     expect(localIp).not.toBeVisible();
     details.focus();
     await user.keyboard('{Enter}');
@@ -82,21 +95,20 @@ it('shows progress, preserves button focus, and can cancel and rerun', async () 
     const user = userEvent.setup();
     renderPanel();
     await screen.findByRole('region', { name: 'Could not verify access to Cosmos DB.' });
-    const rerun = screen.getByRole('button', { name: 'Run again' });
-    expect(rerun.textContent).toBe('Run again');
+    const rerun = screen.getByRole('button', { name: 'Re-run' });
+    expect(rerun.textContent).toBe('Re-run');
     await user.click(rerun);
-    await screen.findByText('Checking: Cosmos DB access', { selector: 'p' });
+    await screen.findByText('Checking the connection…');
     expect(client.rerun.mutate).toHaveBeenCalledOnce();
 
     const cancel = screen.getByRole('button', { name: 'Cancel' });
     expect(cancel.textContent).toBe('Cancel');
     expect(cancel).toHaveFocus();
-    expect(screen.getByRole('progressbar', { name: 'Connection check progress' })).toHaveAttribute(
-        'aria-valuenow',
-        '1',
-    );
     const list = screen.getByRole('list', { name: 'Connection checks' });
-    expect(within(list).getByText('Cosmos DB access').closest('li')).toHaveAttribute('aria-current', 'step');
+    expect(within(list).getByText('Cosmos DB access').closest('[role="listitem"]')).toHaveAttribute(
+        'aria-current',
+        'step',
+    );
     expect(screen.queryByRole('button', { name: 'Share report' })).not.toBeInTheDocument();
     await user.click(cancel);
     await screen.findByRole('region', { name: 'Connection diagnostics cancelled.' });
@@ -105,29 +117,20 @@ it('shows progress, preserves button focus, and can cancel and rerun', async () 
     expect(within(list).getAllByText('Not run')).toHaveLength(4);
 });
 
-it('previews the redacted report and restores focus, then offers copy and save', async () => {
-    // Provide the geometry Tabster uses for focus management, which jsdom does not calculate.
-    vi.spyOn(document.body, 'getBoundingClientRect').mockReturnValue(DOMRect.fromRect({ width: 900, height: 600 }));
-    vi.spyOn(HTMLElement.prototype, 'offsetParent', 'get').mockReturnValue(document.body);
+it('opens the report in the editor through the host and offers copy and save', async () => {
     client.state.query.mockResolvedValue(completed);
     client.copy.mutate.mockResolvedValue('done');
     client.save.mutate.mockResolvedValue('done');
+    client.showReport.mutate.mockResolvedValue('done');
     const user = userEvent.setup();
     renderPanel();
 
     const showReport = await screen.findByRole('button', { name: 'Show report' });
     expect(showReport).toHaveTextContent('Show report');
-    await user.click(showReport);
-    const dialog = await screen.findByRole('dialog', { name: 'Redacted diagnostics report' });
-    const report = within(dialog).getByRole<HTMLTextAreaElement>('textbox', { name: 'Report contents' });
-    await waitFor(() => expect(report).toHaveFocus());
-    expect(report.value).toContain('IP allowlist');
-    expect(report.value).toContain('sdk target=alternate operation=listDatabases status=403');
-    expect(report.value).not.toContain('203.0.113.45');
-    expect(report).toHaveAttribute('readonly');
-    expect(within(dialog).getByRole('button', { name: 'Close' })).toHaveTextContent('Close');
-    await user.keyboard('{Escape}');
-    await waitFor(() => expect(showReport).toHaveFocus());
+    showReport.focus();
+    await user.keyboard('{Enter}');
+    expect(client.showReport.mutate).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
     const share = screen.getByRole('button', { name: 'Share report' });
     expect(share).toHaveTextContent('Share report');
@@ -180,4 +183,6 @@ it('keeps results visible and reports a failed export without treating dismissal
     await user.click(await screen.findByRole('menuitem', { name: 'Save report to file…' }));
     expect(await screen.findByText('Could not save the diagnostics report.')).toBeVisible();
     expect(screen.getByRole('region', { name: 'Could not verify access to Cosmos DB.' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Dismiss' }));
+    expect(share).toHaveFocus();
 });

@@ -11,6 +11,7 @@ import { connectionDiagnosticsRouter } from './ConnectionDiagnosticsTab';
 const mocks = vi.hoisted(() => ({
     track: vi.fn(),
     show: vi.fn(),
+    preview: vi.fn(),
     copy: vi.fn(),
     save: vi.fn(),
 }));
@@ -37,6 +38,7 @@ vi.mock('../connectionDiagnostics/run', () => ({ runDiagnostics: vi.fn() }));
 vi.mock('../connectionDiagnostics/reportActions', () => ({
     copyDiagnosticsReport: mocks.copy,
     saveDiagnosticsReport: mocks.save,
+    showDiagnosticsReport: mocks.preview,
 }));
 vi.mock('./BaseTab', () => ({ BaseTab: class {} }));
 
@@ -54,6 +56,7 @@ it('tracks explicit actions and export outcomes but does not emit events for pro
     const cancel = vi.fn();
     const caller = connectionDiagnosticsRouter.createCaller({ getState: () => state, rerun, cancel });
     mocks.copy.mockResolvedValue('done');
+    mocks.preview.mockResolvedValue('done');
     mocks.save.mockResolvedValue('cancelled');
 
     await expect(caller.state()).resolves.toEqual(state);
@@ -66,12 +69,14 @@ it('tracks explicit actions and export outcomes but does not emit events for pro
     expect(cancel).toHaveBeenCalledOnce();
     await caller.rerun();
     expect(rerun).toHaveBeenCalledOnce();
+    await expect(caller.showReport()).resolves.toBe('done');
     await expect(caller.copy()).resolves.toBe('done');
     await expect(caller.save()).resolves.toBe('cancelled');
     expect(mocks.track.mock.calls.map(([event]) => event)).toEqual([
         'cosmosDB.rpc.mutation.connectionDiagnostics.showOutput',
         'cosmosDB.rpc.mutation.connectionDiagnostics.cancel',
         'cosmosDB.rpc.mutation.connectionDiagnostics.rerun',
+        'cosmosDB.rpc.mutation.connectionDiagnostics.showReport',
         'cosmosDB.rpc.mutation.connectionDiagnostics.copy',
         'cosmosDB.rpc.mutation.connectionDiagnostics.save',
     ]);

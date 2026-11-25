@@ -57,9 +57,12 @@ export interface CheckResult {
 
 export interface DiagnosticsState {
     kind: TargetKind;
+    /** Local panel heading only. */
+    connectionName?: string;
     phase: 'running' | 'completed' | 'cancelled';
+    finishedAt?: number;
     active?: Step;
     checks: CheckResult[];
     /** Shareable trace only. Actual endpoints are kept in the local Output channel. */
-    trace?: { runId: string; lines: readonly string[] };
+    trace?: { runId: string; lines: readonly string[]; checkDurations?: Partial<Record<Step, number>> };
 }

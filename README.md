@@ -215,9 +215,9 @@ If Cosmos DB reports an outgoing IP that was blocked, the panel shows it locally
 For Private Link, check private DNS and routing before changing the allowlist. The diagnostic does not change network
 settings or prompt for a data-plane sign-in. Expand **Details** on a check for its findings. **Show Output** opens the
 local **Azure Cosmos DB** channel, which records check progress and the destination of SDK requests that returned an
-HTTP error. To contact support, use **Show report** to review the results and check log, then **Share report** to copy
-or save it. The shared report includes the run ID for correlation but omits account identifiers, endpoints, IP
-addresses, credentials, and raw errors.
+HTTP error. To contact support, use **Show report** to open the results and check log in a read-only Markdown editor.
+Use **Share report** to copy the Markdown or save a Markdown or JSON file. The report includes the run ID for
+correlation but omits account identifiers, endpoints, IP addresses, credentials, and raw errors.
 
 ## Corporate proxies
 

@@ -295,7 +295,13 @@ export async function runDiagnostics(
         trace.recordChecks(checks);
         const phase = parent.aborted ? 'cancelled' : 'completed';
         const durationMs = trace.complete(phase);
-        const state: DiagnosticsState = { kind: target.kind, phase, checks: [...checks], trace: trace.snapshot() };
+        const state: DiagnosticsState = {
+            kind: target.kind,
+            phase,
+            finishedAt: Date.now(),
+            checks: [...checks],
+            trace: trace.snapshot(),
+        };
         publish(state);
         await reportDiagnosticsOutcome(state, target.probe, durationMs);
     }

@@ -26,6 +26,44 @@ export function phaseLabel(state: DiagnosticsState): string {
         : l10n.t('Could not verify access to Cosmos DB.');
 }
 
+function authText(method: NonNullable<CheckResult['auth']>): string {
+    const label = {
+        key: l10n.t('Account key'),
+        entra: l10n.t('Microsoft Entra ID'),
+        identity: l10n.t('Managed identity'),
+    }[method];
+    return l10n.t('Authentication method: {0}', label);
+}
+
+function publicAccessText(network: NonNullable<CheckResult['network']>): string {
+    const label = {
+        enabled: l10n.t('Enabled'),
+        disabled: l10n.t('Disabled'),
+        securedByPerimeter: l10n.t('Secured by network security perimeter'),
+        unknown: l10n.t('Unknown'),
+    }[network.publicAccess];
+    return l10n.t('Public network access: {0}', label);
+}
+
+export function checkEvidence(check: CheckResult): string {
+    if (check.network) return publicAccessText(check.network);
+    if (check.auth) return authText(check.auth);
+    switch (check.finding) {
+        case 'endpointReady':
+            return l10n.t('Valid endpoint');
+        case 'privateDns':
+            return l10n.t('Private or local addresses');
+        case 'publicDns':
+            return l10n.t('Public addresses');
+        case 'mixedDns':
+            return l10n.t('Public and private addresses');
+        case 'unresolvedDns':
+            return l10n.t('Name resolution inconclusive');
+        default:
+            return statusLabel(check.status);
+    }
+}
+
 export function checkText(check: CheckResult, kind: DiagnosticsState['kind']): string {
     const descriptions: Record<Finding, string> = {
         endpointReady: l10n.t('The connection endpoint is valid.'),
@@ -114,22 +152,11 @@ export function checkText(check: CheckResult, kind: DiagnosticsState['kind']): s
             'Local name resolution was inconclusive. A proxy may resolve the hostname independently.',
         ),
     };
-    const auth = {
-        key: l10n.t('Account key'),
-        entra: l10n.t('Microsoft Entra ID'),
-        identity: l10n.t('Managed identity'),
-    };
     const parts = [descriptions[check.finding]];
-    if (check.auth) parts.push(l10n.t('Authentication method: {0}', auth[check.auth]));
+    if (check.auth) parts.push(authText(check.auth));
     if (check.network) {
         const network = check.network;
-        const publicAccess = {
-            enabled: l10n.t('Enabled'),
-            disabled: l10n.t('Disabled'),
-            securedByPerimeter: l10n.t('Secured by network security perimeter'),
-            unknown: l10n.t('Unknown'),
-        };
-        parts.push(l10n.t('Public network access: {0}', publicAccess[network.publicAccess]));
+        parts.push(publicAccessText(network));
         parts.push(
             l10n.t(
                 'IP rules: {0}; virtual network rules: {1}; private endpoint connections: {2}.',
@@ -155,13 +182,52 @@ export function statusLabel(status: CheckResult['status']): string {
 
 export function renderReport(state: DiagnosticsState): string {
     return [
-        l10n.t('Cosmos DB connection diagnostics'),
+        `# ${l10n.t('Cosmos DB connection diagnostics')}`,
+        '',
         phaseLabel(state),
+        '',
         ...state.checks.map(
-            (check) => `${stepLabel(check.step)} (${statusLabel(check.status)}) — ${checkText(check, state.kind)}`,
+            (check) => `- ${stepLabel(check.step)} (${statusLabel(check.status)}) — ${checkText(check, state.kind)}`,
         ),
         ...(state.trace
-            ? ['', l10n.t('Check log'), l10n.t('Run ID: {0}', state.trace.runId), ...state.trace.lines]
+            ? [
+                  '',
+                  `## ${l10n.t('Check log')}`,
+                  '',
+                  l10n.t('Run ID: {0}', state.trace.runId),
+                  '',
+                  '```text',
+                  ...state.trace.lines,
+                  '```',
+              ]
             : []),
     ].join('\n');
+}
+
+export function renderJsonReport(state: DiagnosticsState): string {
+    return JSON.stringify(
+        {
+            runId: state.trace?.runId,
+            targetKind: state.kind,
+            phase: state.phase,
+            checks: state.checks.map(({ step, finding, status, auth, network }) => ({
+                step,
+                finding,
+                status,
+                auth,
+                durationMs: state.trace?.checkDurations?.[step],
+                network: network && {
+                    publicAccess: network.publicAccess,
+                    ipRules: network.ipRules,
+                    vnetFilterEnabled: network.vnetFilterEnabled,
+                    vnetRules: network.vnetRules,
+                    privateEndpoints: network.privateEndpoints,
+                    localAuthDisabled: network.localAuthDisabled,
+                },
+            })),
+            log: state.trace?.lines,
+        },
+        undefined,
+        2,
+    );
 }

@@ -47,6 +47,7 @@ import {
     type ProcedureInvocation,
     telemetryMiddlewareBody,
 } from '@microsoft/vscode-ext-webview/host';
+import { type DiagnosticsRouterContext } from '../ConnectionDiagnosticsTab';
 import {
     type AccountOverviewRouterContext,
     type DataModelingRouterContext,
@@ -60,7 +61,7 @@ import { outputChannelProcedureLogger } from './middleware/outputChannelLogger';
 // ─── Shared observability wiring ────────────────────────────────────────────
 
 /** Project-wide telemetry event id format: `cosmosDB.rpc.${type}.${path}`. */
-function buildCosmosDbEventId({ type, path }: ProcedureInvocation): string {
+function buildCosmosDbEventId({ type, path }: Pick<ProcedureInvocation, 'type' | 'path'>): string {
     return `cosmosDB.rpc.${type}.${path}`;
 }
 
@@ -141,3 +142,30 @@ export const dataModelingProcedure = dataModelingT.publicProcedure
 export const dataModelingRouter = dataModelingT.router;
 export const dataModelingMergeRouters = dataModelingT.mergeRouters;
 export const dataModelingCallerFactory = dataModelingT.createCallerFactory;
+
+const diagnosticsT = initWebviewTrpc<DiagnosticsRouterContext>();
+
+/** Only explicit diagnostics actions use middleware; the progress poll uses the bare procedure. */
+export const diagnosticsAction = diagnosticsT.publicProcedure
+    .use((opts) =>
+        loggingMiddlewareBody(opts, {
+            onEnd: (result) =>
+                outputChannelProcedureLogger.onEnd?.({
+                    ...result,
+                    path: `connectionDiagnostics.${result.path}`,
+                    error: undefined,
+                }),
+        }),
+    )
+    .use(
+        telemetryMiddlewareBody(azextTelemetryRunner, {
+            buildEventId: ({ path, type }) => buildCosmosDbEventId({ path: `connectionDiagnostics.${path}`, type }),
+        }),
+    )
+    .use(({ ctx, next }) => {
+        if (ctx.actionContext) ctx.actionContext.telemetry.maskEntireErrorMessage = true;
+        return next();
+    });
+export const diagnosticsProgress = diagnosticsT.publicProcedure;
+export const diagnosticsRouter = diagnosticsT.router;
+export const diagnosticsCallerFactory = diagnosticsT.createCallerFactory;

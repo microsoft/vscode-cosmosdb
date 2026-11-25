@@ -3,33 +3,54 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type BaseRouterContext, initWebviewTrpc } from '@microsoft/vscode-ext-webview';
+import { type IActionContext } from '@microsoft/vscode-azext-utils';
+import { type BaseRouterContext } from '@microsoft/vscode-ext-webview';
 import { attachTrpc } from '@microsoft/vscode-ext-webview/host';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type DiagnosticsState } from '../connectionDiagnostics/model';
 import { copyDiagnosticsReport, saveDiagnosticsReport } from '../connectionDiagnostics/reportActions';
 import { type DiagnosticsTarget, runDiagnostics } from '../connectionDiagnostics/run';
+import { ext } from '../extensionVariables';
 import { BaseTab } from './BaseTab';
+import { diagnosticsAction, diagnosticsCallerFactory, diagnosticsProgress, diagnosticsRouter } from './trpc/trpc';
 
-type DiagnosticsRouterContext = BaseRouterContext & {
+export type DiagnosticsRouterContext = BaseRouterContext & {
+    actionContext?: IActionContext;
     getState(): DiagnosticsState;
     rerun(): void;
     cancel(): void;
 };
 
-const trpc = initWebviewTrpc<DiagnosticsRouterContext>();
-const router = trpc.router({
-    state: trpc.publicProcedure.query(({ ctx }) => ctx.getState()),
-    rerun: trpc.publicProcedure.mutation(({ ctx }) => {
+const reportActions = { copy: copyDiagnosticsReport, save: saveDiagnosticsReport };
+
+function reportProcedure(action: 'copy' | 'save') {
+    return diagnosticsAction.mutation(async ({ ctx }) => {
+        const state = ctx.getState();
+        const outcome = await reportActions[action](state);
+        const properties = ctx.actionContext?.telemetry.properties;
+        if (properties) {
+            if (state.trace) properties.diagnosticsRunId = state.trace.runId;
+            properties.reportOutcome = outcome;
+            if (outcome === 'cancelled') properties.result = 'Canceled';
+            if (outcome === 'failed') properties.result = 'Failed';
+        }
+        return outcome;
+    });
+}
+
+export const connectionDiagnosticsRouter = diagnosticsRouter({
+    state: diagnosticsProgress.query(({ ctx }) => ctx.getState()),
+    rerun: diagnosticsAction.mutation(({ ctx }) => {
         ctx.rerun();
         return ctx.getState();
     }),
-    cancel: trpc.publicProcedure.mutation(({ ctx }) => ctx.cancel()),
-    copy: trpc.publicProcedure.mutation(({ ctx }) => copyDiagnosticsReport(ctx.getState())),
-    save: trpc.publicProcedure.mutation(({ ctx }) => saveDiagnosticsReport(ctx.getState())),
+    cancel: diagnosticsAction.mutation(({ ctx }) => ctx.cancel()),
+    copy: reportProcedure('copy'),
+    save: reportProcedure('save'),
+    showOutput: diagnosticsAction.mutation(() => ext.outputChannel.show(true)),
 });
-export type ConnectionDiagnosticsRouter = typeof router;
+export type ConnectionDiagnosticsRouter = typeof connectionDiagnosticsRouter;
 
 export class ConnectionDiagnosticsTab extends BaseTab {
     private static readonly viewType = 'cosmosDbConnectionDiagnostics';
@@ -50,7 +71,9 @@ export class ConnectionDiagnosticsTab extends BaseTab {
                 rerun: () => this.startRun(),
                 cancel: () => this.controller?.abort(),
             };
-            this.disposables.push(attachTrpc(panel, context, router, trpc.createCallerFactory).disposable);
+            this.disposables.push(
+                attachTrpc(panel, context, connectionDiagnosticsRouter, diagnosticsCallerFactory).disposable,
+            );
         } catch (error) {
             this.dispose();
             throw error;

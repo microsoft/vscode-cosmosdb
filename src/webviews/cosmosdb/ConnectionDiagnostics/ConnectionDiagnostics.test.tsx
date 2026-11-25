@@ -18,6 +18,7 @@ const client = vi.hoisted(() => ({
     cancel: { mutate: vi.fn() },
     copy: { mutate: vi.fn() },
     save: { mutate: vi.fn() },
+    showOutput: { mutate: vi.fn() },
 }));
 vi.mock('@microsoft/vscode-ext-webview/react', () => ({ useTrpcClient: () => client }));
 
@@ -31,6 +32,7 @@ const completed: DiagnosticsState = {
         { step: 'target', status: 'passed', finding: 'endpointReady' },
         { step: 'access', status: 'failed', finding: 'firewallPublic', observedClientIp: '203.0.113.45' },
     ],
+    trace: { runId: 'local-run-id', lines: ['sdk target=alternate operation=listDatabases status=403'] },
 };
 const running: DiagnosticsState = {
     kind: 'attached',
@@ -120,6 +122,7 @@ it('previews the redacted report and restores focus, then offers copy and save',
     const report = within(dialog).getByRole<HTMLTextAreaElement>('textbox', { name: 'Report contents' });
     await waitFor(() => expect(report).toHaveFocus());
     expect(report.value).toContain('IP allowlist');
+    expect(report.value).toContain('sdk target=alternate operation=listDatabases status=403');
     expect(report.value).not.toContain('203.0.113.45');
     expect(report).toHaveAttribute('readonly');
     expect(within(dialog).getByRole('button', { name: 'Close' })).toHaveTextContent('Close');
@@ -141,6 +144,17 @@ it('previews the redacted report and restores focus, then offers copy and save',
     await user.click(save);
     expect(client.save.mutate).toHaveBeenCalledOnce();
     expect(await screen.findByText('Diagnostics report saved.')).toBeVisible();
+});
+
+it('opens the local Output channel using a control with its visible accessible name', async () => {
+    client.state.query.mockResolvedValue(completed);
+    const user = userEvent.setup();
+    renderPanel();
+    const output = screen.getByRole('button', { name: 'Show Output' });
+    expect(output).toHaveTextContent('Show Output');
+    output.focus();
+    await user.keyboard('{Enter}');
+    expect(client.showOutput.mutate).toHaveBeenCalledOnce();
 });
 
 it('can refresh after a status request failure without starting another diagnosis', async () => {

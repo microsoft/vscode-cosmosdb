@@ -213,9 +213,11 @@ check is skipped: account settings and DNS do not confirm that the API itself is
 
 If Cosmos DB reports an outgoing IP that was blocked, the panel shows it locally so you can check the IP allowlist.
 For Private Link, check private DNS and routing before changing the allowlist. The diagnostic does not change network
-settings or prompt for a data-plane sign-in. Expand **Details** on a check for its findings. Use **Show report** to preview
-the redacted results, or **Share report** to copy them or save a text file without account identifiers, endpoints, IP
-addresses, credentials, or raw errors.
+settings or prompt for a data-plane sign-in. Expand **Details** on a check for its findings. **Show Output** opens the
+local **Azure Cosmos DB** channel, which records check progress and the destination of SDK requests that returned an
+HTTP error. To contact support, use **Show report** to review the results and check log, then **Share report** to copy
+or save it. The shared report includes the run ID for correlation but omits account identifiers, endpoints, IP
+addresses, credentials, and raw errors.
 
 ## Corporate proxies
 

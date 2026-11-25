@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { createDefaultHttpClient, type PipelineResponse } from '@azure/core-rest-pipeline';
 import { CosmosClient, type CosmosClientOptions } from '@azure/cosmos';
 import { ManagedIdentityCredential } from '@azure/identity';
 import { appendExtensionUserAgent } from '@microsoft/vscode-azext-utils';
@@ -23,6 +24,7 @@ export type GetCosmosClientOptions = Partial<CosmosClientOptions> & {
     wwwAuthenticate?: string; // Optional challenge for EntraID authentication
     isLlmTool?: boolean;
     silentAuthentication?: boolean;
+    onHttpResponse?: (response: PipelineResponse) => void;
 };
 
 export function getCosmosClient(connection: NoSqlQueryConnection, options?: GetCosmosClientOptions): CosmosClient;
@@ -74,19 +76,27 @@ export function getCosmosClient(
 
     const keyCred = getCosmosDBKeyCredential(credentials);
 
-    const { isLlmTool = false, silentAuthentication = false, wwwAuthenticate, ...clientOptions } = options ?? {};
+    const {
+        isLlmTool = false,
+        silentAuthentication = false,
+        wwwAuthenticate,
+        onHttpResponse,
+        httpClient: suppliedHttpClient,
+        ...clientOptions
+    } = options ?? {};
     const agent =
         clientOptions.agent ??
         (isEmulator && endpoint.startsWith('https:') ? new https.Agent({ rejectUnauthorized: false }) : undefined);
+    const httpClient =
+        suppliedHttpClient ??
+        (agent
+            ? undefined
+            : createCosmosHttpClient(vscode.workspace.getConfiguration('http').get('proxyStrictSSL') !== false));
+    const transport = httpClient ?? (onHttpResponse ? createDefaultHttpClient() : undefined);
     const commonProperties: CosmosClientOptions = {
         endpoint,
         userAgentSuffix: `${appendExtensionUserAgent()}${isLlmTool ? '/llm-tool' : ''}`,
-        agent: agent,
-        httpClient:
-            clientOptions.httpClient ??
-            (agent
-                ? undefined
-                : createCosmosHttpClient(vscode.workspace.getConfiguration('http').get('proxyStrictSSL') !== false)),
+        agent,
         connectionPolicy,
     };
 
@@ -200,7 +210,19 @@ export function getCosmosClient(
         throw Error(l10n.t('No credential available to create CosmosClient.'));
     }
 
-    return new CosmosClient(merge(clientOptions, commonProperties));
+    return new CosmosClient({
+        ...merge(clientOptions, commonProperties),
+        httpClient:
+            onHttpResponse && transport
+                ? {
+                      async sendRequest(request) {
+                          const response = await transport.sendRequest(request);
+                          onHttpResponse(response);
+                          return response;
+                      },
+                  }
+                : transport,
+    });
 }
 
 function normalizeCosmosScopes(scopes: string | string[]): string[] {

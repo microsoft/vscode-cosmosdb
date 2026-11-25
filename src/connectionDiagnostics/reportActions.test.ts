@@ -26,6 +26,7 @@ const completed: DiagnosticsState = {
     kind: 'azure',
     phase: 'completed',
     checks: [{ step: 'access', status: 'failed', finding: 'firewallPublic', observedClientIp: '203.0.113.10' }],
+    trace: { runId: 'run-id', lines: ['sdk target=configured operation=listDatabases status=403'] },
 };
 
 beforeEach(() => vi.resetAllMocks());
@@ -36,6 +37,7 @@ it('copies and saves exactly the redacted preview', async () => {
     expect(await copyDiagnosticsReport(completed)).toBe('done');
     expect(await saveDiagnosticsReport(completed)).toBe('done');
     const expected = renderReport(completed);
+    expect(expected).toContain('sdk target=configured operation=listDatabases status=403');
     expect(expected).not.toContain('203.0.113.10');
     expect(io.clipboard).toHaveBeenCalledExactlyOnceWith(expected);
     expect(io.writeFile).toHaveBeenCalledExactlyOnceWith(destination, new TextEncoder().encode(expected));

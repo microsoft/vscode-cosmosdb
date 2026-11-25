@@ -19,6 +19,7 @@ import { type CosmosDBAttachedAccountModel } from '../tree/workspace-view/cosmos
 import { createCosmosDBManagementClient } from '../utils/azureClients';
 import { classifyAccessError } from './classify';
 import { type CheckResult, type DiagnosticsState, type NetworkSummary, type Step, type TargetKind } from './model';
+import { DiagnosticsRunTrace, reportDiagnosticsOutcome } from './runTrace';
 
 export type DiagnosticsTarget = (
     | { kind: 'azure'; account: CosmosDBAccountModel }
@@ -133,13 +134,14 @@ export async function runDiagnostics(
     parent: AbortSignal,
     publish: (state: DiagnosticsState) => void,
 ): Promise<void> {
+    const trace = new DiagnosticsRunTrace(target.kind, target.probe);
     const checks: CheckResult[] = [];
-    const update = (phase: DiagnosticsState['phase'], active?: Step) =>
-        publish({ kind: target.kind, phase, active, checks: [...checks] });
     let active: Step = target.kind === 'azure' ? 'accountSettings' : 'target';
     const begin = (step: Step) => {
         active = step;
-        update('running', step);
+        trace.recordChecks(checks);
+        trace.begin(step);
+        publish({ kind: target.kind, phase: 'running', active, checks: [...checks], trace: trace.snapshot() });
     };
     try {
         begin(active);
@@ -240,6 +242,7 @@ export async function runDiagnostics(
                     const client = getCosmosClient(url.href, [credential], emulator, {
                         agent,
                         silentAuthentication: true,
+                        onHttpResponse: (response) => trace.recordResponse(response, url),
                         connectionPolicy: { retryOptions: { maxRetryAttemptCount: 0 } },
                     });
                     try {
@@ -289,6 +292,11 @@ export async function runDiagnostics(
     } catch {
         if (!parent.aborted) checks.push({ step: active, finding: 'unexpected', status: 'failed' });
     } finally {
-        update(parent.aborted ? 'cancelled' : 'completed');
+        trace.recordChecks(checks);
+        const phase = parent.aborted ? 'cancelled' : 'completed';
+        const durationMs = trace.complete(phase);
+        const state: DiagnosticsState = { kind: target.kind, phase, checks: [...checks], trace: trace.snapshot() };
+        publish(state);
+        await reportDiagnosticsOutcome(state, target.probe, durationMs);
     }
 }

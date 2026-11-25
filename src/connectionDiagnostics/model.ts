@@ -60,4 +60,6 @@ export interface DiagnosticsState {
     phase: 'running' | 'completed' | 'cancelled';
     active?: Step;
     checks: CheckResult[];
+    /** Shareable trace only. Actual endpoints are kept in the local Output channel. */
+    trace?: { runId: string; lines: readonly string[] };
 }

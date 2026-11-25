@@ -38,6 +38,7 @@ import {
     EyeRegular,
     InfoRegular,
     NetworkCheckRegular,
+    OpenRegular,
     ShareRegular,
     StopRegular,
     SubtractCircleRegular,
@@ -302,6 +303,15 @@ export function ConnectionDiagnostics() {
         }
     }
 
+    async function showOutput() {
+        setReportFeedback(undefined);
+        try {
+            await client.showOutput.mutate();
+        } catch {
+            setReportFeedback({ intent: 'error', text: l10n.t('Could not open the Azure Cosmos DB Output channel.') });
+        }
+    }
+
     const steps = state?.kind === 'azure' ? azureSteps : savedSteps;
     const primaryLabel = needsRefresh ? l10n.t('Refresh status') : running ? l10n.t('Cancel') : l10n.t('Run again');
     return (
@@ -362,6 +372,9 @@ export function ConnectionDiagnostics() {
                             onClick={() => void runAction()}
                         >
                             {primaryLabel}
+                        </Button>
+                        <Button icon={<OpenRegular aria-hidden />} onClick={() => void showOutput()}>
+                            {l10n.t('Show Output')}
                         </Button>
                         {ready && (
                             <>

@@ -1,0 +1,86 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+import { type IActionContext } from '@microsoft/vscode-azext-utils';
+import { beforeEach, expect, it, vi } from 'vitest';
+import { type DiagnosticsState } from '../connectionDiagnostics/model';
+import { connectionDiagnosticsRouter } from './ConnectionDiagnosticsTab';
+
+const mocks = vi.hoisted(() => ({
+    track: vi.fn(),
+    show: vi.fn(),
+    copy: vi.fn(),
+    save: vi.fn(),
+}));
+
+vi.mock('@microsoft/vscode-azext-utils', () => ({
+    callWithTelemetryAndErrorHandling: async (
+        event: string,
+        invoke: (context: Pick<IActionContext, 'telemetry' | 'valuesToMask' | 'errorHandling'>) => Promise<unknown>,
+    ) => {
+        const context = {
+            errorHandling: { issueProperties: {} },
+            telemetry: { measurements: {}, properties: {} },
+            valuesToMask: [],
+        };
+        const result = await invoke(context);
+        mocks.track(event, context.telemetry);
+        return result;
+    },
+}));
+vi.mock('../extensionVariables', () => ({
+    ext: { outputChannel: { show: mocks.show, debug: vi.fn(), warn: vi.fn() } },
+}));
+vi.mock('../connectionDiagnostics/run', () => ({ runDiagnostics: vi.fn() }));
+vi.mock('../connectionDiagnostics/reportActions', () => ({
+    copyDiagnosticsReport: mocks.copy,
+    saveDiagnosticsReport: mocks.save,
+}));
+vi.mock('./BaseTab', () => ({ BaseTab: class {} }));
+
+const state: DiagnosticsState = {
+    kind: 'azure',
+    phase: 'completed',
+    checks: [{ step: 'access', status: 'failed', finding: 'firewallPublic', observedClientIp: '203.0.113.10' }],
+    trace: { runId: 'run-id', lines: [] },
+};
+
+beforeEach(() => vi.resetAllMocks());
+
+it('tracks explicit actions and export outcomes but does not emit events for progress polling', async () => {
+    const rerun = vi.fn();
+    const cancel = vi.fn();
+    const caller = connectionDiagnosticsRouter.createCaller({ getState: () => state, rerun, cancel });
+    mocks.copy.mockResolvedValue('done');
+    mocks.save.mockResolvedValue('cancelled');
+
+    await expect(caller.state()).resolves.toEqual(state);
+    await expect(caller.state()).resolves.toEqual(state);
+    expect(mocks.track).not.toHaveBeenCalled();
+
+    await caller.showOutput();
+    expect(mocks.show).toHaveBeenCalledExactlyOnceWith(true);
+    await caller.cancel();
+    expect(cancel).toHaveBeenCalledOnce();
+    await caller.rerun();
+    expect(rerun).toHaveBeenCalledOnce();
+    await expect(caller.copy()).resolves.toBe('done');
+    await expect(caller.save()).resolves.toBe('cancelled');
+    expect(mocks.track.mock.calls.map(([event]) => event)).toEqual([
+        'cosmosDB.rpc.mutation.connectionDiagnostics.showOutput',
+        'cosmosDB.rpc.mutation.connectionDiagnostics.cancel',
+        'cosmosDB.rpc.mutation.connectionDiagnostics.rerun',
+        'cosmosDB.rpc.mutation.connectionDiagnostics.copy',
+        'cosmosDB.rpc.mutation.connectionDiagnostics.save',
+    ]);
+    expect(mocks.track).toHaveBeenLastCalledWith(
+        'cosmosDB.rpc.mutation.connectionDiagnostics.save',
+        expect.objectContaining({
+            maskEntireErrorMessage: true,
+            properties: { diagnosticsRunId: 'run-id', reportOutcome: 'cancelled', result: 'Canceled' },
+        }),
+    );
+    expect(JSON.stringify(mocks.track.mock.calls)).not.toContain('203.0.113.10');
+});

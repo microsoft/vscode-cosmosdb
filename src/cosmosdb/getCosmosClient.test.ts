@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { createHttpHeaders, createPipelineRequest } from '@azure/core-rest-pipeline';
 import { CosmosClient, type CosmosClientOptions } from '@azure/cosmos';
 import * as https from 'node:https';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -60,6 +61,19 @@ describe('Cosmos client transport configuration', () => {
 
         expect(vi.mocked(CosmosClient).mock.calls[0][0].httpClient).toBe(httpClient);
         expect(createCosmosHttpClient).not.toHaveBeenCalled();
+    });
+
+    it('observes the transport response before Cosmos converts it to an SDK error', async () => {
+        const request = createPipelineRequest({ url: 'https://alternate.example.com/dbs' });
+        const response = { request, status: 403, headers: createHttpHeaders() };
+        const sendRequest = vi.fn().mockResolvedValue(response);
+        const onHttpResponse = vi.fn();
+        getCosmosClient(connection, { httpClient: { sendRequest }, onHttpResponse });
+
+        const actual = vi.mocked(CosmosClient).mock.calls[0][0].httpClient;
+        await expect(actual?.sendRequest(request)).resolves.toBe(response);
+        expect(sendRequest).toHaveBeenCalledExactlyOnceWith(request);
+        expect(onHttpResponse).toHaveBeenCalledExactlyOnceWith(response);
     });
 
     it.each([

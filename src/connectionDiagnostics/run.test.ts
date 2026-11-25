@@ -3,9 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { createHttpHeaders, createPipelineRequest } from '@azure/core-rest-pipeline';
+import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthenticationMethod, getPreferredAuthenticationMethod } from '../cosmosdb/AuthenticationMethod';
+import { type GetCosmosClientOptions } from '../cosmosdb/getCosmosClient';
 import { type DiagnosticsState } from './model';
+import { renderReport } from './presentation';
 import { type DiagnosticsTarget, runDiagnostics } from './run';
 
 const io = vi.hoisted(() => ({
@@ -16,20 +20,30 @@ const io = vi.hoisted(() => ({
     listReadOnlyKeys: vi.fn(),
     listKeys: vi.fn(),
     lookup: vi.fn(),
+    getCosmosClient: vi.fn(),
+    log: vi.fn(),
+    telemetry: vi.fn(),
 }));
 vi.mock('node:dns/promises', () => ({ lookup: io.lookup }));
 vi.mock('../cosmosdb/getCosmosClient', () => ({
-    getCosmosClient: () => ({ databases: { readAll: io.readAll }, dispose: io.dispose }),
+    getCosmosClient: io.getCosmosClient,
 }));
+vi.mock('../extensionVariables', () => ({ ext: { outputChannel: { info: io.log } } }));
 vi.mock('../cosmosdb/AuthenticationMethod', { spy: true });
 vi.mock('../utils/azureClients', () => ({
     createCosmosDBManagementClient: () => Promise.resolve({ databaseAccounts: io }),
 }));
 vi.mock('@microsoft/vscode-azext-utils', () => ({
-    callWithTelemetryAndErrorHandling: (
-        _name: string,
-        run: (context: { errorHandling: object; telemetry: object; valuesToMask: string[] }) => unknown,
-    ) => run({ errorHandling: {}, telemetry: {}, valuesToMask: [] }),
+    callWithTelemetryAndErrorHandling: async (name: string, run: (context: Partial<IActionContext>) => unknown) => {
+        const context: Partial<IActionContext> = {
+            errorHandling: { issueProperties: {} },
+            telemetry: { properties: {}, measurements: {} },
+            valuesToMask: [],
+        };
+        const result = await run(context);
+        io.telemetry(name, context.telemetry);
+        return result;
+    },
 }));
 
 const attached: DiagnosticsTarget = {
@@ -66,9 +80,59 @@ describe('diagnosing a NoSQL connection', () => {
     beforeEach(() => {
         vi.resetAllMocks();
         vi.mocked(getPreferredAuthenticationMethod).mockReturnValue(AuthenticationMethod.auto);
+        io.getCosmosClient.mockReturnValue({ databases: { readAll: io.readAll }, dispose: io.dispose });
         io.fetchNext.mockResolvedValue({});
         io.readAll.mockReturnValue({ fetchNext: io.fetchNext });
         io.lookup.mockResolvedValue([{ address: '10.0.0.1', family: 4 }]);
+    });
+
+    it('logs the actual alternate endpoint locally and emits only redacted evidence for sharing and telemetry', async () => {
+        io.get.mockResolvedValue({ documentEndpoint: 'https://configured.example.test/', disableLocalAuth: true });
+        io.fetchNext.mockImplementation(() => {
+            const options: GetCosmosClientOptions = io.getCosmosClient.mock.calls[0][3];
+            options.onHttpResponse?.({
+                request: createPipelineRequest({
+                    url: 'https://regional.example.test/dbs?secret=query',
+                    headers: createHttpHeaders({ Authorization: 'sensitive-auth-header' }),
+                }),
+                status: 403,
+                headers: createHttpHeaders({ 'x-ms-substatus': '1000' }),
+            });
+            throw Object.assign(new Error('Blocked by your Cosmos DB account firewall settings. raw-response'), {
+                code: 403,
+            });
+        });
+
+        const state = (await diagnose(cloud)).at(-1)!;
+        const report = renderReport(state);
+        const local = io.log.mock.calls.flat().join('\n');
+        const runEvents = io.telemetry.mock.calls.filter(([name]) => name === 'cosmosDB.diagnostics.run');
+        expect(runEvents).toEqual([
+            [
+                'cosmosDB.diagnostics.run',
+                expect.objectContaining({
+                    properties: expect.objectContaining({
+                        diagnosticsRunId: state.trace?.runId,
+                        connectionOutcome: 'failed',
+                        authMethod: 'entra',
+                        findingCodes: expect.stringContaining('firewallUnknown'),
+                    }),
+                    measurements: { durationMs: expect.any(Number), checkCount: 4 },
+                }),
+            ],
+        ]);
+        expect(local).toContain(
+            'sdk target=alternate operation=listDatabases status=403 substatus=1000 endpoint=https://regional.example.test',
+        );
+        expect(report).toContain('Check log');
+        expect(report).toContain(`Run ID: ${state.trace?.runId}`);
+        expect(report).toContain('sdk target=alternate operation=listDatabases status=403 substatus=1000');
+        expect(report).toContain('check=dns status=info');
+        expect(report).toContain('finished phase=completed');
+        expect(local).not.toMatch(/secret=query|sensitive-auth-header|raw-response/);
+        expect(report + JSON.stringify(runEvents)).not.toMatch(
+            /(?:configured|regional)\.example\.test|secret=query|sensitive-auth-header|raw-response/,
+        );
     });
 
     it('uses a bounded, read-only SDK operation and never treats auxiliary DNS as authoritative', async () => {
@@ -176,6 +240,12 @@ describe('diagnosing a NoSQL connection', () => {
         });
         const states = await diagnose(attached, controller);
         expect(states.at(-1)?.phase).toBe('cancelled');
+        expect(io.telemetry).toHaveBeenCalledWith(
+            'cosmosDB.diagnostics.run',
+            expect.objectContaining({
+                properties: expect.objectContaining({ connectionOutcome: 'cancelled', result: 'Canceled' }),
+            }),
+        );
         expect(io.readAll.mock.calls[0][0].abortSignal.aborted).toBe(true);
         expect(io.dispose).toHaveBeenCalledOnce();
         expect(io.lookup).not.toHaveBeenCalled();

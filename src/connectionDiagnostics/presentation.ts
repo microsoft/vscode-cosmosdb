@@ -160,5 +160,8 @@ export function renderReport(state: DiagnosticsState): string {
         ...state.checks.map(
             (check) => `${stepLabel(check.step)} (${statusLabel(check.status)}) — ${checkText(check, state.kind)}`,
         ),
+        ...(state.trace
+            ? ['', l10n.t('Check log'), l10n.t('Run ID: {0}', state.trace.runId), ...state.trace.lines]
+            : []),
     ].join('\n');
 }

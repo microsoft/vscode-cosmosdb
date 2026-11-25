@@ -6,8 +6,8 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { beforeEach, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
-import { type DiagnosticsState } from '../connectionDiagnostics/model';
-import { connectionDiagnosticsRouter } from './ConnectionDiagnosticsTab';
+import { type DiagnosticsState } from '../../../connectionDiagnostics/model';
+import { connectionDiagnosticsRouter } from './connectionDiagnosticsRouter';
 
 const mocks = vi.hoisted(() => ({
     track: vi.fn(),
@@ -34,17 +34,14 @@ vi.mock('@microsoft/vscode-azext-utils', () => ({
         return result;
     },
 }));
-vi.mock('../extensionVariables', () => ({
+vi.mock('../../../extensionVariables', () => ({
     ext: { outputChannel: { show: mocks.show, debug: vi.fn(), warn: vi.fn() } },
 }));
-vi.mock('../connectionDiagnostics/run', () => ({ runDiagnostics: vi.fn() }));
-vi.mock('../connectionDiagnostics/roleAction', () => ({ assignDiagnosticsDataRole: vi.fn() }));
-vi.mock('../connectionDiagnostics/reportActions', () => ({
+vi.mock('../../../connectionDiagnostics/reportActions', () => ({
     copyDiagnosticsReport: mocks.copy,
     saveDiagnosticsReport: mocks.save,
     showDiagnosticsReport: mocks.preview,
 }));
-vi.mock('./BaseTab', () => ({ BaseTab: class {} }));
 
 const state: DiagnosticsState = {
     kind: 'azure',

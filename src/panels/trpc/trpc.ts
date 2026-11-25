@@ -47,7 +47,6 @@ import {
     type ProcedureInvocation,
     telemetryMiddlewareBody,
 } from '@microsoft/vscode-ext-webview/host';
-import { type DiagnosticsRouterContext } from '../ConnectionDiagnosticsTab';
 import {
     type AccountOverviewRouterContext,
     type DataModelingRouterContext,
@@ -57,6 +56,7 @@ import {
 } from './appRouter';
 import { azextTelemetryRunner } from './middleware/azextTelemetryRunner';
 import { outputChannelProcedureLogger } from './middleware/outputChannelLogger';
+import { type DiagnosticsRouterContext } from './routers/connectionDiagnosticsRouter';
 
 // ─── Shared observability wiring ────────────────────────────────────────────
 

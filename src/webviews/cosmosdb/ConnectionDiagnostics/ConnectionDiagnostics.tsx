@@ -53,7 +53,7 @@ import {
     statusLabel,
     stepLabel,
 } from '../../../connectionDiagnostics/presentation';
-import { type ConnectionDiagnosticsRouter } from '../../../panels/ConnectionDiagnosticsTab';
+import { type ConnectionDiagnosticsRouter } from '../../../panels/trpc/routers/connectionDiagnosticsRouter';
 import { useDiagnosticsStyles } from './styles';
 
 const azureSteps: readonly Step[] = ['accountSettings', 'target', 'access', 'dns'];

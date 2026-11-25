@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type AccountDiagnosticsTarget } from '../../connectionDiagnostics/run';
+import { type AccountDiagnosticsTarget } from '../../connectionDiagnostics/target';
 import { isTreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { isCosmosDBAttachedAccountModel } from '../workspace-view/cosmosdb/CosmosDBAttachedAccountModel';
 import { isAzureCosmosDBAccount } from './models/CosmosDBAccountModel';

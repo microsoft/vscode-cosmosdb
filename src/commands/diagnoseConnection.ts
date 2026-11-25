@@ -7,7 +7,7 @@ import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { type AccountDiagnosticsTarget } from '../connectionDiagnostics/run';
+import { type AccountDiagnosticsTarget } from '../connectionDiagnostics/target';
 import { ext } from '../extensionVariables';
 import { ConnectionDiagnosticsTab } from '../panels/ConnectionDiagnosticsTab';
 import { getConnectionDiagnosticsTarget } from '../tree/cosmosdb/connectionDiagnosticsTarget';

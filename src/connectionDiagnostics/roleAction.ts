@@ -8,7 +8,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { addRbacContributorPermission } from '../cosmosdb/utils/rbacUtils';
 import { ext } from '../extensionVariables';
-import { type DiagnosticsAzureAccount } from './run';
+import { type DiagnosticsAzureAccount } from './target';
 
 export type RoleActionOutcome = 'assigned' | 'cancelled' | 'unavailable' | 'denied' | 'failed';
 

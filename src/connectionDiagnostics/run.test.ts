@@ -13,7 +13,8 @@ import { type GetCosmosClientOptions } from '../cosmosdb/getCosmosClient';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { type DiagnosticsState } from './model';
 import { phaseLabel, renderJsonReport, renderReport } from './presentation';
-import { type AccountDiagnosticsTarget, type DiagnosticsTarget, runDiagnostics } from './run';
+import { runDiagnostics } from './run';
+import { type AccountDiagnosticsTarget, type DiagnosticsTarget } from './target';
 
 const io = vi.hoisted(() => ({
     fetchNext: vi.fn(),

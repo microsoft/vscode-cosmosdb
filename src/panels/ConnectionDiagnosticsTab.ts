@@ -9,12 +9,12 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type DiagnosticsState } from '../connectionDiagnostics/model';
 import { assignDiagnosticsDataRole, type RoleActionOutcome } from '../connectionDiagnostics/roleAction';
+import { runDiagnostics } from '../connectionDiagnostics/run';
 import {
     type DiagnosticsAzureAccount,
     type DiagnosticsTarget,
     getDiagnosticsAzureAccount,
-    runDiagnostics,
-} from '../connectionDiagnostics/run';
+} from '../connectionDiagnostics/target';
 import { maskConnectionTelemetry } from '../cosmosdb/maskConnectionTelemetry';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { BaseTab } from './BaseTab';

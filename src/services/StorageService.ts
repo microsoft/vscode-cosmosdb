@@ -184,10 +184,11 @@ class StorageImpl implements Storage {
         const storageKey = `${this.storageName}/${workspace}/${itemId}`;
         const secretKey = `${storageKey}/secrets`;
 
-        // First check if the item exists
+        // A caller can be recovering an interrupted write between the secret and metadata commits.
         const existingItem = ext.context.globalState.get<StorageItem>(storageKey);
         if (!existingItem) {
-            return; // Item doesn't exist, nothing to delete
+            await ext.secretStorage.delete(secretKey);
+            return;
         }
 
         try {

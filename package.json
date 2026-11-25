@@ -125,6 +125,7 @@
     "@testing-library/user-event": "~14.6.1",
     "@types/json-schema": "~7.0.15",
     "@types/node": "~26.6.4",
+    "@types/proper-lockfile": "^4.1.4",
     "@types/react": "~19.3.0",
     "@types/react-dom": "~19.3.0",
     "@types/semver": "~7.8.0",
@@ -192,6 +193,7 @@
     "allotment": "~1.20.4",
     "es-toolkit": "~1.53.0",
     "monaco-editor": "~0.52.2",
+    "proper-lockfile": "^4.1.2",
     "react-data-grid": "7.0.0-beta.61",
     "react-hotkeys-hook": "~5.3.2",
     "recharts": "~3.10.0",
@@ -820,6 +822,40 @@
       },
       {
         "category": "Cosmos DB",
+        "command": "cosmosDB.emulator.setup",
+        "title": "%cosmosdb.command.emulator.setup%"
+      },
+      {
+        "command": "cosmosDB.emulator.refresh",
+        "title": "%cosmosdb.command.refresh%",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "cosmosDB.emulator.start",
+        "title": "%cosmosdb.command.emulator.start%"
+      },
+      {
+        "command": "cosmosDB.emulator.stop",
+        "title": "%cosmosdb.command.emulator.stop%"
+      },
+      {
+        "command": "cosmosDB.emulator.restart",
+        "title": "%cosmosdb.command.emulator.restart%"
+      },
+      {
+        "command": "cosmosDB.emulator.logs",
+        "title": "%cosmosdb.command.emulator.logs%"
+      },
+      {
+        "command": "cosmosDB.emulator.reconnect",
+        "title": "%cosmosdb.command.emulator.reconnect%"
+      },
+      {
+        "command": "cosmosDB.emulator.delete",
+        "title": "%cosmosdb.command.emulator.delete%"
+      },
+      {
+        "category": "Cosmos DB",
         "command": "cosmosDB.copyConnectionString",
         "title": "%cosmosdb.command.connection.copy%"
       },
@@ -1174,6 +1210,41 @@
       ],
       "view/item/context": [
         {
+          "command": "cosmosDB.emulator.refresh",
+          "when": "view =~ /azureWorkspace/ && viewItem =~ /managedEmulatorGroup/",
+          "group": "inline"
+        },
+        {
+          "command": "cosmosDB.emulator.start",
+          "when": "view =~ /azureWorkspace/ && viewItem =~ /managedEmulator\\.(stopped|missing)/",
+          "group": "1@1"
+        },
+        {
+          "command": "cosmosDB.emulator.stop",
+          "when": "view =~ /azureWorkspace/ && viewItem =~ /managedEmulator\\.(running|waiting|disconnected)/",
+          "group": "1@2"
+        },
+        {
+          "command": "cosmosDB.emulator.restart",
+          "when": "view =~ /azureWorkspace/ && viewItem =~ /managedEmulator\\.(running|waiting|disconnected)/",
+          "group": "1@3"
+        },
+        {
+          "command": "cosmosDB.emulator.logs",
+          "when": "view =~ /azureWorkspace/ && viewItem =~ /managedEmulator\\.(running|stopped|waiting|disconnected)/",
+          "group": "2@1"
+        },
+        {
+          "command": "cosmosDB.emulator.reconnect",
+          "when": "view =~ /azureWorkspace/ && viewItem =~ /managedEmulator\\.(running|waiting|disconnected)/",
+          "group": "2@2"
+        },
+        {
+          "command": "cosmosDB.emulator.delete",
+          "when": "view =~ /azureWorkspace/ && viewItem =~ /managedEmulator\\.(running|stopped|missing|waiting|disconnected|recovery)/",
+          "group": "3@1"
+        },
+        {
           "command": "cosmosDB.openInDatabaseHub",
           "when": "view =~ /azure(ResourceGroups|FocusView)/ && viewItem =~ /hasarmmetadata/i && viewItem =~ /experience[.]core/i && viewItem =~ /supportsDatabaseHub/i",
           "group": "9@2.1"
@@ -1204,7 +1275,7 @@
         {
           "//": "[Account] Detach account (workspace only)",
           "command": "cosmosDB.removeConnection",
-          "when": "view =~ /azureWorkspace/ && viewItem =~ /treeitem[.]account(?![a-z.\\/])/i",
+          "when": "view =~ /azureWorkspace/ && viewItem =~ /^(?!.*managedEmulator[.]).*treeitem[.]account(?![a-z.\\/])/i",
           "group": "1@3"
         },
         {
@@ -1392,6 +1463,34 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "cosmosDB.emulator.refresh",
+          "when": "never"
+        },
+        {
+          "command": "cosmosDB.emulator.start",
+          "when": "never"
+        },
+        {
+          "command": "cosmosDB.emulator.stop",
+          "when": "never"
+        },
+        {
+          "command": "cosmosDB.emulator.restart",
+          "when": "never"
+        },
+        {
+          "command": "cosmosDB.emulator.logs",
+          "when": "never"
+        },
+        {
+          "command": "cosmosDB.emulator.reconnect",
+          "when": "never"
+        },
+        {
+          "command": "cosmosDB.emulator.delete",
+          "when": "never"
+        },
         {
           "command": "cosmosDB.openInDatabaseHub",
           "when": "never"

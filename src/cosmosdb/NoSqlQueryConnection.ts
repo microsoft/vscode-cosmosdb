@@ -23,6 +23,8 @@ export type NoSqlQueryConnection = {
     endpoint: string;
     credentials: CosmosDBCredential[];
     isEmulator: boolean;
+    managedEmulator?: boolean;
+    managedEmulatorCertificate?: string;
 };
 
 export function isNoSqlQueryConnection(connection: unknown): connection is NoSqlQueryConnection {
@@ -56,6 +58,9 @@ export function createNoSqlQueryConnection(
         endpoint: accountInfo.endpoint,
         credentials: accountInfo.credentials,
         isEmulator: accountInfo.isEmulator,
+        ...(accountInfo.managedEmulator
+            ? { managedEmulator: true, managedEmulatorCertificate: accountInfo.managedEmulatorCertificate }
+            : {}),
     };
 }
 

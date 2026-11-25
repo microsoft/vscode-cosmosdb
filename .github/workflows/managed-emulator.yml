@@ -1,0 +1,65 @@
+name: Managed Cosmos DB Emulator
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/managed-emulator.yml'
+      - 'src/services/managedEmulator/**'
+      - 'src/webviews/cosmosdb/EmulatorSetup/**'
+      - 'src/tree/workspace-view/cosmosdb/LocalEmulators/**'
+      - 'src/panels/EmulatorSetupTab.ts'
+      - 'src/cosmosdb/getCosmosClient.ts'
+      - 'test/e2e/specs/managed-emulator.spec.ts'
+      - 'package*.json'
+      - 'vitest*.ts'
+
+jobs:
+  lifecycle:
+    name: Managed lifecycle (${{ matrix.engine }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [docker, podman]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Prepare rootless Podman
+        if: matrix.engine == 'podman'
+        run: |
+          if ! command -v podman >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y podman
+          fi
+          podman info --format '{{.Host.Security.Rootless}}' | grep -Fx true
+          # Electron can start a private D-Bus session under Xvfb. Rootless Podman needs the
+          # user systemd bus to start containers with its default cgroup manager.
+          user_bus="/run/user/$(id -u)/bus"
+          if [[ ! -S "$user_bus" ]]; then
+            sudo systemctl start "user@$(id -u).service"
+          fi
+          test -S "$user_bus"
+          echo "DBUS_SESSION_BUS_ADDRESS=unix:path=$user_bus" >> "$GITHUB_ENV"
+      - name: Check persistence and loopback bindings
+        env:
+          COSMOSDB_MANAGED_TEST_ENGINE: ${{ matrix.engine }}
+        run: npm exec -- vitest run src/services/managedEmulator/managedEmulator.integration.test.ts
+      - name: Install VS Code system dependencies
+        run: npm exec -- playwright install-deps chromium
+      - name: Build production extension
+        run: npm run vite-prod
+      - name: Create and browse a managed emulator in VS Code
+        env:
+          COSMOSDB_MANAGED_TEST_ENGINE: ${{ matrix.engine }}
+          COSMOSDB_E2E_SKIP_EMULATOR: '1'
+          COSMOSDB_E2E_SKIP_BUILD: '1'
+        run: xvfb-run -a npm run e2e -- managed-emulator.spec.ts --workers=1

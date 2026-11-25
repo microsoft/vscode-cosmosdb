@@ -8,6 +8,8 @@ import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from '../../../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../../../constants';
 import { wellKnownEmulatorPassword } from '../../../../cosmosdb/cosmosdb-shared-constants';
+import { readManagedEmulator } from '../../../../services/managedEmulator/managedEmulatorExtension';
+import { managedStorageId } from '../../../../services/managedEmulator/model';
 import { type StorageItem, StorageNames, StorageService } from '../../../../services/StorageService';
 import { migrateRawEmulatorItemToHashed } from '../../../../utils/emulatorUtils';
 import { nonNullValue } from '../../../../utils/nonNull';
@@ -18,11 +20,12 @@ import { type TreeElement } from '../../../TreeElement';
 import { type TreeElementWithContextValue } from '../../../TreeElementWithContextValue';
 import { WorkspaceResourceType } from '../../../workspace-api/SharedWorkspaceResourceProvider';
 import { type CosmosDBAttachedAccountModel } from '../CosmosDBAttachedAccountModel';
+import { createManagedEmulatorItem, setupEmulatorItem } from './ManagedEmulatorItem';
 import { NewCoreEmulatorConnectionItem } from './NewCoreEmulatorConnectionItem';
 
 export class LocalCoreEmulatorsItem implements TreeElement, TreeElementWithContextValue {
     public readonly id: string;
-    public readonly contextValue: string = 'treeItem.newConnection';
+    public readonly contextValue: string = 'treeItem.newConnection managedEmulatorGroup';
 
     constructor(public readonly parentId: string) {
         this.id = `${parentId}/localEmulators`;
@@ -33,7 +36,15 @@ export class LocalCoreEmulatorsItem implements TreeElement, TreeElementWithConte
             WorkspaceResourceType.AttachedAccounts,
         );
 
+        const { instance, error } = await readManagedEmulator(true);
         const children = await this.getChildrenEmulatorOnlyImpl(allItems);
+        if (instance) {
+            const secret = allItems.find(
+                (item) => item.id === managedStorageId(instance.id) && item.properties?.managedEmulator === true,
+            )?.secrets?.[0];
+            children.unshift(createManagedEmulatorItem(this.id, instance, secret, error));
+        }
+        if (!instance) children.push(setupEmulatorItem(this.id));
 
         return [...children, new NewCoreEmulatorConnectionItem(this.id)];
     }
@@ -52,7 +63,7 @@ export class LocalCoreEmulatorsItem implements TreeElement, TreeElementWithConte
         return (
             await Promise.all(
                 items
-                    .filter((item) => item.properties?.isEmulator) // only show emulators
+                    .filter((item) => item.properties?.isEmulator && !item.properties.managedEmulator)
                     .map(async (item) => {
                         const { id, name, properties, secrets } = await migrateRawEmulatorItemToHashed(item);
                         const api: API = nonNullValue(properties?.api, 'api') as API;

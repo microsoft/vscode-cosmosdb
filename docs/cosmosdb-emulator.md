@@ -8,7 +8,29 @@ The Azure Cosmos DB emulator provides a local environment that emulates the Azur
 
 For more information, see the official documentation: https://learn.microsoft.com/en-us/azure/cosmos-db/emulator
 
-## Running the Emulator
+## Set up the emulator in VS Code
+
+In **Cosmos DB Accounts → Local Emulators**, choose **Set up Azure Cosmos DB Emulator**. Select a
+local Docker Engine 28 or later or Podman (4.9 or later on Linux, 5 or later on Windows and macOS)
+running Linux containers. Docker Desktop is not required.
+On Windows and macOS, create and start a Podman machine before attempting setup with Podman.
+If the CLI is missing, the wizard links to the engine's installation instructions. Fully restart
+VS Code if the installer changed `PATH`.
+
+The wizard checks and publishes the SDK endpoint (`8081`) and Data Explorer (`1234`) on `127.0.0.1`
+by default. If a port is occupied, choose a different one. Setup creates a managed data volume and
+saves the connection without asking for a key. If verification times out, **Wait longer** retries
+the SDK check against the same container. VS Code trusts the emulator's certificate only for
+that managed connection; setup does not change the system or VS Code certificate store.
+
+The managed node exposes lifecycle actions. Stop, restart, reloading VS Code, and recreating a
+missing container retain the named volume. **Delete Emulator** permanently removes the managed
+container and its data after confirmation. Failed or cancelled setup cleans up resources created
+by that attempt; the pulled image may remain cached. If the engine is unavailable during cleanup,
+start or reconnect to the same engine and refresh the Local Emulators tree. Use
+**New Emulator Connection…** to attach an emulator that you manage yourself.
+
+## Running the emulator for extension development
 
 This project includes a `docker-compose.yml` for running the Linux-based Azure Cosmos DB emulator.
 

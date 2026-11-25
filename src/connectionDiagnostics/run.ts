@@ -136,13 +136,13 @@ export async function runDiagnostics(
     const checks: CheckResult[] = [];
     const update = (phase: DiagnosticsState['phase'], active?: Step) =>
         publish({ kind: target.kind, phase, active, checks: [...checks] });
-    let active: Step = 'target';
+    let active: Step = target.kind === 'azure' ? 'accountSettings' : 'target';
     const begin = (step: Step) => {
         active = step;
         update('running', step);
     };
     try {
-        begin('target');
+        begin(active);
         parent.throwIfAborted();
         const mode = target.probe === 'nosql' ? getPreferredAuthenticationMethod() : undefined;
         let endpoint: string | undefined;
@@ -152,7 +152,6 @@ export async function runDiagnostics(
             const rawEndpoint: unknown = target.account.raw?.properties?.documentEndpoint;
             endpoint = typeof rawEndpoint === 'string' ? rawEndpoint : undefined;
             tenantId = target.account.subscription.tenantId;
-            begin('accountSettings');
             try {
                 const arm = await bounded(parent, 6_000, (signal) => readArmAccount(target.account, signal));
                 if (arm) {
@@ -181,6 +180,7 @@ export async function runDiagnostics(
                 parent.throwIfAborted();
                 checks.push({ step: 'accountSettings', finding: 'settingsUnavailable', status: 'info' });
             }
+            begin('target');
         } else {
             try {
                 const parsed = parseCosmosDBConnectionString(target.account.connectionString);

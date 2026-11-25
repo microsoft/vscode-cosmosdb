@@ -103,6 +103,12 @@ describe('diagnosing a NoSQL connection', () => {
             message: 'Request originated from client VNET through private endpoint.',
         });
         const states = await diagnose(cloud);
+        expect(states.filter((state) => state.phase === 'running').map((state) => state.active)).toEqual([
+            'accountSettings',
+            'target',
+            'access',
+            'dns',
+        ]);
         expect(io.listReadOnlyKeys).not.toHaveBeenCalled();
         expect(io.listKeys).not.toHaveBeenCalled();
         expect(states.at(-1)).toMatchObject({

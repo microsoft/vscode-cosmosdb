@@ -8,7 +8,7 @@ import { attachTrpc } from '@microsoft/vscode-ext-webview/host';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type DiagnosticsState } from '../connectionDiagnostics/model';
-import { renderReport } from '../connectionDiagnostics/presentation';
+import { copyDiagnosticsReport, saveDiagnosticsReport } from '../connectionDiagnostics/reportActions';
 import { type DiagnosticsTarget, runDiagnostics } from '../connectionDiagnostics/run';
 import { BaseTab } from './BaseTab';
 
@@ -26,10 +26,8 @@ const router = trpc.router({
         return ctx.getState();
     }),
     cancel: trpc.publicProcedure.mutation(({ ctx }) => ctx.cancel()),
-    copy: trpc.publicProcedure.mutation(async ({ ctx }) => {
-        const state = ctx.getState();
-        if (state.phase !== 'running') await vscode.env.clipboard.writeText(renderReport(state));
-    }),
+    copy: trpc.publicProcedure.mutation(({ ctx }) => copyDiagnosticsReport(ctx.getState())),
+    save: trpc.publicProcedure.mutation(({ ctx }) => saveDiagnosticsReport(ctx.getState())),
 });
 export type ConnectionDiagnosticsRouter = typeof router;
 

@@ -9,6 +9,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type AccountDiagnosticsTarget } from '../connectionDiagnostics/run';
 import { ext } from '../extensionVariables';
+import { ConnectionDiagnosticsTab } from '../panels/ConnectionDiagnosticsTab';
 import { getConnectionDiagnosticsTarget } from '../tree/cosmosdb/connectionDiagnosticsTarget';
 import { type TreeElement } from '../tree/TreeElement';
 import { isTreeElementWithContextValue } from '../tree/TreeElementWithContextValue';
@@ -73,6 +74,5 @@ export async function diagnoseConnection(context: IActionContext, node?: unknown
     if (target.kind !== 'azure' && target.account.connectionString) {
         context.valuesToMask.push(target.account.connectionString);
     }
-    const { ConnectionDiagnosticsTab } = await import('../panels/ConnectionDiagnosticsTab');
     ConnectionDiagnosticsTab.render(target);
 }

@@ -39,6 +39,7 @@ import { toStringUniversal } from '../../../utils/strings';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
 import * as vscodeUtil from '../../../utils/vscodeUtils';
+import { ConnectionDiagnosticsTab } from '../../ConnectionDiagnosticsTab';
 import { DocumentTab } from '../../DocumentTab';
 import { QueryEditorTab } from '../../QueryEditorTab';
 import { type QueryEditorRouterContext } from '../appRouter';
@@ -113,18 +114,14 @@ export const queryEditorRouterDef = queryEditorRouter({
             if (ctx.actionContext) {
                 ctx.actionContext.telemetry.maskEntireErrorMessage = true;
             }
-            const currentConnection = () =>
+            const connection =
                 !ctx.state.isChangingConnection && ctx.state.connectionVersion === input.connectionVersion
                     ? ctx.state.connection
                     : undefined;
-            const connection = currentConnection();
             if (connection) {
                 if (ctx.actionContext) maskConnectionTelemetry(ctx.actionContext, connection);
-                const { ConnectionDiagnosticsTab } = await import('../../ConnectionDiagnosticsTab');
-                if (connection === currentConnection()) {
-                    ConnectionDiagnosticsTab.render({ kind: 'queryEditor', probe: 'query', connection });
-                    return;
-                }
+                ConnectionDiagnosticsTab.render({ kind: 'queryEditor', probe: 'query', connection });
+                return;
             }
             await vscode.commands.executeCommand('cosmosDB.diagnoseConnection');
         }),

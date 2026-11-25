@@ -34,12 +34,7 @@ import {
 import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
-import {
-    checkHelpTopics,
-    type DiagnosticsHelpTopic,
-    diagnosticsHelpUrls,
-    helpLabel,
-} from '../../../connectionDiagnostics/help';
+import { checkHelpTopics, type DiagnosticsHelpTopic, helpLabel } from '../../../connectionDiagnostics/help';
 import { type CheckResult, type DiagnosticsState, type Step } from '../../../connectionDiagnostics/model';
 import {
     checkEvidence,
@@ -60,14 +55,7 @@ type OpenHelp = (topic: DiagnosticsHelpTopic) => void;
 
 function HelpLinks({ topics, openHelp }: { topics: readonly DiagnosticsHelpTopic[]; openHelp: OpenHelp }) {
     return topics.map((topic) => (
-        <Link
-            key={topic}
-            href={diagnosticsHelpUrls[topic]}
-            onClick={(event) => {
-                event.preventDefault();
-                openHelp(topic);
-            }}
-        >
+        <Link key={topic} as="button" onClick={() => openHelp(topic)}>
             {helpLabel(topic)}
         </Link>
     ));

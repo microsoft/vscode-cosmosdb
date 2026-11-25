@@ -8,7 +8,7 @@
 import { AriaLiveAnnouncer, FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { beforeEach, expect, it, onTestFinished, vi } from 'vitest';
 import { type DiagnosticsState } from '../../../connectionDiagnostics/model';
 import { ConnectionDiagnostics } from './ConnectionDiagnostics';
 
@@ -104,8 +104,7 @@ it('distinguishes an ARM read from a data-plane firewall denial without showing 
     expect(within(summary).getByText(/Control-plane access was verified through Azure Resource Manager/)).toBeVisible();
     expect(within(summary).getByText(/does not tell you whether your identity has a data role/)).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Add Data Contributor role' })).not.toBeInTheDocument();
-    const docs = within(summary).getByRole('link', { name: 'Troubleshoot Cosmos DB HTTP 403' });
-    expect(docs).toHaveAttribute('href', 'https://learn.microsoft.com/azure/cosmos-db/troubleshoot-forbidden');
+    const docs = within(summary).getByRole('button', { name: 'Troubleshoot Cosmos DB HTTP 403' });
     docs.focus();
     await user.keyboard('{Enter}');
     expect(client.openHelp.mutate).toHaveBeenCalledExactlyOnceWith('forbidden');
@@ -115,6 +114,38 @@ it('distinguishes an ARM read from a data-plane firewall denial without showing 
     const list = screen.getByRole('list', { name: 'Connection checks' });
     expect(within(list).getByText('Azure account settings (control plane)')).toBeVisible();
     expect(within(list).queryByText('Server address (DNS)')).not.toBeInTheDocument();
+});
+
+it.each(['click', 'Enter', 'Space'])('opens documentation once via the host on %s', async (activation) => {
+    const nativeOpen = vi.fn();
+    const handleWebviewClick = (event: MouseEvent) => {
+        // VS Code handles anchor clicks even if React has already called preventDefault().
+        for (const element of event.composedPath()) {
+            if (element instanceof HTMLAnchorElement && element.href) {
+                nativeOpen(element.href);
+                event.preventDefault();
+                break;
+            }
+        }
+    };
+    window.addEventListener('click', handleWebviewClick);
+    onTestFinished(() => window.removeEventListener('click', handleWebviewClick));
+    client.state.query.mockResolvedValue(completed);
+    client.openHelp.mutate.mockResolvedValue(true);
+    const user = userEvent.setup();
+    renderPanel();
+    const summary = await screen.findByRole('region', { name: 'Could not verify Cosmos DB data-plane access.' });
+    const label = 'Troubleshoot Cosmos DB HTTP 403';
+    const docs = within(summary).getByText(label);
+    if (activation === 'click') {
+        await user.click(docs);
+    } else {
+        docs.focus();
+        await user.keyboard(activation === 'Enter' ? '{Enter}' : ' ');
+    }
+    expect(nativeOpen).not.toHaveBeenCalled();
+    expect(client.openHelp.mutate).toHaveBeenCalledExactlyOnceWith('forbidden');
+    expect(docs).toHaveAccessibleName(label);
 });
 
 it('shows the name-resolution evidence when the DNS check ran', async () => {

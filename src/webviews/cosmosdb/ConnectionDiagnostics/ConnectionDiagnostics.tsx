@@ -419,7 +419,9 @@ export function ConnectionDiagnostics() {
         }
     }
 
-    const steps = state?.kind === 'azure' ? azureSteps : savedSteps;
+    const steps = (state?.kind === 'azure' ? azureSteps : savedSteps).filter(
+        (step) => step !== 'dns' || state?.active === step || state?.checks.some((check) => check.step === step),
+    );
     const primaryLabel = needsRefresh ? l10n.t('Refresh status') : running ? l10n.t('Cancel') : l10n.t('Re-run');
     const runSubtitle =
         state?.phase === 'running'

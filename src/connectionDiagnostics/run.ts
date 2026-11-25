@@ -107,6 +107,27 @@ function summarizeNetwork(account: DatabaseAccountGetResults): NetworkSummary {
     };
 }
 
+function shouldCheckDnsAfterAccess(checks: readonly CheckResult[]): boolean {
+    const access = checks.find(({ step }) => step === 'access');
+    switch (access?.finding) {
+        case 'dnsFailure':
+        case 'transportFailure':
+        case 'timedOut':
+        case 'firewallPrivateEndpoint':
+            return true;
+        case 'firewallPublic':
+        case 'firewallServiceEndpoint':
+        case 'firewallUnknown':
+        case 'forbiddenUnknown': {
+            const network = checks.find(({ step }) => step === 'accountSettings')?.network;
+            // The SDK reached the service. DNS only adds a clue if private routing may be relevant.
+            return network !== undefined && (network.publicAccess === 'disabled' || network.privateEndpoints > 0);
+        }
+        default:
+            return false;
+    }
+}
+
 async function readArmAccount(account: CosmosDBAccountModel, signal: AbortSignal) {
     return callWithTelemetryAndErrorHandling('cosmosDB.diagnostics.readAccount', async (context) => {
         context.errorHandling.suppressDisplay = true;
@@ -255,6 +276,7 @@ export async function runDiagnostics(
                 }
                 checks.push({ step: 'access', ...classification, status: needsRole ? 'info' : 'failed', auth });
             }
+            if (!shouldCheckDnsAfterAccess(checks)) return;
         }
 
         begin('dns');

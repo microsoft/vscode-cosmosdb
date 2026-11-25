@@ -88,14 +88,13 @@ it('shows the outcome and makes check details available from the keyboard', asyn
     expect(localIp).not.toBeVisible();
 });
 
-it('distinguishes an ARM read, a data-plane firewall denial, and public DNS, and opens the matching documentation', async () => {
+it('distinguishes an ARM read from a data-plane firewall denial without showing a redundant DNS step', async () => {
     client.state.query.mockResolvedValue({
         ...completed,
         kind: 'azure',
         checks: [
             { step: 'accountSettings', status: 'passed', finding: 'settingsRead' },
             { step: 'access', status: 'failed', finding: 'firewallUnknown', auth: 'entra' },
-            { step: 'dns', status: 'passed', finding: 'publicDns' },
         ],
     } satisfies DiagnosticsState);
     client.openHelp.mutate.mockResolvedValueOnce(false);
@@ -115,8 +114,28 @@ it('distinguishes an ARM read, a data-plane firewall denial, and public DNS, and
 
     const list = screen.getByRole('list', { name: 'Connection checks' });
     expect(within(list).getByText('Azure account settings (control plane)')).toBeVisible();
+    expect(within(list).queryByText('Server address (DNS)')).not.toBeInTheDocument();
+});
+
+it('shows the name-resolution evidence when the DNS check ran', async () => {
+    client.state.query.mockResolvedValue({
+        ...completed,
+        checks: [
+            { step: 'target', status: 'passed', finding: 'endpointReady' },
+            { step: 'access', status: 'skipped', finding: 'apiProbeUnavailable' },
+            { step: 'dns', status: 'passed', finding: 'publicDns' },
+        ],
+    } satisfies DiagnosticsState);
+    const user = userEvent.setup();
+    renderPanel();
+    const list = await screen.findByRole('list', { name: 'Connection checks' });
+    await within(list).findByText('Server address (DNS)');
     expect(within(list).getByText('Resolved to public IP addresses')).toBeVisible();
-    await user.click(within(list).getByRole('button', { name: 'Details for Server address (DNS)' }));
+    const details = within(list).getByRole('button', { name: 'Details for Server address (DNS)' });
+    expect(details).toHaveTextContent('Details');
+    details.focus();
+    await user.keyboard('{Enter}');
+    expect(details).toHaveAttribute('aria-expanded', 'true');
     expect(within(list).getByText(/This is expected for public access/)).toBeVisible();
     expect(within(list).getByText(/DNS does not show which route the SDK used/)).toBeVisible();
 });
@@ -174,7 +193,7 @@ it('shows progress, preserves button focus, and can cancel and rerun', async () 
     await screen.findByRole('region', { name: 'Connection diagnostics cancelled.' });
     expect(client.cancel.mutate).toHaveBeenCalledOnce();
     expect(rerun).toHaveFocus();
-    expect(within(list).getAllByText('Not run')).toHaveLength(4);
+    expect(within(list).getAllByText('Not run')).toHaveLength(3);
 });
 
 it('opens the report in the editor through the host and offers copy and save', async () => {

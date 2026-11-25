@@ -201,6 +201,7 @@ describe('diagnosing a NoSQL connection', () => {
             auth: 'entra',
         });
         expect(onPrincipal.mock.calls).toEqual(eligible ? [[principal]] : []);
+        expect(io.lookup).not.toHaveBeenCalled();
         expect(renderReport(state) + JSON.stringify([state, io.log.mock.calls, io.telemetry.mock.calls])).not.toContain(
             principal,
         );
@@ -236,7 +237,7 @@ describe('diagnosing a NoSQL connection', () => {
                         authMethod: 'entra',
                         findingCodes: expect.stringContaining('firewallUnknown'),
                     }),
-                    measurements: { durationMs: expect.any(Number), checkCount: 4 },
+                    measurements: { durationMs: expect.any(Number), checkCount: 3 },
                 }),
             ],
         ]);
@@ -246,7 +247,7 @@ describe('diagnosing a NoSQL connection', () => {
         expect(report).toContain('Check log');
         expect(report).toContain(`Run ID: ${state.trace?.runId}`);
         expect(report).toContain('sdk target=alternate operation=listDatabases status=403 substatus=1000');
-        expect(report).toContain('check=dns status=passed finding=privateDns');
+        expect(report).not.toContain('check=dns');
         expect(report).toContain('finished phase=completed');
         expect(local).not.toMatch(/secret=query|sensitive-auth-header|raw-response/);
         expect(report + JSON.stringify(runEvents)).not.toMatch(
@@ -254,23 +255,36 @@ describe('diagnosing a NoSQL connection', () => {
         );
     });
 
-    it('uses a bounded, read-only SDK operation and never treats auxiliary DNS as authoritative', async () => {
-        io.lookup.mockRejectedValue(new Error('name could not be resolved locally'));
+    it('uses a bounded, read-only SDK operation without a redundant DNS lookup on success', async () => {
         const states = await diagnose(attached);
         expect(io.get).not.toHaveBeenCalled();
         expect(io.readAll).toHaveBeenCalledExactlyOnceWith({ maxItemCount: 1, abortSignal: expect.any(AbortSignal) });
         expect(io.fetchNext).toHaveBeenCalledOnce();
         expect(io.dispose).toHaveBeenCalledTimes(2);
+        expect(io.lookup).not.toHaveBeenCalled();
         expect(states.at(-1)).toMatchObject({
             phase: 'completed',
             checks: [
                 { finding: 'endpointReady' },
                 { finding: 'settingsNotApplicable' },
                 { finding: 'connected', auth: 'key' },
-                { finding: 'unresolvedDns', status: 'info' },
             ],
         });
         expect(JSON.stringify(states)).not.toContain('secret');
+    });
+
+    it('keeps the DNS lookup after an SDK name-resolution failure', async () => {
+        io.fetchNext.mockRejectedValue({ code: 'ENOTFOUND' });
+        io.lookup.mockRejectedValue(new Error('name could not be resolved locally'));
+
+        const state = (await diagnose(attached)).at(-1)!;
+        expect(io.lookup).toHaveBeenCalledExactlyOnceWith('example.test', { all: true });
+        expect(state.checks).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({ step: 'access', status: 'failed', finding: 'dnsFailure' }),
+                { step: 'dns', status: 'info', finding: 'unresolvedDns' },
+            ]),
+        );
     });
 
     it('uses the ARM settings as context, not as proof of access', async () => {
@@ -306,18 +320,30 @@ describe('diagnosing a NoSQL connection', () => {
         expect(JSON.stringify(states)).not.toContain('203.0.113.45');
     });
 
-    it('reports successful public DNS lookup independently of a blocked data-plane request', async () => {
-        io.get.mockResolvedValue({ documentEndpoint: 'https://example.test/', disableLocalAuth: true });
-        io.lookup.mockResolvedValue([{ address: '203.0.113.1', family: 4 }]);
-        io.fetchNext.mockRejectedValue({ code: 403, message: 'Blocked by your Cosmos DB account firewall settings.' });
-        const state = (await diagnose(cloud)).at(-1)!;
-        expect(state.checks).toEqual([
-            expect.objectContaining({ step: 'target', status: 'passed' }),
-            expect.objectContaining({ step: 'accountSettings', status: 'passed' }),
-            expect.objectContaining({ step: 'access', status: 'failed', finding: 'firewallUnknown' }),
-            { step: 'dns', status: 'passed', finding: 'publicDns' },
-        ]);
-    });
+    it.each([0, 1])(
+        'only checks DNS after a firewall denial if private routing may matter (%i private endpoints)',
+        async (privateEndpoints) => {
+            io.get.mockResolvedValue({
+                documentEndpoint: 'https://example.test/',
+                disableLocalAuth: true,
+                publicNetworkAccess: 'Enabled',
+                privateEndpointConnections: Array.from({ length: privateEndpoints }, () => ({})),
+            });
+            io.lookup.mockResolvedValue([{ address: '203.0.113.1', family: 4 }]);
+            io.fetchNext.mockRejectedValue({
+                code: 403,
+                message: 'Blocked by your Cosmos DB account firewall settings.',
+            });
+            const state = (await diagnose(cloud)).at(-1)!;
+            expect(io.lookup).toHaveBeenCalledTimes(privateEndpoints > 0 ? 1 : 0);
+            expect(state.checks).toEqual([
+                expect.objectContaining({ step: 'target', status: 'passed' }),
+                expect.objectContaining({ step: 'accountSettings', status: 'passed' }),
+                expect.objectContaining({ step: 'access', status: 'failed', finding: 'firewallUnknown' }),
+                ...(privateEndpoints > 0 ? [{ step: 'dns', status: 'passed', finding: 'publicDns' }] : []),
+            ]);
+        },
+    );
 
     it('runs ARM and DNS checks without retrieving credentials or sending a NoSQL request for other APIs', async () => {
         io.get.mockResolvedValue({

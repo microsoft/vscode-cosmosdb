@@ -206,10 +206,11 @@ You can also run **Cosmos DB: Diagnose Connection** from the Command Palette or 
 when the account cannot load databases in the tree.
 
 The diagnostic runs where the VS Code extension runs (locally, in WSL, over SSH, or in a dev container).
-For accounts selected from Azure Resources, it checks the available Azure Resource Manager network settings. It checks
-DNS for the available account endpoint; a proxy can use a different route or resolver. For NoSQL connections it also uses
-the Cosmos DB SDK to read database metadata without reading documents or changing resources. For other APIs the data-plane
-check is skipped: account settings and DNS do not confirm that the API itself is reachable.
+For accounts selected from Azure Resources, it checks the available Azure Resource Manager network settings. For NoSQL
+connections it uses the Cosmos DB SDK to read database metadata without reading documents or changing resources. It
+checks DNS if the SDK reports a name-resolution, transport, or timeout failure, or if a denial may involve private
+routing. For other APIs the data-plane check is skipped: account settings and DNS do not confirm that the API itself
+is reachable.
 
 If Cosmos DB reports an outgoing IP that was blocked, the panel shows it locally so you can check the IP allowlist.
 For Private Link, check private DNS and routing before changing the allowlist. The diagnostic does not change network

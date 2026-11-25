@@ -49,24 +49,10 @@ function publicAccessText(network: NonNullable<CheckResult['network']>): string 
     return l10n.t('Public network access: {0}', label);
 }
 
-export function checkEvidence(check: CheckResult): string {
+export function checkEvidence(check: CheckResult): string | undefined {
     if (check.network) return publicAccessText(check.network);
-    if (check.finding === 'dataRbac') return l10n.t('Data-plane role required');
     if (check.auth) return authText(check.auth);
-    switch (check.finding) {
-        case 'endpointReady':
-            return l10n.t('Valid endpoint');
-        case 'privateDns':
-            return l10n.t('Private or local addresses');
-        case 'publicDns':
-            return l10n.t('Resolved to public IP addresses');
-        case 'mixedDns':
-            return l10n.t('Public and private addresses');
-        case 'unresolvedDns':
-            return l10n.t('Name resolution inconclusive');
-        default:
-            return statusLabel(check.status);
-    }
+    return check.status === 'skipped' ? statusLabel(check.status) : undefined;
 }
 
 export function checkText(

@@ -30,11 +30,17 @@ export const useDiagnosticsStyles = makeStyles({
         whiteSpace: 'nowrap',
     },
     details: {
-        '&:not([hidden])': { display: 'grid' },
-        marginBlockStart: tokens.spacingVerticalS,
+        display: 'grid',
         gap: tokens.spacingVerticalXS,
         overflowWrap: 'anywhere',
     },
+    actions: {
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: tokens.spacingHorizontalS,
+        marginBlockStart: tokens.spacingVerticalXS,
+    },
+    actionError: { color: tokens.colorStatusDangerForeground1 },
     summary: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS },
     summaryTitle: {
         margin: 0,

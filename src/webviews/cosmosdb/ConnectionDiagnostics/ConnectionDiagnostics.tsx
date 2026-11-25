@@ -6,7 +6,6 @@
 import {
     Button,
     Divider,
-    Link,
     Menu,
     MenuItem,
     MenuList,
@@ -20,7 +19,13 @@ import {
     useAnnounce,
     useId,
 } from '@fluentui/react-components';
-import { ArrowClockwiseRegular, DismissRegular, ErrorCircleFilled, NetworkCheckRegular } from '@fluentui/react-icons';
+import {
+    ArrowClockwiseRegular,
+    DismissRegular,
+    ErrorCircleFilled,
+    NetworkCheckRegular,
+    OpenRegular,
+} from '@fluentui/react-icons';
 import {
     Container,
     ContainerBody,
@@ -52,14 +57,6 @@ const savedSteps: readonly Step[] = ['target', 'accountSettings', 'access', 'dns
 type PanelStyles = ReturnType<typeof useDiagnosticsStyles>;
 type OpenHelp = (topic: DiagnosticsHelpTopic) => void;
 
-function HelpLinks({ topics, openHelp }: { topics: readonly DiagnosticsHelpTopic[]; openHelp: OpenHelp }) {
-    return topics.map((topic) => (
-        <Link key={topic} as="button" onClick={() => openHelp(topic)}>
-            {helpLabel(topic)}
-        </Link>
-    ));
-}
-
 function rowStatus(check: CheckResult | undefined, active: boolean) {
     if (active) return 'active';
     if (check?.status === 'passed') return 'done';
@@ -72,21 +69,26 @@ function CheckRow({
     state,
     styles,
     openHelp,
+    helpFailed,
+    roleAction,
+    roleFeedback,
 }: {
     step: Step;
     state: DiagnosticsState | undefined;
     styles: PanelStyles;
     openHelp: OpenHelp;
+    helpFailed: boolean;
+    roleAction?: ReactNode;
+    roleFeedback?: string;
 }) {
-    const detailsId = useId('diagnostics-details');
-    const [userExpanded, setUserExpanded] = useState<boolean>();
     const check = state?.checks.find((result) => result.step === step);
-    const expanded =
-        userExpanded ?? (state?.phase === 'completed' && (check?.status === 'failed' || check?.finding === 'dataRbac'));
     const active = state?.active === step;
     const duration = check?.status !== 'skipped' ? state?.trace?.checkDurations?.[step] : undefined;
     const label = stepLabel(step);
     const evidence = check && checkEvidence(check);
+    const topics = check && state ? checkHelpTopics(check, state.kind) : [];
+    const needsRole = state?.phase === 'completed' && check?.finding === 'dataRbac';
+    const remediation = needsRole ? roleAction : undefined;
     return (
         <StatusListItem
             className={styles.row}
@@ -109,27 +111,39 @@ function CheckRow({
             }
             detail={
                 check && state ? (
-                    <>
-                        <span aria-hidden={check.status !== 'skipped' && evidence === statusLabel(check.status)}>
-                            {evidence}
-                        </span>{' '}
-                        <Link
-                            as="button"
-                            aria-label={l10n.t('Details for {0}', label)}
-                            aria-expanded={expanded}
-                            aria-controls={detailsId}
-                            onClick={() => setUserExpanded(!expanded)}
-                        >
-                            {l10n.t('Details')}
-                        </Link>
-                        <span id={detailsId} hidden={!expanded} className={styles.details}>
-                            <span>{checkText(check, state.kind, { omitRowEvidence: true })}</span>
-                            {check.observedClientIp && (
-                                <span>{l10n.t('Outgoing IP reported by Cosmos DB: {0}', check.observedClientIp)}</span>
-                            )}
-                            <HelpLinks topics={checkHelpTopics(check, state.kind)} openHelp={openHelp} />
-                        </span>
-                    </>
+                    <span className={styles.details}>
+                        {evidence && <span>{evidence}</span>}
+                        <span>{checkText(check, state.kind, { omitRowEvidence: true })}</span>
+                        {check.observedClientIp && (
+                            <span>{l10n.t('Outgoing IP reported by Cosmos DB: {0}', check.observedClientIp)}</span>
+                        )}
+                        {needsRole && !state.canAddDataRole && !roleFeedback && (
+                            <span>
+                                {l10n.t('Ask an account administrator to grant the required data-plane permissions.')}
+                            </span>
+                        )}
+                        {(remediation || topics.length > 0) && (
+                            <span className={styles.actions}>
+                                {remediation}
+                                {topics.map((topic) => (
+                                    <Button
+                                        key={topic}
+                                        size="small"
+                                        icon={<OpenRegular aria-hidden />}
+                                        onClick={() => openHelp(topic)}
+                                    >
+                                        {helpLabel(topic)}
+                                    </Button>
+                                ))}
+                            </span>
+                        )}
+                        {needsRole && <output>{roleFeedback}</output>}
+                        {helpFailed && (
+                            <span role="alert" className={styles.actionError}>
+                                {l10n.t('Could not open the troubleshooting documentation in your browser.')}
+                            </span>
+                        )}
+                    </span>
                 ) : state && state.phase !== 'running' ? (
                     <span aria-hidden>{l10n.t('Not run')}</span>
                 ) : undefined
@@ -138,17 +152,7 @@ function CheckRow({
     );
 }
 
-function DiagnosticsSummary({
-    state,
-    styles,
-    roleAction,
-    roleFeedback,
-}: {
-    state: DiagnosticsState;
-    styles: PanelStyles;
-    roleAction: ReactNode;
-    roleFeedback?: string;
-}) {
+function DiagnosticsSummary({ state, styles }: { state: DiagnosticsState; styles: PanelStyles }) {
     const titleId = useId('diagnostics-summary');
     const failure = state.checks.find((check) => check.status === 'failed');
     const cancelled = state.phase === 'cancelled';
@@ -167,18 +171,6 @@ function DiagnosticsSummary({
                         <MessageBarTitle>{phaseLabel(state)}</MessageBarTitle>
                     </h3>
                     {cancelled && <Text>{l10n.t('You cancelled the diagnosis. The results so far are kept.')}</Text>}
-                    {!cancelled && needsRole && (
-                        <>
-                            {!state.canAddDataRole && !roleFeedback && (
-                                <Text>
-                                    {l10n.t(
-                                        'Ask an account administrator to grant the required data-plane permissions.',
-                                    )}
-                                </Text>
-                            )}
-                            <output>{roleFeedback}</output>
-                        </>
-                    )}
                     {!cancelled && !connected && (
                         <>
                             <Divider />
@@ -190,7 +182,6 @@ function DiagnosticsSummary({
                         </>
                     )}
                 </MessageBarBody>
-                {!cancelled && needsRole && roleAction && <MessageBarActions>{roleAction}</MessageBarActions>}
             </MessageBar>
         </section>
     );
@@ -217,7 +208,7 @@ export function ConnectionDiagnostics() {
     const [state, setState] = useState<DiagnosticsState>();
     const [revision, setRevision] = useState(0);
     const [failure, setFailure] = useState<string>();
-    const [helpFailure, setHelpFailure] = useState<string>();
+    const [helpFailure, setHelpFailure] = useState<Step>();
     const [needsRefresh, setNeedsRefresh] = useState(false);
     const [reportFeedback, setReportFeedback] = useState<{ intent: 'success' | 'error'; text: string }>();
     const [roleFeedback, setRoleFeedback] = useState<string>();
@@ -298,14 +289,14 @@ export function ConnectionDiagnostics() {
         }
     }
 
-    async function openHelp(topic: DiagnosticsHelpTopic) {
+    async function openHelp(step: Step, topic: DiagnosticsHelpTopic) {
         setHelpFailure(undefined);
         try {
             if (await client.openHelp.mutate(topic)) return;
         } catch {
             // A failed RPC uses the same on-screen message as a browser launch failure.
         }
-        setHelpFailure(l10n.t('Could not open the troubleshooting documentation in your browser.'));
+        setHelpFailure(step);
     }
 
     async function addDataRole() {
@@ -420,36 +411,31 @@ export function ConnectionDiagnostics() {
                                     step={step}
                                     state={state}
                                     styles={styles}
-                                    openHelp={(topic) => void openHelp(topic)}
+                                    openHelp={(topic) => void openHelp(step, topic)}
+                                    helpFailed={helpFailure === step}
+                                    roleFeedback={step === 'access' ? roleFeedback : undefined}
+                                    roleAction={
+                                        step === 'access' &&
+                                        state?.phase === 'completed' &&
+                                        state.canAddDataRole && (
+                                            <Button
+                                                ref={addRoleButton}
+                                                size="small"
+                                                appearance="primary"
+                                                disabledFocusable={pending || needsRefresh}
+                                                onClick={() => void addDataRole()}
+                                            >
+                                                {l10n.t('Add Data Contributor role')}
+                                            </Button>
+                                        )
+                                    }
                                 />
                             ))}
                         </StatusList>
-                        {ready && (
-                            <DiagnosticsSummary
-                                state={state}
-                                styles={styles}
-                                roleFeedback={roleFeedback}
-                                roleAction={
-                                    state.canAddDataRole && (
-                                        <Button
-                                            ref={addRoleButton}
-                                            disabledFocusable={pending || needsRefresh}
-                                            onClick={() => void addDataRole()}
-                                        >
-                                            {l10n.t('Add Data Contributor role')}
-                                        </Button>
-                                    )
-                                }
-                            />
-                        )}
+                        {ready && <DiagnosticsSummary state={state} styles={styles} />}
                         {failure && (
                             <MessageBar intent="error">
                                 <MessageBarBody>{failure}</MessageBarBody>
-                            </MessageBar>
-                        )}
-                        {helpFailure && (
-                            <MessageBar intent="error">
-                                <MessageBarBody>{helpFailure}</MessageBarBody>
                             </MessageBar>
                         )}
                         {reportFeedback && (

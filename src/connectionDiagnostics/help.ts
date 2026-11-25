@@ -24,7 +24,7 @@ export function helpLabel(topic: DiagnosticsHelpTopic): string {
         ipFirewall: l10n.t('Configure the Cosmos DB IP firewall'),
         virtualNetwork: l10n.t('Configure Cosmos DB virtual network access'),
         privateLink: l10n.t('Configure Cosmos DB Private Link and DNS'),
-        dataRbac: l10n.t('Configure Cosmos DB data-plane roles'),
+        dataRbac: l10n.t('Learn about Cosmos DB data-plane roles'),
         proxy: l10n.t('Configure VS Code network and proxy settings'),
         emulator: l10n.t('Configure the Cosmos DB emulator'),
     }[topic];

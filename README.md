@@ -217,8 +217,8 @@ For Private Link, check private DNS and routing before changing the allowlist. T
 settings. The **Azure account settings (control plane)** result only verifies Azure Resource Manager access. NoSQL
 **data-plane access** is checked separately; reading account settings does not grant access to data. The NoSQL probe
 uses the same credential selection as Query Editor, without prompting for a data-plane
-sign-in. Findings and help links appear under each check's **Details**, which opens automatically for failed checks
-and missing data-role findings. **Show Output** opens the
+sign-in. Each completed check shows its findings directly below its heading, with buttons for any relevant documentation
+or remediation. **Show Output** opens the
 local **Azure Cosmos DB** channel, which records check progress and the destination of SDK requests that returned an
 HTTP error. To contact support, use **Show report** to open the results and check log in a read-only Markdown editor.
 Use **Share report** to copy the Markdown or save a Markdown or JSON file. The report includes the run ID for

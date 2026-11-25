@@ -18,6 +18,8 @@ import {
 } from '../connectionDiagnostics/reportActions';
 import { assignDiagnosticsDataRole, type RoleActionOutcome } from '../connectionDiagnostics/roleAction';
 import { type DiagnosticsTarget, runDiagnostics } from '../connectionDiagnostics/run';
+import { maskConnectionTelemetry } from '../cosmosdb/maskConnectionTelemetry';
+import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { ext } from '../extensionVariables';
 import { BaseTab } from './BaseTab';
 import { diagnosticsAction, diagnosticsCallerFactory, diagnosticsProgress, diagnosticsRouter } from './trpc/trpc';
@@ -92,7 +94,7 @@ export type ConnectionDiagnosticsRouter = typeof connectionDiagnosticsRouter;
 
 export class ConnectionDiagnosticsTab extends BaseTab {
     private static readonly viewType = 'cosmosDbConnectionDiagnostics';
-    private static readonly tabs = new Map<string, ConnectionDiagnosticsTab>();
+    private static readonly tabs = new Map<string | NoSqlQueryConnection, ConnectionDiagnosticsTab>();
     private state: DiagnosticsState;
     private controller?: AbortController;
     private applyingRole = false;
@@ -103,13 +105,24 @@ export class ConnectionDiagnosticsTab extends BaseTab {
         private target: DiagnosticsTarget,
     ) {
         super(panel, ConnectionDiagnosticsTab.viewType);
-        this.telemetryContext.addMaskedValue([target.account.id, target.account.name]);
-        this.state = { kind: target.kind, phase: 'running', checks: [] };
+        if (target.kind === 'queryEditor') {
+            const masks: string[] = [];
+            maskConnectionTelemetry({ valuesToMask: masks }, target.connection);
+            this.telemetryContext.addMaskedValue(masks);
+        } else {
+            this.telemetryContext.addMaskedValue([target.account.id, target.account.name]);
+        }
+        this.state = {
+            kind: target.kind === 'queryEditor' && target.connection.isEmulator ? 'emulator' : target.kind,
+            scope: target.kind === 'queryEditor' ? 'container' : undefined,
+            phase: 'running',
+            checks: [],
+        };
         try {
             const context: DiagnosticsRouterContext = {
                 getState: () => ({
                     ...this.state,
-                    connectionName: this.target.account.name,
+                    connectionName: ConnectionDiagnosticsTab.connectionName(this.target),
                     canAddDataRole: this.state.phase === 'completed' && !!this.roleTarget,
                 }),
                 rerun: () => this.startRun(),
@@ -127,7 +140,7 @@ export class ConnectionDiagnosticsTab extends BaseTab {
     }
 
     static render(target: DiagnosticsTarget): void {
-        const key = `${target.kind}:${target.account.id}`;
+        const key = target.kind === 'queryEditor' ? target.connection : `${target.kind}:${target.account.id}`;
         const existing = this.tabs.get(key);
         if (existing) {
             existing.target = target;
@@ -136,13 +149,19 @@ export class ConnectionDiagnosticsTab extends BaseTab {
         }
         const panel = vscode.window.createWebviewPanel(
             this.viewType,
-            l10n.t('Connection diagnostics: {0}', target.account.name),
+            l10n.t('Connection diagnostics: {0}', this.connectionName(target)),
             vscode.ViewColumn.Active,
             { enableScripts: true },
         );
         const tab = new ConnectionDiagnosticsTab(panel, target);
         this.tabs.set(key, tab);
         tab.onDisposed(() => this.tabs.delete(key));
+    }
+
+    private static connectionName(target: DiagnosticsTarget): string {
+        return target.kind === 'queryEditor'
+            ? `${target.connection.databaseId} / ${target.connection.containerId}`
+            : target.account.name;
     }
 
     public override dispose(): void {
@@ -178,6 +197,7 @@ export class ConnectionDiagnosticsTab extends BaseTab {
             this.state.phase === 'completed' &&
             runId === this.state.trace?.runId &&
             roleTarget === this.roleTarget &&
+            this.target.kind === 'azure' &&
             roleTarget?.account.id === this.target.account.id;
         if (!roleTarget || this.applyingRole || !isCurrent()) return 'unavailable';
         this.applyingRole = true;

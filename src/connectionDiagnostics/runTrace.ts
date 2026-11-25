@@ -3,13 +3,23 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type PipelineResponse } from '@azure/core-rest-pipeline';
+import { type PipelineRequest, type PipelineResponse } from '@azure/core-rest-pipeline';
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import { randomUUID } from 'node:crypto';
 import { ext } from '../extensionVariables';
-import { type DiagnosticsState, type Step } from './model';
+import { getHttpFailure } from './classify';
+import { type DiagnosticsState, type FailureStage, type ProbeKind, type Step } from './model';
 
 const maxHttpResponses = 16;
+
+export function sdkStage(request: PipelineRequest): FailureStage | undefined {
+    const path = URL.parse(request.url)?.pathname;
+    if (path === '/') return 'accountMetadata';
+    if (path === '/dbs') return 'listDatabases';
+    if (path && /^\/dbs\/[^/]+\/colls\/[^/]+\/docs\/?$/.test(path) && request.method === 'POST') return 'query';
+    if (path && /^\/dbs\/[^/]+\/colls\/[^/]+(?:\/|$)/.test(path)) return 'containerMetadata';
+    return undefined;
+}
 
 export class DiagnosticsRunTrace {
     public readonly runId = randomUUID();
@@ -21,7 +31,7 @@ export class DiagnosticsRunTrace {
     private httpResponses = 0;
     private finished = false;
 
-    public constructor(kind: DiagnosticsState['kind'], probe: 'nosql' | 'network') {
+    public constructor(kind: DiagnosticsState['kind'], probe: ProbeKind) {
         this.write(`started target=${kind} probe=${probe}`);
     }
 
@@ -39,12 +49,11 @@ export class DiagnosticsRunTrace {
         const url = URL.parse(response.request.url);
         const origin = url?.protocol === 'https:' || url?.protocol === 'http:' ? url.origin : undefined;
         const target = !origin ? 'unknown' : origin === endpoint.origin ? 'configured' : 'alternate';
-        const operation =
-            url?.pathname === '/' ? 'accountMetadata' : url?.pathname === '/dbs' ? 'listDatabases' : 'other';
+        const operation = sdkStage(response.request) ?? 'other';
         const status = response.status;
         if (!Number.isInteger(status) || status < 100 || status > 599) return;
-        const rawSubstatus = response.headers.get('x-ms-substatus');
-        const substatus = rawSubstatus && /^\d{1,5}$/.test(rawSubstatus) ? ` substatus=${Number(rawSubstatus)}` : '';
+        const http = getHttpFailure({ statusCode: status, substatus: response.headers.get('x-ms-substatus') });
+        const substatus = http?.substatus !== undefined ? ` substatus=${http.substatus}` : '';
         this.write(
             `sdk target=${target} operation=${operation} status=${status}${substatus}`,
             origin && status >= 400 ? ` endpoint=${origin}` : '',
@@ -52,14 +61,17 @@ export class DiagnosticsRunTrace {
     }
 
     public recordChecks(checks: DiagnosticsState['checks']): void {
-        for (const { step, finding, status, auth } of checks) {
+        for (const { step, finding, status, auth, failureStage } of checks) {
             if (this.finishedSteps.has(step)) continue;
             this.finishedSteps.add(step);
             const startedAt = this.stepStartedAt.get(step);
             const durationMs = startedAt === undefined ? undefined : Math.round(performance.now() - startedAt);
             if (durationMs !== undefined) this.checkDurations[step] = durationMs;
             const duration = durationMs === undefined ? '' : ` durationMs=${durationMs}`;
-            this.write(`check=${step} status=${status} finding=${finding}${auth ? ` auth=${auth}` : ''}${duration}`);
+            const stage = failureStage ? ` stage=${failureStage}` : '';
+            this.write(
+                `check=${step} status=${status} finding=${finding}${auth ? ` auth=${auth}` : ''}${stage}${duration}`,
+            );
         }
     }
 
@@ -83,7 +95,7 @@ export class DiagnosticsRunTrace {
 /** Records bounded run metadata; no file contents, paths, or names are emitted. */
 export async function reportDiagnosticsOutcome(
     state: DiagnosticsState,
-    probe: 'nosql' | 'network',
+    probe: ProbeKind,
     durationMs: number,
 ): Promise<void> {
     await callWithTelemetryAndErrorHandling('cosmosDB.diagnostics.run', (context) => {
@@ -91,12 +103,14 @@ export async function reportDiagnosticsOutcome(
         context.errorHandling.rethrow = false;
         context.telemetry.maskEntireErrorMessage = true;
         const access = state.checks.find(({ step }) => step === 'access');
+        const query = state.checks.find(({ step }) => step === 'query');
+        const evaluated = query?.status === 'skipped' ? access : (query ?? access);
         const outcome =
             state.phase === 'cancelled'
                 ? 'cancelled'
-                : access?.status === 'passed'
+                : evaluated?.status === 'passed'
                   ? 'connected'
-                  : access?.status === 'failed' || access?.finding === 'dataRbac'
+                  : evaluated?.status === 'failed' || evaluated?.finding === 'dataRbac'
                     ? 'failed'
                     : 'notTested';
         if (state.trace) context.telemetry.properties.diagnosticsRunId = state.trace.runId;
@@ -104,6 +118,7 @@ export async function reportDiagnosticsOutcome(
         context.telemetry.properties.probeKind = probe;
         context.telemetry.properties.connectionOutcome = outcome;
         context.telemetry.properties.authMethod = access?.auth ?? 'none';
+        if (evaluated?.failureStage) context.telemetry.properties.failureStage = evaluated.failureStage;
         context.telemetry.properties.findingCodes = state.checks.map(({ finding }) => finding).join(',');
         if (state.phase === 'cancelled') context.telemetry.properties.result = 'Canceled';
         context.telemetry.measurements.durationMs = durationMs;

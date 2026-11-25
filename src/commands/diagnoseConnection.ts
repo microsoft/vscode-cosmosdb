@@ -7,7 +7,7 @@ import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { type DiagnosticsTarget } from '../connectionDiagnostics/run';
+import { type AccountDiagnosticsTarget } from '../connectionDiagnostics/run';
 import { ext } from '../extensionVariables';
 import { getConnectionDiagnosticsTarget } from '../tree/cosmosdb/connectionDiagnosticsTarget';
 import { type TreeElement } from '../tree/TreeElement';
@@ -15,7 +15,7 @@ import { isTreeElementWithContextValue } from '../tree/TreeElementWithContextVal
 import { LocalCoreEmulatorsItem } from '../tree/workspace-view/cosmosdb/LocalEmulators/LocalCoreEmulatorsItem';
 import { pickAppResource } from '../utils/pickItem/pickAppResource';
 
-async function selectConnection(context: IActionContext): Promise<DiagnosticsTarget | undefined> {
+async function selectConnection(context: IActionContext): Promise<AccountDiagnosticsTarget | undefined> {
     const source = await vscode.window.showQuickPick(
         [
             { label: l10n.t('Azure account'), source: 'azure' },

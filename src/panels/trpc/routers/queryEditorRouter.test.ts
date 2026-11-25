@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
     readContainer: vi.fn(),
     pickConnection: vi.fn(),
     openDocument: vi.fn(),
+    openDiagnostics: vi.fn(),
     readSchema: vi.fn(),
 }));
 
@@ -45,6 +46,7 @@ vi.mock('../../../utils/dialogs/getConfirmation', () => ({ getConfirmationAsInSe
 vi.mock('../../../utils/survey', () => ({ promptAfterActionEventually: vi.fn() }));
 vi.mock('../../../utils/vscodeUtils', () => ({}));
 vi.mock('../../DocumentTab', () => ({ DocumentTab: { render: mocks.openDocument } }));
+vi.mock('../../ConnectionDiagnosticsTab', () => ({ ConnectionDiagnosticsTab: { render: mocks.openDiagnostics } }));
 vi.mock('../../QueryEditorTab', () => ({ QueryEditorTab: { title: 'Query Editor' } }));
 vi.mock('@vscode/l10n', () => ({ t: (message: string) => message }));
 vi.mock('@microsoft/vscode-azext-utils', () => ({
@@ -112,6 +114,22 @@ describe('query editor connection ownership', () => {
             throttled: [],
             failed: [],
             aborted: false,
+        });
+    });
+
+    it('opens a container diagnostic only for the current editor connection', async () => {
+        const ctx = createContext();
+        const caller = queryEditorRouterDef.createCaller(ctx);
+        await expect(caller.diagnoseConnection({ connectionVersion: 1 })).rejects.toThrow('no longer current');
+        ctx.state.isChangingConnection = true;
+        await expect(caller.diagnoseConnection({ connectionVersion: 0 })).rejects.toThrow('The connection is changing');
+        expect(mocks.openDiagnostics).not.toHaveBeenCalled();
+        ctx.state.isChangingConnection = false;
+        await caller.diagnoseConnection({ connectionVersion: 0 });
+        expect(mocks.openDiagnostics).toHaveBeenCalledExactlyOnceWith({
+            kind: 'queryEditor',
+            probe: 'query',
+            connection: connectionA,
         });
     });
 

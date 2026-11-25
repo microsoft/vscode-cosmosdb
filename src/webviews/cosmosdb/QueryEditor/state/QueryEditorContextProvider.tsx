@@ -224,6 +224,10 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
     public async duplicateTab(text: string): Promise<void> {
         await this.safeMutate(() => this.trpcClient.queryEditor.duplicateTab.mutate({ text }));
     }
+    public async diagnoseConnection(): Promise<void> {
+        const connectionVersion = this.connectionVersion;
+        await this.safeMutate(() => this.trpcClient.queryEditor.diagnoseConnection.mutate({ connectionVersion }));
+    }
     public async insertText(query: string): Promise<void> {
         this.dispatch({ type: 'insertText', queryValue: query ?? '' });
         await this.safeMutate(() => this.trpcClient.queryEditor.updateQueryText.mutate({ query }));

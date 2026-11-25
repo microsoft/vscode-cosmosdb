@@ -81,6 +81,21 @@ describe('Cosmos client transport configuration', () => {
         expect(onHttpResponse).toHaveBeenCalledExactlyOnceWith(response);
     });
 
+    it('observes the request even when the transport rejects without a response', async () => {
+        const request = createPipelineRequest({ url: 'https://account.example.com/' });
+        const error = new Error('Connection refused');
+        const onHttpRequest = vi.fn();
+        const onHttpResponse = vi.fn();
+        const sendRequest = vi.fn().mockRejectedValue(error);
+        getCosmosClient(connection, { httpClient: { sendRequest }, onHttpRequest, onHttpResponse });
+
+        const actual = vi.mocked(CosmosClient).mock.calls[0][0].httpClient;
+        await expect(actual?.sendRequest(request)).rejects.toBe(error);
+        expect(onHttpRequest).toHaveBeenCalledExactlyOnceWith(request);
+        expect(onHttpRequest).toHaveBeenCalledBefore(sendRequest);
+        expect(onHttpResponse).not.toHaveBeenCalled();
+    });
+
     it.each([
         'https://localhost:8081',
         'https://127.0.0.1:8081',

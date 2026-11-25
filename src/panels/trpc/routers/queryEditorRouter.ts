@@ -107,6 +107,19 @@ type ConnectionState = {
 // Fire-and-forget telemetry calls with separate IDs (e.g. `cosmosDB.ai.*`) are kept as-is.
 
 export const queryEditorRouterDef = queryEditorRouter({
+    diagnoseConnection: queryEditorProcedure
+        .input(z.object({ connectionVersion: z.number().int().nonnegative() }))
+        .mutation(async ({ ctx, input }) => {
+            const connection = requireQueryConnection(ctx, input.connectionVersion);
+            if (ctx.actionContext) {
+                maskConnectionTelemetry(ctx.actionContext, connection);
+                ctx.actionContext.telemetry.maskEntireErrorMessage = true;
+            }
+            const { ConnectionDiagnosticsTab } = await import('../../ConnectionDiagnosticsTab');
+            requireQueryConnection(ctx, input.connectionVersion);
+            ConnectionDiagnosticsTab.render({ kind: 'queryEditor', probe: 'query', connection });
+        }),
+
     /**
      * Initializes the query editor webview with connection state, query history,
      * throughput buckets, initial query, survey status, and AI features status.

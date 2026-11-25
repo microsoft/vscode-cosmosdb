@@ -47,6 +47,7 @@ export function checkHelpTopics(check: CheckResult, kind: TargetKind): readonly 
         case 'dataRbac':
         case 'localAuthDisabled':
         case 'authentication':
+        case 'tokenUnavailable':
         case 'missingCredentials':
             return ['dataRbac'];
         case 'mixedDns':
@@ -56,6 +57,10 @@ export function checkHelpTopics(check: CheckResult, kind: TargetKind): readonly 
         case 'tlsFailure':
         case 'proxyAuthentication':
         case 'transportFailure':
+        case 'connectionRefused':
+        case 'connectionReset':
+        case 'connectionTimedOut':
+        case 'requestTimedOut':
         case 'timedOut':
             return ['proxy'];
         default:

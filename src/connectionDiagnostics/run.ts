@@ -12,17 +12,23 @@ import { AuthenticationMethod } from '../cosmosdb/AuthenticationMethod';
 import { parseCosmosDBConnectionString } from '../cosmosdb/cosmosDBConnectionStrings';
 import { type CosmosDBCredential, getCosmosDBCredentials } from '../cosmosdb/CosmosDBCredential';
 import { getCosmosClient, type GetCosmosClientOptions } from '../cosmosdb/getCosmosClient';
+import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { type CosmosDBAccountModel } from '../tree/cosmosdb/models/CosmosDBAccountModel';
 import { type CosmosDBAttachedAccountModel } from '../tree/workspace-view/cosmosdb/CosmosDBAttachedAccountModel';
 import { createCosmosDBManagementClient } from '../utils/azureClients';
-import { classifyAccessError, matchesDeniedPrincipal } from './classify';
-import { type CheckResult, type DiagnosticsState, type NetworkSummary, type Step, type TargetKind } from './model';
-import { DiagnosticsRunTrace, reportDiagnosticsOutcome } from './runTrace';
+import { classifyAccessError, getHttpFailure, matchesDeniedPrincipal } from './classify';
+import { type CheckResult, type DiagnosticsState, type FailureStage, type NetworkSummary, type Step } from './model';
+import { DiagnosticsRunTrace, reportDiagnosticsOutcome, sdkStage } from './runTrace';
 
-export type DiagnosticsTarget = (
+export type AccountDiagnosticsTarget = (
     | { kind: 'azure'; account: CosmosDBAccountModel }
     | { kind: 'attached' | 'emulator'; account: CosmosDBAttachedAccountModel }
 ) & { probe: 'nosql' | 'network' };
+export type DiagnosticsTarget =
+    | AccountDiagnosticsTarget
+    | { kind: 'queryEditor'; probe: 'query'; connection: NoSqlQueryConnection };
+
+const containerProbe = 'SELECT TOP 1 VALUE 1 FROM c';
 
 const authLabels = {
     [AuthenticationMethod.accountKey]: 'key',
@@ -71,12 +77,12 @@ async function bounded<T>(
     }
 }
 
-function validEndpoint(value: unknown, kind: TargetKind): URL | undefined {
+function validEndpoint(value: unknown, emulator: boolean): URL | undefined {
     if (typeof value !== 'string') return undefined;
     const url = URL.parse(value);
     if (
         !url ||
-        (url.protocol !== 'https:' && !(kind === 'emulator' && url.protocol === 'http:')) ||
+        (url.protocol !== 'https:' && !(emulator && url.protocol === 'http:')) ||
         url.username ||
         url.password ||
         url.search ||
@@ -108,10 +114,15 @@ function summarizeNetwork(account: DatabaseAccountGetResults): NetworkSummary {
 }
 
 function shouldCheckDnsAfterAccess(checks: readonly CheckResult[]): boolean {
-    const access = checks.find(({ step }) => step === 'access');
+    const access =
+        checks.find(({ step, status }) => step === 'query' && status !== 'skipped') ??
+        checks.find(({ step }) => step === 'access');
     switch (access?.finding) {
         case 'dnsFailure':
         case 'transportFailure':
+        case 'connectionRefused':
+        case 'connectionReset':
+        case 'connectionTimedOut':
         case 'timedOut':
         case 'firewallPrivateEndpoint':
             return true;
@@ -149,14 +160,17 @@ export async function runDiagnostics(
     publish: (state: DiagnosticsState) => void,
     onRbacPrincipal?: (principalId: string) => void,
 ): Promise<void> {
-    const trace = new DiagnosticsRunTrace(target.kind, target.probe);
+    const emulator = target.kind === 'emulator' || (target.kind === 'queryEditor' && target.connection.isEmulator);
+    const kind = emulator ? 'emulator' : target.kind;
+    const scope = target.probe === 'query' ? 'container' : undefined;
+    const trace = new DiagnosticsRunTrace(kind, target.probe);
     const checks: CheckResult[] = [];
     let active: Step = target.kind === 'azure' ? 'accountSettings' : 'target';
     const begin = (step: Step) => {
         active = step;
         trace.recordChecks(checks);
         trace.begin(step);
-        publish({ kind: target.kind, phase: 'running', active, checks: [...checks], trace: trace.snapshot() });
+        publish({ kind, scope, phase: 'running', active, checks: [...checks], trace: trace.snapshot() });
     };
     try {
         begin(active);
@@ -183,6 +197,8 @@ export async function runDiagnostics(
                 checks.push({ step: 'accountSettings', finding: 'settingsUnavailable', status: 'info' });
             }
             begin('target');
+        } else if (target.kind === 'queryEditor') {
+            endpoint = target.connection.endpoint;
         } else {
             try {
                 const parsed = parseCosmosDBConnectionString(target.account.connectionString);
@@ -194,7 +210,7 @@ export async function runDiagnostics(
             checks.push({ step: 'accountSettings', finding: 'settingsNotApplicable', status: 'skipped' });
         }
 
-        const url = validEndpoint(endpoint, target.kind);
+        const url = validEndpoint(endpoint, emulator);
         checks.unshift({
             step: 'target',
             finding: url ? 'endpointReady' : 'invalidEndpoint',
@@ -205,64 +221,124 @@ export async function runDiagnostics(
         }
         if (!url) return;
 
-        if (target.probe === 'nosql') {
+        if (target.probe !== 'network') {
             begin('access');
-            const emulator = target.kind === 'emulator';
             let auth: CheckResult['auth'];
             let principalId: string | undefined;
+            let stage: FailureStage = 'credentials';
+            let lastRequest: FailureStage | undefined;
+            let lastHttp: CheckResult['http'];
             const probeOptions = {
-                onHttpResponse: (response) => trace.recordResponse(response, url),
-                connectionPolicy: { retryOptions: { maxRetryAttemptCount: 0 } },
+                onHttpRequest: (request) => {
+                    lastRequest = sdkStage(request);
+                    lastHttp = undefined;
+                },
+                onHttpResponse: (response) => {
+                    trace.recordResponse(response, url);
+                    lastRequest = sdkStage(response.request);
+                    lastHttp = getHttpFailure({
+                        statusCode: response.status,
+                        substatus: response.headers.get('x-ms-substatus'),
+                    });
+                },
+                connectionPolicy: {
+                    enableBackgroundEndpointRefreshing: false,
+                    retryOptions: { maxRetryAttemptCount: 0 },
+                },
             } satisfies GetCosmosClientOptions;
             try {
                 // Do not send cloud credentials to an emulator when its saved key is missing.
                 const credentials =
-                    emulator && !key
-                        ? []
-                        : await bounded(parent, 12_000, (abortSignal) =>
-                              getCosmosDBCredentials(
-                                  {
-                                      accountName: target.account.name,
-                                      documentEndpoint: url.href,
-                                      isEmulator: emulator,
-                                      arm,
-                                      masterKey: key,
-                                      tenantId,
-                                  },
-                                  { silent: true, abortSignal, keyProbeOptions: probeOptions },
-                              ),
-                          );
+                    target.kind === 'queryEditor'
+                        ? target.connection.credentials
+                        : emulator && !key
+                          ? []
+                          : await bounded(parent, 12_000, (abortSignal) =>
+                                getCosmosDBCredentials(
+                                    {
+                                        accountName: target.account.name,
+                                        documentEndpoint: url.href,
+                                        isEmulator: emulator,
+                                        arm,
+                                        masterKey: key,
+                                        tenantId,
+                                    },
+                                    { silent: true, abortSignal, keyProbeOptions: probeOptions },
+                                ),
+                            );
                 if (!credentials.length) {
-                    checks.push({ step: 'access', finding: 'missingCredentials', status: 'failed' });
+                    checks.push({
+                        step: 'access',
+                        finding: 'missingCredentials',
+                        status: 'failed',
+                        failureStage: stage,
+                    });
                 } else {
                     const agent =
                         emulator && url.protocol === 'https:' ? new Agent({ rejectUnauthorized: false }) : undefined;
+                    const clientOptions = {
+                        ...probeOptions,
+                        agent,
+                        silentAuthentication: true,
+                        onAuthenticationMethod: (method, oid) => {
+                            auth = authLabels[method];
+                            principalId = oid;
+                        },
+                    } satisfies GetCosmosClientOptions;
                     try {
-                        const client = getCosmosClient(url.href, credentials, emulator, {
-                            ...probeOptions,
-                            agent,
-                            silentAuthentication: true,
-                            onAuthenticationMethod: (method, oid) => {
-                                auth = authLabels[method];
-                                principalId = oid;
-                            },
-                        });
+                        const client =
+                            target.kind === 'queryEditor'
+                                ? getCosmosClient(target.connection, clientOptions)
+                                : getCosmosClient(url.href, credentials, emulator, clientOptions);
                         try {
-                            await bounded(parent, 12_000, (abortSignal) =>
-                                client.databases.readAll({ maxItemCount: 1, abortSignal }).fetchNext(),
-                            );
+                            lastRequest = undefined;
+                            lastHttp = undefined;
+                            if (target.kind === 'queryEditor') {
+                                stage = 'accountMetadata';
+                                await bounded(parent, 12_000, (abortSignal) =>
+                                    client.getDatabaseAccount({ abortSignal }),
+                                );
+                                checks.push({ step: 'access', finding: 'accountMetadataRead', status: 'passed', auth });
+                                begin('query');
+                                stage = 'query';
+                                lastRequest = undefined;
+                                lastHttp = undefined;
+                                const { databaseId, containerId } = target.connection;
+                                await bounded(parent, 12_000, (abortSignal) =>
+                                    client
+                                        .database(databaseId)
+                                        .container(containerId)
+                                        .items.query(containerProbe, { maxItemCount: 1, abortSignal })
+                                        .fetchNext(),
+                                );
+                                checks.push({ step: 'query', finding: 'querySucceeded', status: 'passed' });
+                            } else {
+                                stage = 'listDatabases';
+                                await bounded(parent, 12_000, (abortSignal) =>
+                                    client.databases.readAll({ maxItemCount: 1, abortSignal }).fetchNext(),
+                                );
+                                checks.push({ step: 'access', finding: 'connected', status: 'passed', auth });
+                            }
                         } finally {
                             client.dispose();
                         }
                     } finally {
                         agent?.destroy();
                     }
-                    checks.push({ step: 'access', finding: 'connected', status: 'passed', auth });
                 }
             } catch (error) {
                 parent.throwIfAborted();
+                const sdkHttp = getHttpFailure(error);
+                const http =
+                    sdkHttp && sdkHttp.status === lastHttp?.status && sdkHttp.substatus === undefined
+                        ? lastHttp
+                        : sdkHttp;
                 const classification =
-                    error instanceof StepTimeoutError ? { finding: 'timedOut' as const } : classifyAccessError(error);
+                    error instanceof StepTimeoutError
+                        ? { finding: 'timedOut' as const }
+                        : stage === 'query' && http?.status === 404 && lastRequest !== 'accountMetadata'
+                          ? { finding: 'containerUnavailable' as const }
+                          : classifyAccessError(error, http);
                 const needsRole = classification.finding === 'dataRbac';
                 if (
                     needsRole &&
@@ -274,7 +350,21 @@ export async function runDiagnostics(
                 ) {
                     onRbacPrincipal?.(principalId);
                 }
-                checks.push({ step: 'access', ...classification, status: needsRole ? 'info' : 'failed', auth });
+                const failureStage =
+                    classification.finding === 'tokenUnavailable' || stage === 'credentials'
+                        ? 'credentials'
+                        : (lastRequest ?? stage);
+                checks.push({
+                    step: stage === 'query' ? 'query' : 'access',
+                    ...classification,
+                    status: needsRole ? 'info' : 'failed',
+                    ...(stage === 'query' ? {} : { auth }),
+                    failureStage,
+                    ...(http ? { http } : {}),
+                });
+            }
+            if (target.probe === 'query' && !checks.some(({ step }) => step === 'query')) {
+                checks.push({ step: 'query', finding: 'queryNotRun', status: 'skipped' });
             }
             if (!shouldCheckDnsAfterAccess(checks)) return;
         }
@@ -312,7 +402,8 @@ export async function runDiagnostics(
         const phase = parent.aborted ? 'cancelled' : 'completed';
         const durationMs = trace.complete(phase);
         const state: DiagnosticsState = {
-            kind: target.kind,
+            kind,
+            scope,
             phase,
             finishedAt: Date.now(),
             checks: [...checks],

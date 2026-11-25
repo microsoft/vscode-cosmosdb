@@ -17,7 +17,7 @@ const tlsErrors = new Set([
     'UNABLE_TO_GET_ISSUER_CERT',
     'CERT_NOT_YET_VALID',
 ]);
-const transportErrors = new Set(['ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'ENETUNREACH', 'EHOSTUNREACH', 'EPIPE']);
+const transportErrors = new Set(['ENETUNREACH', 'EHOSTUNREACH', 'EPIPE']);
 
 function record(value: unknown): Record<string, unknown> {
     return value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
@@ -38,17 +38,33 @@ export function matchesDeniedPrincipal(error: unknown, principalId: string): boo
     );
 }
 
-export function classifyAccessError(error: unknown): Pick<CheckResult, 'finding' | 'observedClientIp'> {
-    const outer = record(error);
-    const status = String(outer.statusCode ?? outer.code ?? '');
-    if (status === '401') return { finding: 'authentication' };
-    if (status === '407') return { finding: 'proxyAuthentication' };
-    if (status === '429') return { finding: 'throttled' };
-    if (/^5\d{2}$/.test(status)) return { finding: 'serviceUnavailable' };
+function numericCode(value: unknown): number | undefined {
+    if (typeof value === 'number' && Number.isInteger(value)) return value;
+    return typeof value === 'string' && /^\d{1,5}$/.test(value) ? Number(value) : undefined;
+}
 
-    if (status === '403') {
-        const substatus = Number(outer.substatus ?? record(outer.headers)['x-ms-substatus']);
-        if (substatus === 5300) return { finding: 'dataPlaneOperationDenied' };
+export function getHttpFailure(error: unknown): CheckResult['http'] {
+    const outer = record(error);
+    const status = numericCode(outer.statusCode ?? outer.code);
+    if (status === undefined || status < 400 || status > 599) return undefined;
+    const substatus = numericCode(outer.substatus ?? record(outer.headers)['x-ms-substatus']);
+    return substatus !== undefined && substatus >= 0 && substatus <= 99999 ? { status, substatus } : { status };
+}
+
+export function classifyAccessError(
+    error: unknown,
+    http = getHttpFailure(error),
+): Pick<CheckResult, 'finding' | 'observedClientIp'> {
+    const outer = record(error);
+    const status = http?.status;
+    if (status === 401) return { finding: 'authentication' };
+    if (status === 407) return { finding: 'proxyAuthentication' };
+    if (status === 408) return { finding: 'requestTimedOut' };
+    if (status === 429) return { finding: 'throttled' };
+    if (status !== undefined && status >= 500) return { finding: 'serviceUnavailable' };
+
+    if (status === 403) {
+        if (http?.substatus === 5300) return { finding: 'dataPlaneOperationDenied' };
         const message = accessErrorMessage(error);
         if (typeof message !== 'string') return { finding: 'forbiddenUnknown' };
         const ip = /request originated from client IP\s+[\s{]*([0-9.]+)[\s}]*\s+through public internet/i.exec(
@@ -85,11 +101,14 @@ export function classifyAccessError(error: unknown): Pick<CheckResult, 'finding'
     }
 
     for (let current = outer, depth = 0; depth < 4; current = record(current.cause), depth++) {
-        if (current instanceof SilentCosmosAuthenticationError) return { finding: 'authentication' };
+        if (current instanceof SilentCosmosAuthenticationError) return { finding: 'tokenUnavailable' };
         const code = current.code;
         if (typeof code !== 'string') continue;
         if (dnsErrors.has(code)) return { finding: 'dnsFailure' };
         if (tlsErrors.has(code) || /^(ERR_TLS_|ERR_SSL_)/.test(code)) return { finding: 'tlsFailure' };
+        if (code === 'ECONNREFUSED') return { finding: 'connectionRefused' };
+        if (code === 'ECONNRESET') return { finding: 'connectionReset' };
+        if (code === 'ETIMEDOUT') return { finding: 'connectionTimedOut' };
         if (transportErrors.has(code)) return { finding: 'transportFailure' };
     }
     return { finding: 'unexpected' };

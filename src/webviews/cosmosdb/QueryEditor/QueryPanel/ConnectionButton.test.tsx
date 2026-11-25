@@ -6,9 +6,10 @@
 // @vitest-environment jsdom
 
 import { FluentProvider, webLightTheme } from '@fluentui/react-components';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConnectionButton } from './ConnectionButton';
+import { DiagnoseConnectionButton } from './DiagnoseConnectionButton';
 
 const { state, dispatcher } = vi.hoisted(() => ({
     state: {
@@ -18,7 +19,7 @@ const { state, dispatcher } = vi.hoisted(() => ({
         isChangingConnection: false,
         connectionList: undefined,
     },
-    dispatcher: { getConnections: vi.fn(), setConnection: vi.fn() },
+    dispatcher: { getConnections: vi.fn(), setConnection: vi.fn(), diagnoseConnection: vi.fn() },
 }));
 
 vi.mock('../state/QueryEditorContext', () => ({
@@ -32,6 +33,33 @@ describe('connection picker accessible name', () => {
         state.containerName = '';
         state.isConnected = false;
         state.isChangingConnection = false;
+    });
+
+    describe('diagnose the selected connection from Query Editor', () => {
+        afterEach(cleanup);
+
+        it.each([
+            { type: 'button', connected: true, changing: false },
+            { type: 'menuitem', connected: true, changing: false },
+            { type: 'button', connected: false, changing: false },
+            { type: 'menuitem', connected: true, changing: true },
+        ] as const)(
+            'handles $type with connected=$connected and changing=$changing',
+            ({ type, connected, changing }) => {
+                dispatcher.diagnoseConnection.mockClear();
+                state.isConnected = connected;
+                state.isChangingConnection = changing;
+                render(
+                    <FluentProvider theme={webLightTheme}>
+                        <DiagnoseConnectionButton type={type} />
+                    </FluentProvider>,
+                );
+
+                const action = screen.getByRole(type, { name: 'Diagnose Connection.' });
+                fireEvent.click(action);
+                expect(dispatcher.diagnoseConnection).toHaveBeenCalledTimes(connected && !changing ? 1 : 0);
+            },
+        );
     });
 
     afterEach(cleanup);

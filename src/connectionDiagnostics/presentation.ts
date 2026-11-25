@@ -12,6 +12,7 @@ export function stepLabel(step: Step): string {
         target: l10n.t('Connection endpoint'),
         accountSettings: l10n.t('Azure account settings (control plane)'),
         access: l10n.t('Cosmos DB data-plane access'),
+        query: l10n.t('Selected container query'),
         dns: l10n.t('Server address (DNS)'),
     }[step];
 }
@@ -21,6 +22,11 @@ export function phaseLabel(state: DiagnosticsState): string {
     if (state.phase === 'running') return l10n.t('Connection diagnostics running.');
     if (state.checks.some((check) => check.finding === 'dataRbac')) {
         return l10n.t('Cosmos DB data role required.');
+    }
+    if (state.scope === 'container') {
+        return state.checks.some((check) => check.finding === 'querySucceeded')
+            ? l10n.t('Query access to the selected container verified.')
+            : l10n.t('Could not verify query access to the selected container.');
     }
     if (state.checks.some((check) => check.finding === 'apiProbeUnavailable')) {
         return l10n.t('Diagnostics complete. Data-plane access was not tested.');
@@ -79,18 +85,29 @@ export function checkText(
             'The data-plane probe is only available for NoSQL connections. Network settings and DNS do not verify access to this API.',
         ),
         connected: l10n.t('The SDK read database metadata. No documents were read.'),
+        accountMetadataRead: l10n.t(
+            'The SDK read account metadata. This does not verify permission to query the container.',
+        ),
+        querySucceeded: l10n.t('The SDK ran a read-only query that returns no document contents.'),
+        queryNotRun: l10n.t('The query was not attempted because the account metadata check did not pass.'),
         missingCredentials: l10n.t(
             'No usable credentials were available. Check the configured authentication method or the saved connection.',
         ),
-        authentication: l10n.t(
-            'The selected credential was rejected or a token could not be acquired. Verify the key or the selected identity and sign in again if needed.',
+        authentication: l10n.t('The service rejected the credential. Verify the account key or selected identity.'),
+        tokenUnavailable: l10n.t(
+            'No Microsoft Entra token could be acquired without prompting. Sign in or check the configured managed identity, then re-run diagnostics.',
         ),
         localAuthDisabled: l10n.t(
             'Account-key authentication is disabled. Use Microsoft Entra ID or managed identity with the appropriate Cosmos DB data permissions.',
         ),
-        dataRbac: l10n.t(
-            'The identity lacks Cosmos DB data-plane permissions. Check its Cosmos DB data role and scope, including the readMetadata action. Azure management roles alone are not sufficient.',
-        ),
+        dataRbac:
+            check.step === 'query'
+                ? l10n.t(
+                      'The identity lacks the required Cosmos DB data permissions for this query. Check the data role and its scope for this container.',
+                  )
+                : l10n.t(
+                      'The identity lacks Cosmos DB data-plane permissions. Check its Cosmos DB data role and scope, including the readMetadata action. Azure management roles alone are not sufficient.',
+                  ),
         dataPlaneOperationDenied: l10n.t(
             'Cosmos DB reported an operation that cannot be authorized by an Entra token on the data plane. This is not an IP firewall diagnosis.',
         ),
@@ -125,6 +142,26 @@ export function checkText(
                 : l10n.t(
                       'The SDK could not establish or keep a connection. Check your network, VPN, and proxy settings.',
                   ),
+        connectionRefused:
+            kind === 'emulator'
+                ? l10n.t(
+                      'The emulator connection was refused. Check that the emulator is running and that its gateway port is published and reachable from the extension host.',
+                  )
+                : l10n.t(
+                      'The connection was refused on the SDK request path. Check the endpoint, port, and configured proxy.',
+                  ),
+        connectionReset: l10n.t(
+            'The connection was reset on the SDK request path. Check the gateway protocol and any proxy or network filter.',
+        ),
+        connectionTimedOut: l10n.t(
+            'The connection timed out on the SDK request path. Check routing, port forwarding, and any proxy from the extension host.',
+        ),
+        requestTimedOut: l10n.t(
+            'An HTTP endpoint returned a request timeout. The SDK reached an HTTP server; this is not a DNS failure.',
+        ),
+        containerUnavailable: l10n.t(
+            'An SDK request during the query check returned Not Found. Verify the selected database and container for this connection.',
+        ),
         throttled: l10n.t('Cosmos DB throttled the request. Try again after the account has capacity.'),
         serviceUnavailable: l10n.t(
             'The request received a server error. Check Azure service health or proxy availability and retry.',
@@ -151,6 +188,23 @@ export function checkText(
     };
     const rowEvidence = omitRowEvidence ? checkEvidence(check) : undefined;
     const parts = [descriptions[check.finding]];
+    if (check.failureStage) {
+        const stage = {
+            credentials: l10n.t('Credential acquisition'),
+            accountMetadata: l10n.t('Account metadata'),
+            listDatabases: l10n.t('Database listing'),
+            containerMetadata: l10n.t('Container metadata or routing'),
+            query: l10n.t('Container query'),
+        }[check.failureStage];
+        parts.push(l10n.t('Failed at: {0}.', stage));
+    }
+    if (check.http) {
+        parts.push(
+            check.http.substatus === undefined
+                ? l10n.t('HTTP status: {0}.', check.http.status)
+                : l10n.t('HTTP status: {0}; Cosmos DB substatus: {1}.', check.http.status, check.http.substatus),
+        );
+    }
     if (check.auth) {
         const auth = authText(check.auth);
         if (auth !== rowEvidence) parts.push(auth);
@@ -219,12 +273,15 @@ export function renderJsonReport(state: DiagnosticsState): string {
         {
             runId: state.trace?.runId,
             targetKind: state.kind,
+            scope: state.scope,
             phase: state.phase,
-            checks: state.checks.map(({ step, finding, status, auth, network }) => ({
+            checks: state.checks.map(({ step, finding, status, auth, network, failureStage, http }) => ({
                 step,
                 finding,
                 status,
                 auth,
+                failureStage,
+                http: http && { status: http.status, substatus: http.substatus },
                 durationMs: state.trace?.checkDurations?.[step],
                 network: network && {
                     publicAccess: network.publicAccess,

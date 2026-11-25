@@ -228,6 +228,12 @@ correlation but omits account identifiers, endpoints, IP addresses, credentials,
 for public access. DNS does not establish which route the SDK took or whether it was allowed. The panel and Markdown
 report link to official troubleshooting guidance for applicable findings.
 
+Open **Diagnose Connection** from the NoSQL Query Editor toolbar to check the selected container with that editor's
+connection. This checks account metadata first, then makes a bounded read-only query that returns no document contents.
+Account-level diagnostics do not query items. Failed SDK checks show the stage and any available HTTP status and
+Cosmos DB substatus. Emulator results distinguish refusal, timeout, connection reset, and TLS errors on the configured
+endpoint; they do not infer the emulator variant or port mappings.
+
 If Cosmos DB reports missing NoSQL data-plane permissions, the panel shows **Cosmos DB data role required** instead of a
 connection error. For Azure accounts where diagnostics can verify the identity that was denied, **Add Data Contributor
 role** lets an authorized user grant that identity read and write access across the account after confirmation. Wait for

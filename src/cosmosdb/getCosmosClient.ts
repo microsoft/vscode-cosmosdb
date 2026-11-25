@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { createDefaultHttpClient, type PipelineResponse } from '@azure/core-rest-pipeline';
+import { createDefaultHttpClient, type PipelineRequest, type PipelineResponse } from '@azure/core-rest-pipeline';
 import { CosmosClient, type CosmosClientOptions } from '@azure/cosmos';
 import { ManagedIdentityCredential } from '@azure/identity';
 import { appendExtensionUserAgent } from '@microsoft/vscode-azext-utils';
@@ -25,6 +25,7 @@ export type GetCosmosClientOptions = Partial<CosmosClientOptions> & {
     isLlmTool?: boolean;
     silentAuthentication?: boolean;
     onAuthenticationMethod?: (method: CosmosDBCredential['type'], principalId?: string) => void;
+    onHttpRequest?: (request: PipelineRequest) => void;
     onHttpResponse?: (response: PipelineResponse) => void;
 };
 
@@ -82,6 +83,7 @@ export function getCosmosClient(
         silentAuthentication = false,
         wwwAuthenticate,
         onAuthenticationMethod,
+        onHttpRequest,
         onHttpResponse,
         httpClient: suppliedHttpClient,
         ...clientOptions
@@ -94,7 +96,7 @@ export function getCosmosClient(
         (agent
             ? undefined
             : createCosmosHttpClient(vscode.workspace.getConfiguration('http').get('proxyStrictSSL') !== false));
-    const transport = httpClient ?? (onHttpResponse ? createDefaultHttpClient() : undefined);
+    const transport = httpClient ?? (onHttpRequest || onHttpResponse ? createDefaultHttpClient() : undefined);
     const commonProperties: CosmosClientOptions = {
         endpoint,
         userAgentSuffix: `${appendExtensionUserAgent()}${isLlmTool ? '/llm-tool' : ''}`,
@@ -221,11 +223,12 @@ export function getCosmosClient(
     return new CosmosClient({
         ...merge(clientOptions, commonProperties),
         httpClient:
-            onHttpResponse && transport
+            (onHttpRequest || onHttpResponse) && transport
                 ? {
                       async sendRequest(request) {
+                          onHttpRequest?.(request);
                           const response = await transport.sendRequest(request);
-                          onHttpResponse(response);
+                          onHttpResponse?.(response);
                           return response;
                       },
                   }

@@ -11,11 +11,12 @@ import { AuthenticationMethod, getPreferredAuthenticationMethod } from '../cosmo
 import { type CosmosDBCredential } from '../cosmosdb/CosmosDBCredential';
 import { type GetCosmosClientOptions } from '../cosmosdb/getCosmosClient';
 import { type DiagnosticsState } from './model';
-import { renderReport } from './presentation';
-import { type DiagnosticsTarget, runDiagnostics } from './run';
+import { phaseLabel, renderJsonReport, renderReport } from './presentation';
+import { type AccountDiagnosticsTarget, type DiagnosticsTarget, runDiagnostics } from './run';
 
 const io = vi.hoisted(() => ({
     fetchNext: vi.fn(),
+    database: vi.fn(),
     readAll: vi.fn(),
     dispose: vi.fn(),
     getDatabaseAccount: vi.fn(),
@@ -54,7 +55,7 @@ vi.mock('@microsoft/vscode-azext-utils', () => ({
     },
 }));
 
-const attached: DiagnosticsTarget = {
+const attached: AccountDiagnosticsTarget = {
     kind: 'attached',
     probe: 'nosql',
     account: {
@@ -76,6 +77,17 @@ const cloud: Extract<DiagnosticsTarget, { kind: 'azure' }> = {
         subscription: { subscriptionId: 'subscription', tenantId: 'tenant' },
         raw: {},
     } as Extract<DiagnosticsTarget, { kind: 'azure' }>['account'],
+};
+const queryTarget: Extract<DiagnosticsTarget, { kind: 'queryEditor' }> = {
+    kind: 'queryEditor',
+    probe: 'query',
+    connection: {
+        endpoint: 'https://selected.example.test/',
+        databaseId: 'selected-database',
+        containerId: 'selected-container',
+        credentials: [{ type: AuthenticationMethod.accountKey, key: 'synthetic-query-key' }],
+        isEmulator: false,
+    },
 };
 
 async function diagnose(
@@ -103,6 +115,7 @@ describe('diagnosing a NoSQL connection', () => {
                 options.onAuthenticationMethod?.(credentials[0].type);
                 return {
                     databases: { readAll: io.readAll },
+                    database: io.database,
                     dispose: io.dispose,
                     getDatabaseAccount: io.getDatabaseAccount,
                 };
@@ -194,12 +207,14 @@ describe('diagnosing a NoSQL connection', () => {
             throw Object.assign(new Error('Server denied the request'), { code: 403, body: { message } });
         });
         const state = (await diagnose(cloud, new AbortController(), onPrincipal)).at(-1)!;
-        expect(state.checks).toContainEqual({
-            step: 'access',
-            status: firewall ? 'failed' : 'info',
-            finding: firewall ? 'firewallUnknown' : 'dataRbac',
-            auth: 'entra',
-        });
+        expect(state.checks).toContainEqual(
+            expect.objectContaining({
+                step: 'access',
+                status: firewall ? 'failed' : 'info',
+                finding: firewall ? 'firewallUnknown' : 'dataRbac',
+                auth: 'entra',
+            }),
+        );
         expect(onPrincipal.mock.calls).toEqual(eligible ? [[principal]] : []);
         expect(io.lookup).not.toHaveBeenCalled();
         expect(renderReport(state) + JSON.stringify([state, io.log.mock.calls, io.telemetry.mock.calls])).not.toContain(
@@ -260,6 +275,7 @@ describe('diagnosing a NoSQL connection', () => {
         expect(io.get).not.toHaveBeenCalled();
         expect(io.readAll).toHaveBeenCalledExactlyOnceWith({ maxItemCount: 1, abortSignal: expect.any(AbortSignal) });
         expect(io.fetchNext).toHaveBeenCalledOnce();
+        expect(io.database).not.toHaveBeenCalled();
         expect(io.dispose).toHaveBeenCalledTimes(2);
         expect(io.lookup).not.toHaveBeenCalled();
         expect(states.at(-1)).toMatchObject({
@@ -285,6 +301,162 @@ describe('diagnosing a NoSQL connection', () => {
                 { step: 'dns', status: 'info', finding: 'unresolvedDns' },
             ]),
         );
+    });
+
+    it('attributes an emulator refusal to the actual SDK stage even without an HTTP response', async () => {
+        io.fetchNext.mockImplementation(() => {
+            const options: GetCosmosClientOptions = io.getCosmosClient.mock.lastCall?.[3];
+            options.onHttpRequest?.(createPipelineRequest({ url: 'http://localhost:8081/' }));
+            throw new Error('Transport error', { cause: Object.assign(new Error(), { code: 'ECONNREFUSED' }) });
+        });
+        const state = (
+            await diagnose({
+                ...attached,
+                kind: 'emulator',
+                account: {
+                    ...attached.account,
+                    isEmulator: true,
+                    connectionString: 'AccountEndpoint=http://localhost:8081/;AccountKey=secret;',
+                },
+            })
+        ).at(-1)!;
+        expect(state.checks).toContainEqual(
+            expect.objectContaining({
+                step: 'access',
+                finding: 'connectionRefused',
+                failureStage: 'accountMetadata',
+            }),
+        );
+        expect(renderReport(state)).toContain('The emulator connection was refused.');
+        expect(renderReport(state)).not.toContain('localhost');
+    });
+
+    it.each([true, false])('checks metadata and query access independently (query succeeds: %s)', async (success) => {
+        const fetchPage = vi.fn().mockImplementation(() => {
+            if (success) return Promise.resolve({ resources: ['must-not-be-reported'] });
+            return Promise.reject(
+                Object.assign(new Error('Principal does not have required RBAC permissions to executeQuery.'), {
+                    code: 403,
+                    substatus: 0,
+                }),
+            );
+        });
+        const query = vi.fn().mockReturnValue({ fetchNext: fetchPage });
+        const container = vi.fn().mockReturnValue({ items: { query } });
+        const database = vi.fn().mockReturnValue({ container });
+        io.getCosmosClient.mockImplementation((_connection, options: GetCosmosClientOptions) => {
+            options.onAuthenticationMethod?.(AuthenticationMethod.accountKey);
+            return { getDatabaseAccount: io.getDatabaseAccount, dispose: io.dispose, database };
+        });
+
+        const onPrincipal = vi.fn();
+        const state = (await diagnose(queryTarget, undefined, onPrincipal)).at(-1)!;
+        expect(io.getCosmosClient).toHaveBeenCalledExactlyOnceWith(
+            queryTarget.connection,
+            expect.objectContaining({ silentAuthentication: true }),
+        );
+        expect(io.getDatabaseAccount).toHaveBeenCalledOnce();
+        expect(io.get).not.toHaveBeenCalled();
+        expect(io.readAll).not.toHaveBeenCalled();
+        expect(database).toHaveBeenCalledExactlyOnceWith(queryTarget.connection.databaseId);
+        expect(container).toHaveBeenCalledExactlyOnceWith(queryTarget.connection.containerId);
+        expect(query).toHaveBeenCalledExactlyOnceWith('SELECT TOP 1 VALUE 1 FROM c', {
+            maxItemCount: 1,
+            abortSignal: expect.any(AbortSignal),
+        });
+        expect(fetchPage).toHaveBeenCalledOnce();
+        expect(io.dispose).toHaveBeenCalledOnce();
+        expect(state.checks).toContainEqual({
+            step: 'access',
+            status: 'passed',
+            finding: 'accountMetadataRead',
+            auth: 'key',
+        });
+        expect(state.checks).toContainEqual(
+            success
+                ? { step: 'query', status: 'passed', finding: 'querySucceeded' }
+                : {
+                      step: 'query',
+                      status: 'info',
+                      finding: 'dataRbac',
+                      failureStage: 'query',
+                      http: { status: 403, substatus: 0 },
+                  },
+        );
+        expect(onPrincipal).not.toHaveBeenCalled();
+        expect(phaseLabel(state)).toBe(
+            success ? 'Query access to the selected container verified.' : 'Cosmos DB data role required.',
+        );
+        expect(renderReport(state) + renderJsonReport(state) + JSON.stringify(io.telemetry.mock.calls)).not.toMatch(
+            /must-not-be-reported|selected\.example|selected-container|selected-database|synthetic-query-key|SELECT TOP/,
+        );
+    });
+
+    it('does not attempt the scoped query when account metadata is denied', async () => {
+        const database = vi.fn();
+        io.getCosmosClient.mockReturnValue({
+            getDatabaseAccount: io.getDatabaseAccount,
+            dispose: io.dispose,
+            database,
+        });
+        io.getDatabaseAccount.mockRejectedValue({ code: 503, substatus: 20001 });
+        const state = (await diagnose(queryTarget)).at(-1)!;
+        expect(database).not.toHaveBeenCalled();
+        expect(state.checks).toContainEqual(
+            expect.objectContaining({
+                step: 'access',
+                finding: 'serviceUnavailable',
+                failureStage: 'accountMetadata',
+                http: { status: 503, substatus: 20001 },
+            }),
+        );
+        expect(state.checks).toContainEqual({ step: 'query', finding: 'queryNotRun', status: 'skipped' });
+    });
+
+    it('does not mistake successful metadata for a query response when the query has no HTTP response', async () => {
+        const query = vi.fn().mockReturnValue({
+            fetchNext: () => Promise.reject(Object.assign(new Error('Transport error'), { code: 'ECONNRESET' })),
+        });
+        io.getCosmosClient.mockImplementation((_connection, options: GetCosmosClientOptions) => ({
+            getDatabaseAccount: () => {
+                options.onHttpResponse?.({
+                    request: createPipelineRequest({ url: queryTarget.connection.endpoint }),
+                    status: 200,
+                    headers: createHttpHeaders({ 'x-ms-substatus': '0' }),
+                });
+                return Promise.resolve({});
+            },
+            dispose: io.dispose,
+            database: () => ({ container: () => ({ items: { query } }) }),
+        }));
+
+        const state = (await diagnose(queryTarget)).at(-1)!;
+        expect(state.checks.find(({ step }) => step === 'query')).toEqual({
+            step: 'query',
+            status: 'failed',
+            failureStage: 'query',
+            finding: 'connectionReset',
+        });
+    });
+
+    it('aborts a scoped query and disposes the client', async () => {
+        const controller = new AbortController();
+        const query = vi.fn().mockReturnValue({
+            fetchNext: () => {
+                controller.abort();
+                return new Promise(() => {});
+            },
+        });
+        io.getCosmosClient.mockReturnValue({
+            getDatabaseAccount: io.getDatabaseAccount,
+            dispose: io.dispose,
+            database: () => ({ container: () => ({ items: { query } }) }),
+        });
+
+        const state = (await diagnose(queryTarget, controller)).at(-1)!;
+        expect(state.phase).toBe('cancelled');
+        expect(query.mock.calls[0][1].abortSignal.aborted).toBe(true);
+        expect(io.dispose).toHaveBeenCalledOnce();
     });
 
     it('uses the ARM settings as context, not as proof of access', async () => {

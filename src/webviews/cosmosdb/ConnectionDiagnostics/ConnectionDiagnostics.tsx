@@ -53,6 +53,7 @@ import { useDiagnosticsStyles } from './styles';
 
 const azureSteps: readonly Step[] = ['accountSettings', 'target', 'access', 'dns'];
 const savedSteps: readonly Step[] = ['target', 'accountSettings', 'access', 'dns'];
+const containerSteps: readonly Step[] = ['target', 'access', 'query', 'dns'];
 
 type PanelStyles = ReturnType<typeof useDiagnosticsStyles>;
 type OpenHelp = (topic: DiagnosticsHelpTopic) => void;
@@ -156,7 +157,7 @@ function DiagnosticsSummary({ state, styles }: { state: DiagnosticsState; styles
     const titleId = useId('diagnostics-summary');
     const failure = state.checks.find((check) => check.status === 'failed');
     const cancelled = state.phase === 'cancelled';
-    const connected = state.checks.some((check) => check.finding === 'connected');
+    const connected = state.checks.some((check) => check.finding === 'connected' || check.finding === 'querySucceeded');
     const needsRole = state.checks.find((check) => check.finding === 'dataRbac');
     const intent = cancelled ? 'info' : needsRole ? 'warning' : failure ? 'error' : connected ? 'success' : 'info';
     return (
@@ -372,7 +373,9 @@ export function ConnectionDiagnostics() {
         }
     }
 
-    const steps = (state?.kind === 'azure' ? azureSteps : savedSteps).filter(
+    const plannedSteps =
+        state?.scope === 'container' ? containerSteps : state?.kind === 'azure' ? azureSteps : savedSteps;
+    const steps = plannedSteps.filter(
         (step) => step !== 'dns' || state?.active === step || state?.checks.some((check) => check.step === step),
     );
     const primaryLabel = needsRefresh ? l10n.t('Refresh status') : running ? l10n.t('Cancel') : l10n.t('Re-run');

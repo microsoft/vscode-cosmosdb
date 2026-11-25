@@ -3,8 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-export type TargetKind = 'azure' | 'attached' | 'emulator';
-export type Step = 'target' | 'accountSettings' | 'access' | 'dns';
+export type TargetKind = 'azure' | 'attached' | 'emulator' | 'queryEditor';
+export type Step = 'target' | 'accountSettings' | 'access' | 'query' | 'dns';
+export type ProbeKind = 'nosql' | 'network' | 'query';
+export type FailureStage = 'credentials' | 'accountMetadata' | 'listDatabases' | 'containerMetadata' | 'query';
 export type Finding =
     | 'endpointReady'
     | 'invalidEndpoint'
@@ -13,8 +15,12 @@ export type Finding =
     | 'settingsNotApplicable'
     | 'apiProbeUnavailable'
     | 'connected'
+    | 'accountMetadataRead'
+    | 'querySucceeded'
+    | 'queryNotRun'
     | 'missingCredentials'
     | 'authentication'
+    | 'tokenUnavailable'
     | 'localAuthDisabled'
     | 'dataRbac'
     | 'dataPlaneOperationDenied'
@@ -27,6 +33,11 @@ export type Finding =
     | 'dnsFailure'
     | 'tlsFailure'
     | 'transportFailure'
+    | 'connectionRefused'
+    | 'connectionReset'
+    | 'connectionTimedOut'
+    | 'requestTimedOut'
+    | 'containerUnavailable'
     | 'throttled'
     | 'serviceUnavailable'
     | 'unexpected'
@@ -51,12 +62,15 @@ export interface CheckResult {
     status: 'passed' | 'failed' | 'info' | 'skipped';
     network?: NetworkSummary;
     auth?: 'key' | 'entra' | 'identity';
+    failureStage?: FailureStage;
+    http?: { status: number; substatus?: number };
     /** Local display only; never included in copied reports. */
     observedClientIp?: string;
 }
 
 export interface DiagnosticsState {
     kind: TargetKind;
+    scope?: 'container';
     /** Local panel heading only. */
     connectionName?: string;
     /** Local action availability only. Identity details stay on the host. */

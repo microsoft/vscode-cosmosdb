@@ -23,6 +23,21 @@ function record(value: unknown): Record<string, unknown> {
     return value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
 }
 
+function accessErrorMessage(error: unknown): unknown {
+    const outer = record(error);
+    return record(outer.body).message ?? outer.message;
+}
+
+export function matchesDeniedPrincipal(error: unknown, principalId: string): boolean {
+    if (!/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(principalId)) return false;
+    const message = accessErrorMessage(error);
+    return (
+        typeof message === 'string' &&
+        /does not have required RBAC permissions/i.test(message) &&
+        message.toLowerCase().includes(`[${principalId.toLowerCase()}]`)
+    );
+}
+
 export function classifyAccessError(error: unknown): Pick<CheckResult, 'finding' | 'observedClientIp'> {
     const outer = record(error);
     const status = String(outer.statusCode ?? outer.code ?? '');
@@ -34,7 +49,7 @@ export function classifyAccessError(error: unknown): Pick<CheckResult, 'finding'
     if (status === '403') {
         const substatus = Number(outer.substatus ?? record(outer.headers)['x-ms-substatus']);
         if (substatus === 5300) return { finding: 'dataPlaneOperationDenied' };
-        const message = record(outer.body).message ?? outer.message;
+        const message = accessErrorMessage(error);
         if (typeof message !== 'string') return { finding: 'forbiddenUnknown' };
         const ip = /request originated from client IP\s+[\s{]*([0-9.]+)[\s}]*\s+through public internet/i.exec(
             message,

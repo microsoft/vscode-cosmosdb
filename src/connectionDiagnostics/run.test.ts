@@ -4,9 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { createHttpHeaders, createPipelineRequest } from '@azure/core-rest-pipeline';
+import { RestError } from '@azure/cosmos';
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthenticationMethod, getPreferredAuthenticationMethod } from '../cosmosdb/AuthenticationMethod';
+import { type CosmosDBCredential } from '../cosmosdb/CosmosDBCredential';
 import { type GetCosmosClientOptions } from '../cosmosdb/getCosmosClient';
 import { type DiagnosticsState } from './model';
 import { renderReport } from './presentation';
@@ -16,11 +18,13 @@ const io = vi.hoisted(() => ({
     fetchNext: vi.fn(),
     readAll: vi.fn(),
     dispose: vi.fn(),
+    getDatabaseAccount: vi.fn(),
     get: vi.fn(),
     listReadOnlyKeys: vi.fn(),
     listKeys: vi.fn(),
     lookup: vi.fn(),
     getCosmosClient: vi.fn(),
+    getManagedIdentityAuth: vi.fn(),
     log: vi.fn(),
     telemetry: vi.fn(),
 }));
@@ -28,12 +32,16 @@ vi.mock('node:dns/promises', () => ({ lookup: io.lookup }));
 vi.mock('../cosmosdb/getCosmosClient', () => ({
     getCosmosClient: io.getCosmosClient,
 }));
-vi.mock('../extensionVariables', () => ({ ext: { outputChannel: { info: io.log } } }));
+vi.mock('../extensionVariables', () => ({
+    ext: { outputChannel: { info: io.log }, settingsKeys: { connectionTimeout: 'connectionTimeout' } },
+}));
 vi.mock('../cosmosdb/AuthenticationMethod', { spy: true });
+vi.mock('../cosmosdb/utils/managedIdentityUtils', () => ({ getManagedIdentityAuth: io.getManagedIdentityAuth }));
 vi.mock('../utils/azureClients', () => ({
     createCosmosDBManagementClient: () => Promise.resolve({ databaseAccounts: io }),
 }));
 vi.mock('@microsoft/vscode-azext-utils', () => ({
+    parseError: (error: Error) => ({ message: error.message }),
     callWithTelemetryAndErrorHandling: async (name: string, run: (context: Partial<IActionContext>) => unknown) => {
         const context: Partial<IActionContext> = {
             errorHandling: { issueProperties: {} },
@@ -70,9 +78,13 @@ const cloud: Extract<DiagnosticsTarget, { kind: 'azure' }> = {
     } as Extract<DiagnosticsTarget, { kind: 'azure' }>['account'],
 };
 
-async function diagnose(target: DiagnosticsTarget, controller = new AbortController()) {
+async function diagnose(
+    target: DiagnosticsTarget,
+    controller = new AbortController(),
+    onPrincipal?: (id: string) => void,
+) {
     const states: DiagnosticsState[] = [];
-    await runDiagnostics(target, controller.signal, (state) => states.push(state));
+    await runDiagnostics(target, controller.signal, (state) => states.push(state), onPrincipal);
     return states;
 }
 
@@ -80,12 +92,119 @@ describe('diagnosing a NoSQL connection', () => {
     beforeEach(() => {
         vi.resetAllMocks();
         vi.mocked(getPreferredAuthenticationMethod).mockReturnValue(AuthenticationMethod.auto);
-        io.getCosmosClient.mockReturnValue({ databases: { readAll: io.readAll }, dispose: io.dispose });
+        io.getDatabaseAccount.mockResolvedValue({});
+        io.getCosmosClient.mockImplementation(
+            (
+                _endpoint: string,
+                credentials: CosmosDBCredential[],
+                _emulator: boolean,
+                options: GetCosmosClientOptions,
+            ) => {
+                options.onAuthenticationMethod?.(credentials[0].type);
+                return {
+                    databases: { readAll: io.readAll },
+                    dispose: io.dispose,
+                    getDatabaseAccount: io.getDatabaseAccount,
+                };
+            },
+        );
         io.fetchNext.mockResolvedValue({});
         io.readAll.mockReturnValue({ fetchNext: io.fetchNext });
         io.lookup.mockResolvedValue([{ address: '10.0.0.1', family: 4 }]);
     });
 
+    it('uses the standard credential candidates when account-key auth is disabled', async () => {
+        io.get.mockResolvedValue({ documentEndpoint: 'https://example.test/', disableLocalAuth: true });
+        const identity = { type: AuthenticationMethod.managedIdentity, clientId: 'test-managed-identity' } as const;
+        io.getManagedIdentityAuth.mockResolvedValue(identity);
+        io.fetchNext.mockImplementation(() => {
+            const options: GetCosmosClientOptions = io.getCosmosClient.mock.lastCall?.[3];
+            options.onAuthenticationMethod?.(identity.type);
+            return Promise.resolve({});
+        });
+
+        const state = (await diagnose(cloud)).at(-1)!;
+
+        expect(io.get).toHaveBeenCalledOnce();
+        expect(io.listKeys).not.toHaveBeenCalled();
+        expect(io.listReadOnlyKeys).not.toHaveBeenCalled();
+        expect(io.getCosmosClient).toHaveBeenCalledExactlyOnceWith(
+            'https://example.test/',
+            [{ type: AuthenticationMethod.entraId, tenantId: 'tenant' }, identity],
+            false,
+            expect.objectContaining({ silentAuthentication: true }),
+        );
+        expect(state.checks).toContainEqual({
+            step: 'access',
+            status: 'passed',
+            finding: 'connected',
+            auth: 'identity',
+        });
+        expect(renderReport(state)).not.toContain('test-managed-identity');
+    });
+
+    it('uses the shared ARM key fallback without requesting account settings twice', async () => {
+        io.get.mockResolvedValue({ documentEndpoint: 'https://example.test/' });
+        io.listKeys.mockRejectedValue(new RestError('Key listing forbidden', { statusCode: 403 }));
+        io.listReadOnlyKeys.mockResolvedValue({ primaryReadonlyMasterKey: 'synthetic-key' });
+
+        const state = (await diagnose(cloud)).at(-1)!;
+
+        expect(io.get).toHaveBeenCalledOnce();
+        expect(io.listKeys).toHaveBeenCalledExactlyOnceWith('group', 'account', {
+            abortSignal: expect.any(AbortSignal),
+        });
+        expect(io.listReadOnlyKeys).toHaveBeenCalledExactlyOnceWith('group', 'account', {
+            abortSignal: expect.any(AbortSignal),
+        });
+        expect(state.checks).toContainEqual({ step: 'access', status: 'passed', finding: 'connected', auth: 'key' });
+        expect(JSON.stringify(state)).not.toContain('synthetic-key');
+    });
+
+    it('uses the shared Entra fallback for an attached account that rejects key authentication', async () => {
+        io.getDatabaseAccount.mockRejectedValue(new Error('Local Authorization is disabled.'));
+
+        const state = (await diagnose(attached)).at(-1)!;
+
+        expect(io.getDatabaseAccount).toHaveBeenCalledExactlyOnceWith({ abortSignal: expect.any(AbortSignal) });
+        expect(io.getCosmosClient).toHaveBeenLastCalledWith(
+            'https://example.test/',
+            [{ type: AuthenticationMethod.entraId, tenantId: undefined }],
+            false,
+            expect.objectContaining({ silentAuthentication: true }),
+        );
+        expect(state.checks).toContainEqual({ step: 'access', status: 'passed', finding: 'connected', auth: 'entra' });
+        expect(io.dispose).toHaveBeenCalledTimes(2);
+    });
+
+    it.each([
+        { matches: true, firewall: false, eligible: true },
+        { matches: false, firewall: false, eligible: false },
+        { matches: true, firewall: true, eligible: false },
+    ])('offers RBAC remediation only for the denied identity: %j', async ({ matches, firewall, eligible }) => {
+        const principal = 'f89e099d-3d03-46b0-b36d-d0ab4eaa81af';
+        const deniedPrincipal = matches ? principal : '8ff951bf-6c50-4130-b529-8af6db41373a';
+        const onPrincipal = vi.fn();
+        io.get.mockResolvedValue({ documentEndpoint: 'https://example.test/', disableLocalAuth: true });
+        io.fetchNext.mockImplementation(() => {
+            const options: GetCosmosClientOptions = io.getCosmosClient.mock.lastCall?.[3];
+            options.onAuthenticationMethod?.(AuthenticationMethod.entraId, principal);
+            const denial = `Principal [${deniedPrincipal}] does not have required RBAC permissions to perform action readMetadata.`;
+            const message = firewall ? `Blocked by your Cosmos DB account firewall settings. ${denial}` : denial;
+            throw Object.assign(new Error('Server denied the request'), { code: 403, body: { message } });
+        });
+        const state = (await diagnose(cloud, new AbortController(), onPrincipal)).at(-1)!;
+        expect(state.checks).toContainEqual({
+            step: 'access',
+            status: firewall ? 'failed' : 'info',
+            finding: firewall ? 'firewallUnknown' : 'dataRbac',
+            auth: 'entra',
+        });
+        expect(onPrincipal.mock.calls).toEqual(eligible ? [[principal]] : []);
+        expect(renderReport(state) + JSON.stringify([state, io.log.mock.calls, io.telemetry.mock.calls])).not.toContain(
+            principal,
+        );
+    });
     it('logs the actual alternate endpoint locally and emits only redacted evidence for sharing and telemetry', async () => {
         io.get.mockResolvedValue({ documentEndpoint: 'https://configured.example.test/', disableLocalAuth: true });
         io.fetchNext.mockImplementation(() => {
@@ -141,7 +260,7 @@ describe('diagnosing a NoSQL connection', () => {
         expect(io.get).not.toHaveBeenCalled();
         expect(io.readAll).toHaveBeenCalledExactlyOnceWith({ maxItemCount: 1, abortSignal: expect.any(AbortSignal) });
         expect(io.fetchNext).toHaveBeenCalledOnce();
-        expect(io.dispose).toHaveBeenCalledOnce();
+        expect(io.dispose).toHaveBeenCalledTimes(2);
         expect(states.at(-1)).toMatchObject({
             phase: 'completed',
             checks: [
@@ -195,6 +314,8 @@ describe('diagnosing a NoSQL connection', () => {
         expect(io.get).toHaveBeenCalledOnce();
         expect(io.listReadOnlyKeys).not.toHaveBeenCalled();
         expect(io.listKeys).not.toHaveBeenCalled();
+        expect(io.getManagedIdentityAuth).not.toHaveBeenCalled();
+        expect(io.getCosmosClient).not.toHaveBeenCalled();
         expect(io.readAll).not.toHaveBeenCalled();
         expect(io.lookup).toHaveBeenCalledExactlyOnceWith('example.test', { all: true });
         expect(states.at(-1)).toMatchObject({
@@ -247,7 +368,20 @@ describe('diagnosing a NoSQL connection', () => {
             }),
         );
         expect(io.readAll.mock.calls[0][0].abortSignal.aborted).toBe(true);
-        expect(io.dispose).toHaveBeenCalledOnce();
+        expect(io.dispose).toHaveBeenCalledTimes(2);
+        expect(io.lookup).not.toHaveBeenCalled();
+    });
+
+    it('does not start a data-plane request after cancellation during credential resolution', async () => {
+        const controller = new AbortController();
+        io.get.mockResolvedValue({ documentEndpoint: 'https://example.test/', disableLocalAuth: true });
+        io.getManagedIdentityAuth.mockImplementation(() => {
+            controller.abort();
+            return Promise.resolve(undefined);
+        });
+
+        expect((await diagnose(cloud, controller)).at(-1)?.phase).toBe('cancelled');
+        expect(io.getCosmosClient).not.toHaveBeenCalled();
         expect(io.lookup).not.toHaveBeenCalled();
     });
 });

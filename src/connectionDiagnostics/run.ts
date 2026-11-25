@@ -3,21 +3,19 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type CosmosDBManagementClient, type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
+import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import { lookup } from 'node:dns/promises';
 import { Agent } from 'node:https';
 import { BlockList, isIP } from 'node:net';
-import * as vscode from 'vscode';
-import { AuthenticationMethod, getPreferredAuthenticationMethod } from '../cosmosdb/AuthenticationMethod';
+import { AuthenticationMethod } from '../cosmosdb/AuthenticationMethod';
 import { parseCosmosDBConnectionString } from '../cosmosdb/cosmosDBConnectionStrings';
-import { type CosmosDBCredential } from '../cosmosdb/CosmosDBCredential';
-import { getCosmosClient } from '../cosmosdb/getCosmosClient';
-import { ext } from '../extensionVariables';
+import { type CosmosDBCredential, getCosmosDBCredentials } from '../cosmosdb/CosmosDBCredential';
+import { getCosmosClient, type GetCosmosClientOptions } from '../cosmosdb/getCosmosClient';
 import { type CosmosDBAccountModel } from '../tree/cosmosdb/models/CosmosDBAccountModel';
 import { type CosmosDBAttachedAccountModel } from '../tree/workspace-view/cosmosdb/CosmosDBAttachedAccountModel';
 import { createCosmosDBManagementClient } from '../utils/azureClients';
-import { classifyAccessError } from './classify';
+import { classifyAccessError, matchesDeniedPrincipal } from './classify';
 import { type CheckResult, type DiagnosticsState, type NetworkSummary, type Step, type TargetKind } from './model';
 import { DiagnosticsRunTrace, reportDiagnosticsOutcome } from './runTrace';
 
@@ -25,6 +23,12 @@ export type DiagnosticsTarget = (
     | { kind: 'azure'; account: CosmosDBAccountModel }
     | { kind: 'attached' | 'emulator'; account: CosmosDBAttachedAccountModel }
 ) & { probe: 'nosql' | 'network' };
+
+const authLabels = {
+    [AuthenticationMethod.accountKey]: 'key',
+    [AuthenticationMethod.entraId]: 'entra',
+    [AuthenticationMethod.managedIdentity]: 'identity',
+} as const satisfies Record<CosmosDBCredential['type'], NonNullable<CheckResult['auth']>>;
 
 const PRIVATE_ADDRESSES = new BlockList();
 for (const [address, prefix] of [
@@ -114,25 +118,15 @@ async function readArmAccount(account: CosmosDBAccountModel, signal: AbortSignal
         const client = await createCosmosDBManagementClient(context, account.subscription);
         signal.throwIfAborted();
         const resource = await client.databaseAccounts.get(group, account.name, { abortSignal: signal });
-        return { client, resource };
+        return { databaseAccount: resource, resourceGroup: group, getClient: async () => client };
     });
-}
-
-async function readArmKey(client: CosmosDBManagementClient, group: string, name: string, signal: AbortSignal) {
-    try {
-        const keys = await client.databaseAccounts.listReadOnlyKeys(group, name, { abortSignal: signal });
-        return keys.primaryReadonlyMasterKey;
-    } catch (error) {
-        if (!error || typeof error !== 'object' || !('statusCode' in error) || error.statusCode !== 403) throw error;
-        const keys = await client.databaseAccounts.listKeys(group, name, { abortSignal: signal });
-        return keys.primaryMasterKey;
-    }
 }
 
 export async function runDiagnostics(
     target: DiagnosticsTarget,
     parent: AbortSignal,
     publish: (state: DiagnosticsState) => void,
+    onRbacPrincipal?: (principalId: string) => void,
 ): Promise<void> {
     const trace = new DiagnosticsRunTrace(target.kind, target.probe);
     const checks: CheckResult[] = [];
@@ -146,7 +140,7 @@ export async function runDiagnostics(
     try {
         begin(active);
         parent.throwIfAborted();
-        const mode = target.probe === 'nosql' ? getPreferredAuthenticationMethod() : undefined;
+        let arm: Awaited<ReturnType<typeof readArmAccount>>;
         let endpoint: string | undefined;
         let key: string | undefined;
         let tenantId: string | undefined;
@@ -155,26 +149,11 @@ export async function runDiagnostics(
             endpoint = typeof rawEndpoint === 'string' ? rawEndpoint : undefined;
             tenantId = target.account.subscription.tenantId;
             try {
-                const arm = await bounded(parent, 6_000, (signal) => readArmAccount(target.account, signal));
+                arm = await bounded(parent, 6_000, (signal) => readArmAccount(target.account, signal));
                 if (arm) {
-                    endpoint = arm.resource.documentEndpoint ?? endpoint;
-                    const network = summarizeNetwork(arm.resource);
+                    endpoint = arm.databaseAccount.documentEndpoint ?? endpoint;
+                    const network = summarizeNetwork(arm.databaseAccount);
                     checks.push({ step: 'accountSettings', finding: 'settingsRead', status: 'passed', network });
-                    if (
-                        !network.localAuthDisabled &&
-                        target.account.resourceGroup &&
-                        (mode === AuthenticationMethod.auto || mode === AuthenticationMethod.accountKey)
-                    ) {
-                        try {
-                            const { resourceGroup, name } = target.account;
-                            key = await bounded(parent, 5_000, (signal) =>
-                                readArmKey(arm.client, resourceGroup, name, signal),
-                            );
-                        } catch {
-                            parent.throwIfAborted();
-                            // Key-only mode reports missing credentials below; automatic mode can still use Entra.
-                        }
-                    }
                 } else {
                     checks.push({ step: 'accountSettings', finding: 'settingsUnavailable', status: 'info' });
                 }
@@ -208,63 +187,74 @@ export async function runDiagnostics(
         if (target.probe === 'nosql') {
             begin('access');
             const emulator = target.kind === 'emulator';
-            const localAuthDisabled = checks.find((check) => check.step === 'accountSettings')?.network
-                ?.localAuthDisabled;
-            const useKey =
-                emulator || mode === AuthenticationMethod.accountKey || (mode === AuthenticationMethod.auto && !!key);
-            const auth = useKey ? 'key' : mode === AuthenticationMethod.managedIdentity ? 'identity' : 'entra';
-            const credential: CosmosDBCredential | undefined =
-                auth === 'key'
-                    ? key
-                        ? { type: AuthenticationMethod.accountKey, key }
-                        : undefined
-                    : auth === 'identity'
-                      ? {
-                            type: AuthenticationMethod.managedIdentity,
-                            clientId: vscode.workspace
-                                .getConfiguration()
-                                .get<string>(ext.settingsKeys.authManagedIdentityClientId),
-                        }
-                      : { type: AuthenticationMethod.entraId, tenantId };
-
-            let access: CheckResult;
-            if (!credential) {
-                access = {
-                    step: 'access',
-                    finding: localAuthDisabled ? 'localAuthDisabled' : 'missingCredentials',
-                    status: 'failed',
-                    auth,
-                };
-            } else {
-                const agent =
-                    emulator && url.protocol === 'https:' ? new Agent({ rejectUnauthorized: false }) : undefined;
-                try {
-                    const client = getCosmosClient(url.href, [credential], emulator, {
-                        agent,
-                        silentAuthentication: true,
-                        onHttpResponse: (response) => trace.recordResponse(response, url),
-                        connectionPolicy: { retryOptions: { maxRetryAttemptCount: 0 } },
-                    });
+            let auth: CheckResult['auth'];
+            let principalId: string | undefined;
+            const probeOptions = {
+                onHttpResponse: (response) => trace.recordResponse(response, url),
+                connectionPolicy: { retryOptions: { maxRetryAttemptCount: 0 } },
+            } satisfies GetCosmosClientOptions;
+            try {
+                // Do not send cloud credentials to an emulator when its saved key is missing.
+                const credentials =
+                    emulator && !key
+                        ? []
+                        : await bounded(parent, 12_000, (abortSignal) =>
+                              getCosmosDBCredentials(
+                                  {
+                                      accountName: target.account.name,
+                                      documentEndpoint: url.href,
+                                      isEmulator: emulator,
+                                      arm,
+                                      masterKey: key,
+                                      tenantId,
+                                  },
+                                  { silent: true, abortSignal, keyProbeOptions: probeOptions },
+                              ),
+                          );
+                if (!credentials.length) {
+                    checks.push({ step: 'access', finding: 'missingCredentials', status: 'failed' });
+                } else {
+                    const agent =
+                        emulator && url.protocol === 'https:' ? new Agent({ rejectUnauthorized: false }) : undefined;
                     try {
-                        await bounded(parent, 12_000, (abortSignal) =>
-                            client.databases.readAll({ maxItemCount: 1, abortSignal }).fetchNext(),
-                        );
-                        access = { step: 'access', finding: 'connected', status: 'passed', auth };
+                        const client = getCosmosClient(url.href, credentials, emulator, {
+                            ...probeOptions,
+                            agent,
+                            silentAuthentication: true,
+                            onAuthenticationMethod: (method, oid) => {
+                                auth = authLabels[method];
+                                principalId = oid;
+                            },
+                        });
+                        try {
+                            await bounded(parent, 12_000, (abortSignal) =>
+                                client.databases.readAll({ maxItemCount: 1, abortSignal }).fetchNext(),
+                            );
+                        } finally {
+                            client.dispose();
+                        }
                     } finally {
-                        client.dispose();
+                        agent?.destroy();
                     }
-                } catch (error) {
-                    parent.throwIfAborted();
-                    const classification =
-                        error instanceof StepTimeoutError
-                            ? { finding: 'timedOut' as const }
-                            : classifyAccessError(error);
-                    access = { step: 'access', ...classification, status: 'failed', auth };
-                } finally {
-                    agent?.destroy();
+                    checks.push({ step: 'access', finding: 'connected', status: 'passed', auth });
                 }
+            } catch (error) {
+                parent.throwIfAborted();
+                const classification =
+                    error instanceof StepTimeoutError ? { finding: 'timedOut' as const } : classifyAccessError(error);
+                const needsRole = classification.finding === 'dataRbac';
+                if (
+                    needsRole &&
+                    target.kind === 'azure' &&
+                    arm?.databaseAccount.documentEndpoint &&
+                    principalId &&
+                    auth !== 'key' &&
+                    matchesDeniedPrincipal(error, principalId)
+                ) {
+                    onRbacPrincipal?.(principalId);
+                }
+                checks.push({ step: 'access', ...classification, status: needsRole ? 'info' : 'failed', auth });
             }
-            checks.push(access);
         }
 
         begin('dns');

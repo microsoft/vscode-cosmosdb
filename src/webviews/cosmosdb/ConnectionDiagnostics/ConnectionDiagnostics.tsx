@@ -33,7 +33,7 @@ import {
 } from '@microsoft/vscode-ext-webview-fluentui/components';
 import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
-import { useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { type CheckResult, type DiagnosticsState, type Step } from '../../../connectionDiagnostics/model';
 import {
     checkEvidence,
@@ -115,7 +115,17 @@ function CheckRow({ step, state, styles }: { step: Step; state: DiagnosticsState
     );
 }
 
-function DiagnosticsSummary({ state, styles }: { state: DiagnosticsState; styles: PanelStyles }) {
+function DiagnosticsSummary({
+    state,
+    styles,
+    roleAction,
+    roleFeedback,
+}: {
+    state: DiagnosticsState;
+    styles: PanelStyles;
+    roleAction: ReactNode;
+    roleFeedback?: string;
+}) {
     const titleId = useId('diagnostics-summary');
     const failure = state.checks.find((check) => check.status === 'failed');
     const keyCheck = state.checks.find(
@@ -123,7 +133,8 @@ function DiagnosticsSummary({ state, styles }: { state: DiagnosticsState; styles
     );
     const cancelled = state.phase === 'cancelled';
     const connected = keyCheck?.finding === 'connected';
-    const intent = cancelled ? 'info' : failure ? 'error' : connected ? 'success' : 'info';
+    const needsRole = state.checks.find((check) => check.finding === 'dataRbac');
+    const intent = cancelled ? 'info' : needsRole ? 'warning' : failure ? 'error' : connected ? 'success' : 'info';
     const secondary = state.checks.find(
         (check) =>
             check.finding === 'settingsUnavailable' ||
@@ -143,6 +154,18 @@ function DiagnosticsSummary({ state, styles }: { state: DiagnosticsState; styles
                     </h3>
                     {cancelled ? (
                         <Text>{l10n.t('You cancelled the diagnosis. The results so far are kept.')}</Text>
+                    ) : needsRole ? (
+                        <>
+                            <Text>{checkText(needsRole, state.kind)}</Text>
+                            {!state.canAddDataRole && !roleFeedback && (
+                                <Text>
+                                    {l10n.t(
+                                        'Ask an account administrator to grant the required data-plane permissions.',
+                                    )}
+                                </Text>
+                            )}
+                            <output>{roleFeedback}</output>
+                        </>
                     ) : failure ? (
                         <Text>{checkText(failure, state.kind)}</Text>
                     ) : (
@@ -164,6 +187,7 @@ function DiagnosticsSummary({ state, styles }: { state: DiagnosticsState; styles
                         </>
                     )}
                 </MessageBarBody>
+                {!cancelled && needsRole && roleAction && <MessageBarActions>{roleAction}</MessageBarActions>}
             </MessageBar>
         </section>
     );
@@ -181,6 +205,8 @@ export function ConnectionDiagnostics() {
     const styles = useDiagnosticsStyles();
     const client = useTrpcClient<ConnectionDiagnosticsRouter>();
     const { announce } = useAnnounce();
+    const primaryButton = useRef<HTMLButtonElement>(null);
+    const addRoleButton = useRef<HTMLButtonElement>(null);
     const reportButton = useRef<HTMLButtonElement>(null);
     const outputButton = useRef<HTMLButtonElement>(null);
     const shareButton = useRef<HTMLButtonElement>(null);
@@ -190,6 +216,7 @@ export function ConnectionDiagnostics() {
     const [failure, setFailure] = useState<string>();
     const [needsRefresh, setNeedsRefresh] = useState(false);
     const [reportFeedback, setReportFeedback] = useState<{ intent: 'success' | 'error'; text: string }>();
+    const [roleFeedback, setRoleFeedback] = useState<string>();
     const [pending, setPending] = useState(false);
     const [cancelling, setCancelling] = useState(false);
     const [now, setNow] = useState(Date.now);
@@ -250,6 +277,7 @@ export function ConnectionDiagnostics() {
                 setCancelling(true);
                 await client.cancel.mutate();
             } else {
+                setRoleFeedback(undefined);
                 setState(await client.rerun.mutate());
                 setRevision((value) => value + 1);
             }
@@ -260,6 +288,40 @@ export function ConnectionDiagnostics() {
                     : l10n.t('Could not start connection diagnostics.'),
             );
             setCancelling(false);
+        } finally {
+            setPending(false);
+        }
+    }
+
+    async function addDataRole() {
+        const runId = state?.trace?.runId;
+        if (!runId || !state?.canAddDataRole) return;
+        setPending(true);
+        setRoleFeedback(undefined);
+        const failed = l10n.t('Could not add the data role. Try again or ask an account administrator.');
+        try {
+            const outcome = await client.addDataRole.mutate({ runId });
+            if (outcome === 'assigned' || outcome === 'unavailable') {
+                if (addRoleButton.current?.ownerDocument.activeElement === addRoleButton.current) {
+                    primaryButton.current?.focus();
+                }
+                setState({ ...state, canAddDataRole: false });
+            }
+            if (outcome === 'assigned') {
+                setRoleFeedback(l10n.t('Role assigned. Wait for the permission to take effect, then select Re-run.'));
+            } else if (outcome === 'denied') {
+                setRoleFeedback(
+                    l10n.t('You do not have permission to assign this role. Ask an account administrator.'),
+                );
+            } else if (outcome === 'failed') {
+                setRoleFeedback(failed);
+            } else if (outcome === 'unavailable') {
+                setRoleFeedback(
+                    l10n.t('This result is no longer current. Re-run diagnostics before assigning a role.'),
+                );
+            }
+        } catch {
+            setRoleFeedback(failed);
         } finally {
             setPending(false);
         }
@@ -339,7 +401,24 @@ export function ConnectionDiagnostics() {
                                 <CheckRow key={`${revision}-${step}`} step={step} state={state} styles={styles} />
                             ))}
                         </StatusList>
-                        {ready && <DiagnosticsSummary state={state} styles={styles} />}
+                        {ready && (
+                            <DiagnosticsSummary
+                                state={state}
+                                styles={styles}
+                                roleFeedback={roleFeedback}
+                                roleAction={
+                                    state.canAddDataRole && (
+                                        <Button
+                                            ref={addRoleButton}
+                                            disabledFocusable={pending || needsRefresh}
+                                            onClick={() => void addDataRole()}
+                                        >
+                                            {l10n.t('Add Data Contributor role')}
+                                        </Button>
+                                    )
+                                }
+                            />
+                        )}
                         {failure && (
                             <MessageBar intent="error">
                                 <MessageBarBody>{failure}</MessageBarBody>
@@ -375,6 +454,7 @@ export function ConnectionDiagnostics() {
                 }
             >
                 <Button
+                    ref={primaryButton}
                     appearance="primary"
                     icon={running && !needsRefresh ? undefined : <ArrowClockwiseRegular aria-hidden />}
                     disabledFocusable={pending || cancelling || (!state && !needsRefresh)}

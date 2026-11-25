@@ -59,6 +59,8 @@ export interface DiagnosticsState {
     kind: TargetKind;
     /** Local panel heading only. */
     connectionName?: string;
+    /** Local action availability only. Identity details stay on the host. */
+    canAddDataRole?: boolean;
     phase: 'running' | 'completed' | 'cancelled';
     finishedAt?: number;
     active?: Step;

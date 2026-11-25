@@ -35,6 +35,7 @@ vi.mock('../extensionVariables', () => ({
     ext: { outputChannel: { show: mocks.show, debug: vi.fn(), warn: vi.fn() } },
 }));
 vi.mock('../connectionDiagnostics/run', () => ({ runDiagnostics: vi.fn() }));
+vi.mock('../connectionDiagnostics/roleAction', () => ({ assignDiagnosticsDataRole: vi.fn() }));
 vi.mock('../connectionDiagnostics/reportActions', () => ({
     copyDiagnosticsReport: mocks.copy,
     saveDiagnosticsReport: mocks.save,
@@ -54,7 +55,12 @@ beforeEach(() => vi.resetAllMocks());
 it('tracks explicit actions and export outcomes but does not emit events for progress polling', async () => {
     const rerun = vi.fn();
     const cancel = vi.fn();
-    const caller = connectionDiagnosticsRouter.createCaller({ getState: () => state, rerun, cancel });
+    const caller = connectionDiagnosticsRouter.createCaller({
+        getState: () => state,
+        rerun,
+        cancel,
+        addDataRole: vi.fn(),
+    });
     mocks.copy.mockResolvedValue('done');
     mocks.preview.mockResolvedValue('done');
     mocks.save.mockResolvedValue('cancelled');
@@ -88,4 +94,26 @@ it('tracks explicit actions and export outcomes but does not emit events for pro
         }),
     );
     expect(JSON.stringify(mocks.track.mock.calls)).not.toContain('203.0.113.10');
+});
+
+it('only handles role requests for a current, eligible RBAC finding', async () => {
+    const runId = 'f89e099d-3d03-46b0-b36d-d0ab4eaa81af';
+    let current: DiagnosticsState = { ...state, trace: { runId, lines: [] }, canAddDataRole: true };
+    const addDataRole = vi.fn().mockResolvedValue('assigned');
+    const caller = connectionDiagnosticsRouter.createCaller({
+        getState: () => current,
+        rerun: vi.fn(),
+        cancel: vi.fn(),
+        addDataRole,
+    });
+    await expect(caller.addDataRole({ runId })).resolves.toBe('unavailable');
+    current = { ...current, checks: [{ step: 'access', status: 'info', finding: 'dataRbac' }] };
+    await expect(caller.addDataRole({ runId: '8ff951bf-6c50-4130-b529-8af6db41373a' })).resolves.toBe('unavailable');
+    expect(addDataRole).not.toHaveBeenCalled();
+    await expect(caller.addDataRole({ runId })).resolves.toBe('assigned');
+    expect(addDataRole).toHaveBeenCalledExactlyOnceWith(runId, expect.any(Object));
+    expect(mocks.track).toHaveBeenLastCalledWith(
+        'cosmosDB.rpc.mutation.connectionDiagnostics.addDataRole',
+        expect.objectContaining({ properties: { diagnosticsRunId: runId, roleActionOutcome: 'assigned' } }),
+    );
 });

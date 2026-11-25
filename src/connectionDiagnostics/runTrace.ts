@@ -96,7 +96,7 @@ export async function reportDiagnosticsOutcome(
                 ? 'cancelled'
                 : access?.status === 'passed'
                   ? 'connected'
-                  : access?.status === 'failed'
+                  : access?.status === 'failed' || access?.finding === 'dataRbac'
                     ? 'failed'
                     : 'notTested';
         if (state.trace) context.telemetry.properties.diagnosticsRunId = state.trace.runId;

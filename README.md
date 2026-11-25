@@ -213,11 +213,17 @@ check is skipped: account settings and DNS do not confirm that the API itself is
 
 If Cosmos DB reports an outgoing IP that was blocked, the panel shows it locally so you can check the IP allowlist.
 For Private Link, check private DNS and routing before changing the allowlist. The diagnostic does not change network
-settings or prompt for a data-plane sign-in. Expand **Details** on a check for its findings. **Show Output** opens the
+settings. Its NoSQL probe uses the same credential selection as Query Editor, without prompting for a data-plane
+sign-in. Expand **Details** on a check for its findings. **Show Output** opens the
 local **Azure Cosmos DB** channel, which records check progress and the destination of SDK requests that returned an
 HTTP error. To contact support, use **Show report** to open the results and check log in a read-only Markdown editor.
 Use **Share report** to copy the Markdown or save a Markdown or JSON file. The report includes the run ID for
 correlation but omits account identifiers, endpoints, IP addresses, credentials, and raw errors.
+
+If Cosmos DB reports missing NoSQL data-plane permissions, the panel shows **Cosmos DB data role required** instead of a
+connection error. For Azure accounts where diagnostics can verify the identity that was denied, **Add Data Contributor
+role** lets an authorized user grant that identity read and write access across the account after confirmation. Wait for
+the role to take effect, then select **Re-run**. Diagnostics never assigns a role automatically.
 
 ## Corporate proxies
 

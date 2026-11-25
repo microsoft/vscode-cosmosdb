@@ -80,15 +80,17 @@ async function getHasManagedIdentity(
     accountEndpoint: string,
     clientId?: string,
     silent: boolean = true,
+    abortSignal?: AbortSignal,
 ): Promise<boolean> {
     const cred = new ManagedIdentityCredential({ clientId: clientId });
     try {
         const endpointUrl = new URL(accountEndpoint);
         // Strip port from endpoint - just use protocol and hostname
         const endpointWithoutPort = `${endpointUrl.protocol}//${endpointUrl.hostname}`;
-        await cred.getToken(`${endpointWithoutPort}/.default`);
+        await cred.getToken(`${endpointWithoutPort}/.default`, { abortSignal });
         return true;
     } catch (error) {
+        abortSignal?.throwIfAborted();
         if (!silent) {
             ext.outputChannel.error(
                 `Managed Identity token acquisition failed for account "${accountEndpoint}": ${String(error)}`,
@@ -101,11 +103,13 @@ async function getHasManagedIdentity(
 export async function getManagedIdentityAuth(
     accountEndpoint: string,
     force: boolean,
+    abortSignal?: AbortSignal,
 ): Promise<CosmosDBManagedIdentityCredential | undefined> {
     // If not forcing and not on Azure, return early
     if (!force && !(await getIsRunningOnAzure())) {
         return undefined;
     }
+    abortSignal?.throwIfAborted();
 
     // Get client ID from settings
     const managedIdentityClientId = vscode.workspace
@@ -117,7 +121,7 @@ export async function getManagedIdentityAuth(
     // which will likely fail if not on Azure with an auth error being logged.
     // This behaviour is expected as the user is forcing managed identity in settings.
     // In Automatic mode we want this to fail silently if not on Azure.
-    if (force || (await getHasManagedIdentity(accountEndpoint, managedIdentityClientId, !force))) {
+    if (force || (await getHasManagedIdentity(accountEndpoint, managedIdentityClientId, !force, abortSignal))) {
         return {
             type: AuthenticationMethod.managedIdentity,
             clientId: managedIdentityClientId,

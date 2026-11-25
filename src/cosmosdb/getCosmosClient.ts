@@ -18,12 +18,13 @@ import { getCosmosDBKeyCredential, type CosmosDBCredential } from './CosmosDBCre
 import { createCosmosHttpClient } from './createCosmosHttpClient';
 import { isNoSqlQueryConnection, type NoSqlQueryConnection } from './NoSqlQueryConnection';
 import { SilentCosmosAuthenticationError } from './SilentCosmosAuthenticationError';
-import { getAccessTokenForVSCode } from './utils/azureSessionHelper';
+import { type AccessToken, getAccessTokenForVSCode, getOidFromToken } from './utils/azureSessionHelper';
 
 export type GetCosmosClientOptions = Partial<CosmosClientOptions> & {
     wwwAuthenticate?: string; // Optional challenge for EntraID authentication
     isLlmTool?: boolean;
     silentAuthentication?: boolean;
+    onAuthenticationMethod?: (method: CosmosDBCredential['type'], principalId?: string) => void;
     onHttpResponse?: (response: PipelineResponse) => void;
 };
 
@@ -80,6 +81,7 @@ export function getCosmosClient(
         isLlmTool = false,
         silentAuthentication = false,
         wwwAuthenticate,
+        onAuthenticationMethod,
         onHttpResponse,
         httpClient: suppliedHttpClient,
         ...clientOptions
@@ -106,6 +108,7 @@ export function getCosmosClient(
     // @todo: Add telemetry to monitor usage of each credential type
     if (keyCred) {
         commonProperties.key = keyCred?.key;
+        onAuthenticationMethod?.(keyCred.type);
     } else if (nonKeyCredentials.length > 0) {
         commonProperties.aadCredentials = {
             getToken: async (scopes, tokenOptions) => {
@@ -118,7 +121,8 @@ export function getCosmosClient(
                 async function tryCredential(
                     credential: CosmosDBCredential,
                     forcePrompt: boolean,
-                ): Promise<{ token: string; expiresOnTimestamp: number } | null> {
+                ): Promise<AccessToken | null> {
+                    let token: AccessToken | null;
                     try {
                         switch (credential.type) {
                             case AuthenticationMethod.accountKey:
@@ -126,19 +130,21 @@ export function getCosmosClient(
                                 return null;
 
                             case AuthenticationMethod.entraId: {
-                                return await getAccessTokenForVSCode(
+                                token = await getAccessTokenForVSCode(
                                     wwwAuthenticate
                                         ? { scopes: normalizedAuthScopes, wwwAuthenticate }
                                         : normalizedAuthScopes,
                                     credential.tenantId,
                                     silentAuthentication ? { silent: true } : { createIfNone: forcePrompt },
                                 );
+                                break;
                             }
 
                             case AuthenticationMethod.managedIdentity: {
                                 const { clientId } = credential;
                                 const auth = new ManagedIdentityCredential({ clientId });
-                                return await auth.getToken(normalizedAuthScopes, tokenOptions);
+                                token = await auth.getToken(normalizedAuthScopes, tokenOptions);
+                                break;
                             }
 
                             default:
@@ -158,6 +164,8 @@ export function getCosmosClient(
                         errors.push(message);
                         return null;
                     }
+                    if (token) onAuthenticationMethod?.(credential.type, getOidFromToken(token.token));
+                    return token;
                 }
 
                 // THREE-STEP AUTHENTICATION STRATEGY:

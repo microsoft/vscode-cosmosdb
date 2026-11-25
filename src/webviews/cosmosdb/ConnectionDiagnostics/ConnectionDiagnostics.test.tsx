@@ -20,6 +20,7 @@ const client = vi.hoisted(() => ({
     copy: { mutate: vi.fn() },
     save: { mutate: vi.fn() },
     showOutput: { mutate: vi.fn() },
+    addDataRole: { mutate: vi.fn() },
 }));
 vi.mock('@microsoft/vscode-ext-webview/react', () => ({ useTrpcClient: () => client }));
 
@@ -68,6 +69,7 @@ it('shows the outcome and makes check details available from the keyboard', asyn
     expect(screen.getByText('Checked a few seconds ago')).toBeVisible();
     expect(within(summary).getByText(/Check public network access and the IP allowlist/)).toBeVisible();
     expect(within(summary).getByText(/Contacting support\?/)).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Add Data Contributor role' })).not.toBeInTheDocument();
     const list = screen.getByRole('list', { name: 'Connection checks' });
     const details = within(list).getByRole('button', { name: 'Details for Cosmos DB access' });
     const localIp = within(list).getByText('Outgoing IP reported by Cosmos DB: 203.0.113.45');
@@ -83,6 +85,30 @@ it('shows the outcome and makes check details available from the keyboard', asyn
     await user.keyboard(' ');
     expect(details).toHaveAttribute('aria-expanded', 'false');
     expect(localIp).not.toBeVisible();
+});
+
+it('shows confirmed RBAC as an inline action and returns focus to Re-run after assignment', async () => {
+    client.state.query.mockResolvedValue({
+        ...completed,
+        kind: 'azure',
+        canAddDataRole: true,
+        checks: [{ step: 'access', status: 'info', finding: 'dataRbac', auth: 'entra' }],
+    } satisfies DiagnosticsState);
+    client.addDataRole.mutate.mockResolvedValueOnce('cancelled').mockResolvedValueOnce('assigned');
+    const user = userEvent.setup();
+    renderPanel();
+
+    const summary = await screen.findByRole('region', { name: 'Cosmos DB data role required.' });
+    const add = within(summary).getByRole('button', { name: 'Add Data Contributor role' });
+    expect(add).toHaveTextContent('Add Data Contributor role');
+    add.focus();
+    await user.keyboard('{Enter}');
+    expect(client.addDataRole.mutate).toHaveBeenCalledExactlyOnceWith({ runId: completed.trace?.runId });
+    expect(add).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(await screen.findByText(/Role assigned\. Wait for the permission/)).toBeVisible();
+    expect(add).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Re-run' })).toHaveFocus();
 });
 
 it('shows progress, preserves button focus, and can cancel and rerun', async () => {

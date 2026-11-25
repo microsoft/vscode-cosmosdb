@@ -18,6 +18,9 @@ export function stepLabel(step: Step): string {
 export function phaseLabel(state: DiagnosticsState): string {
     if (state.phase === 'cancelled') return l10n.t('Connection diagnostics cancelled.');
     if (state.phase === 'running') return l10n.t('Connection diagnostics running.');
+    if (state.checks.some((check) => check.finding === 'dataRbac')) {
+        return l10n.t('Cosmos DB data role required.');
+    }
     if (state.checks.some((check) => check.finding === 'apiProbeUnavailable')) {
         return l10n.t('Diagnostics complete. Data-plane access was not tested.');
     }
@@ -59,6 +62,8 @@ export function checkEvidence(check: CheckResult): string {
             return l10n.t('Public and private addresses');
         case 'unresolvedDns':
             return l10n.t('Name resolution inconclusive');
+        case 'dataRbac':
+            return l10n.t('Data-plane role required');
         default:
             return statusLabel(check.status);
     }
@@ -83,7 +88,7 @@ export function checkText(check: CheckResult, kind: DiagnosticsState['kind']): s
         ),
         connected: l10n.t('The SDK read database metadata. No documents were read.'),
         missingCredentials: l10n.t(
-            'No account key was available. Check the saved connection or your permission to retrieve an Azure account key.',
+            'No usable credentials were available. Check the configured authentication method or the saved connection.',
         ),
         authentication: l10n.t(
             'The selected credential was rejected or a token could not be acquired. Verify the key or the selected identity and sign in again if needed.',

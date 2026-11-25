@@ -12,7 +12,7 @@ import { ext } from '../extensionVariables';
 import { rejectOnTimeout } from '../utils/timeout';
 import { AuthenticationMethod, getPreferredAuthenticationMethod } from './AuthenticationMethod';
 import { type AzureResourceMetadata } from './AzureResourceMetadata';
-import { getCosmosClient } from './getCosmosClient';
+import { getCosmosClient, type GetCosmosClientOptions } from './getCosmosClient';
 import { getManagedIdentityAuth } from './utils/managedIdentityUtils';
 
 export type CosmosDBKeyCredential = {
@@ -32,6 +32,12 @@ export type CosmosDBManagedIdentityCredential = {
 
 export type CosmosDBCredential = CosmosDBKeyCredential | CosmosDBEntraIdCredential | CosmosDBManagedIdentityCredential;
 
+type CredentialResolutionOptions = {
+    silent?: boolean;
+    abortSignal?: AbortSignal;
+    keyProbeOptions?: Pick<GetCosmosClientOptions, 'connectionPolicy' | 'onHttpResponse'>;
+};
+
 export function getCosmosDBKeyCredential(credentials: CosmosDBCredential[]): CosmosDBKeyCredential | undefined {
     return credentials.filter(
         (cred): cred is CosmosDBKeyCredential => cred.type === AuthenticationMethod.accountKey,
@@ -45,21 +51,32 @@ export function getCosmosDBEntraIdCredential(credentials: CosmosDBCredential[]):
 }
 
 // Common credential retrieval function with source-specific parameters
-export async function getCosmosDBCredentials(params: {
-    // Basic account information, required for all credential types
-    accountName: string;
-    documentEndpoint: string;
-    isEmulator: boolean;
+export async function getCosmosDBCredentials(
+    params: {
+        // Basic account information, required for all credential types
+        accountName: string;
+        documentEndpoint: string;
+        isEmulator: boolean;
 
-    // ARM-specific parameters
-    arm?: AzureResourceMetadata;
+        // ARM-specific parameters
+        arm?: Pick<AzureResourceMetadata, 'getClient' | 'resourceGroup' | 'databaseAccount'>;
 
-    // Connection string params
-    masterKey?: string;
-    tenantId?: string;
-}): Promise<CosmosDBCredential[]> {
+        // Connection string params
+        masterKey?: string;
+        tenantId?: string;
+    },
+    options: CredentialResolutionOptions = {},
+): Promise<CosmosDBCredential[]> {
     const result = await callWithTelemetryAndErrorHandling('getCredentials', async (context: IActionContext) => {
         const { accountName, arm, documentEndpoint, isEmulator, tenantId, masterKey } = params;
+        const { silent, abortSignal } = options;
+        if (silent) {
+            context.errorHandling.suppressDisplay = true;
+            context.errorHandling.rethrow = true;
+            context.telemetry.maskEntireErrorMessage = true;
+            context.telemetry.suppressIfSuccessful = true;
+        }
+        abortSignal?.throwIfAborted();
 
         context.telemetry.properties.attachedAccount = 'false';
 
@@ -101,6 +118,7 @@ export async function getCosmosDBCredentials(params: {
 
             // Try to get key credential from ARM if possible
             const armClient = await arm?.getClient();
+            abortSignal?.throwIfAborted();
             if (arm && armClient) {
                 const localAuthDisabled = arm.databaseAccount.disableLocalAuth ?? false;
 
@@ -110,6 +128,7 @@ export async function getCosmosDBCredentials(params: {
                     arm.resourceGroup,
                     armClient,
                     localAuthDisabled,
+                    options,
                 );
             }
 
@@ -121,6 +140,7 @@ export async function getCosmosDBCredentials(params: {
                     documentEndpoint,
                     params.masterKey,
                     isEmulator,
+                    options,
                 );
             }
         }
@@ -128,7 +148,9 @@ export async function getCosmosDBCredentials(params: {
         const managedIdentityCred = await getManagedIdentityAuth(
             documentEndpoint,
             preferredAuthenticationMethod === AuthenticationMethod.managedIdentity,
+            abortSignal,
         );
+        abortSignal?.throwIfAborted();
 
         // OAuth is always enabled for Cosmos DB and used as fallback
         // TODO: we need to preserve the tenantId in the connection string, otherwise we can't use EntraId for foreign tenants
@@ -151,6 +173,7 @@ async function getKeyCredentialWithARM(
     resourceGroup: string,
     client: CosmosDBManagementClient,
     localAuthDisabled: boolean,
+    options: CredentialResolutionOptions,
 ): Promise<CosmosDBKeyCredential | undefined> {
     let keyCred: CosmosDBKeyCredential | undefined = undefined;
     try {
@@ -161,14 +184,12 @@ async function getKeyCredentialWithARM(
             throw new Error(l10n.t('Local auth is disabled'));
         }
         const key: string | undefined =
-            (await getPrimaryKeyWithARM(client, resourceGroup, accountName, true)) ||
-            (await getPrimaryKeyWithARM(client, resourceGroup, accountName, false));
-        keyCred = {
-            type: AuthenticationMethod.accountKey,
-            key: key!,
-        };
+            (await getPrimaryKeyWithARM(client, resourceGroup, accountName, true, options)) ||
+            (await getPrimaryKeyWithARM(client, resourceGroup, accountName, false, options));
+        if (key) keyCred = { type: AuthenticationMethod.accountKey, key };
     } catch {
-        logLocalAuthDisabledWarning(accountName);
+        options.abortSignal?.throwIfAborted();
+        if (!options.silent) logLocalAuthDisabledWarning(accountName);
     } finally {
         if (keyCred !== undefined) {
             context.telemetry.properties.hasKeyCred = 'true';
@@ -185,18 +206,25 @@ async function getPrimaryKeyWithARM(
     resourceGroup: string,
     accountName: string,
     useWriteEnabledAndHandle403: boolean,
+    { silent, abortSignal }: CredentialResolutionOptions,
 ): Promise<string | undefined> {
+    abortSignal?.throwIfAborted();
+    const options = abortSignal ? { abortSignal } : undefined;
     try {
         if (useWriteEnabledAndHandle403) {
-            const keyResult = await client.databaseAccounts.listKeys(resourceGroup, accountName);
+            const keyResult = await client.databaseAccounts.listKeys(resourceGroup, accountName, options);
             return keyResult.primaryMasterKey;
         } else {
-            const readonlyKeyResult = await client.databaseAccounts.listReadOnlyKeys(resourceGroup, accountName);
+            const readonlyKeyResult = await client.databaseAccounts.listReadOnlyKeys(
+                resourceGroup,
+                accountName,
+                options,
+            );
             return readonlyKeyResult.primaryReadonlyMasterKey;
         }
     } catch (e: unknown) {
         if (useWriteEnabledAndHandle403 && e instanceof RestError && e.statusCode === 403) {
-            logLocalAuthDisabledWarning(accountName);
+            if (!silent) logLocalAuthDisabledWarning(accountName);
             return undefined;
         } else {
             throw e;
@@ -211,6 +239,7 @@ async function getKeyCredentialWithoutARM(
     documentEndpoint: string,
     masterKey: string,
     isEmulator: boolean,
+    { silent, abortSignal, keyProbeOptions }: CredentialResolutionOptions,
 ): Promise<CosmosDBKeyCredential | undefined> {
     let keyCred: CosmosDBKeyCredential | undefined = undefined;
     let localAuthDisabled = false;
@@ -232,17 +261,25 @@ async function getKeyCredentialWithoutARM(
             // Since here we don't have subscription,
             // we can't get DatabaseAccountGetResults to retrieve disableLocalAuth property
             // Will try to connect to the account and catch if it fails due to local auth being disabled.
-            const cosmosClient = getCosmosClient(documentEndpoint, [keyCred], isEmulator);
             const timeout: number = isEmulator
                 ? CosmosDBTimeouts.EMULATOR_CONNECTION_TIMEOUT_MS
                 : CosmosDBTimeouts.CONNECTION_TIMEOUT_MS;
+            const cosmosClient = getCosmosClient(documentEndpoint, [keyCred], isEmulator, keyProbeOptions);
             // Apply timeout to prevent hanging indefinitely on unreachable hosts
-            await rejectOnTimeout(
-                timeout,
-                () => cosmosClient.getDatabaseAccount(),
-                l10n.t('Connection timed out while verifying account credentials.'),
-            );
+            const probe = new AbortController();
+            const signal = abortSignal ? AbortSignal.any([probe.signal, abortSignal]) : probe.signal;
+            try {
+                await rejectOnTimeout(
+                    timeout,
+                    () => cosmosClient.getDatabaseAccount({ abortSignal: signal }),
+                    l10n.t('Connection timed out while verifying account credentials.'),
+                );
+            } finally {
+                probe.abort();
+                cosmosClient.dispose();
+            }
         } catch (e) {
+            abortSignal?.throwIfAborted();
             const error = parseError(e);
             // handle errors caused by local auth being disabled only, all other errors will be thrown
             if (error.message.includes('Local Authorization is disabled.')) {
@@ -251,7 +288,7 @@ async function getKeyCredentialWithoutARM(
             }
             // If timeout or other connection error, log it but don't block - we'll try with the key anyway
             // The actual connection attempt in getDatabases will fail with a proper timeout message
-            else if (error.message.includes('timed out')) {
+            else if (!silent && error.message.includes('timed out')) {
                 ext.outputChannel.appendLog(
                     `[getKeyCredentialWithoutARM] Credential verification timed out for ${accountName}, will retry on actual connection`,
                 );
@@ -263,7 +300,7 @@ async function getKeyCredentialWithoutARM(
     if (localAuthDisabled && !isEmulator) {
         // Clean up keyCred if local auth is disabled
         keyCred = undefined;
-        logLocalAuthDisabledWarning(accountName);
+        if (!silent) logLocalAuthDisabledWarning(accountName);
     }
     return keyCred;
 }

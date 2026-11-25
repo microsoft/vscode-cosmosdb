@@ -110,14 +110,23 @@ export const queryEditorRouterDef = queryEditorRouter({
     diagnoseConnection: queryEditorProcedure
         .input(z.object({ connectionVersion: z.number().int().nonnegative() }))
         .mutation(async ({ ctx, input }) => {
-            const connection = requireQueryConnection(ctx, input.connectionVersion);
             if (ctx.actionContext) {
-                maskConnectionTelemetry(ctx.actionContext, connection);
                 ctx.actionContext.telemetry.maskEntireErrorMessage = true;
             }
-            const { ConnectionDiagnosticsTab } = await import('../../ConnectionDiagnosticsTab');
-            requireQueryConnection(ctx, input.connectionVersion);
-            ConnectionDiagnosticsTab.render({ kind: 'queryEditor', probe: 'query', connection });
+            const currentConnection = () =>
+                !ctx.state.isChangingConnection && ctx.state.connectionVersion === input.connectionVersion
+                    ? ctx.state.connection
+                    : undefined;
+            const connection = currentConnection();
+            if (connection) {
+                if (ctx.actionContext) maskConnectionTelemetry(ctx.actionContext, connection);
+                const { ConnectionDiagnosticsTab } = await import('../../ConnectionDiagnosticsTab');
+                if (connection === currentConnection()) {
+                    ConnectionDiagnosticsTab.render({ kind: 'queryEditor', probe: 'query', connection });
+                    return;
+                }
+            }
+            await vscode.commands.executeCommand('cosmosDB.diagnoseConnection');
         }),
 
     /**

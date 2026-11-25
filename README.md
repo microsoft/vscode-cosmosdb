@@ -230,6 +230,8 @@ report link to official troubleshooting guidance for applicable findings.
 
 Open **Diagnose Connection** from the NoSQL Query Editor toolbar to check the selected container with that editor's
 connection. This checks account metadata first, then makes a bounded read-only query that returns no document contents.
+If there is no current container, including after a failed connection attempt, the same button lets you choose an Azure
+account, saved connection, or local emulator without first connecting the editor.
 Account-level diagnostics do not query items. Failed SDK checks show the stage and any available HTTP status and
 Cosmos DB substatus. Emulator results distinguish refusal, timeout, connection reset, and TLS errors on the configured
 endpoint; they do not infer the emulator variant or port mappings.

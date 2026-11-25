@@ -117,20 +117,30 @@ describe('query editor connection ownership', () => {
         });
     });
 
-    it('opens a container diagnostic only for the current editor connection', async () => {
+    it('opens a container diagnostic for the current editor connection', async () => {
         const ctx = createContext();
         const caller = queryEditorRouterDef.createCaller(ctx);
-        await expect(caller.diagnoseConnection({ connectionVersion: 1 })).rejects.toThrow('no longer current');
-        ctx.state.isChangingConnection = true;
-        await expect(caller.diagnoseConnection({ connectionVersion: 0 })).rejects.toThrow('The connection is changing');
-        expect(mocks.openDiagnostics).not.toHaveBeenCalled();
-        ctx.state.isChangingConnection = false;
         await caller.diagnoseConnection({ connectionVersion: 0 });
         expect(mocks.openDiagnostics).toHaveBeenCalledExactlyOnceWith({
             kind: 'queryEditor',
             probe: 'query',
             connection: connectionA,
         });
+    });
+
+    it.each(['disconnected', 'switching', 'stale'] as const)('opens the target picker when %s', async (mode) => {
+        const executeCommand = vi.spyOn(vscode.commands, 'executeCommand').mockResolvedValue(undefined);
+        try {
+            const ctx = createContext();
+            if (mode === 'disconnected') ctx.state.connection = undefined;
+            if (mode === 'switching') ctx.state.isChangingConnection = true;
+            if (mode === 'stale') ctx.state.connectionVersion = 1;
+            await queryEditorRouterDef.createCaller(ctx).diagnoseConnection({ connectionVersion: 0 });
+            expect(executeCommand).toHaveBeenCalledExactlyOnceWith('cosmosDB.diagnoseConnection');
+            expect(mocks.openDiagnostics).not.toHaveBeenCalled();
+        } finally {
+            executeCommand.mockRestore();
+        }
     });
 
     for (const bulk of [false, true]) {

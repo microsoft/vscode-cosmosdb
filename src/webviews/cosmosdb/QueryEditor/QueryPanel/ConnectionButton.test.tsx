@@ -57,7 +57,7 @@ describe('connection picker accessible name', () => {
 
                 const action = screen.getByRole(type, { name: 'Diagnose Connection.' });
                 fireEvent.click(action);
-                expect(dispatcher.diagnoseConnection).toHaveBeenCalledTimes(connected && !changing ? 1 : 0);
+                expect(dispatcher.diagnoseConnection).toHaveBeenCalledOnce();
             },
         );
     });

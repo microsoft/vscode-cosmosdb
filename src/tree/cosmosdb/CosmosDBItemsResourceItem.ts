@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type ItemDefinition } from '@azure/cosmos';
-import { createGenericElement, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
@@ -12,6 +12,7 @@ import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeH
 import { countExperienceUsageForSurvey } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
 import { getBatchSizeSetting } from '../../utils/workspacUtils';
+import { createGenericTreeElement } from '../createGenericTreeElement';
 import { type TreeElement } from '../TreeElement';
 import { TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
@@ -56,8 +57,7 @@ export abstract class CosmosDBItemsResourceItem
 
         if (this.hasMoreChildren) {
             result.push(
-                createGenericElement({
-                    contextValue: this.contextValue,
+                createGenericTreeElement({
                     iconPath: new vscode.ThemeIcon('refresh'),
                     label: l10n.t('Load more…'),
                     id: `${this.id}/loadMore`,
@@ -72,7 +72,7 @@ export abstract class CosmosDBItemsResourceItem
                             countExperienceUsageForSurvey(ExperienceKind.NoSQL, UsageImpact.Medium);
                         },
                     ],
-                }) as TreeElement,
+                }),
             );
         }
 

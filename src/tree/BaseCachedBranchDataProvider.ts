@@ -6,7 +6,6 @@
 import {
     callWithTelemetryAndErrorHandling,
     callWithTelemetryAndErrorHandlingSync,
-    createGenericElement,
     type IActionContext,
     parseError,
 } from '@microsoft/vscode-azext-utils';
@@ -20,9 +19,10 @@ import * as vscode from 'vscode';
 import { API } from '../AzureDBExperiences';
 import { ext } from '../extensionVariables';
 import { getConnectionDiagnosticsTarget } from './cosmosdb/connectionDiagnosticsTarget';
+import { createGenericTreeElement } from './createGenericTreeElement';
 import { type FabricArtifact } from './fabric/models/FabricArtifact';
 import { type TreeElement } from './TreeElement';
-import { isTreeElementWithContextValue, TreeElementWithContextValue } from './TreeElementWithContextValue';
+import { isTreeElementWithContextValue } from './TreeElementWithContextValue';
 import { isTreeElementWithExperience } from './TreeElementWithExperience';
 
 /**
@@ -159,13 +159,12 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
         } catch (error) {
             if (getConnectionDiagnosticsTarget(element)) {
                 return [
-                    createGenericElement({
-                        contextValue: TreeElementWithContextValue.createContextValue([this.contextValue, 'item.error']),
+                    createGenericTreeElement({
                         id: `${element.id}/connection-error`,
                         label: l10n.t('Could not load databases. Diagnose Connection…'),
                         commandId: 'cosmosDB.diagnoseConnection',
                         commandArgs: [element],
-                    }) as TreeElement,
+                    }),
                 ];
             }
             return [
@@ -400,11 +399,10 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
     }
 
     private createErrorElement(message: string, id: string): TreeElement {
-        return createGenericElement({
-            contextValue: TreeElementWithContextValue.createContextValue([this.contextValue, 'item.error']),
+        return createGenericTreeElement({
             label: message,
             id: id,
-        }) as TreeElement;
+        });
     }
 
     /**

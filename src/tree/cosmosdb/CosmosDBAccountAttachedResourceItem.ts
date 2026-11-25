@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { RestError, type CosmosClient } from '@azure/cosmos';
-import { createGenericElement } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
@@ -17,6 +16,7 @@ import { ext } from '../../extensionVariables';
 import { compareResourceIds } from '../../utils/strings';
 import { rejectOnTimeout, TimeoutError } from '../../utils/timeout';
 import { CosmosDBAccountResourceItemBase } from '../azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
+import { createGenericTreeElement } from '../createGenericTreeElement';
 import { type TreeElement } from '../TreeElement';
 import { TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithStorageId } from '../TreeElementWithStorageId';
@@ -55,19 +55,14 @@ export abstract class CosmosDBAccountAttachedResourceItem
         );
 
         if (databases.length === 0) {
-            // no databases in there:
             return [
-                createGenericElement({
-                    contextValue: this.contextValue
-                        .split(';')
-                        .filter((tag) => tag !== cosmosDBConnectionTargetContext)
-                        .join(';'),
+                createGenericTreeElement({
                     id: `${this.id}/no-databases`,
                     label: l10n.t('Create Database…'),
                     iconPath: new vscode.ThemeIcon('plus'),
                     commandId: 'cosmosDB.createDatabase',
                     commandArgs: [this],
-                }) as TreeElement,
+                }),
             ];
         }
 

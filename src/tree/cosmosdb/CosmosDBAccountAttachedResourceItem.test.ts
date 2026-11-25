@@ -4,14 +4,17 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CosmosClient, CosmosDiagnostics, FeedResponse, RestError } from '@azure/cosmos';
+import { createGenericElement } from '@microsoft/vscode-azext-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { CoreExperience } from '../../AzureDBExperiences';
 import { CosmosDBTimeouts } from '../../constants';
+import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
 import { TimeoutError } from '../../utils/timeout';
 import { type CosmosDBAttachedAccountModel } from '../workspace-view/cosmosdb/CosmosDBAttachedAccountModel';
-import { type AccountInfo } from './AccountInfo';
+import { getAccountInfo, type AccountInfo } from './AccountInfo';
+import { getConnectionDiagnosticsTarget } from './connectionDiagnosticsTarget';
 import { CosmosDBAccountAttachedResourceItem } from './CosmosDBAccountAttachedResourceItem';
 
 vi.mock('@microsoft/vscode-azext-utils', () => ({ createGenericElement: vi.fn() }));
@@ -59,6 +62,24 @@ class TestAccountResourceItem extends CosmosDBAccountAttachedResourceItem {
         return [];
     }
 }
+
+it('keeps the empty-account action separate from the account context menu', async () => {
+    const item = new TestAccountResourceItem();
+    vi.mocked(getAccountInfo).mockResolvedValueOnce(accountInfo);
+    vi.mocked(withClaimsChallengeHandling).mockResolvedValueOnce([]);
+
+    await item.getChildren();
+
+    expect(getConnectionDiagnosticsTarget(item)).toMatchObject({ kind: 'emulator' });
+    expect(createGenericElement).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+            id: `${item.id}/no-databases`,
+            contextValue: 'treeItem.generic',
+            commandId: 'cosmosDB.createDatabase',
+            commandArgs: [item],
+        }),
+    );
+});
 
 describe('Attached account connection errors', () => {
     let client: CosmosClient;

@@ -11,7 +11,7 @@ import { build } from 'vite';
 import { expect, it } from 'vitest';
 import { copyStaticAssets } from '../plugins/vite-plugin-copy-static-assets.mjs';
 
-it('refreshes copied assets after edits, additions, renames, deletions, and file type changes', async () => {
+it('refreshes watched assets and replaces paths in a populated dist', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'cosmosdb-copy-watch-'));
 
     try {
@@ -23,28 +23,38 @@ it('refreshes copied assets after edits, additions, renames, deletions, and file
         await writeFile(manifest, '{"initial":true}\n');
         await writeFile(path.join(root, 'locales', 'fr.json'), '{"hello":"bonjour"}\n');
         const outDir = path.join(root, 'dist');
+        const sourceItem = path.join(root, 'assets', 'item');
+        const sourceItemFile = path.join(sourceItem, 'inner', 'old.txt');
+        const copiedItemFile = path.join('assets', 'item', 'inner', 'old.txt');
+        await mkdir(path.dirname(sourceItemFile), { recursive: true });
+        await writeFile(sourceItemFile, 'asset in directory');
 
-        const watcher = await build({
-            root,
-            configFile: false,
-            publicDir: false,
-            logLevel: 'silent',
-            plugins: [
-                copyStaticAssets({
-                    targets: [
-                        { src: 'manifest.json' },
-                        { src: 'assets' },
-                        { src: 'locales/*.json', dest: 'locales', watchDir: 'locales' },
-                    ],
-                }),
-            ],
-            build: {
-                watch: {},
-                emptyOutDir: false,
-                minify: false,
-                lib: { entry, formats: ['es'], fileName: 'probe' },
-            },
-        });
+        const buildAssets = (watch: boolean) =>
+            build({
+                root,
+                configFile: false,
+                publicDir: false,
+                logLevel: 'silent',
+                plugins: [
+                    copyStaticAssets({
+                        targets: [
+                            { src: 'manifest.json' },
+                            { src: 'assets' },
+                            { src: 'locales/*.json', dest: 'locales', watchDir: 'locales' },
+                        ],
+                    }),
+                ],
+                build: {
+                    watch: watch ? {} : null,
+                    emptyOutDir: false,
+                    minify: false,
+                    lib: { entry, formats: ['es'], fileName: 'probe' },
+                },
+            });
+        await buildAssets(false);
+        expect(await readFile(path.join(outDir, copiedItemFile), 'utf8')).toBe('asset in directory');
+
+        const watcher = await buildAssets(true);
         if (!('close' in watcher)) {
             throw new Error('Vite did not return a build watcher.');
         }
@@ -89,13 +99,6 @@ it('refreshes copied assets after edits, additions, renames, deletions, and file
             await writeFile(manifest, '{"restored":true}\n');
             await expectCopied('manifest.json', '{"restored":true}\n');
 
-            const sourceItem = path.join(root, 'assets', 'item');
-            const sourceItemFile = path.join(sourceItem, 'inner', 'old.txt');
-            const copiedItemFile = path.join('assets', 'item', 'inner', 'old.txt');
-            await mkdir(path.dirname(sourceItemFile), { recursive: true });
-            await writeFile(sourceItemFile, 'asset in directory');
-            await expectCopied(copiedItemFile, 'asset in directory');
-
             const originalItem = path.join(root, 'original-item');
             const replacementItem = path.join(root, 'replacement-item');
             await writeFile(replacementItem, 'replacement file');
@@ -109,16 +112,18 @@ it('refreshes copied assets after edits, additions, renames, deletions, and file
             await expectCopied(copiedItemFile, 'asset in directory');
             await expectCopied(path.join('assets', 'nested', 'webview.txt'), 'unrelated output');
 
-            // A conflicting directory with shared output must not be removed, even partially.
-            const sharedFile = path.join('assets', 'item', 'webview.txt');
-            await writeFile(path.join(outDir, sharedFile), 'unrelated output');
-            renameSync(sourceItem, originalItem);
-            renameSync(replacementItem, sourceItem);
+            // An adopted directory with shared output must not be removed, even partially.
+            const sharedFile = path.join('assets', 'nested', 'webview.txt');
+            const ownedFile = path.join('assets', 'nested', 'asset.txt');
+            await writeFile(path.join(root, ownedFile), 'copied output');
+            await expectCopied(ownedFile, 'copied output');
+            renameSync(sourceAssets, path.join(root, 'original-nested'));
+            renameSync(replacementItem, sourceAssets);
             await expect
                 .poll(() => String(watchError), { timeout: 4_000 })
                 .toContain('without removing unrelated build output');
             await expectCopied(sharedFile, 'unrelated output');
-            await expectCopied(copiedItemFile, 'asset in directory');
+            await expectCopied(ownedFile, 'copied output');
         } finally {
             await watcher.close();
         }

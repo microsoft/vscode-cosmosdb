@@ -66,9 +66,9 @@ async function copyWatchedAsset(source, output, transform, state) {
             await rm(output);
         }
         ownedFiles.delete(output);
-        if (await mkdir(output, { recursive: true })) {
-            ownedDirectories.add(output);
-        }
+        await mkdir(output, { recursive: true });
+        // A normal build may have created this directory. Before removing it, verify that every descendant is ours.
+        ownedDirectories.add(output);
         for (const name of await readdir(source)) {
             await copyWatchedAsset(path.join(source, name), path.join(output, name), undefined, state);
         }

@@ -10,8 +10,9 @@
 
 ### Changed
 
+- Made **Data Modeler** easier to discover in **Account Overview** with an explanatory callout that can be collapsed to a button and expanded again, with the preference saved locally. ([#3530](https://github.com/microsoft/vscode-cosmosdb/issues/3530))
 - Improved unit test network isolation.
-- Updated extension packaging dependencies and lockfile registry handling.
+- Updated authentication and extension packaging dependencies and lockfile registry handling.
 
 ## 0.39.3 (Preview)
 

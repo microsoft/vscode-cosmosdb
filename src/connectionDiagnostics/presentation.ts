@@ -77,6 +77,26 @@ export function checkEvidence(check: CheckResult): string | undefined {
     return check.status === 'skipped' ? statusLabel(check.status) : undefined;
 }
 
+function overviewReadText(step: OverviewStep): string {
+    switch (step) {
+        case 'metrics':
+            return l10n.t(
+                'Azure Monitor accepted the request to read the {0} metric for this account.',
+                'TotalRequests',
+            );
+        case 'alerts':
+            return l10n.t('Azure Monitor accepted the request to list fired alerts for this account.');
+        case 'advisor':
+            return l10n.t('Azure Advisor accepted the request to list recommendations for this subscription.');
+        case 'requestLogs':
+        case 'queryLogs':
+            return l10n.t(
+                'The Log Analytics query against the {0} table succeeded. The check did not request log entries.',
+                step === 'requestLogs' ? 'CDBDataPlaneRequests' : 'CDBQueryRuntimeStatistics',
+            );
+    }
+}
+
 function overviewPermissionHint(step: OverviewStep): string {
     if (step === 'requestLogs' || step === 'queryLogs') {
         return l10n.t(
@@ -218,9 +238,9 @@ export function checkText(
         unresolvedDns: l10n.t(
             'Local name resolution was inconclusive. A proxy may resolve the hostname independently.',
         ),
-        overviewRead: l10n.t(
-            'The Azure read probe succeeded. This does not establish whether there are records to display.',
-        ),
+        overviewRead: isOverviewStep(check.step)
+            ? overviewReadText(check.step)
+            : l10n.t('The check did not return a recognized result.'),
         overviewDenied: l10n.t('Azure denied the read request for the signed-in identity.'),
         overviewAuthentication: l10n.t(
             'Azure rejected the authentication for this request. Sign in to Azure and try again.',

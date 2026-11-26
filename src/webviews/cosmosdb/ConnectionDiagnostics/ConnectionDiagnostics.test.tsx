@@ -181,6 +181,32 @@ it('formats Overview durations in the webview document language, not Chromium’
     expect(overview).not.toHaveTextContent('\u79d2');
 });
 
+it('names the Azure operation that passed in each Overview check', async () => {
+    client.state.query.mockResolvedValue({
+        ...completed,
+        kind: 'azure',
+        checks: [
+            { step: 'metrics', finding: 'overviewRead', status: 'passed' },
+            { step: 'alerts', finding: 'overviewRead', status: 'passed' },
+            { step: 'advisor', finding: 'overviewRead', status: 'passed' },
+            { step: 'requestLogs', finding: 'overviewRead', status: 'passed' },
+            { step: 'queryLogs', finding: 'overviewRead', status: 'passed' },
+        ],
+    } satisfies DiagnosticsState);
+    renderPanel();
+
+    const overview = await screen.findByRole('list', { name: 'Account Overview access' });
+    const rows = within(overview).getAllByRole('listitem');
+    expect(rows).toHaveLength(5);
+    expect(rows[0]).toHaveTextContent('the TotalRequests metric for this account');
+    expect(rows[1]).toHaveTextContent('list fired alerts for this account');
+    expect(rows[2]).toHaveTextContent('list recommendations for this subscription');
+    expect(rows[3]).toHaveTextContent('CDBDataPlaneRequests table succeeded. The check did not request log entries.');
+    expect(rows[4]).toHaveTextContent(
+        'CDBQueryRuntimeStatistics table succeeded. The check did not request log entries.',
+    );
+});
+
 it('keeps Overview permissions separate from successful data-plane access', async () => {
     client.state.query.mockResolvedValue({
         ...completed,

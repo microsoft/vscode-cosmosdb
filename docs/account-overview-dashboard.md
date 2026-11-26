@@ -367,9 +367,10 @@ in **resource-specific** mode. Legacy AzureDiagnostics tables are not used by th
 Log collection and permission to query the logs are separate requirements.
 Creating/deleting resources requires the corresponding Azure write permissions.
 
-Run **Diagnose Connection** on an Azure account in the tree to check read access to Monitor metrics and alerts,
-Advisor recommendations, and the two resource-specific Log Analytics tables. These results are separate from the
-Cosmos DB connection result. The Log Analytics checks run without returning log rows or prompting for consent.
+Run **Diagnose Connection** on an Azure account in the tree to check read access to the account's `TotalRequests`
+metric and fired alerts, subscription-level Advisor recommendations, and the `CDBDataPlaneRequests` and
+`CDBQueryRuntimeStatistics` tables. The read-access results are separate from the Cosmos DB
+connection result. The Log Analytics checks query the tables without returning log rows or prompting for consent.
 A successful check does not guarantee that there are records to display; a missing table is not proof that your
 identity lacks permissions. Diagnostics do not assign Azure roles or enable log collection.
 The checks run in parallel; each row shows the elapsed time for that check.

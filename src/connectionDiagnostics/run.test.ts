@@ -728,6 +728,8 @@ describe('diagnosing a NoSQL connection', () => {
         ]);
         const report = renderReport(state);
         expect(report).toContain('## Account Overview access');
+        expect(report).toContain('list fired alerts for this account');
+        expect(report).toContain('CDBDataPlaneRequests table succeeded. The check did not request log entries.');
         expect(report).toContain('Required diagnostic category: QueryRuntimeStatistics.');
         expect(
             report +

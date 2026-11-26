@@ -3,19 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
-    Button,
-    makeStyles,
-    MessageBar,
-    MessageBarBody,
-    MessageBarTitle,
-    tokens,
-    typographyStyles,
-} from '@fluentui/react-components';
+import { Button, makeStyles, MessageBar, MessageBarBody, MessageBarTitle, tokens } from '@fluentui/react-components';
 import { Add16Regular, Braces16Regular, Delete16Regular, Money16Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
+import { useEffect, useRef } from 'react';
 import { type AccountActionInput } from '../../api/types';
 import { ThemedTooltip as Tooltip } from '../../common/ThemedTooltip';
+import { DataModelerCallout, DataModelerCompactEntry } from './DataModelerCallout';
 
 const useStyles = makeStyles({
     root: {
@@ -27,15 +21,6 @@ const useStyles = makeStyles({
         flexWrap: 'wrap',
         alignItems: 'center',
         gap: tokens.spacingHorizontalS,
-    },
-    modeler: {
-        ...typographyStyles.caption1,
-        display: 'flex',
-        flexWrap: 'wrap',
-        alignItems: 'center',
-        columnGap: tokens.spacingHorizontalS,
-        marginLeft: 'auto',
-        color: tokens.colorNeutralForeground2,
     },
     failure: {
         marginTop: tokens.spacingVerticalM,
@@ -49,25 +34,56 @@ export function AccountActions({
     supported,
     isAIFeaturesEnabled,
     isDataModelerEnabled,
+    isDataModelerPromoCollapsed,
     databaseId,
     failure,
     onAction,
+    onDataModelerPromoCollapsedChange,
 }: {
     busy: boolean;
     supported: boolean;
     isAIFeaturesEnabled: boolean;
     isDataModelerEnabled: boolean;
+    isDataModelerPromoCollapsed: boolean;
     databaseId?: string;
     failure?: AccountActionFailure;
     onAction: (input: AccountActionInput) => void;
+    onDataModelerPromoCollapsedChange: (collapsed: boolean) => void;
 }) {
     const styles = useStyles();
+    const expandModelerRef = useRef<HTMLButtonElement>(null);
+    const collapseModelerRef = useRef<HTMLButtonElement>(null);
+    // Set by the collapse/expand controls, which unmount on click; consumed once the opposite control renders.
+    const pendingModelerFocus = useRef<'expand' | 'collapse'>(undefined);
     const containerDescription = databaseId
         ? l10n.t('Create a container in database {database}.', { database: databaseId })
         : l10n.t('Choose a database in this account, then create a container.');
+    const showModeler = isAIFeaturesEnabled && isDataModelerEnabled;
+    const modelerDisabled = busy || !supported;
+    const openModeler = () => onAction({ action: 'openDataModeler' });
+    const setPromoCollapsed = (collapsed: boolean) => {
+        pendingModelerFocus.current = collapsed ? 'expand' : 'collapse';
+        onDataModelerPromoCollapsedChange(collapsed);
+    };
+
+    useEffect(() => {
+        const target = pendingModelerFocus.current === 'expand' ? expandModelerRef : collapseModelerRef;
+        if (pendingModelerFocus.current && target.current) {
+            pendingModelerFocus.current = undefined;
+            target.current.focus();
+        }
+    });
 
     return (
         <section className={styles.root} aria-label={l10n.t('Account actions')}>
+            {showModeler && !isDataModelerPromoCollapsed && (
+                <DataModelerCallout
+                    disabled={modelerDisabled}
+                    collapseRef={collapseModelerRef}
+                    onStart={openModeler}
+                    onCollapse={() => setPromoCollapsed(true)}
+                />
+            )}
             <div className={styles.row}>
                 <Button
                     appearance="secondary"
@@ -116,18 +132,13 @@ export function AccountActions({
                 >
                     {l10n.t('Delete account')}
                 </Button>
-                {isAIFeaturesEnabled && isDataModelerEnabled && (
-                    <div className={styles.modeler}>
-                        <span>{l10n.t('Design containers, partition keys, and relationships visually.')}</span>
-                        <Button
-                            appearance="secondary"
-                            size="small"
-                            disabled={busy || !supported}
-                            onClick={() => onAction({ action: 'openDataModeler' })}
-                        >
-                            {l10n.t('Try Data Modeler')}
-                        </Button>
-                    </div>
+                {showModeler && isDataModelerPromoCollapsed && (
+                    <DataModelerCompactEntry
+                        disabled={modelerDisabled}
+                        expandRef={expandModelerRef}
+                        onStart={openModeler}
+                        onExpand={() => setPromoCollapsed(false)}
+                    />
                 )}
             </div>
             {failure && (

@@ -11,6 +11,7 @@
   "\"registerAzureUtilsExtensionVariables\" must be called before using the @microsoft/vscode-azext-azureutils package.": "\"registerAzureUtilsExtensionVariables\" must be called before using the @microsoft/vscode-azext-azureutils package.",
   "\"registerUIExtensionVariables\" must be called before using the @microsoft/vscode-azext-utils package.": "\"registerUIExtensionVariables\" must be called before using the @microsoft/vscode-azext-utils package.",
   "(leave blank to skip)": "(leave blank to skip)",
+  "(Press 'Enter' to confirm or 'Escape' to cancel)": "(Press 'Enter' to confirm or 'Escape' to cancel)",
   "(Preview)": "(Preview)",
   "(recently used)": "(recently used)",
   "[Apply Query Tool] Applied generated query to {0}/{1}.": "[Apply Query Tool] Applied generated query to {0}/{1}.",

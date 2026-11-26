@@ -22,11 +22,9 @@ type ChoiceItem = vscode.QuickPickItem & { action?: 'create' | 'dataModeler' };
 export async function promptDatabaseNameOrDataModeler(accountInfo: AccountInfo): Promise<DatabaseCreationChoice> {
     const quickPick = vscode.window.createQuickPick<ChoiceItem>();
     const disposables: vscode.Disposable[] = [quickPick];
-    // Labels are empty because VS Code always matches the typed name against them; that would highlight and re-sort
-    // these items. Descriptions are not matched, so the items keep their order without highlights.
+    // Data Modeler is shown only while the name is empty, so its label is never matched against typed text.
     const dataModelerItem: ChoiceItem = {
-        label: '',
-        description: l10n.t('Try Data Modeler'),
+        label: l10n.t('Try Data Modeler'),
         detail: l10n.t('Model your workload and get partition key recommendations.'),
         iconPath: new vscode.ThemeIcon('sparkle'),
         alwaysShow: true,
@@ -36,15 +34,19 @@ export async function promptDatabaseNameOrDataModeler(accountInfo: AccountInfo):
 
     const update = (error?: string): void => {
         const name = quickPick.value.trim();
+        // VS Code highlights typed text in labels but not descriptions. The label is used only while the name is empty,
+        // when there is nothing to match, so the item keeps the normal label size until typing starts.
         const createItem: ChoiceItem = {
-            label: '',
-            description: name ? l10n.t('Create database "{name}"', { name }) : l10n.t('Create database'),
+            label: name ? '' : l10n.t('Create database'),
+            description: name
+                ? `${l10n.t('Create database "{name}"', { name })} ${l10n.t("(Press 'Enter' to confirm or 'Escape' to cancel)")}`
+                : undefined,
             detail: error ?? (name ? undefined : l10n.t('Type a name to create a database manually.')),
             iconPath: new vscode.ThemeIcon(error ? 'error' : 'add'),
             alwaysShow: true,
             action: 'create',
         };
-        quickPick.items = [createItem, separator, dataModelerItem];
+        quickPick.items = name ? [createItem] : [createItem, separator, dataModelerItem];
         quickPick.activeItems = [createItem];
     };
 

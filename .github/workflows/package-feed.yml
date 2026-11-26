@@ -38,6 +38,9 @@ jobs:
           node-version-file: .nvmrc
           package-manager-cache: false
 
-      # No npm ci or secrets: the checker uses only Node built-ins and the no-auth Microsoft proxy.
-      - name: Check package feed policy and availability
+      # No npm ci or secrets: the checker uses only Node built-ins and unauthenticated registries.
+      - name: Test the package feed checker
+        run: node --test scripts/check-package-feed.test.mjs
+
+      - name: Check package feed policy, availability, and integrity
         run: npm run feed:check -- --visibility public

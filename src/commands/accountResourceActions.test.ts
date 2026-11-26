@@ -35,6 +35,7 @@ const mocks = vi.hoisted(() => ({
     createDatabase: vi.fn(),
     createContainer: vi.fn(),
     showCreatingChild: vi.fn(async (_id: string, _label: string, action: () => Promise<void>) => action()),
+    telemetryEvents: [] as Array<{ name: string; context: AzExtUtils.IActionContext }>,
 }));
 
 vi.mock('@vscode/extension-telemetry', () => ({ default: class {} }));
@@ -49,6 +50,17 @@ vi.mock('@microsoft/vscode-azext-azureauth', () => ({ getSessionFromVSCode: vi.f
 vi.mock('../utils/azureClients', () => ({ createCosmosDBManagementClient: vi.fn() }));
 vi.mock('@microsoft/vscode-azext-utils', async (importOriginal) => ({
     ...(await importOriginal<typeof AzExtUtils>()),
+    callWithTelemetryAndErrorHandling: vi.fn(
+        async (name: string, callback: (context: AzExtUtils.IActionContext) => Promise<unknown>) => {
+            const context = {
+                telemetry: { properties: {}, measurements: {} },
+                errorHandling: { issueProperties: {} },
+                valuesToMask: [],
+            } as unknown as AzExtUtils.IActionContext;
+            mocks.telemetryEvents.push({ name, context });
+            return callback(context);
+        },
+    ),
     AzureWizard: vi.fn(
         class {
             constructor(private readonly context: CreateContainerWizardContext | CreateDatabaseWizardContext) {}
@@ -110,6 +122,7 @@ beforeEach(() => {
     vi.mocked(isDataModelerFeatureEnabled).mockReset().mockReturnValue(true);
     vi.mocked(openDataModelingWizard).mockReset();
     vi.mocked(promptDatabaseNameOrDataModeler).mockReset();
+    mocks.telemetryEvents.length = 0;
 });
 
 afterEach(() => {
@@ -134,6 +147,7 @@ describe('shared creation wizards', () => {
         expect(openDataModelingWizard).not.toHaveBeenCalled();
         expect(context.valuesToMask).toContain('typed-db');
         expect(context.telemetry.properties.creationChoice).toBe('manual');
+        expect(mocks.telemetryEvents).toEqual([]);
         expect(showConfirmationAsInSettings).toHaveBeenCalledExactlyOnceWith(
             'The "typed-db" database has been created.',
         );
@@ -149,6 +163,11 @@ describe('shared creation wizards', () => {
 
         expect(openDataModelingWizard).toHaveBeenCalledExactlyOnceWith(context, info);
         expect(context.telemetry.properties.creationChoice).toBe('dataModeler');
+        expect(mocks.telemetryEvents).toHaveLength(1);
+        const [{ name, context: event }] = mocks.telemetryEvents;
+        expect(name).toBe('cosmosDB.dataModeler.entryPointSelected');
+        expect(event.telemetry.properties).toEqual({ entryPoint: 'createDatabase' });
+        expect(event.errorHandling).toMatchObject({ suppressDisplay: true, rethrow: false });
         expect(AzureWizard).not.toHaveBeenCalled();
         expect(showConfirmationAsInSettings).not.toHaveBeenCalled();
         expect(pickAppResource).not.toHaveBeenCalled();
@@ -194,6 +213,9 @@ describe('shared creation wizards', () => {
 
             await expect(createDatabase(createArmTestContext(), accountInfo(), CoreExperience)).rejects.toBe(error);
 
+            expect(mocks.telemetryEvents.map((event) => event.name)).toEqual([
+                'cosmosDB.dataModeler.entryPointSelected',
+            ]);
             expect(AzureWizard).not.toHaveBeenCalled();
             expect(showConfirmationAsInSettings).not.toHaveBeenCalled();
         },

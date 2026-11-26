@@ -25,6 +25,9 @@ There are several ways you can contribute to the [vscode-cosmosdb repository](ht
 
   - Debug: Select the `Launch Extension` configuration in the Debug side bar and press <kbd>F5</kbd> to start debugging the extension.
 
+Run `npm run lint` (or `npm run lint-fix` for autofixes). The Oxlint scripts also check `scripts`, `resources`,
+and `skills` for restricted syntax without applying the main lint rules to those directories.
+
 ## Network access in Vitest
 
 The root Vitest setup allows TCP connections to `127.0.0.1` and `::1`, resolves `localhost` only to those addresses,

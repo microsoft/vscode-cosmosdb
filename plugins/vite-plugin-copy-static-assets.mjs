@@ -3,10 +3,85 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { cp, glob, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { cp, glob, lstat, mkdir, readdir, readFile, rm, rmdir, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 /** @import { CopyTarget } from './vite-plugin-copy-static-assets.d.mts' */
+
+async function removeOwnedDirectory(directory, { ownedFiles, ownedDirectories, copiedFiles, bundledFiles }) {
+    const files = [];
+    const directories = [];
+    const conflict = () => new Error(`Cannot replace "${directory}" without removing unrelated build output.`);
+
+    // Check the whole subtree before deleting anything. Never recursively remove shared output.
+    async function collect(dir) {
+        if (!ownedDirectories.has(dir)) {
+            throw conflict();
+        }
+        for (const entry of await readdir(dir, { withFileTypes: true })) {
+            const output = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+                await collect(output);
+            } else if (!ownedFiles.has(output) || copiedFiles.has(output) || bundledFiles.has(output)) {
+                throw conflict();
+            } else {
+                files.push(output);
+            }
+        }
+        directories.push(dir);
+    }
+    await collect(directory);
+
+    for (const file of files) {
+        await rm(file, { force: true });
+        ownedFiles.delete(file);
+    }
+    for (const dir of directories) {
+        await rmdir(dir);
+        ownedDirectories.delete(dir);
+    }
+}
+
+async function copyFile(source, output, transform) {
+    if (transform) {
+        await writeFile(output, await transform(await readFile(source, 'utf8'), source));
+    } else {
+        await cp(source, output, { dereference: true });
+    }
+}
+
+async function copyWatchedAsset(source, output, transform, state) {
+    const { ownedFiles, ownedDirectories, copiedFiles, bundledFiles } = state;
+    const sourceIsDirectory = !transform && (await stat(source)).isDirectory();
+    const existing = await lstat(output).catch((error) => {
+        if (error.code !== 'ENOENT') {
+            throw error;
+        }
+    });
+    if (sourceIsDirectory) {
+        if (existing && !existing.isDirectory()) {
+            if (!ownedFiles.has(output) || copiedFiles.has(output) || bundledFiles.has(output)) {
+                throw new Error(`Cannot replace "${output}" without removing unrelated build output.`);
+            }
+            await rm(output);
+        }
+        ownedFiles.delete(output);
+        if (await mkdir(output, { recursive: true })) {
+            ownedDirectories.add(output);
+        }
+        for (const name of await readdir(source)) {
+            await copyWatchedAsset(path.join(source, name), path.join(output, name), undefined, state);
+        }
+    } else {
+        if (existing?.isDirectory()) {
+            await removeOwnedDirectory(output, state);
+        }
+        ownedDirectories.delete(output);
+        await copyFile(source, output, transform);
+        ownedFiles.add(output);
+        copiedFiles.add(output);
+    }
+}
 
 /**
  * Copy files or directories matched by `src` into `dest`, preserving each match's basename.
@@ -20,7 +95,7 @@ export function copyStaticAssets({ targets }) {
     let root;
     let resolvedTargets;
     const matchedTargets = new Set();
-    const copiedFilesByOutDir = new Map();
+    const ownershipByOutDir = new Map();
 
     return {
         name: 'copy-static-assets',
@@ -61,36 +136,40 @@ export function copyStaticAssets({ targets }) {
             }
 
             const outDir = path.resolve(root, dir);
-            const copiedFiles = new Set();
+            let state;
+            if (this.meta.watchMode) {
+                let ownership = ownershipByOutDir.get(outDir);
+                if (!ownership) {
+                    ownership = { ownedFiles: new Set(), ownedDirectories: new Set() };
+                    ownershipByOutDir.set(outDir, ownership);
+                }
+                state = {
+                    ...ownership,
+                    copiedFiles: new Set(),
+                    bundledFiles: new Set(Object.keys(bundle).map((filename) => path.join(outDir, filename))),
+                };
+            }
             for (const { source, destination, transform } of resolvedTargets) {
                 const output = path.join(outDir, destination);
                 await mkdir(path.dirname(output), { recursive: true });
-                if (transform) {
-                    await writeFile(output, await transform(await readFile(source, 'utf8'), source));
-                    copiedFiles.add(output);
+                if (state) {
+                    await copyWatchedAsset(source, output, transform, state);
+                } else if (transform) {
+                    await copyFile(source, output, transform);
                 } else {
-                    await cp(source, output, {
-                        recursive: true,
-                        dereference: true,
-                        filter: async (input, outputFile) => {
-                            if (this.meta.watchMode && !(await stat(input)).isDirectory()) {
-                                copiedFiles.add(outputFile);
-                            }
-                            return true;
-                        },
-                    });
+                    await cp(source, output, { recursive: true, dereference: true });
                 }
             }
 
-            if (this.meta.watchMode) {
-                const bundledFiles = new Set(Object.keys(bundle).map((filename) => path.join(outDir, filename)));
-                // Only unlink previously copied files, never directories or unrelated files in the shared output.
-                for (const previousFile of copiedFilesByOutDir.get(outDir) ?? []) {
-                    if (!copiedFiles.has(previousFile) && !bundledFiles.has(previousFile)) {
-                        await rm(previousFile, { force: true });
+            if (state) {
+                for (const previousFile of state.ownedFiles) {
+                    if (!state.copiedFiles.has(previousFile)) {
+                        if (!state.bundledFiles.has(previousFile)) {
+                            await rm(previousFile, { force: true });
+                        }
+                        state.ownedFiles.delete(previousFile);
                     }
                 }
-                copiedFilesByOutDir.set(outDir, copiedFiles);
             }
         },
     };

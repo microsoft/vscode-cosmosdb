@@ -12,7 +12,7 @@
     "unicorn",
     "vitest"
   ],
-  "jsPlugins": ["./plugins/oxlint-plugin-cosmosdb.mjs"],
+  "extends": ["./.oxlintrc.restricted-syntax.jsonc"],
   "options": {
     "typeAware": true
   },
@@ -39,38 +39,6 @@
     "**/*.d.ts"
   ],
   "rules": {
-    // The native import rule also rejects allowed namespace imports, such as `import * as vscode from 'vscode'`.
-    "cosmosdb/no-restricted-syntax": [
-      "error",
-      {
-        "selector": "ImportDeclaration[source.value=\"vscode\"] > ImportDefaultSpecifier",
-        "message": "Use \"import * as vscode from 'vscode'\"; the default import is undefined in ESM."
-      },
-      {
-        "selector": "ImportDeclaration[source.value=\"vscode\"] > ImportSpecifier[imported.name=\"l10n\"]",
-        "message": "Use \"import * as l10n from '@vscode/l10n';\" instead of importing l10n from vscode."
-      },
-      {
-        "selector": "MemberExpression[object.name=\"vscode\"][property.name=\"l10n\"]",
-        "message": "Use \"import * as l10n from '@vscode/l10n';\" and use l10n directly instead of vscode.l10n."
-      },
-      {
-        "selector": "ImportDeclaration[source.value=\"@microsoft/vscode-azext-utils\"] > ImportSpecifier[imported.name=/^(nonNullValue|nonNullProp|nonNullOrEmptyValue|nonNullValueAndProp)$/]",
-        "message": "Import this helper from 'src/utils/nonNull' instead (isomorphic; avoids coupling to vscode)."
-      },
-      {
-        "selector": "ImportDeclaration[source.value=\"@microsoft/vscode-azext-utils\"] > ImportSpecifier[imported.name=\"openUrl\"]",
-        "message": "Import openUrl from 'src/utils/openUrl' instead (avoids coupling to vscode-azext-utils)."
-      },
-      {
-        "selector": "ImportDeclaration[source.value=\"@microsoft/vscode-azext-utils\"] > ImportSpecifier[imported.name=\"randomUtils\"]",
-        "message": "Use the isomorphic Web Crypto API (globalThis.crypto) instead of randomUtils."
-      },
-      {
-        "selector": "ImportDeclaration[source.value=\"@microsoft/vscode-azext-utils\"] > ImportSpecifier[imported.name=\"createContextValue\"]",
-        "message": "Use TreeElementWithContextValue.createContextValue from 'src/tree/TreeElementWithContextValue' instead."
-      }
-    ],
     "cosmosdb/license-header": [
       "error",
       [

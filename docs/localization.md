@@ -91,6 +91,7 @@ Bundles under `dist/l10n/l10n` are not found by VS Code, leaving both host and w
 With `npm run vite-watch:ext`, editing a shipped localization file or changing a file under a copied directory such as
 `resources` or `skills` triggers a rebuild. If a file is removed or renamed during the watch session, the copy plugin
 removes its stale copy without clearing shared webview output. Recreating a watched file copies it again.
+Replacing a file with a directory, or the reverse, also works when the conflicting output belongs to the copy plugin.
 
 `src/localizationPackaging.test.ts` exercises the real copy plugin in development and production modes. It checks
 representative extension assets and verifies that every locale shipped with a localized manifest has its unchanged

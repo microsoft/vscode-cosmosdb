@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { renameSync } from 'node:fs';
 import { mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -10,7 +11,7 @@ import { build } from 'vite';
 import { expect, it } from 'vitest';
 import { copyStaticAssets } from '../plugins/vite-plugin-copy-static-assets.mjs';
 
-it('refreshes copied assets after edits, additions, renames, and deletions', async () => {
+it('refreshes copied assets after edits, additions, renames, deletions, and file type changes', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'cosmosdb-copy-watch-'));
 
     try {
@@ -47,6 +48,12 @@ it('refreshes copied assets after edits, additions, renames, and deletions', asy
         if (!('close' in watcher)) {
             throw new Error('Vite did not return a build watcher.');
         }
+        let watchError: unknown;
+        watcher.on('event', (event) => {
+            if (event.code === 'ERROR') {
+                watchError = event.error;
+            }
+        });
 
         try {
             const expectCopied = async (file: string, contents: string) => {
@@ -81,6 +88,37 @@ it('refreshes copied assets after edits, additions, renames, and deletions', asy
             await expect.poll(() => readdir(outDir), { timeout: 4_000 }).not.toContain('manifest.json');
             await writeFile(manifest, '{"restored":true}\n');
             await expectCopied('manifest.json', '{"restored":true}\n');
+
+            const sourceItem = path.join(root, 'assets', 'item');
+            const sourceItemFile = path.join(sourceItem, 'inner', 'old.txt');
+            const copiedItemFile = path.join('assets', 'item', 'inner', 'old.txt');
+            await mkdir(path.dirname(sourceItemFile), { recursive: true });
+            await writeFile(sourceItemFile, 'asset in directory');
+            await expectCopied(copiedItemFile, 'asset in directory');
+
+            const originalItem = path.join(root, 'original-item');
+            const replacementItem = path.join(root, 'replacement-item');
+            await writeFile(replacementItem, 'replacement file');
+            // Switch both paths without yielding to the watcher while the source is missing.
+            renameSync(sourceItem, originalItem);
+            renameSync(replacementItem, sourceItem);
+            await expectCopied(path.join('assets', 'item'), 'replacement file');
+
+            renameSync(sourceItem, replacementItem);
+            renameSync(originalItem, sourceItem);
+            await expectCopied(copiedItemFile, 'asset in directory');
+            await expectCopied(path.join('assets', 'nested', 'webview.txt'), 'unrelated output');
+
+            // A conflicting directory with shared output must not be removed, even partially.
+            const sharedFile = path.join('assets', 'item', 'webview.txt');
+            await writeFile(path.join(outDir, sharedFile), 'unrelated output');
+            renameSync(sourceItem, originalItem);
+            renameSync(replacementItem, sourceItem);
+            await expect
+                .poll(() => String(watchError), { timeout: 4_000 })
+                .toContain('without removing unrelated build output');
+            await expectCopied(sharedFile, 'unrelated output');
+            await expectCopied(copiedItemFile, 'asset in directory');
         } finally {
             await watcher.close();
         }

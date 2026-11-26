@@ -26,6 +26,7 @@ export class DiagnosticsRunTrace {
     private readonly startedAt = performance.now();
     private readonly lines: string[] = [];
     private readonly stepStartedAt = new Map<Step, number>();
+    private readonly stepEndedAt = new Map<Step, number>();
     private readonly checkDurations: Partial<Record<Step, number>> = {};
     private readonly finishedSteps = new Set<Step>();
     private httpResponses = 0;
@@ -38,6 +39,10 @@ export class DiagnosticsRunTrace {
     public begin(step: Step): void {
         this.stepStartedAt.set(step, performance.now());
         this.write(`check=${step} started`);
+    }
+
+    public endTiming(step: Step): void {
+        this.stepEndedAt.set(step, performance.now());
     }
 
     public recordResponse(response: PipelineResponse, endpoint: URL): void {
@@ -65,7 +70,8 @@ export class DiagnosticsRunTrace {
             if (this.finishedSteps.has(step)) continue;
             this.finishedSteps.add(step);
             const startedAt = this.stepStartedAt.get(step);
-            const durationMs = startedAt === undefined ? undefined : Math.round(performance.now() - startedAt);
+            const endedAt = this.stepEndedAt.get(step) ?? performance.now();
+            const durationMs = startedAt === undefined ? undefined : Math.round(endedAt - startedAt);
             if (durationMs !== undefined) this.checkDurations[step] = durationMs;
             const duration = durationMs === undefined ? '' : ` durationMs=${durationMs}`;
             const stage = failureStage ? ` stage=${failureStage}` : '';

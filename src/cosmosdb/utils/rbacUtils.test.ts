@@ -137,8 +137,7 @@ describe('rbacUtils', () => {
                 ): Thenable<string | undefined>;
             } = vscode.window;
             vi.spyOn(stringMessageWindow, 'showErrorMessage').mockResolvedValue('Learn more');
-            const openExternal = vi.fn().mockResolvedValue(true);
-            (vscode as unknown as { env: { openExternal: typeof openExternal } }).env = { openExternal };
+            const openExternal = vi.spyOn(vscode.env, 'openExternal').mockResolvedValue(true);
 
             await showRbacPermissionError('my-account');
 
@@ -148,8 +147,7 @@ describe('rbacUtils', () => {
 
         it('does not open any link when the user dismisses the message', async () => {
             vi.spyOn(vscode.window, 'showErrorMessage').mockResolvedValue(undefined);
-            const openExternal = vi.fn().mockResolvedValue(true);
-            (vscode as unknown as { env: { openExternal: typeof openExternal } }).env = { openExternal };
+            const openExternal = vi.spyOn(vscode.env, 'openExternal').mockResolvedValue(true);
 
             await showRbacPermissionError('my-account');
 

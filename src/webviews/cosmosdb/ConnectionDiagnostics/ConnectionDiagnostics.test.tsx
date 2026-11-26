@@ -156,6 +156,31 @@ it('shows the outcome and check findings without a disclosure', async () => {
     expect(within(list).getByText('Not run')).not.toHaveAttribute('aria-hidden');
 });
 
+it('formats Overview durations in the webview document language, not Chromium’s default locale', async () => {
+    const numberFormat = Intl.NumberFormat;
+    const defaultLocale = vi.spyOn(Intl, 'NumberFormat').mockImplementation(function (locale, options) {
+        return new numberFormat(locale ?? 'ja-JP', options);
+    });
+    const html = document.documentElement;
+    const originalLang = html.lang;
+    html.lang = 'en';
+    onTestFinished(() => {
+        defaultLocale.mockRestore();
+        html.lang = originalLang;
+    });
+    client.state.query.mockResolvedValue({
+        ...completed,
+        kind: 'azure',
+        checks: [{ step: 'metrics', finding: 'overviewRead', status: 'passed' }],
+        trace: { runId: 'local-run-id', lines: [], checkDurations: { metrics: 5560 } },
+    } satisfies DiagnosticsState);
+    renderPanel();
+
+    const overview = await screen.findByRole('list', { name: 'Account Overview access' });
+    expect(overview).toHaveTextContent('5.56 sec');
+    expect(overview).not.toHaveTextContent('\u79d2');
+});
+
 it('keeps Overview permissions separate from successful data-plane access', async () => {
     client.state.query.mockResolvedValue({
         ...completed,

@@ -44,7 +44,7 @@ export async function runDiagnostics(
         if (target.kind === 'azure') {
             signal.throwIfAborted();
             begin('accountOverview');
-            checks.push(...(await checkOverviewAccess(target.account, signal)));
+            checks.push(...(await checkOverviewAccess(target.account, signal, (step) => trace.endTiming(step))));
         }
     } catch {
         if (!signal.aborted) {

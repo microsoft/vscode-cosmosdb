@@ -156,7 +156,7 @@ export class BaseTab {
         const loadingLabel = l10n.t('Loading…');
         return `
 <!DOCTYPE html>
-<html lang="en">
+<html lang="${escapeHtml(vscode.env.language || 'en')}">
   <head>
     <meta charset="UTF-8" />
     <meta http-equiv="Content-Security-Policy" content="${params.csp}" />

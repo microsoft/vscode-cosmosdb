@@ -25,6 +25,7 @@ const overviewTimeoutMs = 6_000;
 export async function checkOverviewAccess(
     account: DiagnosticsAzureAccount,
     signal: AbortSignal,
+    onCheckComplete: (step: OverviewStep) => void,
 ): Promise<CheckResult[]> {
     const results = await callWithTelemetryAndErrorHandling(
         'cosmosDB.diagnostics.checkOverviewAccess',
@@ -41,7 +42,13 @@ export async function checkOverviewAccess(
             );
             if (account.resourceGroup) context.valuesToMask.push(account.resourceGroup);
             const probes = overviewProbes(account, context);
-            return Promise.all(overviewSteps.map((step) => runReadCheck(step, signal, probes[step])));
+            return Promise.all(
+                overviewSteps.map(async (step) => {
+                    const result = await runReadCheck(step, signal, probes[step]);
+                    onCheckComplete(step);
+                    return result;
+                }),
+            );
         },
     );
     signal.throwIfAborted();

@@ -372,6 +372,7 @@ Advisor recommendations, and the two resource-specific Log Analytics tables. The
 Cosmos DB connection result. The Log Analytics checks run without returning log rows or prompting for consent.
 A successful check does not guarantee that there are records to display; a missing table is not proof that your
 identity lacks permissions. Diagnostics do not assign Azure roles or enable log collection.
+The checks run in parallel; each row shows the elapsed time for that check.
 
 See [Azure RBAC](https://learn.microsoft.com/azure/role-based-access-control/overview) and
 [Log Analytics access control](https://learn.microsoft.com/azure/azure-monitor/logs/manage-access).

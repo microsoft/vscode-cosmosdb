@@ -124,7 +124,7 @@ export function DiagnosticsCheckRow({ step, state, ...details }: CheckRowProps) 
                 <span id={labelId}>{stepLabel(step)}</span>
                 {duration !== undefined && (
                     <span className={styles.duration}>
-                        {new Intl.NumberFormat(undefined, {
+                        {new Intl.NumberFormat(document.documentElement.lang || 'en', {
                             style: 'unit',
                             unit: duration < 1000 ? 'millisecond' : 'second',
                             maximumFractionDigits: 2,

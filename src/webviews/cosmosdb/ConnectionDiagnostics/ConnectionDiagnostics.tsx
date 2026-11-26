@@ -93,7 +93,7 @@ function checkedText(finishedAt: number, now: number): string {
     if (minutes === 0) return l10n.t('Checked a few seconds ago');
     if (minutes === 1) return l10n.t('Checked 1 minute ago');
     if (minutes < 60) return l10n.t('Checked {0} minutes ago', minutes);
-    return l10n.t('Checked on {0}', new Date(finishedAt).toLocaleString());
+    return l10n.t('Checked on {0}', new Date(finishedAt).toLocaleString(document.documentElement.lang || 'en'));
 }
 
 function OverviewChecks({

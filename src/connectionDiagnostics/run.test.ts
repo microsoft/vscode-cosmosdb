@@ -737,16 +737,22 @@ describe('diagnosing a NoSQL connection', () => {
         ).not.toMatch(/resourceGroups\/group|private metric error|take 0/);
     });
 
-    it('keeps successful Overview reads when another read times out', async () => {
-        vi.useFakeTimers();
+    it('reports the duration of each Overview read, even when a different read times out', async () => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
         try {
             io.get.mockResolvedValue({ documentEndpoint: 'https://example.test/', disableLocalAuth: true });
             io.metricsList.mockImplementation(() => new Promise(() => {}));
+            io.alertsList.mockReturnValue({
+                byPage: () => ({
+                    next: () => new Promise((resolve) => setTimeout(() => resolve({ value: [], done: false }), 120)),
+                }),
+            });
             const run = diagnose(cloud);
             await vi.advanceTimersByTimeAsync(6_000);
             const state = (await run).at(-1)!;
             expect(state.checks.find(({ step }) => step === 'metrics')).toMatchObject({ finding: 'overviewTimedOut' });
             expect(state.checks.find(({ step }) => step === 'alerts')).toMatchObject({ finding: 'overviewRead' });
+            expect(state.trace?.checkDurations).toMatchObject({ metrics: 6_000, alerts: 120 });
             expect(io.metricsList.mock.calls[0][1].abortSignal.aborted).toBe(true);
         } finally {
             vi.useRealTimers();

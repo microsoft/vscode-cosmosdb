@@ -3,7 +3,6 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import {
     checkCodeMigrationPrerequisites,
     checkPhaseCompletion,
@@ -11,6 +10,7 @@ import {
     summarizePhaseCompletion,
 } from './check-phase-completion.mjs';
 import { requireOptionValue } from './cli-arguments.mjs';
+import { isMainModule } from './cli-entrypoint.mjs';
 import { showHelp } from './cli-help.mjs';
 import { fileSha256, selectedDiscoveryFiles } from './freshness.mjs';
 import { normalizePhaseName } from './phase-names.mjs';
@@ -275,5 +275,4 @@ Exit: 0 for a routing result; 1 when blocked or arguments/inspection fail.
     }
 }
 
-const isMain = process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) process.exitCode = runCli(process.argv.slice(2));
+if (isMainModule(import.meta.url)) process.exitCode = runCli(process.argv.slice(2));

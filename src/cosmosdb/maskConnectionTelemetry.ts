@@ -27,7 +27,7 @@ export function maskConnectionTelemetry(
     });
     context.valuesToMask.push(
         ...[...credentialValues, connection.endpoint, connection.databaseId, connection.containerId].filter(
-            (value): value is string => value !== undefined && value.trim().length > 0,
+            (value): value is string => typeof value === 'string' && value.trim().length > 0,
         ),
     );
 }

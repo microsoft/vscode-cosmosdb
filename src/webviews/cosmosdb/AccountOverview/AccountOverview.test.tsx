@@ -201,6 +201,7 @@ function dataQueryCounts() {
 
 beforeEach(() => {
     vi.resetAllMocks();
+    window.localStorage.clear();
     initialTarget = 'overview';
     queries.feedbackEnabled.mockImplementation((_input: unknown, next: typeof feedbackCallbacks) => {
         feedbackCallbacks = next;
@@ -298,18 +299,18 @@ afterEach(() => vi.restoreAllMocks());
 describe('Account Overview feedback control', () => {
     it('keeps feedback and Data Modeler availability independent', async () => {
         const { unmount } = render(<AccountOverview />, { wrapper: Wrapper });
-        await screen.findByRole('button', { name: 'Try Data Modeler' });
+        await screen.findByRole('button', { name: 'Start guided data modeling' });
         expect(screen.getByRole('button', { name: 'Provide Feedback' })).toBeEnabled();
 
         act(() => modelerCallbacks.onData(false));
-        expect(screen.queryByRole('button', { name: 'Try Data Modeler' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Start guided data modeling' })).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Provide Feedback' })).toBeEnabled();
 
         act(() => {
             modelerCallbacks.onData(true);
             feedbackCallbacks.onData(false);
         });
-        expect(screen.getByRole('button', { name: 'Try Data Modeler' })).toBeEnabled();
+        expect(screen.getByRole('button', { name: 'Start guided data modeling' })).toBeEnabled();
         expect(screen.queryByRole('button', { name: 'Provide Feedback' })).not.toBeInTheDocument();
 
         unmount();
@@ -1339,17 +1340,15 @@ describe('header update feedback', () => {
 describe('Account Overview account actions', () => {
     it('follows live Data Modeler flag changes without refreshing account data', async () => {
         const { unmount } = render(<AccountOverview />, { wrapper: Wrapper });
-        await screen.findByRole('button', { name: 'Try Data Modeler' });
+        await screen.findByRole('button', { name: 'Start guided data modeling' });
         await waitFor(() => expect(queries.partition).toHaveBeenCalledTimes(1));
         const counts = dataQueryCounts();
         act(() => modelerCallbacks.onData(false));
-        expect(screen.queryByRole('button', { name: 'Try Data Modeler' })).not.toBeInTheDocument();
-        expect(
-            screen.queryByText('Design containers, partition keys, and relationships visually.'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Start guided data modeling' })).not.toBeInTheDocument();
+        expect(screen.queryByText('Need help designing your data model?')).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Add database' })).toBeEnabled();
         act(() => modelerCallbacks.onData(true));
-        expect(screen.getByRole('button', { name: 'Try Data Modeler' })).toBeEnabled();
+        expect(screen.getByRole('button', { name: 'Start guided data modeling' })).toBeEnabled();
         expect(dataQueryCounts()).toEqual(counts);
         unmount();
         expect(queries.unsubscribeDataModeler).toHaveBeenCalledOnce();
@@ -1358,10 +1357,10 @@ describe('Account Overview account actions', () => {
     it('hides Data Modeler and reports feature flag subscription failures', async () => {
         const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
         render(<AccountOverview />, { wrapper: Wrapper });
-        await screen.findByRole('button', { name: 'Try Data Modeler' });
+        await screen.findByRole('button', { name: 'Start guided data modeling' });
         const error = new Error('Subscription disconnected');
         act(() => modelerCallbacks.onError(error));
-        expect(screen.queryByRole('button', { name: 'Try Data Modeler' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Start guided data modeling' })).not.toBeInTheDocument();
         expect(errorLog).toHaveBeenCalledExactlyOnceWith(
             'Unable to receive Account Overview Data Modeler availability.',
             error,
@@ -1377,16 +1376,14 @@ describe('Account Overview account actions', () => {
         await screen.findByRole('tab', { name: 'Monitoring' });
         await waitFor(() => expect(queries.partition).toHaveBeenCalledTimes(1));
         const counts = dataQueryCounts();
-        expect(screen.queryByRole('button', { name: 'Try Data Modeler' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Start guided data modeling' })).not.toBeInTheDocument();
         act(() => aiCallbacks.onData(false));
-        expect(screen.queryByRole('button', { name: 'Try Data Modeler' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Start guided data modeling' })).not.toBeInTheDocument();
         act(() => aiCallbacks.onData(true));
-        expect(screen.getByRole('button', { name: 'Try Data Modeler' })).toBeEnabled();
+        expect(screen.getByRole('button', { name: 'Start guided data modeling' })).toBeEnabled();
         act(() => aiCallbacks.onData(false));
-        expect(screen.queryByRole('button', { name: 'Try Data Modeler' })).not.toBeInTheDocument();
-        expect(
-            screen.queryByText('Design containers, partition keys, and relationships visually.'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Start guided data modeling' })).not.toBeInTheDocument();
+        expect(screen.queryByText('Need help designing your data model?')).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Add database' })).toBeEnabled();
         expect(dataQueryCounts()).toEqual(counts);
         unmount();
@@ -1396,10 +1393,10 @@ describe('Account Overview account actions', () => {
     it('hides Data Modeler and reports AI availability subscription failures', async () => {
         const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
         render(<AccountOverview />, { wrapper: Wrapper });
-        await screen.findByRole('button', { name: 'Try Data Modeler' });
+        await screen.findByRole('button', { name: 'Start guided data modeling' });
         const error = new Error('Subscription disconnected');
         act(() => aiCallbacks.onError(error));
-        expect(screen.queryByRole('button', { name: 'Try Data Modeler' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Start guided data modeling' })).not.toBeInTheDocument();
         expect(errorLog).toHaveBeenCalledExactlyOnceWith(
             'Unable to receive Account Overview AI feature availability.',
             error,
@@ -1412,13 +1409,13 @@ describe('Account Overview account actions', () => {
         await screen.findByRole('tab', { name: 'Monitoring' });
         await waitFor(() => expect(queries.partition).toHaveBeenCalledTimes(1));
         const counts = dataQueryCounts();
-        const modeler = screen.getByRole('button', { name: 'Try Data Modeler' });
-        expect(modeler).toHaveTextContent('Try Data Modeler');
-        expect(modeler).toHaveAccessibleName('Try Data Modeler');
+        const modeler = screen.getByRole('button', { name: 'Start guided data modeling' });
+        expect(modeler).toHaveTextContent('Start guided data modeling');
+        expect(modeler).toHaveAccessibleName('Start guided data modeling');
         expect(modeler).toBeEnabled();
         expect(modeler).not.toHaveAttribute('aria-disabled', 'true');
-        screen.getByRole('button', { name: 'Delete account' }).focus();
-        await user.tab();
+        screen.getByRole('button', { name: 'Collapse Data Modeler suggestion' }).focus();
+        await user.tab({ shift: true });
         expect(modeler).toHaveFocus();
         await user.keyboard('{Enter}');
         expect(queries.accountAction).toHaveBeenCalledExactlyOnceWith({ action: 'openDataModeler' });
@@ -1426,10 +1423,53 @@ describe('Account Overview account actions', () => {
         expect(dataQueryCounts()).toEqual(counts);
     });
 
+    it('remembers the last collapsed or expanded state across dashboards without refreshing', async () => {
+        const user = userEvent.setup();
+        const { unmount } = render(<AccountOverview />, { wrapper: Wrapper });
+        await screen.findByRole('button', { name: 'Start guided data modeling' });
+        await waitFor(() => expect(queries.partition).toHaveBeenCalledTimes(1));
+        const counts = dataQueryCounts();
+        await user.click(screen.getByRole('button', { name: 'Collapse Data Modeler suggestion' }));
+        expect(screen.queryByRole('button', { name: 'Start guided data modeling' })).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Expand Data Modeler suggestion' })).toHaveFocus();
+        await user.click(screen.getByRole('button', { name: 'Data Modeler' }));
+        expect(queries.accountAction).toHaveBeenCalledExactlyOnceWith({ action: 'openDataModeler' });
+        expect(dataQueryCounts()).toEqual(counts);
+
+        unmount();
+        const { unmount: unmountCollapsed } = render(<AccountOverview />, { wrapper: Wrapper });
+        const expand = await screen.findByRole('button', { name: 'Expand Data Modeler suggestion' });
+        expect(expand).not.toHaveFocus();
+        expect(screen.queryByRole('button', { name: 'Start guided data modeling' })).not.toBeInTheDocument();
+        await user.click(expand);
+        expect(screen.getByRole('button', { name: 'Collapse Data Modeler suggestion' })).toHaveFocus();
+
+        unmountCollapsed();
+        render(<AccountOverview />, { wrapper: Wrapper });
+        expect(await screen.findByRole('button', { name: 'Start guided data modeling' })).toBeEnabled();
+        expect(screen.queryByRole('button', { name: 'Expand Data Modeler suggestion' })).not.toBeInTheDocument();
+    });
+
+    it('falls back to an expanded callout that still collapses when storage is unavailable', async () => {
+        const user = userEvent.setup();
+        const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const error = new Error('storage unavailable');
+        vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+            throw error;
+        });
+        vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+            throw error;
+        });
+        render(<AccountOverview />, { wrapper: Wrapper });
+        await user.click(await screen.findByRole('button', { name: 'Collapse Data Modeler suggestion' }));
+        expect(screen.getByRole('button', { name: 'Expand Data Modeler suggestion' })).toHaveFocus();
+        expect(errorLog).toHaveBeenCalledWith('Unable to save the Account Overview Data Modeler callout state.', error);
+    });
+
     it.each([
         ['View Cost', 'openCosts'],
         ['View JSON', 'openJson'],
-        ['Try Data Modeler', 'openDataModeler'],
+        ['Start guided data modeling', 'openDataModeler'],
     ] as const)('routes %s without refreshing data or resetting metric filters', async (label, action) => {
         const user = userEvent.setup();
         render(<AccountOverview />, { wrapper: Wrapper });
@@ -1638,7 +1678,7 @@ describe('Account Overview account actions', () => {
         ['Delete account', 'deleteAccount'],
         ['View Cost', 'openCosts'],
         ['View JSON', 'openJson'],
-        ['Try Data Modeler', 'openDataModeler'],
+        ['Start guided data modeling', 'openDataModeler'],
     ] as const)('keeps the dashboard and data unchanged when %s is cancelled', async (label, action) => {
         const user = userEvent.setup();
         queries.accountAction.mockResolvedValue({ status: 'cancelled' } satisfies AccountActionResult);
@@ -1658,33 +1698,37 @@ describe('Account Overview account actions', () => {
         expect(screen.queryByText('This Cosmos DB account has been deleted.')).not.toBeInTheDocument();
     });
 
-    it.each(['Add database', 'Add container', 'Delete account', 'View Cost', 'View JSON', 'Try Data Modeler'])(
-        'announces a rejected %s mutation without refreshing or unmounting, and allows retry',
-        async (label) => {
-            const user = userEvent.setup();
-            queries.accountAction.mockRejectedValueOnce(new Error('mutation failed'));
-            render(<AccountOverview />, { wrapper: Wrapper });
-            await screen.findByRole('tab', { name: 'Monitoring' });
-            await chooseHeaderOption(user, /^Database scope for metrics:/, 'database');
-            const dashboard = screen.getByRole('tablist');
-            const counts = dataQueryCounts();
-            await user.click(screen.getByRole('button', { name: label }));
-            expect(await screen.findByRole('group', { name: 'Error' })).toHaveTextContent(
-                'The account action could not be completed. Retry or use the Azure Resources view.',
-            );
-            expect(screen.getByRole('group', { name: 'Error' })).toBeVisible();
-            expect(screen.getByRole('tablist')).toBe(dashboard);
-            expect(dataQueryCounts()).toEqual(counts);
-            expect(screen.queryByText('This Cosmos DB account has been deleted.')).not.toBeInTheDocument();
-            expect(screen.getByRole('button', { name: label })).toBeEnabled();
-            queries.accountAction.mockResolvedValueOnce({ status: 'cancelled' } satisfies AccountActionResult);
-            await user.click(screen.getByRole('button', { name: label }));
-            expect(queries.accountAction).toHaveBeenCalledTimes(2);
-            expect(queries.accountAction.mock.calls[1]).toEqual(queries.accountAction.mock.calls[0]);
-            await waitFor(() => expect(screen.queryByRole('group', { name: 'Error' })).not.toBeInTheDocument());
-            expect(dataQueryCounts()).toEqual(counts);
-        },
-    );
+    it.each([
+        'Add database',
+        'Add container',
+        'Delete account',
+        'View Cost',
+        'View JSON',
+        'Start guided data modeling',
+    ])('announces a rejected %s mutation without refreshing or unmounting, and allows retry', async (label) => {
+        const user = userEvent.setup();
+        queries.accountAction.mockRejectedValueOnce(new Error('mutation failed'));
+        render(<AccountOverview />, { wrapper: Wrapper });
+        await screen.findByRole('tab', { name: 'Monitoring' });
+        await chooseHeaderOption(user, /^Database scope for metrics:/, 'database');
+        const dashboard = screen.getByRole('tablist');
+        const counts = dataQueryCounts();
+        await user.click(screen.getByRole('button', { name: label }));
+        expect(await screen.findByRole('group', { name: 'Error' })).toHaveTextContent(
+            'The account action could not be completed. Retry or use the Azure Resources view.',
+        );
+        expect(screen.getByRole('group', { name: 'Error' })).toBeVisible();
+        expect(screen.getByRole('tablist')).toBe(dashboard);
+        expect(dataQueryCounts()).toEqual(counts);
+        expect(screen.queryByText('This Cosmos DB account has been deleted.')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: label })).toBeEnabled();
+        queries.accountAction.mockResolvedValueOnce({ status: 'cancelled' } satisfies AccountActionResult);
+        await user.click(screen.getByRole('button', { name: label }));
+        expect(queries.accountAction).toHaveBeenCalledTimes(2);
+        expect(queries.accountAction.mock.calls[1]).toEqual(queries.accountAction.mock.calls[0]);
+        await waitFor(() => expect(screen.queryByRole('group', { name: 'Error' })).not.toBeInTheDocument());
+        expect(dataQueryCounts()).toEqual(counts);
+    });
 
     it('refreshes inventory after creation so a new empty database can be selected to create its first container', async () => {
         const user = userEvent.setup();

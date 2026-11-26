@@ -18,12 +18,29 @@ const ariaNotify = vi.fn();
 let originalAriaNotify: PropertyDescriptor | undefined;
 
 beforeEach(() => {
+    vi.spyOn(document.body, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 1024, 768));
+    vi.spyOn(HTMLElement.prototype, 'offsetParent', 'get').mockImplementation(function (this: HTMLElement) {
+        if (this.hidden || getComputedStyle(this).display === 'none') {
+            return null;
+        }
+        for (let element = this.parentElement; element; element = element.parentElement) {
+            if (element.hidden || getComputedStyle(element).display === 'none') {
+                return null;
+            }
+        }
+        return this.parentElement;
+    });
+    const matches = Element.prototype.matches;
+    vi.spyOn(Element.prototype, 'matches').mockImplementation(function (this: Element, selector: string) {
+        return selector === ':modal' ? false : matches.call(this, selector);
+    });
     ariaNotify.mockReset();
     originalAriaNotify = Object.getOwnPropertyDescriptor(document, 'ariaNotify');
     Object.defineProperty(document, 'ariaNotify', { configurable: true, value: ariaNotify });
 });
 
 afterEach(() => {
+    vi.restoreAllMocks();
     if (originalAriaNotify) {
         Object.defineProperty(document, 'ariaNotify', originalAriaNotify);
     } else {
@@ -45,29 +62,36 @@ function renderActions(overrides: Partial<ActionProps> = {}) {
         supported: true,
         isAIFeaturesEnabled: true,
         isDataModelerEnabled: true,
+        isDataModelerPromoCollapsed: false,
         onAction: vi.fn(),
+        onDataModelerPromoCollapsedChange: vi.fn(),
         ...overrides,
     };
     return { props, ...render(<AccountActions {...props} />, { wrapper: Wrapper }) };
 }
 
-describe('AccountActions', () => {
-    it.each([{ isAIFeaturesEnabled: false }, { isDataModelerEnabled: false }])(
-        'hides the entire Data Modeler promotion for %j',
-        (overrides) => {
-            renderActions(overrides);
-            expect(screen.queryByRole('button', { name: 'Try Data Modeler' })).not.toBeInTheDocument();
-            expect(
-                screen.queryByText('Design containers, partition keys, and relationships visually.'),
-            ).not.toBeInTheDocument();
-            for (const label of ['Add database', 'Add container', 'View Cost', 'View JSON', 'Delete account']) {
-                expect(screen.getByRole('button', { name: label })).toBeEnabled();
-            }
-        },
-    );
+const modelerDescription =
+    "Get a guided experience to design your containers and relationships, choose partition keys based on your application's queries and workload, and deploy when you're ready.";
 
-    it('names every action with its rendered visible label', () => {
-        renderActions();
+describe('AccountActions', () => {
+    it.each([
+        { isAIFeaturesEnabled: false },
+        { isDataModelerEnabled: false },
+        { isAIFeaturesEnabled: false, isDataModelerPromoCollapsed: true },
+        { isDataModelerEnabled: false, isDataModelerPromoCollapsed: true },
+    ])('hides every Data Modeler entry point for %j', (overrides) => {
+        renderActions(overrides);
+        expect(screen.queryByRole('button', { name: 'Start guided data modeling' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Data Modeler' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Expand Data Modeler suggestion' })).not.toBeInTheDocument();
+        expect(screen.queryByText('Need help designing your data model?')).not.toBeInTheDocument();
+        for (const label of ['Add database', 'Add container', 'View Cost', 'View JSON', 'Delete account']) {
+            expect(screen.getByRole('button', { name: label })).toBeEnabled();
+        }
+    });
+
+    it.each([false, true])('names every action with its rendered visible label (collapsed: %s)', (collapsed) => {
+        renderActions({ isDataModelerPromoCollapsed: collapsed });
         const actions = within(screen.getByRole('region', { name: 'Account actions' }));
         for (const label of [
             'Add database',
@@ -75,7 +99,7 @@ describe('AccountActions', () => {
             'View Cost',
             'View JSON',
             'Delete account',
-            'Try Data Modeler',
+            collapsed ? 'Data Modeler' : 'Start guided data modeling',
         ]) {
             const button = actions.getByRole('button', { name: label });
             expect(button).toHaveTextContent(label);
@@ -85,36 +109,111 @@ describe('AccountActions', () => {
     });
 
     it.each([
-        ['Add database', { action: 'createDatabase' }],
-        ['Add container', { action: 'createContainer', databaseId: 'selected-db' }],
-        ['View Cost', { action: 'openCosts' }],
-        ['View JSON', { action: 'openJson' }],
-        ['Delete account', { action: 'deleteAccount' }],
-        ['Try Data Modeler', { action: 'openDataModeler' }],
-    ] as const)('dispatches %s by keyboard with the correct scope', async (label, input) => {
+        ['Add database', { action: 'createDatabase' }, false],
+        ['Add container', { action: 'createContainer', databaseId: 'selected-db' }, false],
+        ['View Cost', { action: 'openCosts' }, false],
+        ['View JSON', { action: 'openJson' }, false],
+        ['Delete account', { action: 'deleteAccount' }, false],
+        ['Start guided data modeling', { action: 'openDataModeler' }, false],
+        ['Data Modeler', { action: 'openDataModeler' }, true],
+    ] as const)('dispatches %s by keyboard with the correct scope', async (label, input, collapsed) => {
         const user = userEvent.setup();
-        const { props } = renderActions({ databaseId: 'selected-db' });
+        const { props } = renderActions({ databaseId: 'selected-db', isDataModelerPromoCollapsed: collapsed });
         screen.getByRole('button', { name: label }).focus();
         await user.keyboard('{Enter}');
         expect(props.onAction).toHaveBeenCalledExactlyOnceWith(input);
     });
 
-    it('opens Data Modeler when clicked', async () => {
+    it('promotes the guided Data Modeler experience in a labelled callout and opens it when clicked', async () => {
         const user = userEvent.setup();
         const { props } = renderActions();
-        const modeler = screen.getByRole('button', { name: 'Try Data Modeler' });
-        expect(screen.getByText('Design containers, partition keys, and relationships visually.')).toBeVisible();
+        const callout = within(screen.getByRole('region', { name: 'Need help designing your data model?' }));
+        expect(callout.getByRole('heading', { name: 'Need help designing your data model?' })).toBeVisible();
+        expect(callout.getByText('Data Modeler')).toBeVisible();
+        expect(callout.getByText(modelerDescription)).toBeVisible();
+        const modeler = callout.getByRole('button', { name: 'Start guided data modeling' });
+        expect(modeler).toHaveAccessibleDescription(modelerDescription);
         expect(modeler).toBeEnabled();
         await user.click(modeler);
         expect(props.onAction).toHaveBeenCalledExactlyOnceWith({ action: 'openDataModeler' });
+        expect(props.onDataModelerPromoCollapsedChange).not.toHaveBeenCalled();
+    });
+
+    it('collapses the callout by keyboard and moves focus to the expand control', async () => {
+        const user = userEvent.setup();
+        const { props, rerender } = renderActions();
+        const collapse = screen.getByRole('button', { name: 'Collapse Data Modeler suggestion' });
+        expect(collapse).toHaveAttribute('aria-expanded', 'true');
+        screen.getByRole('button', { name: 'Start guided data modeling' }).focus();
+        await user.tab();
+        expect(collapse).toHaveFocus();
+        await waitFor(() =>
+            expect(collapse).toHaveAccessibleDescription('Data Modeler stays available in the account actions.'),
+        );
+        await user.keyboard('{Enter}');
+        expect(props.onDataModelerPromoCollapsedChange).toHaveBeenCalledExactlyOnceWith(true);
+        expect(props.onAction).not.toHaveBeenCalled();
+
+        rerender(<AccountActions {...props} isDataModelerPromoCollapsed />);
+        expect(screen.queryByRole('region', { name: 'Need help designing your data model?' })).not.toBeInTheDocument();
+        const expand = screen.getByRole('button', { name: 'Expand Data Modeler suggestion' });
+        expect(expand).toHaveFocus();
+        expect(expand).toHaveAttribute('aria-expanded', 'false');
+        const compact = screen.getByRole('button', { name: 'Data Modeler' });
+        await user.tab({ shift: true });
+        expect(compact).toHaveFocus();
+        await waitFor(() => expect(compact).toHaveAccessibleDescription(modelerDescription));
+        await user.keyboard('{Enter}');
+        expect(props.onAction).toHaveBeenCalledExactlyOnceWith({ action: 'openDataModeler' });
+    });
+
+    it('expands a collapsed callout from a subtle control and returns focus to its collapse control', async () => {
+        const user = userEvent.setup();
+        const { props, rerender } = renderActions({ isDataModelerPromoCollapsed: true });
+        const compact = screen.getByRole('button', { name: 'Data Modeler' });
+        const expand = screen.getByRole('button', { name: 'Expand Data Modeler suggestion' });
+        expect(expand).toHaveTextContent('');
+        compact.focus();
+        await user.tab();
+        expect(expand).toHaveFocus();
+        await user.keyboard('{Enter}');
+        expect(props.onDataModelerPromoCollapsedChange).toHaveBeenCalledExactlyOnceWith(false);
+        expect(props.onAction).not.toHaveBeenCalled();
+
+        rerender(<AccountActions {...props} isDataModelerPromoCollapsed={false} />);
+        expect(screen.queryByRole('button', { name: 'Expand Data Modeler suggestion' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Data Modeler' })).not.toBeInTheDocument();
+        expect(screen.getByRole('region', { name: 'Need help designing your data model?' })).toBeVisible();
+        expect(screen.getByRole('button', { name: 'Collapse Data Modeler suggestion' })).toHaveFocus();
+    });
+
+    it('keeps the expand control available while Data Modeler launch is blocked', async () => {
+        const user = userEvent.setup();
+        const { props } = renderActions({ isDataModelerPromoCollapsed: true, busy: true });
+        await user.click(screen.getByRole('button', { name: 'Expand Data Modeler suggestion' }));
+        expect(props.onDataModelerPromoCollapsedChange).toHaveBeenCalledExactlyOnceWith(false);
+    });
+
+    it('does not steal focus when the callout is already collapsed on load', () => {
+        renderActions({ isDataModelerPromoCollapsed: true });
+        expect(screen.getByRole('button', { name: 'Data Modeler' })).not.toHaveFocus();
+        expect(screen.getByRole('button', { name: 'Expand Data Modeler suggestion' })).not.toHaveFocus();
     });
 
     it.each([{ busy: true }, { supported: false }])('blocks Data Modeler for %j', async (overrides) => {
         const user = userEvent.setup();
-        const { props } = renderActions(overrides);
-        const modeler = screen.getByRole('button', { name: 'Try Data Modeler' });
+        const { props, rerender } = renderActions(overrides);
+        const modeler = screen.getByRole('button', { name: 'Start guided data modeling' });
         expect(modeler).toBeDisabled();
         await user.click(modeler);
+        // Collapsing is a layout preference, so it stays available while actions are blocked.
+        expect(screen.getByRole('button', { name: 'Collapse Data Modeler suggestion' })).toBeEnabled();
+        rerender(<AccountActions {...props} isDataModelerPromoCollapsed />);
+        const compact = screen.getByRole('button', { name: 'Data Modeler' });
+        expect(compact).toHaveAttribute('aria-disabled', 'true');
+        await user.click(compact);
+        compact.focus();
+        await user.keyboard('{Enter} ');
         expect(props.onAction).not.toHaveBeenCalled();
     });
 
@@ -133,7 +232,7 @@ describe('AccountActions', () => {
         'keeps Add container focusable but non-dispatching %s',
         async (_scenario, overrides: Partial<ActionProps>, description) => {
             const user = userEvent.setup();
-            const { props } = renderActions(overrides);
+            const { props } = renderActions({ ...overrides, isDataModelerPromoCollapsed: true });
             const button = screen.getByRole('button', { name: 'Add container' });
             expect(button).toHaveAttribute('aria-disabled', 'true');
             expect(button).not.toBeDisabled();

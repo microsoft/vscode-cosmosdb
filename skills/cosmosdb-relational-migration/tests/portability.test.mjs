@@ -4,13 +4,55 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { requireOptionValue } from '../scripts/cli-arguments.mjs';
+import { isMainModule } from '../scripts/cli-entrypoint.mjs';
 import { readProjectState } from '../scripts/project-state.mjs';
 import { discoveryFixture, sourceFixture } from './source-evidence-fixtures.mjs';
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const sourceSkillRoot = path.resolve(testDirectory, '..');
+
+test('executable helpers import without CLI work when the host entry point is absent or unrelated', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'migration-helper-imports-'));
+    try {
+        fs.writeFileSync(path.join(root, 'bootstrap-fork.js'), '');
+        fs.writeFileSync(path.join(root, 'not-a-directory'), '');
+        const before = fs.readdirSync(root, { recursive: true });
+        const scripts = path.join(sourceSkillRoot, 'scripts');
+        for (const name of fs.readdirSync(scripts).filter(name => name.endsWith('.mjs'))) {
+            const scriptPath = path.join(scripts, name);
+            if (!fs.readFileSync(scriptPath, 'utf8').includes('export function runCli(')) continue;
+            for (const entryPoint of [
+                undefined,
+                path.join(root, 'bootstrap-fork'),
+                path.join(root, 'not-a-directory', 'bootstrap-fork'),
+                process.execPath,
+            ]) {
+                const code = `process.argv = [process.execPath, ${JSON.stringify(entryPoint)}, '--help'];
+                    await import(${JSON.stringify(pathToFileURL(scriptPath).href)});`;
+                const result = spawnSync(process.execPath, ['--input-type=module', '-e', code], {
+                    cwd: root, encoding: 'utf8', timeout: 5000,
+                });
+                const label = `${name} (${entryPoint ?? 'undefined'})`;
+                assert.equal(result.error, undefined, label);
+                assert.equal(result.status, 0, `${label}: ${result.stderr}`);
+                assert.equal(result.stdout, '', label);
+                assert.equal(result.stderr, '', label);
+                assert.deepEqual(fs.readdirSync(root, { recursive: true }), before, label);
+            }
+        }
+    } finally {
+        fs.rmSync(root, { recursive: true, force: true });
+    }
+});
+
+test('entry-point detection does not hide unexpected filesystem errors', context => {
+    const error = new Error('Permission denied');
+    error.code = 'EACCES';
+    context.mock.method(fs, 'realpathSync', () => { throw error; });
+    assert.throws(() => isMainModule(import.meta.url), actual => actual === error);
+});
 
 test('value-taking options fail before helper work when their value is missing', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'migration-missing-options-'));
@@ -110,6 +152,8 @@ test('every executable helper has complete, side-effect-free help without depend
         const checkpoint = path.join(root, '.cosmosdb-migration', 'project.json');
         fs.mkdirSync(path.dirname(checkpoint));
         fs.writeFileSync(checkpoint, 'invalid JSON: help must not read this checkpoint');
+        const linkedScripts = path.join(root, 'scripts-alias');
+        fs.symlinkSync(scripts, linkedScripts, 'junction');
         const before = fs.readdirSync(root, { recursive: true });
         for (const name of fs.readdirSync(scripts).filter(name => name.endsWith('.mjs'))) {
             const scriptPath = path.join(scripts, name);
@@ -119,11 +163,11 @@ test('every executable helper has complete, side-effect-free help without depend
             const cliSource = source.slice(parserStart >= 0 ? parserStart : source.indexOf('export function runCli('));
             const flags = new Set([...cliSource.matchAll(/'(--[a-z][a-z-]*)'/gu)].map(match => match[1]));
             for (const args of [
-                ['--help'],
-                ['-h'],
-                ['--install', '--write', '--force', '--output', path.join(root, 'output'), '--unknown-option', '--help'],
+                ...[scripts, linkedScripts].map(directory => [path.join(directory, name), '--help']),
+                [scriptPath, '-h'],
+                [scriptPath, '--install', '--write', '--force', '--output', path.join(root, 'output'), '--unknown-option', '--help'],
             ]) {
-                const result = spawnSync(process.execPath, [scriptPath, ...args], {
+                const result = spawnSync(process.execPath, args, {
                     cwd: root,
                     encoding: 'utf8',
                     timeout: 5000,

@@ -42,6 +42,7 @@ describe('connection picker accessible name', () => {
             { type: 'button', connected: true, changing: false },
             { type: 'menuitem', connected: true, changing: false },
             { type: 'button', connected: false, changing: false },
+            { type: 'menuitem', connected: false, changing: false },
             { type: 'menuitem', connected: true, changing: true },
         ] as const)(
             'handles $type with connected=$connected and changing=$changing',
@@ -62,7 +63,7 @@ describe('connection picker accessible name', () => {
                     type === 'button' ? 'Check the current container or choose a connection to diagnose' : '',
                 );
                 fireEvent.click(action);
-                expect(dispatcher.diagnoseConnection).toHaveBeenCalledOnce();
+                expect(dispatcher.diagnoseConnection).toHaveBeenCalledExactlyOnceWith(connected && !changing);
             },
         );
     });

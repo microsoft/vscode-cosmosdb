@@ -7,6 +7,7 @@ import { vi } from 'vitest';
 import * as vscode from 'vscode';
 import { type NoSqlQueryConnection } from '../../../cosmosdb/NoSqlQueryConnection';
 import { QuerySession, type QueryExecutionResult } from '../../../cosmosdb/session/QuerySession';
+import { ext } from '../../../extensionVariables';
 import { type QueryEditorRouterContext } from '../appRouter';
 import { queryEditorRouterDef } from './queryEditorRouter';
 
@@ -43,7 +44,10 @@ vi.mock('../../../services/StorageService', () => ({
 }));
 vi.mock('../../../utils/aiUtils', () => ({}));
 vi.mock('../../../utils/dialogs/getConfirmation', () => ({ getConfirmationAsInSettings: mocks.confirm }));
-vi.mock('../../../utils/survey', () => ({ promptAfterActionEventually: vi.fn() }));
+vi.mock('../../../utils/survey', () => ({
+    getIsSurveyDisabledGlobally: () => false,
+    promptAfterActionEventually: vi.fn(),
+}));
 vi.mock('../../../utils/vscodeUtils', () => ({}));
 vi.mock('../../DocumentTab', () => ({ DocumentTab: { render: mocks.openDocument } }));
 vi.mock('../../ConnectionDiagnosticsTab', () => ({ ConnectionDiagnosticsTab: { render: mocks.openDiagnostics } }));
@@ -126,6 +130,45 @@ describe('query editor connection ownership', () => {
             probe: 'query',
             connection: connectionA,
         });
+    });
+
+    it('opens the target picker after failed initialization even if the host retains the connection', async () => {
+        const executeCommand = vi.spyOn(vscode.commands, 'executeCommand').mockResolvedValue(undefined);
+        const channel: typeof ext.outputChannel = {
+            name: 'Query Editor',
+            logLevel: vscode.LogLevel.Info,
+            onDidChangeLogLevel: vi.fn(),
+            append: vi.fn(),
+            appendLine: vi.fn(),
+            appendLog: vi.fn(),
+            replace: vi.fn(),
+            clear: vi.fn(),
+            show: vi.fn(),
+            hide: vi.fn(),
+            dispose: vi.fn(),
+            trace: vi.fn(),
+            debug: vi.fn(),
+            info: vi.fn(),
+            warn: vi.fn(),
+            error: vi.fn(),
+        };
+        const output = vi.spyOn(ext, 'outputChannel', 'get').mockReturnValue(channel);
+        try {
+            const ctx = createContext();
+            const caller = queryEditorRouterDef.createCaller(ctx);
+            mocks.readContainer.mockRejectedValueOnce(new Error('Container unavailable'));
+            const result = await caller.init();
+            expect(result.connectionState).toBeUndefined();
+            expect(ctx.state.connection).toBe(connectionA);
+            expect(ctx.state.connectionVersion).toBe(result.connectionVersion);
+
+            await caller.diagnoseConnection({ connectionVersion: null });
+            expect(executeCommand).toHaveBeenCalledExactlyOnceWith('cosmosDB.diagnoseConnection');
+            expect(mocks.openDiagnostics).not.toHaveBeenCalled();
+        } finally {
+            output.mockRestore();
+            executeCommand.mockRestore();
+        }
     });
 
     it.each(['disconnected', 'switching', 'stale'] as const)('opens the target picker when %s', async (mode) => {

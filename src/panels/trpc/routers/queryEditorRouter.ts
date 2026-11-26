@@ -109,13 +109,16 @@ type ConnectionState = {
 
 export const queryEditorRouterDef = queryEditorRouter({
     diagnoseConnection: queryEditorProcedure
-        .input(z.object({ connectionVersion: z.number().int().nonnegative() }))
+        .input(z.object({ connectionVersion: z.number().int().nonnegative().nullable() }))
         .mutation(async ({ ctx, input }) => {
             if (ctx.actionContext) {
                 ctx.actionContext.telemetry.maskEntireErrorMessage = true;
             }
+            // A failed init can leave a retained connection on the host. Only a connected editor sends a version.
             const connection =
-                !ctx.state.isChangingConnection && ctx.state.connectionVersion === input.connectionVersion
+                input.connectionVersion !== null &&
+                !ctx.state.isChangingConnection &&
+                ctx.state.connectionVersion === input.connectionVersion
                     ? ctx.state.connection
                     : undefined;
             if (connection) {

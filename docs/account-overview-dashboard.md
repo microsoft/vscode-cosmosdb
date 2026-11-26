@@ -334,8 +334,14 @@ Delete account uses the existing confirmation and requires permission to delete 
 
 **View Cost** opens account-scoped Azure Portal Cost Analysis.
 **View JSON** opens the ARM account resource as formatted JSON; it does not retrieve account keys or connection strings.
-**Try Data Modeler** opens the modeler for this account without an account picker.
+The **Data Modeler** callout above the action row explains the guided experience.
+**Start guided data modeling** opens the modeler for this account without an account picker.
 It requires AI features enabled and available GitHub Copilot models.
+
+Collapse the callout with its chevron to reclaim space. A compact **Data Modeler** button then appears at the end of
+the action row and opens the same workflow. The subtle chevron next to it expands the full callout again.
+The callout starts expanded the first time. Its last collapsed or expanded state is saved in the webview's local
+storage, so reopening Account Overview restores it.
 
 **Capacity mode** and **Total throughput limit** are different:
 

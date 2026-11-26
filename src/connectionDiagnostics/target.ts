@@ -55,7 +55,7 @@ export function getConnectionDetails(target: DiagnosticsTarget): {
     try {
         const parsed = parseCosmosDBConnectionString(target.account.connectionString);
         return {
-            endpoint: parsed.documentEndpoint,
+            endpoint: parsed.accountEndpoint,
             key: parsed.masterKey,
             tenantId: target.account.tenantId ?? parsed.tenantId,
         };

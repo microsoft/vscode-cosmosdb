@@ -41,6 +41,7 @@ it('only assigns the verified principal at account scope after explicit confirma
         testAccount.resourceGroup,
         context,
         testAccount.subscription,
+        { idempotent: true },
     );
     expect(context.valuesToMask).toContain(principalId);
 });

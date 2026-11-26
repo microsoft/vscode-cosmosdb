@@ -381,10 +381,14 @@ describe('diagnosing a NoSQL connection', () => {
         );
     });
 
-    it('attributes an emulator refusal to the actual SDK stage even without an HTTP response', async () => {
+    it.each([
+        ['http://localhost:8081/', 'http://localhost:8081/'],
+        ['http://localhost:80/', 'http://localhost/'],
+        ['http://localhost/', 'http://localhost/'],
+    ])('uses the saved emulator endpoint %s and attributes refusals to the SDK stage', async (saved, endpoint) => {
         io.fetchNext.mockImplementation(() => {
             const options: GetCosmosClientOptions = io.getCosmosClient.mock.lastCall?.[3];
-            options.onHttpRequest?.(createPipelineRequest({ url: 'http://localhost:8081/' }));
+            options.onHttpRequest?.(createPipelineRequest({ url: endpoint }));
             throw new Error('Transport error', { cause: Object.assign(new Error(), { code: 'ECONNREFUSED' }) });
         });
         const state = (
@@ -394,7 +398,7 @@ describe('diagnosing a NoSQL connection', () => {
                 account: {
                     ...attached.account,
                     isEmulator: true,
-                    connectionString: 'AccountEndpoint=http://localhost:8081/;AccountKey=secret;',
+                    connectionString: `AccountEndpoint=${saved};AccountKey=secret;`,
                 },
             })
         ).at(-1)!;
@@ -407,7 +411,32 @@ describe('diagnosing a NoSQL connection', () => {
         );
         expect(renderReport(state)).toContain('The emulator connection was refused.');
         expect(renderReport(state)).not.toContain('localhost');
+        expect(io.getCosmosClient.mock.lastCall?.[0]).toBe(endpoint);
         expect(io.getCosmosClient.mock.lastCall?.[3].agent).toBeUndefined();
+    });
+
+    it('reports disabled key authentication when reusing an existing Query Editor key', async () => {
+        io.fetchNext.mockRejectedValue({ code: 403, message: 'Local Authorization is disabled.' });
+        io.getCosmosClient.mockImplementation((_connection, options: GetCosmosClientOptions) => {
+            options.onAuthenticationMethod?.(AuthenticationMethod.accountKey);
+            return { databases: { readAll: io.readAll }, dispose: io.dispose, database: io.database };
+        });
+        const state = (await diagnose(queryTarget)).at(-1)!;
+
+        expect(io.getCosmosClient).toHaveBeenCalledExactlyOnceWith(
+            queryTarget.connection,
+            expect.objectContaining({ silentAuthentication: true }),
+        );
+        expect(state.checks).toContainEqual(
+            expect.objectContaining({
+                step: 'access',
+                finding: 'localAuthDisabled',
+                status: 'failed',
+                http: { status: 403 },
+            }),
+        );
+        expect(renderReport(state)).toContain('Account-key authentication is disabled.');
+        expect(io.database).not.toHaveBeenCalled();
     });
 
     it.each(['saved emulator', 'Query Editor'] as const)(

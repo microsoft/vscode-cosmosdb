@@ -28,6 +28,7 @@ describe('Cosmos DB diagnostic findings', () => {
             { code: 403, message: 'Local Authorization is disabled. Key based authentication is not permitted.' },
             'localAuthDisabled',
         ],
+        [{ code: 403, message: 'Local Authorization is disabled.' }, 'localAuthDisabled'],
         [
             {
                 code: 403,

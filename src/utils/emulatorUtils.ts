@@ -50,12 +50,13 @@ export async function migrateRawEmulatorItemToHashed(item: StorageItem): Promise
             'CosmosDBWorkspaceItem.migrateRawEmulatorItemsToHashed',
             async (context) => {
                 context.telemetry.suppressIfSuccessful = true;
+                context.telemetry.maskEntireErrorMessage = true;
                 context.errorHandling.rethrow = true;
-
-                const api: API = nonNullValue(item.properties?.api, 'api') as API;
 
                 // very old versions didn't have secrets, the connection string was stored in the id
                 const connectionString: string = item.secrets?.[0] ?? item.id;
+                context.valuesToMask.push(...[item.id, connectionString, item.name].filter((value) => value.trim()));
+                const api: API = nonNullValue(item.properties?.api, 'api') as API;
                 context.telemetry.properties.api = api;
 
                 // Extract port from name if possible
@@ -64,6 +65,7 @@ export async function migrateRawEmulatorItemToHashed(item: StorageItem): Promise
 
                 const newName = getEmulatorItemLabelForApi(api, port);
                 const newId = getEmulatorItemUniqueId(connectionString);
+                context.valuesToMask.push(newId);
                 const newItem: StorageItem = {
                     ...item,
                     id: newId,
@@ -76,11 +78,11 @@ export async function migrateRawEmulatorItemToHashed(item: StorageItem): Promise
                 try {
                     // Store the new item, or abort if it already exists which would be unexpected at this point
                     await StorageService.get(StorageNames.Workspace).push(workspaceType, newItem, false);
-                } catch (error) {
-                    throw new Error(`Failed to migrate emulator item "${item.id}": ${String(error)}`, { cause: error });
+                    await StorageService.get(StorageNames.Workspace).delete(workspaceType, item.id);
+                } catch {
+                    // Storage errors may contain legacy credentials even without the full connection string.
+                    throw new Error(l10n.t('Could not update saved emulator storage.'));
                 }
-                // Delete old item after successful migration
-                await StorageService.get(StorageNames.Workspace).delete(workspaceType, item.id);
 
                 return newItem;
             },

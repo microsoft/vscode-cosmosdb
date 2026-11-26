@@ -239,8 +239,9 @@ endpoint; they do not infer the emulator variant or port mappings.
 
 If Cosmos DB reports missing NoSQL data-plane permissions, the panel shows **Cosmos DB data role required** instead of a
 connection error. For Azure accounts where diagnostics can verify the identity that was denied, **Add Data Contributor
-role** lets an authorized user grant that identity read and write access across the account after confirmation. Wait for
-the role to take effect, then select **Re-run**. Diagnostics never assigns a role automatically.
+role** lets an authorized user grant that identity read and write access across the account after confirmation. If the
+assignment request fails after Azure has saved it, retrying from diagnostics targets the same assignment. Wait for the
+role to take effect, then select **Re-run**. Diagnostics never assigns a role automatically.
 
 ## Corporate proxies
 

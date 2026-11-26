@@ -37,7 +37,9 @@ export async function assignDiagnosticsDataRole(
         );
         if (selection !== confirm) return 'cancelled';
         if (!isCurrent()) return 'unavailable';
-        await addRbacContributorPermission(account.name, principalId, group, context, account.subscription);
+        await addRbacContributorPermission(account.name, principalId, group, context, account.subscription, {
+            idempotent: true,
+        });
         return 'assigned';
     } catch (error) {
         const status = error && typeof error === 'object' && 'statusCode' in error ? error.statusCode : undefined;

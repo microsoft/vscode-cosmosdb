@@ -31,6 +31,7 @@ export class ParsedCosmosDBConnectionString extends ParsedConnectionString {
     public readonly hostName: string;
     public readonly port: string;
 
+    public readonly accountEndpoint: string;
     public readonly documentEndpoint: string;
     public readonly masterKey: string | undefined;
     public readonly tenantId: string | undefined;
@@ -44,6 +45,7 @@ export class ParsedCosmosDBConnectionString extends ParsedConnectionString {
     ) {
         super(connectionString, databaseName);
 
+        this.accountEndpoint = endpoint.href;
         this.hostName = endpoint.hostname;
         this.port = endpoint.port || '443';
 

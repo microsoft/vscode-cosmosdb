@@ -84,7 +84,7 @@ export function classifyAccessError(
             return { finding: 'firewallUnknown' };
         }
         if (
-            /local auth(?:entication)? (?:is |has been )?disabled|key based authentication is not permitted/i.test(
+            /local auth(?:entication|orization)? (?:is |has been )?disabled|key based authentication is not permitted/i.test(
                 message,
             )
         ) {

@@ -126,8 +126,8 @@ class StorageImpl implements Storage {
                 if (secretsJson) {
                     try {
                         secrets = JSON.parse(secretsJson) as string[];
-                    } catch (error) {
-                        console.error(l10n.t('Failed to parse secrets for key {0}:', key), error);
+                    } catch {
+                        console.error(l10n.t('Could not parse saved connection secrets.'));
                         secrets = [];
                     }
                 }
@@ -156,12 +156,7 @@ class StorageImpl implements Storage {
         if (item.secrets && item.secrets.length > 0) {
             const secretKey = `${storageKey}/secrets`;
             const secretsJson = JSON.stringify(item.secrets);
-            try {
-                await ext.secretStorage.store(secretKey, secretsJson);
-            } catch (error) {
-                console.error(l10n.t('Failed to store secrets for key {0}:', secretKey), error);
-                throw error;
-            }
+            await ext.secretStorage.store(secretKey, secretsJson);
         }
 
         // Remove secrets from the item before storing in globalState

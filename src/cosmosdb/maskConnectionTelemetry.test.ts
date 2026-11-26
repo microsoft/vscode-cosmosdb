@@ -62,6 +62,28 @@ describe('maskConnectionTelemetry', () => {
         expect(context.valuesToMask).toEqual([connection.endpoint, connection.databaseId, connection.containerId]);
     });
 
+    it('ignores a runtime null client ID while retaining the account key and connection masks', () => {
+        const context = { valuesToMask: [] };
+        const runtimeConnection: NoSqlQueryConnection = JSON.parse(
+            JSON.stringify({
+                ...connection,
+                credentials: [
+                    { type: AuthenticationMethod.accountKey, key: 'private-key' },
+                    { type: AuthenticationMethod.managedIdentity, clientId: null },
+                ],
+            }),
+        );
+
+        maskConnectionTelemetry(context, runtimeConnection);
+
+        expect(context.valuesToMask).toEqual([
+            'private-key',
+            connection.endpoint,
+            connection.databaseId,
+            connection.containerId,
+        ]);
+    });
+
     it('masks partial connections with omitted credentials and container ID', () => {
         const context = { valuesToMask: [] };
 

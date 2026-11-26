@@ -1,5 +1,18 @@
 # Change Log
 
+## 0.39.4 (Preview)
+
+### Fixed
+
+- Fixed extension activation failures in VS Code Server environments, including Dev Containers, SSH, and WSL, when the extension-host launcher path does not exist on disk. ([#3625](https://github.com/microsoft/vscode-cosmosdb/issues/3625))
+- Fixed query execution and document loading failures when a system-assigned managed identity credential has a null client ID, including when that credential is only a fallback. ([#3612](https://github.com/microsoft/vscode-cosmosdb/issues/3612))
+- Fixed stale **Data Modeler** workload search announcements for screen readers after editing the search text or clearing filters. ([#3590](https://github.com/microsoft/vscode-cosmosdb/issues/3590))
+
+### Changed
+
+- Improved unit test network isolation.
+- Updated extension packaging dependencies and lockfile registry handling.
+
 ## 0.39.3 (Preview)
 
 ### Fixed

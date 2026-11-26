@@ -3,8 +3,8 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { requireOptionValue } from './cli-arguments.mjs';
+import { isMainModule } from './cli-entrypoint.mjs';
 import { showHelp } from './cli-help.mjs';
 import { parseJson, readDomainModel, readPhaseEvidence } from './phase-summary.mjs';
 
@@ -981,5 +981,4 @@ Errors and warnings may go to stderr. Exit: 0 when valid; 1 on validation or I/O
     }
 }
 
-const isMain = process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) process.exitCode = runCli(process.argv.slice(2));
+if (isMainModule(import.meta.url)) process.exitCode = runCli(process.argv.slice(2));

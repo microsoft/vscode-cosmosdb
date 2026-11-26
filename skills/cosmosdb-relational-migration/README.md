@@ -516,6 +516,7 @@ These modules support the executable helpers and have no command-line entry poin
 | [validate-source-evidence.mjs](./scripts/validate-source-evidence.mjs) | Completion and provisioning validators: inventory, hashes, source identity |
 | [cli-help.mjs](./scripts/cli-help.mjs) | All executable helpers: side-effect-free help dispatch |
 | [cli-arguments.mjs](./scripts/cli-arguments.mjs) | Option-taking helpers: reject missing values before reading inputs or performing work |
+| [cli-entrypoint.mjs](./scripts/cli-entrypoint.mjs) | All executable helpers: detect direct or symlinked CLI launches without rejecting imports when the host launcher path is absent |
 
 Keep these shared modules when distributing the skill, even though they are not
 agent-facing commands.

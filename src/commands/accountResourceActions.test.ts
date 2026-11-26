@@ -10,6 +10,7 @@ import { CoreExperience, FabricNativeExperience } from '../AzureDBExperiences';
 import { armTestSubscription, createArmTestContext } from '../cosmosdb/armTestUtils';
 import { AuthenticationMethod } from '../cosmosdb/AuthenticationMethod';
 import { getControlPlane } from '../cosmosdb/controlPlane';
+import { ext } from '../extensionVariables';
 import { getAccountInfo, type AccountInfo } from '../tree/cosmosdb/AccountInfo';
 import { type FabricTreeElement } from '../tree/fabric-resources-view/FabricTreeElement';
 import { NoSqlAccountAttachedResourceItem } from '../tree/nosql/NoSqlAccountAttachedResourceItem';
@@ -24,6 +25,9 @@ import { type CreateContainerWizardContext } from './createContainer/CreateConta
 import { CosmosDBExecuteStep as CreateDatabaseStep } from './createDatabase/CosmosDBExecuteStep';
 import { cosmosDBCreateDatabase, createDatabase } from './createDatabase/createDatabase';
 import { type CreateDatabaseWizardContext } from './createDatabase/CreateDatabaseWizardContext';
+import { promptDatabaseNameOrDataModeler } from './createDatabase/promptDatabaseNameOrDataModeler';
+import { isDataModelerFeatureEnabled } from './dataModeling/dataModelerFeatureFlag';
+import { openDataModelingWizard } from './dataModeling/openDataModelingWizard';
 
 const mocks = vi.hoisted(() => ({
     prompt: vi.fn(),
@@ -53,7 +57,7 @@ vi.mock('@microsoft/vscode-azext-utils', async (importOriginal) => ({
                 if ('databaseId' in this.context) {
                     this.context.containerName = 'new-container';
                 } else {
-                    this.context.databaseName = 'new-database';
+                    this.context.databaseName ??= 'new-database';
                 }
             };
             execute = mocks.execute;
@@ -69,6 +73,7 @@ vi.mock('../cosmosdb/controlPlane', () => ({
 }));
 vi.mock('../extensionVariables', () => ({
     ext: {
+        isAIFeaturesEnabled: false,
         state: { showCreatingChild: mocks.showCreatingChild },
         get cosmosDBBranchDataProvider() {
             throw new Error('Creating resources must not look up Explorer nodes.');
@@ -77,6 +82,9 @@ vi.mock('../extensionVariables', () => ({
 }));
 vi.mock('../utils/dialogs/showConfirmation', () => ({ showConfirmationAsInSettings: vi.fn() }));
 vi.mock('../utils/pickItem/pickAppResource', () => ({ pickAppResource: vi.fn() }));
+vi.mock('./dataModeling/dataModelerFeatureFlag', () => ({ isDataModelerFeatureEnabled: vi.fn() }));
+vi.mock('./dataModeling/openDataModelingWizard', () => ({ openDataModelingWizard: vi.fn() }));
+vi.mock('./createDatabase/promptDatabaseNameOrDataModeler', () => ({ promptDatabaseNameOrDataModeler: vi.fn() }));
 
 function accountInfo(overrides: Partial<AccountInfo> = {}): AccountInfo {
     return {
@@ -98,6 +106,10 @@ beforeEach(() => {
     mocks.createContainer.mockReset();
     vi.mocked(pickAppResource).mockReset();
     vi.mocked(getAccountInfo).mockReset();
+    ext.isAIFeaturesEnabled = false;
+    vi.mocked(isDataModelerFeatureEnabled).mockReset().mockReturnValue(true);
+    vi.mocked(openDataModelingWizard).mockReset();
+    vi.mocked(promptDatabaseNameOrDataModeler).mockReset();
 });
 
 afterEach(() => {
@@ -105,6 +117,88 @@ afterEach(() => {
 });
 
 describe('shared creation wizards', () => {
+    it('creates the database named in the combined prompt without prompting again', async () => {
+        ext.isAIFeaturesEnabled = true;
+        const context = createArmTestContext();
+        const info = accountInfo();
+        vi.mocked(promptDatabaseNameOrDataModeler).mockResolvedValue({ kind: 'manual', databaseName: 'typed-db' });
+
+        await createDatabase(context, info, CoreExperience);
+
+        expect(promptDatabaseNameOrDataModeler).toHaveBeenCalledExactlyOnceWith(info);
+        expect(AzureWizard).toHaveBeenCalledExactlyOnceWith(
+            expect.objectContaining({ accountInfo: info, databaseName: 'typed-db' }),
+            expect.anything(),
+        );
+        expect(mocks.execute).toHaveBeenCalledOnce();
+        expect(openDataModelingWizard).not.toHaveBeenCalled();
+        expect(context.valuesToMask).toContain('typed-db');
+        expect(context.telemetry.properties.creationChoice).toBe('manual');
+        expect(showConfirmationAsInSettings).toHaveBeenCalledExactlyOnceWith(
+            'The "typed-db" database has been created.',
+        );
+    });
+
+    it('opens Data Modeler for the selected account without creating a database', async () => {
+        ext.isAIFeaturesEnabled = true;
+        const context = createArmTestContext();
+        const info = accountInfo();
+        vi.mocked(promptDatabaseNameOrDataModeler).mockResolvedValue({ kind: 'dataModeler' });
+
+        await createDatabase(context, info, CoreExperience);
+
+        expect(openDataModelingWizard).toHaveBeenCalledExactlyOnceWith(context, info);
+        expect(context.telemetry.properties.creationChoice).toBe('dataModeler');
+        expect(AzureWizard).not.toHaveBeenCalled();
+        expect(showConfirmationAsInSettings).not.toHaveBeenCalled();
+        expect(pickAppResource).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        [CoreExperience, false, true],
+        [CoreExperience, true, false],
+        [FabricNativeExperience, true, true],
+    ] as const)(
+        'uses the plain name prompt when unavailable: %j, AI=%s, modeler=%s',
+        async (experience, ai, modeler) => {
+            ext.isAIFeaturesEnabled = ai;
+            vi.mocked(isDataModelerFeatureEnabled).mockReturnValue(modeler);
+
+            await createDatabase(createArmTestContext(), accountInfo(), experience);
+
+            expect(promptDatabaseNameOrDataModeler).not.toHaveBeenCalled();
+            expect(mocks.prompt).toHaveBeenCalledOnce();
+            expect(mocks.execute).toHaveBeenCalledOnce();
+            expect(openDataModelingWizard).not.toHaveBeenCalled();
+        },
+    );
+
+    it('propagates prompt cancellation without starting either workflow', async () => {
+        ext.isAIFeaturesEnabled = true;
+        const cancellation = new UserCancelledError();
+        vi.mocked(promptDatabaseNameOrDataModeler).mockRejectedValue(cancellation);
+
+        await expect(createDatabase(createArmTestContext(), accountInfo(), CoreExperience)).rejects.toBe(cancellation);
+
+        expect(AzureWizard).not.toHaveBeenCalled();
+        expect(openDataModelingWizard).not.toHaveBeenCalled();
+        expect(showConfirmationAsInSettings).not.toHaveBeenCalled();
+    });
+
+    it.each([new UserCancelledError(), new Error('Data Modeler failed')])(
+        'propagates Data Modeler errors without falling back to database creation: %s',
+        async (error) => {
+            ext.isAIFeaturesEnabled = true;
+            vi.mocked(promptDatabaseNameOrDataModeler).mockResolvedValue({ kind: 'dataModeler' });
+            vi.mocked(openDataModelingWizard).mockRejectedValue(error);
+
+            await expect(createDatabase(createArmTestContext(), accountInfo(), CoreExperience)).rejects.toBe(error);
+
+            expect(AzureWizard).not.toHaveBeenCalled();
+            expect(showConfirmationAsInSettings).not.toHaveBeenCalled();
+        },
+    );
+
     it('creates a database from AccountInfo with no node or node ID in its context', async () => {
         const context = createArmTestContext();
         const info = accountInfo();

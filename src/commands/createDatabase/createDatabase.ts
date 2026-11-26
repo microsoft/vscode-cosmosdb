@@ -6,8 +6,9 @@
 import { AzureWizard, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
-import { type Experience } from '../../AzureDBExperiences';
+import { API, type Experience } from '../../AzureDBExperiences';
 import { maskConnectionTelemetry } from '../../cosmosdb/maskConnectionTelemetry';
+import { ext } from '../../extensionVariables';
 import { getAccountInfo, type AccountInfo } from '../../tree/cosmosdb/AccountInfo';
 import { type CosmosDBAccountAttachedResourceItem } from '../../tree/cosmosdb/CosmosDBAccountAttachedResourceItem';
 import { type CosmosDBAccountResourceItem } from '../../tree/cosmosdb/CosmosDBAccountResourceItem';
@@ -18,9 +19,12 @@ import { isTreeElementWithExperience } from '../../tree/TreeElementWithExperienc
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { nonNullValue } from '../../utils/nonNull';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
+import { isDataModelerFeatureEnabled } from '../dataModeling/dataModelerFeatureFlag';
+import { openDataModelingWizard } from '../dataModeling/openDataModelingWizard';
 import { CosmosDBDatabaseNameStep } from './CosmosDBDatabaseNameStep';
 import { CosmosDBExecuteStep } from './CosmosDBExecuteStep';
 import { type CreateDatabaseWizardContext } from './CreateDatabaseWizardContext';
+import { promptDatabaseNameOrDataModeler } from './promptDatabaseNameOrDataModeler';
 
 export async function cosmosDBCreateDatabase(
     context: IActionContext,
@@ -67,6 +71,17 @@ export async function createDatabase(
         ...context,
         accountInfo,
     };
+
+    if (experience.api === API.Core && ext.isAIFeaturesEnabled && isDataModelerFeatureEnabled()) {
+        const choice = await promptDatabaseNameOrDataModeler(accountInfo);
+        context.telemetry.properties.creationChoice = choice.kind;
+        if (choice.kind === 'dataModeler') {
+            await openDataModelingWizard(context, accountInfo);
+            return;
+        }
+        context.valuesToMask.push(choice.databaseName);
+        wizardContext.databaseName = choice.databaseName;
+    }
 
     const wizard = new AzureWizard(wizardContext, {
         title: l10n.t('Create database'),

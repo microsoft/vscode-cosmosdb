@@ -20,6 +20,7 @@ vsCodeMock.l10n = {
 };
 
 vsCodeMock.InputBoxValidationSeverity ??= { Info: 1, Warning: 2, Error: 3 };
+vsCodeMock.QuickPickItemKind ??= { Separator: -1, Default: 0 };
 
 // ─── Language Model API shims ────────────────────────────────────────────────
 // jest-mock-vscode does not provide the `vscode.lm` namespace or the

@@ -212,21 +212,32 @@ checks DNS if the SDK reports a name-resolution, transport, or timeout failure, 
 routing. For other APIs the data-plane check is skipped: account settings and DNS do not confirm that the API itself
 is reachable.
 
-If Cosmos DB reports an outgoing IP that was blocked, the panel shows it locally so you can check the IP allowlist.
-For Private Link, check private DNS and routing before changing the allowlist. The diagnostic does not change network
-settings. The **Azure account settings (control plane)** result only verifies Azure Resource Manager access. NoSQL
+When Cosmos DB identifies the network route in a firewall denial, diagnostics distinguish public internet, VNet service
+endpoints, and Private Link. For public requests, diagnostics show the outgoing IP locally when Cosmos DB reports it, and
+compare it against explicit IP or CIDR rules when the account configuration is available. When public network access is
+disabled, adding an IP or VNet service endpoint rule does not open access. For Private Link, check endpoint approval,
+private DNS, and routing. Diagnostics do not change network settings. The **Azure account settings (control plane)**
+result only verifies Azure Resource Manager access. NoSQL
 **data-plane access** is checked separately; reading account settings does not grant access to data. The NoSQL probe
 uses the same credential selection as Query Editor, without prompting for a data-plane
 sign-in. Each completed check shows its findings directly below its heading, with buttons for any relevant documentation
-or remediation. **Show Output** opens the
-local **Azure Cosmos DB** channel, which records check progress and the destination of SDK requests that returned an
-HTTP error. To contact support, use **Show report** to open the results and check log in a read-only Markdown editor.
-Use **Share report** to copy the Markdown or save a Markdown or JSON file. The report includes the run ID for
-correlation but omits account identifiers, endpoints, IP addresses, credentials, and raw errors.
+or remediation. **Show report** opens a local, read-only Markdown report with SDK request origins and timings, proxy
+configuration flags, authentication attempts, DNS addresses when checked, and Azure activity IDs when returned.
+**Show Output** opens the local **Azure Cosmos DB** channel with the same check log. The SDK trace does not show network
+hops, prove that a proxy was used, or include tokens, account keys, HTTP payloads, or raw errors. Use **Share report** to
+copy or save a redacted Markdown or JSON report with the run ID, but no account identifiers, endpoints, IP addresses,
+or Azure activity IDs.
 
 **Server address (DNS)** checks how the VS Code extension host resolves the hostname. Public IP addresses are normal
 for public access. DNS does not establish which route the SDK took or whether it was allowed. The panel and Markdown
 report link to official troubleshooting guidance for applicable findings.
+
+On an Azure VM, Managed Identity requires an identity assigned to the VM and access to
+[Azure Instance Metadata Service](https://learn.microsoft.com/azure/virtual-machines/instance-metadata-service)
+without going through a proxy. Do not assume the same identity is available inside Microsoft Dev Box; a Dev Center
+identity is not the developer's credential. Use Microsoft Entra sign-in if the extension host has no managed identity.
+The diagnostics log distinguishes discovery from token acquisition and does not change the authentication order.
+A token, from either method, does not grant Cosmos DB data-plane permissions or bypass network rules.
 
 Open **Diagnose Connection** from the NoSQL Query Editor toolbar to check the selected container with that editor's
 connection. It runs the same base checks as account diagnostics, including Azure settings when the account is known,

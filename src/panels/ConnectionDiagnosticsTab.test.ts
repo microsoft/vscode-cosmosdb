@@ -97,6 +97,27 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
+it('keeps the diagnostics webview alive when switching editor tabs', () => {
+    open();
+
+    expect(vi.mocked(vscode.window.createWebviewPanel).mock.lastCall?.[3]).toMatchObject({
+        retainContextWhenHidden: true,
+    });
+    expect(runDiagnostics).toHaveBeenCalledOnce();
+});
+
+it('keeps local trace details off the webview state and clears them on rerun', () => {
+    const { context } = open();
+    const local = ['configured endpoint=https://account.example.test'];
+    vi.mocked(runDiagnostics).mock.lastCall?.[4]?.(local);
+    finishRun('run-one');
+
+    expect(context.getLocalTrace()).toEqual(local);
+    expect(JSON.stringify(context.getState())).not.toContain('account.example.test');
+    context.rerun();
+    expect(context.getLocalTrace()).toEqual([]);
+});
+
 it('allows only one concurrent role request and disables it after success', async () => {
     const { context } = open();
     finishRun('run-one', principal);

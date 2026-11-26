@@ -111,6 +111,43 @@ function overviewPermissionHint(step: OverviewStep): string {
     );
 }
 
+function networkDiagnosisText(diagnosis: NonNullable<CheckResult['networkDiagnosis']>): string {
+    switch (diagnosis) {
+        case 'publicAccessDisabled':
+            return l10n.t(
+                'Public network access is disabled. IP and VNet service endpoint rules do not allow access in this mode. Verify the Private Link configuration.',
+            );
+        case 'publicAccessDisabledNoPrivateEndpoint':
+            return l10n.t(
+                'Public network access is disabled, and Azure reported no private endpoint connections. Adding an IP or VNet service endpoint rule will not open access in this mode. Check the intended Private Link configuration.',
+            );
+        case 'ipRuleMatched':
+            return l10n.t(
+                'An IP rule covers the address reported by Cosmos DB. Do not add it again. Check for recent rule changes or other network restrictions.',
+            );
+        case 'ipRuleNotMatched':
+            return l10n.t(
+                'No explicit IP rule covers the address reported by Cosmos DB. If public access is intended, ask the account administrator to review the allowlist.',
+            );
+        case 'noAllowedSubnets':
+            return l10n.t(
+                'Virtual network filtering is enabled, but no subnets are listed. Verify the source subnet and its Microsoft.AzureCosmosDB service endpoint before changing any rules.',
+            );
+        case 'noPrivateEndpoint':
+            return l10n.t(
+                'Azure reported no private endpoint connections for this account. Verify the account associated with the private endpoint.',
+            );
+        case 'noApprovedPrivateEndpoint':
+            return l10n.t(
+                'None of the listed private endpoint connections is approved. Check the approval status in Azure.',
+            );
+        case 'perimeterAccess':
+            return l10n.t(
+                'Public access is controlled by a Network Security Perimeter. Ask the administrator to check its access rules for this account.',
+            );
+    }
+}
+
 export function checkText(
     check: CheckResult,
     kind: DiagnosticsState['kind'],
@@ -254,7 +291,14 @@ export function checkText(
         overviewTimedOut: l10n.t('The Azure read probe timed out. This does not establish whether access is allowed.'),
     };
     const rowEvidence = omitRowEvidence ? checkEvidence(check) : undefined;
-    const parts = [descriptions[check.finding]];
+    const description =
+        check.networkDiagnosis && check.finding === 'firewallUnknown'
+            ? l10n.t(
+                  'Cosmos DB reported a firewall block without identifying the route. This result does not tell you whether your identity has a data role.',
+              )
+            : descriptions[check.finding];
+    const parts = [description];
+    if (check.networkDiagnosis) parts.push(networkDiagnosisText(check.networkDiagnosis));
     if (check.finding === 'overviewDenied' && isOverviewStep(check.step))
         parts.push(overviewPermissionHint(check.step));
     if (check.finding === 'overviewLogsMissing') {
@@ -308,7 +352,7 @@ export function statusLabel(status: CheckResult['status']): string {
     }[status];
 }
 
-export function renderReport(state: DiagnosticsState): string {
+export function renderReport(state: DiagnosticsState, localTrace: readonly string[] = []): string {
     const help = [...new Set(state.checks.flatMap((check) => checkHelpTopics(check, state.kind)))];
     const overview = state.checks.filter(({ step }) => isOverviewStep(step));
     const row = (check: CheckResult) =>
@@ -316,6 +360,14 @@ export function renderReport(state: DiagnosticsState): string {
     return [
         `# ${l10n.t('Cosmos DB connection diagnostics')}`,
         '',
+        ...(localTrace.length
+            ? [
+                  l10n.t(
+                      'This local report contains network addresses and may contain Azure activity IDs. Use Share report for a redacted copy.',
+                  ),
+                  '',
+              ]
+            : []),
         phaseLabel(state),
         '',
         ...state.checks.filter(({ step }) => !isOverviewStep(step)).map(row),
@@ -331,12 +383,20 @@ export function renderReport(state: DiagnosticsState): string {
         ...(state.trace
             ? [
                   '',
-                  `## ${l10n.t('Check log')}`,
+                  `## ${localTrace.length ? l10n.t('Local check log') : l10n.t('Check log')}`,
                   '',
                   l10n.t('Run ID: {0}', state.trace.runId),
+                  ...(localTrace.length
+                      ? [
+                            '',
+                            l10n.t(
+                                'The log follows SDK HTTP requests, not network hops. Proxy settings are configuration evidence, not proof of the route. DNS addresses are resolved by the extension host.',
+                            ),
+                        ]
+                      : []),
                   '',
                   '```text',
-                  ...state.trace.lines,
+                  ...(localTrace.length ? localTrace : state.trace.lines),
                   '```',
               ]
             : []),
@@ -350,23 +410,26 @@ export function renderJsonReport(state: DiagnosticsState): string {
             targetKind: state.kind,
             scope: state.scope,
             phase: state.phase,
-            checks: state.checks.map(({ step, finding, status, auth, network, failureStage, http }) => ({
-                step,
-                finding,
-                status,
-                auth,
-                failureStage,
-                http: http && { status: http.status, substatus: http.substatus },
-                durationMs: state.trace?.checkDurations?.[step],
-                network: network && {
-                    publicAccess: network.publicAccess,
-                    ipRules: network.ipRules,
-                    vnetFilterEnabled: network.vnetFilterEnabled,
-                    vnetRules: network.vnetRules,
-                    privateEndpoints: network.privateEndpoints,
-                    localAuthDisabled: network.localAuthDisabled,
-                },
-            })),
+            checks: state.checks.map(
+                ({ step, finding, status, auth, network, networkDiagnosis, failureStage, http }) => ({
+                    step,
+                    finding,
+                    status,
+                    auth,
+                    failureStage,
+                    networkDiagnosis,
+                    http: http && { status: http.status, substatus: http.substatus },
+                    durationMs: state.trace?.checkDurations?.[step],
+                    network: network && {
+                        publicAccess: network.publicAccess,
+                        ipRules: network.ipRules,
+                        vnetFilterEnabled: network.vnetFilterEnabled,
+                        vnetRules: network.vnetRules,
+                        privateEndpoints: network.privateEndpoints,
+                        localAuthDisabled: network.localAuthDisabled,
+                    },
+                }),
+            ),
             log: state.trace?.lines,
         },
         undefined,

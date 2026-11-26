@@ -13,7 +13,7 @@ import { rejectOnTimeout } from '../utils/timeout';
 import { AuthenticationMethod, getPreferredAuthenticationMethod } from './AuthenticationMethod';
 import { type AzureResourceMetadata } from './AzureResourceMetadata';
 import { getCosmosClient, type GetCosmosClientOptions } from './getCosmosClient';
-import { getManagedIdentityAuth } from './utils/managedIdentityUtils';
+import { getManagedIdentityAuth, type ObserveManagedIdentity } from './utils/managedIdentityUtils';
 
 export type CosmosDBKeyCredential = {
     type: AuthenticationMethod.accountKey;
@@ -35,7 +35,11 @@ export type CosmosDBCredential = CosmosDBKeyCredential | CosmosDBEntraIdCredenti
 type CredentialResolutionOptions = {
     silent?: boolean;
     abortSignal?: AbortSignal;
-    keyProbeOptions?: Pick<GetCosmosClientOptions, 'connectionPolicy' | 'onHttpResponse'>;
+    keyProbeOptions?: Pick<
+        GetCosmosClientOptions,
+        'connectionPolicy' | 'onHttpRequest' | 'onHttpResponse' | 'onHttpError' | 'onProxyConfiguration'
+    >;
+    onManagedIdentity?: ObserveManagedIdentity;
 };
 
 export function getCosmosDBKeyCredential(credentials: CosmosDBCredential[]): CosmosDBKeyCredential | undefined {
@@ -149,6 +153,7 @@ export async function getCosmosDBCredentials(
             documentEndpoint,
             preferredAuthenticationMethod === AuthenticationMethod.managedIdentity,
             abortSignal,
+            options.onManagedIdentity,
         );
         abortSignal?.throwIfAborted();
 

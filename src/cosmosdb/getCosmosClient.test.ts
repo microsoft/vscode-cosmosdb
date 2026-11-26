@@ -86,14 +86,16 @@ describe('Cosmos client transport configuration', () => {
         const error = new Error('Connection refused');
         const onHttpRequest = vi.fn();
         const onHttpResponse = vi.fn();
+        const onHttpError = vi.fn();
         const sendRequest = vi.fn().mockRejectedValue(error);
-        getCosmosClient(connection, { httpClient: { sendRequest }, onHttpRequest, onHttpResponse });
+        getCosmosClient(connection, { httpClient: { sendRequest }, onHttpRequest, onHttpResponse, onHttpError });
 
         const actual = vi.mocked(CosmosClient).mock.calls[0][0].httpClient;
         await expect(actual?.sendRequest(request)).rejects.toBe(error);
         expect(onHttpRequest).toHaveBeenCalledExactlyOnceWith(request);
         expect(onHttpRequest).toHaveBeenCalledBefore(sendRequest);
         expect(onHttpResponse).not.toHaveBeenCalled();
+        expect(onHttpError).toHaveBeenCalledExactlyOnceWith(request, error);
     });
 
     it.each([
@@ -177,6 +179,7 @@ describe('Cosmos client transport configuration', () => {
         vi.mocked(getAccessTokenForVSCode).mockResolvedValueOnce(null);
         vi.spyOn(ManagedIdentityCredential.prototype, 'getToken').mockResolvedValueOnce(accessToken);
         const onAuthenticationMethod = vi.fn();
+        const onAuthenticationAttempt = vi.fn();
         getCosmosClient(
             {
                 ...connection,
@@ -185,7 +188,7 @@ describe('Cosmos client transport configuration', () => {
                     { type: AuthenticationMethod.managedIdentity, clientId: undefined },
                 ],
             },
-            { silentAuthentication: true, onAuthenticationMethod },
+            { silentAuthentication: true, onAuthenticationMethod, onAuthenticationAttempt },
         );
 
         const credential = vi.mocked(CosmosClient).mock.calls[0][0].aadCredentials!;
@@ -196,5 +199,9 @@ describe('Cosmos client transport configuration', () => {
             { silent: true },
         );
         expect(onAuthenticationMethod).toHaveBeenCalledExactlyOnceWith(AuthenticationMethod.managedIdentity, oid);
+        expect(onAuthenticationAttempt.mock.calls).toEqual([
+            [AuthenticationMethod.entraId, 'unavailable', undefined],
+            [AuthenticationMethod.managedIdentity, 'succeeded', 'default'],
+        ]);
     });
 });

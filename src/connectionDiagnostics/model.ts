@@ -59,6 +59,16 @@ export type Finding =
     | 'overviewUnavailable'
     | 'overviewTimedOut';
 
+export type NetworkDiagnosis =
+    | 'publicAccessDisabled'
+    | 'publicAccessDisabledNoPrivateEndpoint'
+    | 'ipRuleMatched'
+    | 'ipRuleNotMatched'
+    | 'noAllowedSubnets'
+    | 'noPrivateEndpoint'
+    | 'noApprovedPrivateEndpoint'
+    | 'perimeterAccess';
+
 export interface NetworkSummary {
     publicAccess: 'enabled' | 'disabled' | 'securedByPerimeter' | 'unknown';
     ipRules: number;
@@ -73,6 +83,7 @@ export interface CheckResult {
     finding: Finding;
     status: 'passed' | 'failed' | 'info' | 'skipped';
     network?: NetworkSummary;
+    networkDiagnosis?: NetworkDiagnosis;
     auth?: 'key' | 'entra' | 'identity';
     failureStage?: FailureStage;
     http?: { status: number; substatus?: number };

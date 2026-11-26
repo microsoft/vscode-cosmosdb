@@ -49,12 +49,13 @@ const completed: DiagnosticsState = {
 
 beforeEach(() => vi.resetAllMocks());
 
-it('opens a read-only editor with the same redacted Markdown that copy and save produce', async () => {
+it('opens a detailed local report but keeps clipboard and saved Markdown redacted', async () => {
     const destination = { scheme: 'file', path: '/test.md' };
     io.saveDialog.mockResolvedValue(destination);
     expect(await copyDiagnosticsReport(completed)).toBe('done');
     expect(await saveDiagnosticsReport(completed)).toBe('done');
-    expect(await showDiagnosticsReport(completed)).toBe('done');
+    const localTrace = ['sdk endpoint=https://private.example.test observedClientIp=203.0.113.10'];
+    expect(await showDiagnosticsReport(completed, localTrace)).toBe('done');
     const expected = renderReport(completed);
     expect(expected).toContain('sdk target=configured operation=listDatabases status=403');
     expect(expected).toContain('Control-plane access was verified through Azure Resource Manager.');
@@ -64,9 +65,12 @@ it('opens a read-only editor with the same redacted Markdown that copy and save 
     );
     expect(expected).not.toContain('203.0.113.10');
     expect(expected).not.toContain('private account');
+    const local = renderReport(completed, localTrace);
+    expect(local).toContain(localTrace[0]);
+    expect(local).toContain('Use Share report for a redacted copy.');
     expect(io.openReadOnly).toHaveBeenCalledExactlyOnceWith(
         { label: 'Connection Diagnostics', fullId: 'cosmosDiagnostics-run-id' },
-        expected,
+        local,
         '.md',
     );
     expect(io.clipboard).toHaveBeenCalledExactlyOnceWith(expected);

@@ -105,9 +105,10 @@ async function diagnose(
     target: DiagnosticsTarget,
     controller = new AbortController(),
     onPrincipal?: (id: string) => void,
+    onLocalTrace?: (lines: readonly string[]) => void,
 ) {
     const states: DiagnosticsState[] = [];
-    await runDiagnostics(target, controller.signal, (state) => states.push(state), onPrincipal);
+    await runDiagnostics(target, controller.signal, (state) => states.push(state), onPrincipal, onLocalTrace);
     return states;
 }
 
@@ -298,7 +299,13 @@ describe('diagnosing a NoSQL connection', () => {
         );
     });
     it('logs the actual alternate endpoint locally and emits only redacted evidence for sharing and telemetry', async () => {
-        io.get.mockResolvedValue({ documentEndpoint: 'https://configured.example.test/', disableLocalAuth: true });
+        const activityId = 'f89e099d-3d03-46b0-b36d-d0ab4eaa81af';
+        const onLocalTrace = vi.fn();
+        io.get.mockResolvedValue({
+            documentEndpoint: 'https://configured.example.test/',
+            disableLocalAuth: true,
+            publicNetworkAccess: 'Disabled',
+        });
         io.fetchNext.mockImplementation(() => {
             const options: GetCosmosClientOptions = io.getCosmosClient.mock.calls[0][3];
             options.onHttpResponse?.({
@@ -307,14 +314,14 @@ describe('diagnosing a NoSQL connection', () => {
                     headers: createHttpHeaders({ Authorization: 'sensitive-auth-header' }),
                 }),
                 status: 403,
-                headers: createHttpHeaders({ 'x-ms-substatus': '1000' }),
+                headers: createHttpHeaders({ 'x-ms-substatus': '1000', 'x-ms-activity-id': activityId }),
             });
             throw Object.assign(new Error('Blocked by your Cosmos DB account firewall settings. raw-response'), {
                 code: 403,
             });
         });
 
-        const state = (await diagnose(cloud)).at(-1)!;
+        const state = (await diagnose(cloud, undefined, undefined, onLocalTrace)).at(-1)!;
         const report = renderReport(state);
         const local = io.log.mock.calls.flat().join('\n');
         const runEvents = io.telemetry.mock.calls.filter(([name]) => name === 'cosmosDB.diagnostics.run');
@@ -328,7 +335,7 @@ describe('diagnosing a NoSQL connection', () => {
                         authMethod: 'entra',
                         findingCodes: expect.stringContaining('firewallUnknown'),
                     }),
-                    measurements: { durationMs: expect.any(Number), checkCount: 3 + overviewSteps.length },
+                    measurements: { durationMs: expect.any(Number), checkCount: 4 + overviewSteps.length },
                 }),
             ],
         ]);
@@ -338,12 +345,72 @@ describe('diagnosing a NoSQL connection', () => {
         expect(report).toContain('Check log');
         expect(report).toContain(`Run ID: ${state.trace?.runId}`);
         expect(report).toContain('sdk target=alternate operation=listDatabases status=403 substatus=1000');
-        expect(report).not.toContain('check=dns');
+        expect(state.checks.find(({ step }) => step === 'access')?.networkDiagnosis).toBeUndefined();
         expect(report).toContain('finished phase=completed');
+        expect(onLocalTrace.mock.lastCall?.[0].join('\n')).toContain(`activityId=${activityId}`);
+        expect(report + renderJsonReport(state) + JSON.stringify(runEvents)).not.toContain(activityId);
         expect(local).not.toMatch(/secret=query|sensitive-auth-header|raw-response/);
         expect(report + JSON.stringify(runEvents)).not.toMatch(
             /(?:configured|regional)\.example\.test|secret=query|sensitive-auth-header|raw-response/,
         );
+    });
+
+    it('explains disabled public access without inventing a route for a generic firewall denial', async () => {
+        io.get.mockResolvedValue({
+            documentEndpoint: 'https://example.test/',
+            publicNetworkAccess: 'Disabled',
+            disableLocalAuth: true,
+            privateEndpointConnections: [],
+        });
+        io.lookup.mockResolvedValue([{ address: '203.0.113.42', family: 4 }]);
+        const onLocalTrace = vi.fn();
+        io.fetchNext.mockImplementation(() => {
+            const options: GetCosmosClientOptions = io.getCosmosClient.mock.lastCall?.[3];
+            const request = createPipelineRequest({ url: 'https://example.test/' });
+            options.onHttpRequest?.(request);
+            options.onHttpResponse?.({ request, status: 403, headers: createHttpHeaders({ 'x-ms-substatus': '0' }) });
+            throw Object.assign(new Error('Blocked by your Cosmos DB account firewall settings.'), { code: 403 });
+        });
+
+        const onPrincipal = vi.fn();
+        const state = (await diagnose(cloud, undefined, onPrincipal, onLocalTrace)).at(-1)!;
+        expect(state.checks).toContainEqual(
+            expect.objectContaining({
+                step: 'access',
+                finding: 'firewallUnknown',
+                networkDiagnosis: 'publicAccessDisabledNoPrivateEndpoint',
+                failureStage: 'accountMetadata',
+            }),
+        );
+        expect(onPrincipal).not.toHaveBeenCalled();
+        expect(renderReport(state)).toContain('Adding an IP or VNet service endpoint rule will not open access');
+        expect(renderJsonReport(state)).not.toContain('203.0.113.42');
+        expect(onLocalTrace.mock.lastCall?.[0].join('\n')).toContain('addresses=203.0.113.42');
+    });
+
+    it('records safe SDK transport evidence without treating proxy configuration as proof of the route', async () => {
+        io.get.mockResolvedValue({ documentEndpoint: 'https://example.test/', disableLocalAuth: true });
+        const onLocalTrace = vi.fn();
+        io.fetchNext.mockImplementation(() => {
+            const options: GetCosmosClientOptions = io.getCosmosClient.mock.lastCall?.[3];
+            const request = createPipelineRequest({ url: 'https://example.test/dbs?token=synthetic-secret' });
+            const error = Object.assign(new Error('secret error details'), { code: 'ENOTFOUND' });
+            options.onProxyConfiguration?.('on', true, true);
+            options.onAuthenticationAttempt?.(AuthenticationMethod.managedIdentity, 'unavailable', 'clientId');
+            options.onHttpRequest?.(request);
+            options.onHttpError?.(request, error);
+            throw error;
+        });
+
+        const state = (await diagnose(cloud, undefined, undefined, onLocalTrace)).at(-1)!;
+        const report = renderReport(state);
+        expect(report).toContain('proxy vscodeSupport=on vscodeProxyConfigured=true');
+        expect(report).toContain('auth attempt=identity outcome=unavailable identitySelector=clientId');
+        expect(report).toContain('operation=listDatabases transport=dnsFailure');
+        expect(report).not.toContain('https://example.test');
+        const local = onLocalTrace.mock.lastCall?.[0].join('\n');
+        expect(local).toContain('endpoint=https://example.test');
+        expect(local).not.toMatch(/synthetic-secret|secret error details/);
     });
 
     it('uses a bounded, read-only SDK operation without a redundant DNS lookup on success', async () => {

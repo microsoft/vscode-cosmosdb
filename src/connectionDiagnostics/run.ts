@@ -23,6 +23,7 @@ export async function runDiagnostics(
     signal: AbortSignal,
     publish: (state: DiagnosticsState) => void,
     onRbacPrincipal?: (principalId: string, account: DiagnosticsAzureAccount) => void,
+    onLocalTrace?: (lines: readonly string[]) => void,
 ): Promise<void> {
     const emulator = target.kind === 'emulator' || (target.kind === 'queryEditor' && target.connection.isEmulator);
     const azureAccount = getDiagnosticsAzureAccount(target);
@@ -66,6 +67,7 @@ export async function runDiagnostics(
             checks: [...checks],
             trace: trace.snapshot(),
         };
+        onLocalTrace?.(trace.localSnapshot());
         publish(state);
         await reportDiagnosticsOutcome(state, target.probe, durationMs);
     }
@@ -104,6 +106,7 @@ async function runChecks(options: RunChecksOptions): Promise<void> {
     });
     if (target.probe === 'network') checks.push({ step: 'access', finding: 'apiProbeUnavailable', status: 'skipped' });
     if (!url) return;
+    trace.recordEndpoint(url);
 
     if (target.probe !== 'network') {
         begin('access');
@@ -128,5 +131,5 @@ async function runChecks(options: RunChecksOptions): Promise<void> {
     }
 
     begin('dns');
-    checks.push(await checkDns(url, signal));
+    checks.push(await checkDns(url, signal, (addresses) => trace.recordDns(url, addresses)));
 }

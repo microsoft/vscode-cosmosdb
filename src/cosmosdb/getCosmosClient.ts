@@ -25,8 +25,15 @@ export type GetCosmosClientOptions = Partial<CosmosClientOptions> & {
     isLlmTool?: boolean;
     silentAuthentication?: boolean;
     onAuthenticationMethod?: (method: CosmosDBCredential['type'], principalId?: string) => void;
+    onAuthenticationAttempt?: (
+        method: CosmosDBCredential['type'],
+        outcome: 'succeeded' | 'unavailable' | 'failed',
+        identity?: 'default' | 'clientId',
+    ) => void;
     onHttpRequest?: (request: PipelineRequest) => void;
     onHttpResponse?: (response: PipelineResponse) => void;
+    onHttpError?: (request: PipelineRequest, error: unknown) => void;
+    onProxyConfiguration?: (mode: unknown, configured: boolean, strictSSL: boolean) => void;
 };
 
 export function getCosmosClient(connection: NoSqlQueryConnection, options?: GetCosmosClientOptions): CosmosClient;
@@ -83,20 +90,23 @@ export function getCosmosClient(
         silentAuthentication = false,
         wwwAuthenticate,
         onAuthenticationMethod,
+        onAuthenticationAttempt,
         onHttpRequest,
         onHttpResponse,
+        onHttpError,
+        onProxyConfiguration,
         httpClient: suppliedHttpClient,
         ...clientOptions
     } = options ?? {};
     const agent =
         clientOptions.agent ??
         (isEmulator && endpoint.startsWith('https:') ? new https.Agent({ rejectUnauthorized: false }) : undefined);
-    const httpClient =
-        suppliedHttpClient ??
-        (agent
-            ? undefined
-            : createCosmosHttpClient(vscode.workspace.getConfiguration('http').get('proxyStrictSSL') !== false));
-    const transport = httpClient ?? (onHttpRequest || onHttpResponse ? createDefaultHttpClient() : undefined);
+    const http = vscode.workspace.getConfiguration('http');
+    const strictSSL = http.get('proxyStrictSSL') !== false;
+    onProxyConfiguration?.(http.get('proxySupport'), !!http.get('proxy'), strictSSL);
+    const httpClient = suppliedHttpClient ?? (agent ? undefined : createCosmosHttpClient(strictSSL));
+    const observeTransport = onHttpRequest || onHttpResponse || onHttpError;
+    const transport = httpClient ?? (observeTransport ? createDefaultHttpClient() : undefined);
     const commonProperties: CosmosClientOptions = {
         endpoint,
         userAgentSuffix: `${appendExtensionUserAgent()}${isLlmTool ? '/llm-tool' : ''}`,
@@ -125,6 +135,12 @@ export function getCosmosClient(
                     forcePrompt: boolean,
                 ): Promise<AccessToken | null> {
                     let token: AccessToken | null;
+                    const identity =
+                        credential.type === AuthenticationMethod.managedIdentity
+                            ? credential.clientId
+                                ? 'clientId'
+                                : 'default'
+                            : undefined;
                     try {
                         switch (credential.type) {
                             case AuthenticationMethod.accountKey:
@@ -158,6 +174,11 @@ export function getCosmosClient(
                                 return null;
                         }
                     } catch (e) {
+                        onAuthenticationAttempt?.(
+                            credential.type,
+                            e instanceof Error && e.name === 'CredentialUnavailableError' ? 'unavailable' : 'failed',
+                            identity,
+                        );
                         if (silentAuthentication) return null;
                         const message = l10n.t('{type} auth failed: {error}', {
                             type: credential.type,
@@ -166,6 +187,7 @@ export function getCosmosClient(
                         errors.push(message);
                         return null;
                     }
+                    onAuthenticationAttempt?.(credential.type, token ? 'succeeded' : 'unavailable', identity);
                     if (token) onAuthenticationMethod?.(credential.type, getOidFromToken(token.token));
                     return token;
                 }
@@ -226,11 +248,14 @@ export function getCosmosClient(
         // so a connection failure without a response can still be tied to an SDK operation. Observe the HTTP status
         // and Cosmos DB substatus on response without changing the underlying transport or its proxy settings.
         httpClient:
-            (onHttpRequest || onHttpResponse) && transport
+            observeTransport && transport
                 ? {
                       async sendRequest(request) {
                           onHttpRequest?.(request);
-                          const response = await transport.sendRequest(request);
+                          const response = await transport.sendRequest(request).catch((error: unknown) => {
+                              onHttpError?.(request, error);
+                              throw error;
+                          });
                           onHttpResponse?.(response);
                           return response;
                       },

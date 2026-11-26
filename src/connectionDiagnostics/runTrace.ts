@@ -6,11 +6,18 @@
 import { type PipelineRequest, type PipelineResponse } from '@azure/core-rest-pipeline';
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import { randomUUID } from 'node:crypto';
+import { isIP } from 'node:net';
+import { type ObserveManagedIdentity } from '../cosmosdb/utils/managedIdentityUtils';
 import { ext } from '../extensionVariables';
-import { getHttpFailure } from './classify';
+import { classifyAccessError, getHttpFailure } from './classify';
 import { type DiagnosticsState, type FailureStage, getPrimaryDataCheck, type ProbeKind, type Step } from './model';
 
-const maxHttpResponses = 16;
+const maxHttpRequests = 16;
+
+function requestOrigin(request: PipelineRequest): string | undefined {
+    const url = URL.parse(request.url);
+    return url?.protocol === 'https:' || url?.protocol === 'http:' ? url.origin : undefined;
+}
 
 export function sdkStage(request: PipelineRequest): FailureStage | undefined {
     const path = URL.parse(request.url)?.pathname;
@@ -25,11 +32,16 @@ export class DiagnosticsRunTrace {
     public readonly runId = randomUUID();
     private readonly startedAt = performance.now();
     private readonly lines: string[] = [];
+    private readonly localLines: string[] = [];
+    private readonly requests = new WeakMap<PipelineRequest, { start: number; origin?: string }>();
     private readonly stepStartedAt = new Map<Step, number>();
     private readonly stepEndedAt = new Map<Step, number>();
     private readonly checkDurations: Partial<Record<Step, number>> = {};
     private readonly finishedSteps = new Set<Step>();
-    private httpResponses = 0;
+    private httpRequests = 0;
+    private httpResponsesWithoutRequest = 0;
+    private authAttempts = 0;
+    private proxyRecorded = false;
     private finished = false;
 
     public constructor(kind: DiagnosticsState['kind'], probe: ProbeKind) {
@@ -45,28 +57,89 @@ export class DiagnosticsRunTrace {
         this.stepEndedAt.set(step, performance.now());
     }
 
-    public recordResponse(response: PipelineResponse, endpoint: URL): void {
-        if (this.finished || this.httpResponses > maxHttpResponses) return;
-        if (++this.httpResponses > maxHttpResponses) {
-            this.write('additional SDK responses omitted');
+    public recordRequest(request: PipelineRequest, endpoint: URL): void {
+        if (this.finished || this.httpRequests > maxHttpRequests) return;
+        if (++this.httpRequests > maxHttpRequests) {
+            this.write('additional SDK requests omitted');
             return;
         }
-        const url = URL.parse(response.request.url);
-        const origin = url?.protocol === 'https:' || url?.protocol === 'http:' ? url.origin : undefined;
+        const origin = requestOrigin(request);
+        const target = !origin ? 'unknown' : origin === endpoint.origin ? 'configured' : 'alternate';
+        this.requests.set(request, { start: performance.now(), origin });
+        this.write(
+            `sdk target=${target} operation=${sdkStage(request) ?? 'other'} started sdkProxyConfigured=${!!request.proxySettings}`,
+            origin ? ` endpoint=${origin}` : '',
+        );
+    }
+
+    public recordResponse(response: PipelineResponse, endpoint: URL): void {
+        if (this.finished) return;
+        const entry = this.requests.get(response.request);
+        if (!entry && (this.httpRequests > maxHttpRequests || this.httpResponsesWithoutRequest++ >= maxHttpRequests))
+            return;
+        const origin = entry?.origin ?? requestOrigin(response.request);
         const target = !origin ? 'unknown' : origin === endpoint.origin ? 'configured' : 'alternate';
         const operation = sdkStage(response.request) ?? 'other';
         const status = response.status;
         if (!Number.isInteger(status) || status < 100 || status > 599) return;
         const http = getHttpFailure({ statusCode: status, substatus: response.headers.get('x-ms-substatus') });
         const substatus = http?.substatus !== undefined ? ` substatus=${http.substatus}` : '';
+        const duration = entry ? ` durationMs=${Math.round(performance.now() - entry.start)}` : '';
+        const activity = response.headers.get('x-ms-activity-id');
+        const activityId = activity && /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(activity) ? activity : '';
         this.write(
-            `sdk target=${target} operation=${operation} status=${status}${substatus}`,
-            origin && status >= 400 ? ` endpoint=${origin}` : '',
+            `sdk target=${target} operation=${operation} status=${status}${substatus}${duration}`,
+            `${origin ? ` endpoint=${origin}` : ''}${activityId ? ` activityId=${activityId}` : ''}`,
         );
     }
 
+    public recordTransportError(request: PipelineRequest, error: unknown): void {
+        const entry = this.requests.get(request);
+        if (this.finished || !entry) return;
+        this.write(
+            `sdk operation=${sdkStage(request) ?? 'other'} transport=${classifyAccessError(error).finding} durationMs=${Math.round(performance.now() - entry.start)}`,
+            entry.origin ? ` endpoint=${entry.origin}` : '',
+        );
+    }
+
+    public recordProxyConfiguration(mode: unknown, configured: boolean, strictSSL: boolean): void {
+        if (this.finished || this.proxyRecorded) return;
+        this.proxyRecorded = true;
+        const support =
+            mode === 'off' || mode === 'on' || mode === 'override' || mode === 'fallback' ? mode : 'unknown';
+        const env = process.env;
+        const proxyEnvConfigured = !!(env.HTTPS_PROXY || env.https_proxy || env.HTTP_PROXY || env.http_proxy);
+        this.write(
+            `proxy vscodeSupport=${support} vscodeProxyConfigured=${configured} proxyEnvConfigured=${proxyEnvConfigured} noProxyEnvConfigured=${!!(env.NO_PROXY || env.no_proxy)} vscodeStrictSSL=${strictSSL}`,
+        );
+    }
+
+    public recordAuthenticationAttempt(
+        method: NonNullable<DiagnosticsState['checks'][number]['auth']>,
+        outcome: 'succeeded' | 'unavailable' | 'failed',
+        selector?: 'default' | 'clientId',
+    ): void {
+        if (this.finished || this.authAttempts++ >= 16) return;
+        this.write(`auth attempt=${method} outcome=${outcome}${selector ? ` identitySelector=${selector}` : ''}`);
+    }
+
+    public readonly recordManagedIdentity: ObserveManagedIdentity = (outcome, selector) => {
+        if (!this.finished) {
+            this.write(`auth managedIdentityDiscovery=${outcome}${selector ? ` identitySelector=${selector}` : ''}`);
+        }
+    };
+
+    public recordEndpoint(endpoint: URL): void {
+        this.writeLocal(`configured endpoint=${endpoint.origin}`);
+    }
+
+    public recordDns(endpoint: URL, addresses: readonly string[]): void {
+        const ips = addresses.filter((address) => isIP(address)).slice(0, 16);
+        this.writeLocal(`dns endpoint=${endpoint.origin} addresses=${ips.length ? ips.join(',') : 'none'}`);
+    }
+
     public recordChecks(checks: DiagnosticsState['checks']): void {
-        for (const { step, finding, status, auth, failureStage } of checks) {
+        for (const { step, finding, status, auth, failureStage, observedClientIp, networkDiagnosis } of checks) {
             if (this.finishedSteps.has(step)) continue;
             this.finishedSteps.add(step);
             const startedAt = this.stepStartedAt.get(step);
@@ -75,8 +148,10 @@ export class DiagnosticsRunTrace {
             if (durationMs !== undefined) this.checkDurations[step] = durationMs;
             const duration = durationMs === undefined ? '' : ` durationMs=${durationMs}`;
             const stage = failureStage ? ` stage=${failureStage}` : '';
+            const network = networkDiagnosis ? ` network=${networkDiagnosis}` : '';
             this.write(
-                `check=${step} status=${status} finding=${finding}${auth ? ` auth=${auth}` : ''}${stage}${duration}`,
+                `check=${step} status=${status} finding=${finding}${auth ? ` auth=${auth}` : ''}${stage}${duration}${network}`,
+                observedClientIp && isIP(observedClientIp) ? ` observedClientIp=${observedClientIp}` : '',
             );
         }
     }
@@ -92,9 +167,18 @@ export class DiagnosticsRunTrace {
         return { runId: this.runId, lines: [...this.lines], checkDurations: { ...this.checkDurations } };
     }
 
+    public localSnapshot(): readonly string[] {
+        return [...this.localLines];
+    }
+
     private write(line: string, outputOnly = ''): void {
         this.lines.push(line);
-        ext.outputChannel.info(`[Connection diagnostics] run=${this.runId} ${line}${outputOnly}`);
+        this.writeLocal(`${line}${outputOnly}`);
+    }
+
+    private writeLocal(line: string): void {
+        this.localLines.push(line);
+        ext.outputChannel.info(`[Connection diagnostics] run=${this.runId} ${line}`);
     }
 }
 

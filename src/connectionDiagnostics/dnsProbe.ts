@@ -48,13 +48,18 @@ export function shouldCheckDnsAfterAccess(checks: readonly CheckResult[]): boole
     }
 }
 
-export async function checkDns(url: URL, signal: AbortSignal): Promise<CheckResult> {
+export async function checkDns(
+    url: URL,
+    signal: AbortSignal,
+    observeAddresses: (addresses: readonly string[]) => void,
+): Promise<CheckResult> {
     try {
         const host = url.hostname.replace(/^\[|\]$/g, '');
         const family = isIP(host);
         const addresses = family
             ? [{ address: host, family }]
             : await withStepTimeout(signal, 3_000, () => lookup(host, { all: true }));
+        observeAddresses(addresses.map(({ address }) => address));
         const privateCount = addresses.filter(({ address, family }) =>
             PRIVATE_ADDRESSES.check(address, family === 6 ? 'ipv6' : 'ipv4'),
         ).length;

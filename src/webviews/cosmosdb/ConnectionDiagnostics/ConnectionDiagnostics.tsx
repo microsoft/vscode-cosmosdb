@@ -404,7 +404,9 @@ export function ConnectionDiagnostics() {
                 // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- Group non-form report and diagnostics actions.
                 role="group"
                 aria-label={l10n.t('Diagnostics actions')}
-                note={l10n.t('The report omits host and identity details. Review the report before sharing.')}
+                note={l10n.t(
+                    'Show report includes local network details. Use Share report to copy or save a redacted report.',
+                )}
                 contentEnd={
                     <Button ref={outputButton} disabledFocusable={pending} onClick={() => void showOutput()}>
                         {l10n.t('Show Output')}

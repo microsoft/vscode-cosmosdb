@@ -25,6 +25,7 @@ export class ConnectionDiagnosticsTab extends BaseTab {
     private static readonly viewType = 'cosmosDbConnectionDiagnostics';
     private static readonly tabs = new Map<string | NoSqlQueryConnection, ConnectionDiagnosticsTab>();
     private state: DiagnosticsState;
+    private localTrace: readonly string[] = [];
     private controller?: AbortController;
     private applyingRole = false;
     private roleTarget?: { account: DiagnosticsAzureAccount; principalId: string };
@@ -58,6 +59,7 @@ export class ConnectionDiagnosticsTab extends BaseTab {
                     connectionName: ConnectionDiagnosticsTab.connectionName(this.target),
                     canAddDataRole: this.state.phase === 'completed' && !!this.roleTarget,
                 }),
+                getLocalTrace: () => this.localTrace,
                 rerun: () => this.startRun(),
                 cancel: () => this.controller?.abort(),
                 addDataRole: (runId, actionContext) => this.addDataRole(runId, actionContext),
@@ -84,7 +86,7 @@ export class ConnectionDiagnosticsTab extends BaseTab {
             this.viewType,
             l10n.t('Connection diagnostics: {0}', this.connectionName(target)),
             vscode.ViewColumn.Active,
-            { enableScripts: true },
+            { enableScripts: true, retainContextWhenHidden: true },
         );
         const tab = new ConnectionDiagnosticsTab(panel, target);
         this.tabs.set(key, tab);
@@ -105,6 +107,7 @@ export class ConnectionDiagnosticsTab extends BaseTab {
     private startRun(): void {
         if (this.isDisposed || this.controller || this.applyingRole) return;
         this.roleTarget = undefined;
+        this.localTrace = [];
         const target = this.target;
         const controller = new AbortController();
         this.controller = controller;
@@ -118,6 +121,9 @@ export class ConnectionDiagnosticsTab extends BaseTab {
             },
             (principalId, account) => {
                 if (!this.isDisposed) this.roleTarget = { account, principalId };
+            },
+            (lines) => {
+                if (!this.isDisposed) this.localTrace = lines;
             },
         );
     }

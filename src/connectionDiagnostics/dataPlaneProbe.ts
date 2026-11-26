@@ -10,6 +10,7 @@ import { type CosmosDBCredential, getCosmosDBCredentials } from '../cosmosdb/Cos
 import { getCosmosClient, type GetCosmosClientOptions } from '../cosmosdb/getCosmosClient';
 import { classifyAccessError, getHttpFailure, matchesDeniedPrincipal } from './classify';
 import { type CheckResult, type FailureStage } from './model';
+import { diagnoseNetworkDenial, matchesAccountEndpoint } from './networkDiagnosis';
 import { type DiagnosticsRunTrace, sdkStage } from './runTrace';
 import { StepTimeoutError, withStepTimeout } from './stepTimeout';
 import {
@@ -48,21 +49,30 @@ export class DataPlaneProbe {
     private principalId?: string;
     private stage: FailureStage = 'credentials';
     private lastRequest?: FailureStage;
+    private lastOrigin?: string;
     private lastHttp: CheckResult['http'];
 
     private readonly probeOptions = {
         onHttpRequest: (request) => {
+            this.options.trace.recordRequest(request, this.options.url);
             this.lastRequest = sdkStage(request);
+            this.lastOrigin = URL.parse(request.url)?.origin;
             this.lastHttp = undefined;
         },
         onHttpResponse: (response) => {
             this.options.trace.recordResponse(response, this.options.url);
             this.lastRequest = sdkStage(response.request);
+            this.lastOrigin = URL.parse(response.request.url)?.origin;
             this.lastHttp = getHttpFailure({
                 statusCode: response.status,
                 substatus: response.headers.get('x-ms-substatus'),
             });
         },
+        onHttpError: (request, error) => this.options.trace.recordTransportError(request, error),
+        onAuthenticationAttempt: (method, outcome, identity) =>
+            this.options.trace.recordAuthenticationAttempt(authLabels[method], outcome, identity),
+        onProxyConfiguration: (mode, configured, strictSSL) =>
+            this.options.trace.recordProxyConfiguration(mode, configured, strictSSL),
         connectionPolicy: {
             enableBackgroundEndpointRefreshing: false,
             retryOptions: { maxRetryAttemptCount: 0 },
@@ -103,7 +113,12 @@ export class DataPlaneProbe {
                     masterKey: key,
                     tenantId,
                 },
-                { silent: true, abortSignal, keyProbeOptions: this.probeOptions },
+                {
+                    silent: true,
+                    abortSignal,
+                    keyProbeOptions: this.probeOptions,
+                    onManagedIdentity: this.options.trace.recordManagedIdentity,
+                },
             ),
         );
     }
@@ -177,6 +192,7 @@ export class DataPlaneProbe {
     private beginOperation(stage: 'listDatabases' | 'query'): void {
         this.stage = stage;
         this.lastRequest = undefined;
+        this.lastOrigin = undefined;
         this.lastHttp = undefined;
     }
 
@@ -188,6 +204,12 @@ export class DataPlaneProbe {
                 ? this.lastHttp
                 : sdkHttp;
         const classification = this.classifyFailure(error, http);
+        const { arm, url } = this.options;
+        const account = arm?.databaseAccount;
+        const networkDiagnosis =
+            account && matchesAccountEndpoint(account, url.origin, this.lastOrigin)
+                ? diagnoseNetworkDenial(classification, account)
+                : undefined;
         const needsRole = classification.finding === 'dataRbac';
         const failureStage =
             classification.finding === 'tokenUnavailable' || this.stage === 'credentials'
@@ -201,6 +223,7 @@ export class DataPlaneProbe {
             ...(this.stage === 'query' ? {} : { auth: this.auth }),
             failureStage,
             ...(http ? { http } : {}),
+            ...(networkDiagnosis ? { networkDiagnosis } : {}),
         };
         this.options.record(result);
         return result;

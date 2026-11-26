@@ -13,7 +13,10 @@ import { renderJsonReport, renderReport } from './presentation';
 
 type ReportActionResult = 'done' | 'cancelled' | 'unavailable' | 'failed';
 
-export async function showDiagnosticsReport(state: DiagnosticsState): Promise<ReportActionResult> {
+export async function showDiagnosticsReport(
+    state: DiagnosticsState,
+    localTrace: readonly string[] = [],
+): Promise<ReportActionResult> {
     if (state.phase === 'running') return 'unavailable';
     try {
         await openReadOnlyContent(
@@ -21,7 +24,7 @@ export async function showDiagnosticsReport(state: DiagnosticsState): Promise<Re
                 label: l10n.t('Connection Diagnostics'),
                 fullId: `cosmosDiagnostics-${state.trace?.runId ?? randomUUID()}`,
             },
-            renderReport(state),
+            renderReport(state, localTrace),
             '.md',
         );
         return 'done';

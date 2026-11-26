@@ -40,6 +40,11 @@ export function helpLabel(topic: DiagnosticsHelpTopic): string {
 
 export function checkHelpTopics(check: CheckResult, kind: TargetKind): readonly DiagnosticsHelpTopic[] {
     if (kind === 'emulator') return check.status === 'failed' ? ['emulator'] : [];
+    if (
+        check.networkDiagnosis === 'publicAccessDisabled' ||
+        check.networkDiagnosis === 'publicAccessDisabledNoPrivateEndpoint'
+    )
+        return ['privateLink', 'forbidden'];
     switch (check.finding) {
         case 'overviewDenied':
             if (check.step === 'advisor') return ['advisorAccess'];

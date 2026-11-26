@@ -62,8 +62,9 @@ describe('managed identity client ID configuration', () => {
         );
         mocks.getToken.mockResolvedValue({ token: 'test-token', expiresOnTimestamp: 0 });
         const { signal } = new AbortController();
+        const observe = vi.fn();
 
-        await expect(getManagedIdentityAuth('https://account.example.com', false, signal)).resolves.toEqual({
+        await expect(getManagedIdentityAuth('https://account.example.com', false, signal, observe)).resolves.toEqual({
             type: AuthenticationMethod.managedIdentity,
             clientId: undefined,
         });
@@ -72,5 +73,6 @@ describe('managed identity client ID configuration', () => {
         expect(mocks.getToken).toHaveBeenCalledExactlyOnceWith('https://account.example.com/.default', {
             abortSignal: signal,
         });
+        expect(observe).toHaveBeenCalledExactlyOnceWith('preflightSucceeded', 'default');
     });
 });

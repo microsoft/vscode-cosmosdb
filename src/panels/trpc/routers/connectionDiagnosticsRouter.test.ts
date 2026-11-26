@@ -55,8 +55,10 @@ beforeEach(() => vi.resetAllMocks());
 it('tracks explicit actions and export outcomes but does not emit events for progress polling', async () => {
     const rerun = vi.fn();
     const cancel = vi.fn();
+    const local = ['endpoint=https://private.example.test'];
     const caller = connectionDiagnosticsRouter.createCaller({
         getState: () => state,
+        getLocalTrace: () => local,
         rerun,
         cancel,
         addDataRole: vi.fn(),
@@ -78,6 +80,9 @@ it('tracks explicit actions and export outcomes but does not emit events for pro
     await expect(caller.showReport()).resolves.toBe('done');
     await expect(caller.copy()).resolves.toBe('done');
     await expect(caller.save()).resolves.toBe('cancelled');
+    expect(mocks.preview).toHaveBeenCalledExactlyOnceWith(state, local);
+    expect(mocks.copy).toHaveBeenCalledExactlyOnceWith(state);
+    expect(mocks.save).toHaveBeenCalledExactlyOnceWith(state);
     expect(mocks.track.mock.calls.map(([event]) => event)).toEqual([
         'cosmosDB.rpc.mutation.connectionDiagnostics.showOutput',
         'cosmosDB.rpc.mutation.connectionDiagnostics.cancel',
@@ -102,6 +107,7 @@ it('only handles role requests for a current, eligible RBAC finding', async () =
     const addDataRole = vi.fn().mockResolvedValue('assigned');
     const caller = connectionDiagnosticsRouter.createCaller({
         getState: () => current,
+        getLocalTrace: () => [],
         rerun: vi.fn(),
         cancel: vi.fn(),
         addDataRole,
@@ -123,6 +129,7 @@ it('opens an allowlisted help topic and never opens an arbitrary URL', async () 
     mocks.openExternal.mockResolvedValue(true);
     const caller = connectionDiagnosticsRouter.createCaller({
         getState: () => state,
+        getLocalTrace: () => [],
         rerun: vi.fn(),
         cancel: vi.fn(),
         addDataRole: vi.fn(),

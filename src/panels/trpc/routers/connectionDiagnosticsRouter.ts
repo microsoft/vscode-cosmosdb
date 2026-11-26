@@ -21,17 +21,18 @@ import { diagnosticsAction, diagnosticsProgress, diagnosticsRouter } from '../tr
 export type DiagnosticsRouterContext = BaseRouterContext & {
     actionContext?: IActionContext;
     getState(): DiagnosticsState;
+    getLocalTrace(): readonly string[];
     rerun(): void;
     cancel(): void;
     addDataRole(runId: string, context: IActionContext): Promise<RoleActionOutcome>;
 };
 
-const reportActions = { showReport: showDiagnosticsReport, copy: copyDiagnosticsReport, save: saveDiagnosticsReport };
-
-function reportProcedure(action: keyof typeof reportActions) {
+function reportProcedure(
+    action: (ctx: DiagnosticsRouterContext, state: DiagnosticsState) => ReturnType<typeof showDiagnosticsReport>,
+) {
     return diagnosticsAction.mutation(async ({ ctx }) => {
         const state = ctx.getState();
-        const outcome = await reportActions[action](state);
+        const outcome = await action(ctx, state);
         const properties = ctx.actionContext?.telemetry.properties;
         if (properties) {
             if (state.trace) properties.diagnosticsRunId = state.trace.runId;
@@ -50,9 +51,9 @@ export const connectionDiagnosticsRouter = diagnosticsRouter({
         return ctx.getState();
     }),
     cancel: diagnosticsAction.mutation(({ ctx }) => ctx.cancel()),
-    showReport: reportProcedure('showReport'),
-    copy: reportProcedure('copy'),
-    save: reportProcedure('save'),
+    showReport: reportProcedure((ctx, state) => showDiagnosticsReport(state, ctx.getLocalTrace())),
+    copy: reportProcedure((_, state) => copyDiagnosticsReport(state)),
+    save: reportProcedure((_, state) => saveDiagnosticsReport(state)),
     showOutput: diagnosticsAction.mutation(() => ext.outputChannel.show(true)),
     openHelp: diagnosticsAction
         .input(z.enum(Object.keys(diagnosticsHelpUrls) as [DiagnosticsHelpTopic, ...DiagnosticsHelpTopic[]]))

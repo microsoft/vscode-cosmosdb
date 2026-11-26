@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Fixed query execution and document loading failures with system-assigned managed identity credentials caused by a null client ID in telemetry masking. ([#3612](https://github.com/microsoft/vscode-cosmosdb/issues/3612))
 - Fixed **Data Modeler** load and save failures to preserve editing access, warn about invalid saved models, and offer retry actions without losing current edits after a save failure. Temporary edits made while saved work is unavailable are clearly marked as unsaved, with recommendations disabled until loading succeeds. ([#3602](https://github.com/microsoft/vscode-cosmosdb/pull/3602))
 - Fixed **Data Modeler** workload filtering announcements for screen readers, including search results, selected filters, and clearing filters. ([#3590](https://github.com/microsoft/vscode-cosmosdb/issues/3590))
 - Fixed the accessible label for the **Data Modeler** Arrays & nested collections dropdown. ([#3595](https://github.com/microsoft/vscode-cosmosdb/issues/3595))

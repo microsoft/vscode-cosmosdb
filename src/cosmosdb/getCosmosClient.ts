@@ -222,6 +222,9 @@ export function getCosmosClient(
 
     return new CosmosClient({
         ...merge(clientOptions, commonProperties),
+        // Wrap the SDK's HTTP transport only when diagnostics needs to observe it. Record the request before sending
+        // so a connection failure without a response can still be tied to an SDK operation. Observe the HTTP status
+        // and Cosmos DB substatus on response without changing the underlying transport or its proxy settings.
         httpClient:
             (onHttpRequest || onHttpResponse) && transport
                 ? {

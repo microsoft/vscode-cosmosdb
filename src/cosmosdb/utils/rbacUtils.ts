@@ -137,10 +137,15 @@ export async function addRbacContributorPermission(
     return create.id;
 }
 
+/**
+ * Derives an ARM assignment ID from the account scope, role, and principal, ignoring case.
+ * If Azure saves the assignment but the response is lost, a retry targets the same PUT URL, even after a restart.
+ * The first 16 bytes of the SHA-256 digest supply the payload; the masks set the UUIDv8 version and variant bits.
+ * Keep this derivation stable so retries still target IDs created by earlier versions.
+ */
 function stableRoleAssignmentId(accountScope: string, roleId: string, principalId: string): string {
     const name = JSON.stringify(['cosmosdb-data-role-assignment', accountScope, roleId, principalId]).toLowerCase();
     const digest = createHash('sha256').update(name).digest();
-    // Encode the assignment identity as an RFC 9562 UUIDv8 for the ARM PUT.
     digest.writeUInt8((digest.readUInt8(6) & 0x0f) | 0x80, 6);
     digest.writeUInt8((digest.readUInt8(8) & 0x3f) | 0x80, 8);
     const hex = digest.toString('hex', 0, 16);

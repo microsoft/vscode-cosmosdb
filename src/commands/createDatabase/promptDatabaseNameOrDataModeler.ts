@@ -22,8 +22,11 @@ type ChoiceItem = vscode.QuickPickItem & { action?: 'create' | 'dataModeler' };
 export async function promptDatabaseNameOrDataModeler(accountInfo: AccountInfo): Promise<DatabaseCreationChoice> {
     const quickPick = vscode.window.createQuickPick<ChoiceItem>();
     const disposables: vscode.Disposable[] = [quickPick];
+    // Labels are empty because VS Code always matches the typed name against them; that would highlight and re-sort
+    // these items. Descriptions are not matched, so the items keep their order without highlights.
     const dataModelerItem: ChoiceItem = {
-        label: l10n.t('Try Data Modeler'),
+        label: '',
+        description: l10n.t('Try Data Modeler'),
         detail: l10n.t('Model your workload and get partition key recommendations.'),
         iconPath: new vscode.ThemeIcon('sparkle'),
         alwaysShow: true,
@@ -34,7 +37,8 @@ export async function promptDatabaseNameOrDataModeler(accountInfo: AccountInfo):
     const update = (error?: string): void => {
         const name = quickPick.value.trim();
         const createItem: ChoiceItem = {
-            label: name ? l10n.t('Create database "{name}"', { name }) : l10n.t('Create database'),
+            label: '',
+            description: name ? l10n.t('Create database "{name}"', { name }) : l10n.t('Create database'),
             detail: error ?? (name ? undefined : l10n.t('Type a name to create a database manually.')),
             iconPath: new vscode.ThemeIcon(error ? 'error' : 'add'),
             alwaysShow: true,

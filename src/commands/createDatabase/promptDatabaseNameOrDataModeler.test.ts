@@ -77,14 +77,14 @@ beforeEach(() => {
 });
 
 describe('promptDatabaseNameOrDataModeler', () => {
-    it('shows the create item first and Data Modeler below a separator', async () => {
+    it('shows unmatched items with the create item first and Data Modeler below a separator', async () => {
         const choice = promptDatabaseNameOrDataModeler(accountInfo);
 
         expect(quickPick.show).toHaveBeenCalledOnce();
-        expect(quickPick.items.map((item) => [item.label, item.kind, item.alwaysShow])).toEqual([
-            ['Create database', undefined, true],
-            ['', vscode.QuickPickItemKind.Separator, undefined],
-            ['Try Data Modeler', undefined, true],
+        expect(quickPick.items.map((item) => [item.label, item.description, item.kind, item.alwaysShow])).toEqual([
+            ['', 'Create database', undefined, true],
+            ['', undefined, vscode.QuickPickItemKind.Separator, undefined],
+            ['', 'Try Data Modeler', undefined, true],
         ]);
         expect(quickPick.items[2].detail).toBe('Model your workload and get partition key recommendations.');
         expect(quickPick.activeItems).toEqual([quickPick.createItem]);
@@ -95,7 +95,7 @@ describe('promptDatabaseNameOrDataModeler', () => {
     it('returns the trimmed typed name after checking availability', async () => {
         const choice = promptDatabaseNameOrDataModeler(accountInfo);
         quickPick.type('  orders  ');
-        expect(quickPick.createItem.label).toBe('Create database "orders"');
+        expect(quickPick.createItem).toMatchObject({ label: '', description: 'Create database "orders"' });
         expect(quickPick.activeItems).toEqual([quickPick.createItem]);
 
         await quickPick.accept();

@@ -12,6 +12,7 @@ import {
     shorthands,
     tokens,
     useAnnounce,
+    useTimeout,
 } from '@fluentui/react-components';
 import { CheckmarkRegular, SearchRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
@@ -25,8 +26,10 @@ import { getScenarioList, type ScenarioBadge, type ScenarioListItem, type Scenar
 const FALLBACK_SCENARIO: ScenarioId = 'other';
 /** Chips are grouped by color so related traits sit together: access patterns, write pressure, read scaling. */
 const TONE_ORDER: ScenarioBadge['tone'][] = ['info', 'warn', 'success'];
-/** Shared batch so a newer result summary replaces one still queued from a previous keystroke or click. */
+/** Shared batch for replacing messages still queued in Fluent's DOM live-region fallback. */
 const RESULTS_ANNOUNCEMENT = 'workload-results';
+/** How long filter edits must settle before the result summary is announced. */
+export const RESULTS_ANNOUNCEMENT_DELAY_MS = 300;
 
 function filterScenarios(scenarios: ScenarioListItem[], filter: string, tags: ScenarioTag[]): ScenarioListItem[] {
     const q = filter.trim().toLowerCase();
@@ -161,6 +164,7 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
     const styles = useStyles();
     const groupName = useId();
     const { announce } = useAnnounce();
+    const [setAnnouncementTimeout, clearAnnouncementTimeout] = useTimeout();
     const resultSummaryId = useId();
     const searchHintId = useId();
     const [filter, setFilter] = useState('');
@@ -199,14 +203,18 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
     const resultSummary = summarizeResults(visible);
 
     // Typing and trait chips share this path.
-    // A search edit is always announced, even when the count text is unchanged (e.g. "iot" -> "clickstream").
+    // Settled search edits are announced even when the count text is unchanged (e.g. "iot" -> "clickstream").
     // Chips already report their pressed state, so they only add a changed count.
     const applyFilters = (nextFilter: string, nextTags: ScenarioTag[]) => {
         const nextSummary = summarizeResults(filterScenarios(scenarios, nextFilter, nextTags));
         setFilter(nextFilter);
         setTags(nextTags);
         if (nextFilter !== filter || nextSummary !== resultSummary) {
-            announce(nextSummary, { polite: true, batchId: RESULTS_ANNOUNCEMENT });
+            // Native ariaNotify ignores batchId, so coalesce before calling Fluent.
+            // useTimeout replaces pending work and cancels it on unmount.
+            setAnnouncementTimeout(() => {
+                announce(nextSummary, { polite: true, batchId: RESULTS_ANNOUNCEMENT });
+            }, RESULTS_ANNOUNCEMENT_DELAY_MS);
         }
     };
 
@@ -216,8 +224,8 @@ export function WorkloadPage({ scenario, onPickScenario }: WorkloadPageProps) {
     // Clear all hides itself, so focus returns to the search box. A separate announcement would be cut off by that
     // focus move, so the search box is described by the result summary, which is read as part of the focus change.
     const clearFilters = () => {
-        // Supersede any filter feedback Fluent still has queued, so a stale count is not read after the restored one.
-        // Fluent replaces the queued message of the same batch and skips empty messages when speaking.
+        clearAnnouncementTimeout();
+        // Also supersede feedback already queued by Fluent's DOM fallback; native notifications cannot be retracted.
         announce('', { polite: true, batchId: RESULTS_ANNOUNCEMENT });
         // Commit the cleared value and summary first, so the search box is already current when focus lands on it.
         flushSync(() => {

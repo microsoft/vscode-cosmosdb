@@ -1,5 +1,12 @@
 # Change Log
 
+## 0.38.3
+
+### Fixed
+
+- Fixed extension activation failures in VS Code Server environments, including Dev Containers, SSH, and WSL, when the extension-host launcher path does not exist on disk. ([#3625](https://github.com/microsoft/vscode-cosmosdb/issues/3625))
+- Fixed query execution and document loading failures when a system-assigned managed identity credential has a null client ID, including when that credential is only a fallback. ([#3612](https://github.com/microsoft/vscode-cosmosdb/issues/3612))
+
 ## 0.38.2
 
 ### Fixed

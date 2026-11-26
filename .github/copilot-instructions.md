@@ -1,5 +1,9 @@
 # GitHub Copilot Instructions for vscode-cosmosdb
 
+## Branch Naming
+
+- Name new work branches `dev/<username>/<prefix>-<short-description>`, for example `dev/dshilov/test-vitest-loopback-only`.
+
 ## Critical Build Commands
 
 | Command                | Purpose                                                      |

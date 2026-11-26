@@ -112,9 +112,9 @@ export async function getManagedIdentityAuth(
     abortSignal?.throwIfAborted();
 
     // Get client ID from settings
-    const managedIdentityClientId = vscode.workspace
-        .getConfiguration()
-        .get<string>(ext.settingsKeys.authManagedIdentityClientId);
+    const managedIdentityClientId =
+        vscode.workspace.getConfiguration().get<string | null>(ext.settingsKeys.authManagedIdentityClientId) ??
+        undefined;
 
     // Check if credential works (skip check if forcing)
     // In the case of forcing, we will always try to use managed identity

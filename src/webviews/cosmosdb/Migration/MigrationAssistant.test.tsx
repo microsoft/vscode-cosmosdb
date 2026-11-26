@@ -5,7 +5,7 @@
 
 // @vitest-environment jsdom
 
-import { FluentProvider, tokens, webLightTheme } from '@fluentui/react-components';
+import { FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -196,15 +196,17 @@ describe('migration tooltip theming', () => {
                 const badge = screen.getByLabelText('Preview');
                 fireEvent.pointerEnter(badge);
                 act(() => vi.advanceTimersByTime(500));
-                const previewStyle = getComputedStyle(screen.getByRole('tooltip'));
-                const expectedBackground =
-                    kind === 'vscode-dark' ? tokens.colorNeutralBackgroundStatic : tokens.colorNeutralBackground1;
-                const expectedColor =
-                    kind === 'vscode-dark'
-                        ? tokens.colorNeutralForegroundStaticInverted
-                        : tokens.colorNeutralForeground1;
-                expect(previewStyle.backgroundColor).toBe(expectedBackground);
-                expect(previewStyle.color).toBe(expectedColor);
+                const expectedStyle = {
+                    backgroundColor:
+                        kind === 'vscode-dark'
+                            ? webLightTheme.colorNeutralBackgroundStatic
+                            : webLightTheme.colorNeutralBackground1,
+                    color:
+                        kind === 'vscode-dark'
+                            ? webLightTheme.colorNeutralForegroundStaticInverted
+                            : webLightTheme.colorNeutralForeground1,
+                };
+                expect(screen.getByRole('tooltip')).toHaveStyle(expectedStyle);
                 fireEvent.pointerLeave(badge);
                 act(() => vi.advanceTimersByTime(500));
 
@@ -229,8 +231,7 @@ describe('migration tooltip theming', () => {
                     act(() => vi.advanceTimersByTime(500));
                     const tooltip = screen.getByRole('tooltip');
                     expect(tooltip).toBeVisible();
-                    expect(getComputedStyle(tooltip).backgroundColor).toBe(expectedBackground);
-                    expect(getComputedStyle(tooltip).color).toBe(expectedColor);
+                    expect(tooltip).toHaveStyle(expectedStyle);
                     fireEvent.pointerLeave(trigger);
                     act(() => trigger.blur());
                     act(() => vi.advanceTimersByTime(500));
@@ -251,8 +252,7 @@ describe('migration tooltip theming', () => {
                     fireEvent.click(trigger);
                     const popover = screen.getByRole('group', { name: label });
                     expect(popover).toBeVisible();
-                    expect(getComputedStyle(popover).backgroundColor).toBe(expectedBackground);
-                    expect(getComputedStyle(popover).color).toBe(expectedColor);
+                    expect(popover).toHaveStyle(expectedStyle);
                     expect(within(popover).getByRole('button', { name: folder })).toBeEnabled();
                     fireEvent.click(trigger);
                     act(() => vi.advanceTimersByTime(500));

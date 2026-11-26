@@ -282,7 +282,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(scrollRegion).not.toContainElement(preview);
         expect(preview.parentElement).toHaveStyle({ position: 'relative' });
         expect(preview.parentElement?.style.getPropertyValue('--preview-badge-clearance')).toBe('308px');
-        expect(navigation).toHaveStyle({ marginRight: 'var(--preview-badge-clearance)' });
+        expect(navigation).toHaveStyle({ marginRight: '308px' });
         expect(preview.parentElement).toContainElement(scrollRegion as HTMLElement);
         expect(title.parentElement?.parentElement).toHaveStyle({ paddingRight: '308px' });
         expect(title.parentElement).toHaveStyle({ minWidth: '0px' });
@@ -353,7 +353,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(selectedRule).toBeDefined();
         expect(result.matches(selectedRule!.selectorText)).toBe(true);
         expect(review.matches(selectedRule!.selectorText)).toBe(false);
-        expect(review.querySelector('svg')).toHaveStyle({ color: tokens.colorPaletteGreenForeground1 });
+        expect(review.querySelector('svg')).toHaveStyle({ color: webLightTheme.colorPaletteGreenForeground1 });
 
         await user.click(review);
 
@@ -362,8 +362,8 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         expect(review.matches(selectedRule!.selectorText)).toBe(true);
         expect(result).not.toHaveAttribute('aria-current');
         expect(result.matches(selectedRule!.selectorText)).toBe(false);
-        expect(review.querySelector('svg')).toHaveStyle({ color: tokens.colorPaletteGreenForeground1 });
-        expect(result.querySelector('svg')).toHaveStyle({ color: tokens.colorPaletteGreenForeground1 });
+        expect(review.querySelector('svg')).toHaveStyle({ color: webLightTheme.colorPaletteGreenForeground1 });
+        expect(result.querySelector('svg')).toHaveStyle({ color: webLightTheme.colorPaletteGreenForeground1 });
     });
 
     it('deploys directly from the final step without generating or submitting Bicep or saving deployment state', async () => {
@@ -533,7 +533,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
                     name: 'Deploy',
                 })
                 .querySelector('svg'),
-        ).toHaveStyle({ color: tokens.colorPaletteGreenForeground1 });
+        ).toHaveStyle({ color: webLightTheme.colorPaletteGreenForeground1 });
         expect(
             screen.getByText('Data model deployed to "fresh-db": 1 container(s) created, 0 left unchanged.'),
         ).toBeVisible();
@@ -561,7 +561,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
                     name: 'Deploy',
                 })
                 .querySelector('svg'),
-        ).not.toHaveStyle({ color: tokens.colorPaletteGreenForeground1 });
+        ).not.toHaveStyle({ color: webLightTheme.colorPaletteGreenForeground1 });
     });
 
     it('locks navigation during deployment and saves only its successful completion, not its template', async () => {
@@ -824,6 +824,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
 
     it.each([
         { action: 'Add container', containerCount: 1, focusTarget: 'Add container' },
+        { action: 'Add container', containerCount: MAX_CONTAINERS - 1, focusTarget: 'Next' },
         { action: 'Retry', containerCount: 1, focusTarget: 'Add container' },
         { action: 'Retry', containerCount: MAX_CONTAINERS - 1, focusTarget: 'Next' },
     ])(
@@ -864,6 +865,9 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             expect(screen.queryByText('Could not add the container. Please try again.')).not.toBeInTheDocument();
             expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
             expect(add).toBeDisabled();
+            // The native input takes focus outside the webview.
+            act(() => add.blur());
+            expect(document.body).toHaveFocus();
             fireEvent.click(add);
             expect(client.dataModeling.promptContainerName.mutate).toHaveBeenCalledTimes(2);
             await act(async () => submitName('Recovered'));
@@ -1431,8 +1435,8 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             expect(edit).toHaveAccessibleName('Edit model');
             const primary = status === 'error' ? edit : retry;
             const secondary = status === 'error' ? retry : edit;
-            expect(primary).toHaveStyle({ backgroundColor: tokens.colorBrandBackground });
-            expect(secondary).toHaveStyle({ backgroundColor: tokens.colorNeutralBackground1 });
+            expect(primary).toHaveStyle({ backgroundColor: webLightTheme.colorBrandBackground });
+            expect(secondary).toHaveStyle({ backgroundColor: webLightTheme.colorNeutralBackground1 });
             // Restored stopped state focuses Retry in a passive effect; flush it before moving focus to Edit.
             await act(async () => {});
             edit.focus();

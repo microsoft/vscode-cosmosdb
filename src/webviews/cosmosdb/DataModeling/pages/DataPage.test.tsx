@@ -44,7 +44,14 @@ beforeEach(() => {
 });
 
 describe('DataPage partition-key eligibility', () => {
-    it('hides imported array fields from the input box and explains their restrictions in Role', async () => {
+    it('hides imported array fields from the input box and explains their restrictions in Role', async ({
+        onTestFinished,
+    }) => {
+        const warningColor = '#b89500';
+        document.body.style.setProperty('--vscode-editorWarning-foreground', warningColor);
+        onTestFinished(() => {
+            document.body.style.removeProperty('--vscode-editorWarning-foreground');
+        });
         confirm.mockResolvedValue(true);
         const container = createBlankContainer('Orders');
         const model: DataModel = { containers: [container], activeContainerId: container.id };
@@ -82,7 +89,7 @@ describe('DataPage partition-key eligibility', () => {
             const icon = roleCell.querySelector('svg');
             expect(icon).toBeVisible();
             expect(icon).toHaveAttribute('aria-hidden', 'true');
-            expect(icon?.parentElement).toHaveStyle({ color: 'var(--vscode-editorWarning-foreground)' });
+            expect(icon?.parentElement).toHaveStyle({ color: warningColor });
             // The remove button shares the cell, so browsers may append its label to the cell's computed name.
             const warning = roleCell.textContent ?? '';
             expect(warning).toMatch(/^Not usable as a partition key: /);

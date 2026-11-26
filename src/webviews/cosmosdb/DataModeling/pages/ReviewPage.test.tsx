@@ -5,7 +5,7 @@
 
 // @vitest-environment jsdom
 
-import { tokens } from '@fluentui/react-components';
+import { FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -267,14 +267,16 @@ describe('ReviewPage', () => {
         const issues = errors.map((message) => ({ message, path: [] }));
         const onFixIssue = vi.fn();
         render(
-            <ReviewPage
-                workloadLabel="Other"
-                containers={[createBlankContainer('Orders')]}
-                validationErrors={issues}
-                onFixIssue={onFixIssue}
-                onEditWorkload={vi.fn()}
-                onEditContainer={vi.fn()}
-            />,
+            <FluentProvider theme={webLightTheme}>
+                <ReviewPage
+                    workloadLabel="Other"
+                    containers={[createBlankContainer('Orders')]}
+                    validationErrors={issues}
+                    onFixIssue={onFixIssue}
+                    onEditWorkload={vi.fn()}
+                    onEditContainer={vi.fn()}
+                />
+            </FluentProvider>,
         );
         const alert = screen.getByRole('alert');
         expect(alert).toHaveTextContent(/^Fix these issues before requesting a recommendation\./);
@@ -283,7 +285,7 @@ describe('ReviewPage', () => {
             expect(fix).toHaveTextContent('Fix');
             expect(fix).toHaveAccessibleName('Fix');
             expect(fix).toHaveAccessibleDescription(errors[index]);
-            expect(fix).toHaveStyle({ backgroundColor: tokens.colorBrandBackground });
+            expect(fix).toHaveStyle({ backgroundColor: webLightTheme.colorBrandBackground });
             expect(fix).not.toHaveClass('fui-Button--small');
             const item = fix.closest('li')!;
             expect(item).toHaveStyle({ display: 'flex', justifyContent: 'space-between' });

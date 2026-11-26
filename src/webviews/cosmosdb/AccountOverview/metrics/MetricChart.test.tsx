@@ -5,7 +5,7 @@
 
 // @vitest-environment jsdom
 
-import { FluentProvider, tokens, webDarkTheme, webLightTheme } from '@fluentui/react-components';
+import { FluentProvider, webDarkTheme, webLightTheme } from '@fluentui/react-components';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { cloneElement, type ReactElement } from 'react';
 import type * as Recharts from 'recharts';
@@ -33,8 +33,9 @@ describe('chart tooltip theme', () => {
         'preserves chart tooltip styling and keyboard-accessible values in %s',
         async (kind) => {
             document.body.setAttribute('data-vscode-theme-kind', kind);
+            const theme = kind === 'vscode-dark' ? webDarkTheme : webLightTheme;
             render(
-                <FluentProvider theme={kind === 'vscode-dark' ? webDarkTheme : webLightTheme}>
+                <FluentProvider theme={theme}>
                     <MetricChart
                         descriptor={METRIC_VIEWS.totalRequests}
                         loading={false}
@@ -52,9 +53,11 @@ describe('chart tooltip theme', () => {
             );
             fireEvent.focus(screen.getByRole('application'));
             const note = await screen.findByText('Sustained throttling (429s) in this window');
-            expect(getComputedStyle(note.parentElement!).backgroundColor).toBe(tokens.colorNeutralBackground1);
-            expect(getComputedStyle(note.parentElement!).color).toBe(tokens.colorNeutralForeground1);
-            expect(getComputedStyle(note).color).toBe(tokens.colorStatusDangerForeground1);
+            expect(note.parentElement).toHaveStyle({
+                backgroundColor: theme.colorNeutralBackground1,
+                color: theme.colorNeutralForeground1,
+            });
+            expect(note).toHaveStyle({ color: theme.colorStatusDangerForeground1 });
             expect(note).toBeVisible();
         },
     );

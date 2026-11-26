@@ -5,7 +5,7 @@
 
 // @vitest-environment jsdom
 
-import { badgeClassNames, Button, FluentProvider, tokens, webLightTheme } from '@fluentui/react-components';
+import { badgeClassNames, Button, FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type PropsWithChildren } from 'react';
@@ -211,14 +211,16 @@ describe('AccountHealthStatus', () => {
                 const user = userEvent.setup();
                 await user.click(renderHealth());
                 const details = screen.getByRole('group', { name: 'Health: Unknown' });
-                expect(getComputedStyle(details).backgroundColor).toBe(
-                    kind === 'vscode-dark' ? tokens.colorNeutralBackgroundStatic : tokens.colorNeutralBackground1,
-                );
-                expect(getComputedStyle(details).color).toBe(
-                    kind === 'vscode-dark'
-                        ? tokens.colorNeutralForegroundStaticInverted
-                        : tokens.colorNeutralForeground1,
-                );
+                expect(details).toHaveStyle({
+                    backgroundColor:
+                        kind === 'vscode-dark'
+                            ? webLightTheme.colorNeutralBackgroundStatic
+                            : webLightTheme.colorNeutralBackground1,
+                    color:
+                        kind === 'vscode-dark'
+                            ? webLightTheme.colorNeutralForegroundStaticInverted
+                            : webLightTheme.colorNeutralForeground1,
+                });
             },
         );
 

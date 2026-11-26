@@ -1993,6 +1993,7 @@
   "Trigger name cannot contain the characters '\\', '/', '#', '?', '&'": "Trigger name cannot contain the characters '\\', '/', '#', '?', '&'",
   "Trigger name is required.": "Trigger name is required.",
   "Triggers": "Triggers",
+  "Try Data Modeler": "Try Data Modeler",
   "Type": "Type",
   "Type a name to create a database manually.": "Type a name to create a database manually.",
   "Type field help": "Type field help",

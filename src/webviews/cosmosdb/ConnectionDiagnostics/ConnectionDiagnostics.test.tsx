@@ -6,7 +6,7 @@
 // @vitest-environment jsdom
 
 import { AriaLiveAnnouncer, FluentProvider, webLightTheme } from '@fluentui/react-components';
-import { act, render, screen, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type PropsWithChildren } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -67,25 +67,31 @@ function renderPanel() {
     );
 }
 
-it('does not autofocus the scroll region on webview mount but keeps it keyboard reachable', async () => {
-    client.state.query.mockResolvedValue(completed);
-    const container = document.createElement('div');
-    container.id = 'diagnostics-root';
-    document.body.append(container);
-    // Tabster uses layout to decide which elements can receive focus, but jsdom has no layout.
+function mockFocusableLayout() {
+    // Tabster needs visible bounds and an offset parent, neither of which jsdom provides.
     const bounds = vi.spyOn(document.body, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 1024, 768));
     const offsetParent = vi.spyOn(HTMLElement.prototype, 'offsetParent', 'get').mockImplementation(function (
         this: HTMLElement,
     ) {
         return this.parentElement;
     });
+    onTestFinished(() => {
+        bounds.mockRestore();
+        offsetParent.mockRestore();
+    });
+}
+
+it('does not autofocus the scroll region on webview mount but keeps it keyboard reachable', async () => {
+    mockFocusableLayout();
+    client.state.query.mockResolvedValue(completed);
+    const container = document.createElement('div');
+    container.id = 'diagnostics-root';
+    document.body.append(container);
     vi.stubGlobal('l10n_bundle', {});
     onTestFinished(() => {
         const root = vi.mocked(createRoot).mock.results[0]?.value;
         act(() => root?.unmount());
         container.remove();
-        bounds.mockRestore();
-        offsetParent.mockRestore();
         vi.unstubAllGlobals();
     });
 
@@ -95,8 +101,8 @@ it('does not autofocus the scroll region on webview mount but keeps it keyboard 
         container.id,
     );
     const heading = await screen.findByRole('heading', { name: 'Connection Diagnostics' });
-    const scrollRegion = heading.closest('[tabindex="0"]');
-    expect(scrollRegion).toBeInTheDocument();
+    const scrollRegion = screen.getByRole('region', { name: heading.textContent ?? undefined });
+    expect(scrollRegion).toContainElement(heading);
     expect(document.body).toHaveFocus();
 
     const action = await screen.findByRole('button', { name: 'Configure the Cosmos DB IP firewall' });
@@ -105,6 +111,27 @@ it('does not autofocus the scroll region on webview mount but keeps it keyboard 
     expect(scrollRegion).toHaveFocus();
     await user.tab();
     expect(action).toHaveFocus();
+});
+
+it('announces a step once across repeated polls, then announces the outcome once', async () => {
+    const announce = vi.fn<(message: string) => void>();
+    const original = Object.getOwnPropertyDescriptor(document, 'ariaNotify');
+    Object.defineProperty(document, 'ariaNotify', { configurable: true, value: announce });
+    onTestFinished(() => {
+        if (original) Object.defineProperty(document, 'ariaNotify', original);
+        else Reflect.deleteProperty(document, 'ariaNotify');
+    });
+    client.state.query
+        .mockResolvedValueOnce(running)
+        .mockResolvedValueOnce({ ...running })
+        .mockResolvedValue(completed);
+    renderPanel();
+
+    const outcome = 'Could not verify Cosmos DB data-plane access.';
+    await screen.findByRole('region', { name: outcome });
+    const messages = announce.mock.calls.map(([message]) => message);
+    expect(messages.filter((message) => message === 'Checking: Cosmos DB data-plane access')).toHaveLength(1);
+    expect(messages.filter((message) => message.includes(outcome))).toHaveLength(1);
 });
 
 it('shows the outcome and check findings without a disclosure', async () => {
@@ -123,6 +150,9 @@ it('shows the outcome and check findings without a disclosure', async () => {
     expect(within(list).getByText(/Authentication method: Microsoft Entra ID/)).toBeVisible();
     expect(within(list).getByText(/Check public network access and the IP allowlist/)).toBeVisible();
     expect(within(list).getByText('120 ms')).toBeVisible();
+    expect(within(list).getByRole('img', { name: 'Passed' })).toBeVisible();
+    expect(within(list).getByRole('img', { name: 'Failed' })).toBeVisible();
+    expect(within(list).getByText('Not run')).not.toHaveAttribute('aria-hidden');
 });
 
 it('distinguishes an ARM read from a data-plane firewall denial without showing a redundant DNS step', async () => {
@@ -155,7 +185,7 @@ it('distinguishes an ARM read from a data-plane firewall denial without showing 
     const list = screen.getByRole('list', { name: 'Connection checks' });
     expect(screen.getByText(/does not tell you whether your identity has a data role/)).toBeVisible();
     const docs = screen.getByRole('button', { name: 'Troubleshoot Cosmos DB HTTP 403' });
-    const access = within(list).getByText('Cosmos DB data-plane access').closest('[role="listitem"]');
+    const access = within(list).getByText('Cosmos DB data-plane access').closest('li');
     expect(access).toContainElement(docs);
     expect(summary).not.toContainElement(docs);
     docs.focus();
@@ -217,6 +247,7 @@ it('shows the name-resolution evidence when the DNS check ran', async () => {
     renderPanel();
     const list = await screen.findByRole('list', { name: 'Connection checks' });
     await within(list).findByText('Server address (DNS)');
+    expect(within(list).getByRole('img', { name: 'Skipped' })).toBeVisible();
     expect(within(list).getByText(/This is expected for public access/)).toBeVisible();
     expect(within(list).getByText(/DNS does not show which route the SDK used/)).toBeVisible();
 });
@@ -251,13 +282,15 @@ it.each([undefined, 'container'] as const)(
         expect(
             within(summary).queryByText(/The identity lacks Cosmos DB data-plane permissions/),
         ).not.toBeInTheDocument();
-        const row = screen.getByText('Cosmos DB data-plane access').closest('[role="listitem"]');
-        const add = screen.getByRole('button', { name: 'Add Data Contributor role' });
-        const docs = screen.getByRole('button', { name: 'Learn about Cosmos DB data-plane roles' });
+        const row = screen.getByText('Cosmos DB data-plane access').closest('li');
+        const actions = screen.getByRole('group', { name: 'Cosmos DB data-plane access' });
+        const add = within(actions).getByRole('button', { name: 'Add Data Contributor role' });
+        const docs = within(actions).getByRole('button', { name: 'Learn about Cosmos DB data-plane roles' });
+        expect(row).toContainElement(actions);
         expect(add).toHaveTextContent('Add Data Contributor role');
         expect(docs).toHaveTextContent('Learn about Cosmos DB data-plane roles');
-        expect(row).toContainElement(add);
-        expect(row).toContainElement(docs);
+        expect(add).toHaveAccessibleName('Add Data Contributor role');
+        expect(docs).toHaveAccessibleName('Learn about Cosmos DB data-plane roles');
         expect(summary).not.toContainElement(add);
         expect(summary).not.toContainElement(docs);
         add.focus();
@@ -284,19 +317,19 @@ it('shows progress, preserves button focus, and can cancel and rerun', async () 
     renderPanel();
     await screen.findByRole('region', { name: 'Could not verify Cosmos DB data-plane access.' });
     const rerun = screen.getByRole('button', { name: 'Re-run' });
-    expect(rerun.textContent).toBe('Re-run');
+    expect(rerun).toHaveTextContent('Re-run');
+    expect(rerun).toHaveAccessibleName('Re-run');
     await user.click(rerun);
     await screen.findByText('Checking the connection…');
     expect(client.rerun.mutate).toHaveBeenCalledOnce();
 
     const cancel = screen.getByRole('button', { name: 'Cancel' });
-    expect(cancel.textContent).toBe('Cancel');
+    expect(cancel).toHaveTextContent('Cancel');
+    expect(cancel).toHaveAccessibleName('Cancel');
     expect(cancel).toHaveFocus();
     const list = screen.getByRole('list', { name: 'Connection checks' });
-    expect(within(list).getByText('Cosmos DB data-plane access').closest('[role="listitem"]')).toHaveAttribute(
-        'aria-current',
-        'step',
-    );
+    expect(within(list).getByText('Cosmos DB data-plane access').closest('li')).toHaveAttribute('aria-current', 'step');
+    expect(within(list).getByRole('img', { name: 'Checking' })).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Share report' })).not.toBeInTheDocument();
     await user.click(cancel);
     await screen.findByRole('region', { name: 'Connection diagnostics cancelled.' });
@@ -306,6 +339,7 @@ it('shows progress, preserves button focus, and can cancel and rerun', async () 
 });
 
 it('opens the report in the editor through the host and offers copy and save', async () => {
+    mockFocusableLayout();
     client.state.query.mockResolvedValue(completed);
     client.copy.mutate.mockResolvedValue('done');
     client.save.mutate.mockResolvedValue('done');
@@ -315,23 +349,35 @@ it('opens the report in the editor through the host and offers copy and save', a
 
     const showReport = await screen.findByRole('button', { name: 'Show report' });
     expect(showReport).toHaveTextContent('Show report');
+    expect(showReport).toHaveAccessibleName('Show report');
     showReport.focus();
     await user.keyboard('{Enter}');
     expect(client.showReport.mutate).toHaveBeenCalledOnce();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
     const share = screen.getByRole('button', { name: 'Share report' });
+    expect(screen.getByRole('group', { name: 'Diagnostics actions' })).toContainElement(share);
     expect(share).toHaveTextContent('Share report');
-    await user.click(share);
+    expect(share).toHaveAccessibleName('Share report');
+    share.focus();
+    await user.keyboard('{Enter}');
     const copy = await screen.findByRole('menuitem', { name: 'Copy report to clipboard' });
     expect(copy).toHaveTextContent('Copy report to clipboard');
-    await user.click(copy);
+    expect(copy).toHaveAccessibleName('Copy report to clipboard');
+    await waitFor(() => expect(copy).toHaveFocus());
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(share).toHaveFocus());
+    await user.keyboard('{Enter}');
+    const reopenedCopy = await screen.findByRole('menuitem', { name: 'Copy report to clipboard' });
+    await waitFor(() => expect(reopenedCopy).toHaveFocus());
+    await user.keyboard('{Enter}');
     expect(client.copy.mutate).toHaveBeenCalledOnce();
     expect(await screen.findByText('Diagnostics report copied.')).toBeVisible();
 
     await user.click(share);
     const save = await screen.findByRole('menuitem', { name: 'Save report to file…' });
     expect(save).toHaveTextContent('Save report to file…');
+    expect(save).toHaveAccessibleName('Save report to file…');
     await user.click(save);
     expect(client.save.mutate).toHaveBeenCalledOnce();
     expect(await screen.findByText('Diagnostics report saved.')).toBeVisible();
@@ -343,6 +389,7 @@ it('opens the local Output channel using a control with its visible accessible n
     renderPanel();
     const output = screen.getByRole('button', { name: 'Show Output' });
     expect(output).toHaveTextContent('Show Output');
+    expect(output).toHaveAccessibleName('Show Output');
     output.focus();
     await user.keyboard('{Enter}');
     expect(client.showOutput.mutate).toHaveBeenCalledOnce();
@@ -353,7 +400,10 @@ it('can refresh after a status request failure without starting another diagnosi
     const user = userEvent.setup();
     renderPanel();
     expect(await screen.findByText('Could not update connection diagnostics.')).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'Refresh status' }));
+    const refresh = screen.getByRole('button', { name: 'Refresh status' });
+    expect(refresh).toHaveTextContent('Refresh status');
+    expect(refresh).toHaveAccessibleName('Refresh status');
+    await user.click(refresh);
     expect(await screen.findByRole('region', { name: 'Could not verify Cosmos DB data-plane access.' })).toBeVisible();
     expect(client.rerun.mutate).not.toHaveBeenCalled();
 });

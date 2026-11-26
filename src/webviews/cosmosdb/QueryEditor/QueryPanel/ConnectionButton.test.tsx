@@ -56,6 +56,11 @@ describe('connection picker accessible name', () => {
                 );
 
                 const action = screen.getByRole(type, { name: 'Diagnose Connection.' });
+                expect(action).toHaveTextContent('Diagnose Connection');
+                expect(action).toHaveAccessibleName('Diagnose Connection.');
+                expect(action).toHaveAccessibleDescription(
+                    type === 'button' ? 'Check the current container or choose a connection to diagnose' : '',
+                );
                 fireEvent.click(action);
                 expect(dispatcher.diagnoseConnection).toHaveBeenCalledOnce();
             },

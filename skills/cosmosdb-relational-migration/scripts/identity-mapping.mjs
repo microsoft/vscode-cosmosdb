@@ -3,7 +3,7 @@
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { isMainModule } from './cli-entrypoint.mjs';
 import { showHelp } from './cli-help.mjs';
 import { parseJson, readJsonObject } from './phase-summary.mjs';
 import {
@@ -146,4 +146,4 @@ Exit: 0 when resolved; 1 for unknown entities, invalid mappings, missing values,
     } catch (error) { process.stderr.write(`${error.message}\n`); return 1; }
 }
 
-if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) process.exitCode = runCli(process.argv.slice(2));
+if (isMainModule(import.meta.url)) process.exitCode = runCli(process.argv.slice(2));

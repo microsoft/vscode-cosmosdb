@@ -78,6 +78,16 @@ const credentialCases: { name: string; credentials: CosmosDBCredential[]; masks:
         masks: ['private-client'],
     },
     {
+        name: 'Entra ID with a runtime null managed identity client ID',
+        credentials: JSON.parse(
+            JSON.stringify([
+                { type: AuthenticationMethod.entraId, tenantId: 'organization-tenant' },
+                { type: AuthenticationMethod.managedIdentity, clientId: null },
+            ]),
+        ),
+        masks: [],
+    },
+    {
         name: 'multiple credentials',
         credentials: [
             { type: AuthenticationMethod.entraId, tenantId: 'organization-tenant' },

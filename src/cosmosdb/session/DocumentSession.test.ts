@@ -13,6 +13,7 @@ const cosmosMocks = vi.hoisted(() => ({
     item: vi.fn(),
     replace: vi.fn(),
     read: vi.fn(),
+    readItem: vi.fn(),
 }));
 
 const telemetryContexts = vi.hoisted(
@@ -49,7 +50,13 @@ vi.mock('../withClaimsChallengeHandling', () => ({
     ),
 }));
 
-import { buildNewDocumentTemplate, deleteDocument, getPartitionKey, replaceDocument } from './DocumentSession';
+import {
+    buildNewDocumentTemplate,
+    deleteDocument,
+    getPartitionKey,
+    readDocument,
+    replaceDocument,
+} from './DocumentSession';
 
 const connection: NoSqlQueryConnection = {
     containerId: 'container',
@@ -74,6 +81,38 @@ describe('DocumentSession ETag conditions', () => {
         vi.clearAllMocks();
         telemetryContexts.length = 0;
         cosmosMocks.item.mockReturnValue({ delete: cosmosMocks.delete, replace: cosmosMocks.replace });
+    });
+
+    describe('document reads with system-assigned managed identity fallback', () => {
+        it('reads the document when a fallback credential contains a runtime null client ID', async () => {
+            vi.clearAllMocks();
+            telemetryContexts.length = 0;
+            cosmosMocks.item.mockReturnValue({ read: cosmosMocks.readItem });
+            cosmosMocks.readItem.mockResolvedValue({ resource: document });
+            const runtimeConnection: NoSqlQueryConnection = JSON.parse(
+                JSON.stringify({
+                    ...connection,
+                    credentials: [
+                        { type: AuthenticationMethod.accountKey, key: 'private-key' },
+                        { type: AuthenticationMethod.managedIdentity, clientId: null },
+                    ],
+                }),
+            );
+            const partitionKey = { paths: ['/pk'] };
+
+            await expect(readDocument(runtimeConnection, identifier, undefined, partitionKey)).resolves.toEqual({
+                documentContent: document,
+                partitionKey,
+            });
+
+            expect(cosmosMocks.readItem).toHaveBeenCalledOnce();
+            expect(telemetryContexts[0].valuesToMask).toEqual([
+                'private-key',
+                connection.endpoint,
+                connection.databaseId,
+                connection.containerId,
+            ]);
+        });
     });
 
     it('passes IfMatch when replacing a document', async () => {

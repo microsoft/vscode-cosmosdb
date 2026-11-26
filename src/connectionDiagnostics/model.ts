@@ -4,7 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 
 export type TargetKind = 'azure' | 'attached' | 'emulator' | 'queryEditor';
-export type Step = 'target' | 'accountSettings' | 'access' | 'query' | 'dns';
+export const overviewSteps = ['metrics', 'alerts', 'advisor', 'requestLogs', 'queryLogs'] as const;
+export type OverviewStep = (typeof overviewSteps)[number];
+export type Step = 'target' | 'accountSettings' | 'access' | 'query' | 'dns' | OverviewStep;
+export type ActiveStep = Step | 'accountOverview';
+
+export function isOverviewStep(step: Step): step is OverviewStep {
+    return overviewSteps.some((overviewStep) => overviewStep === step);
+}
 export type ProbeKind = 'nosql' | 'network' | 'query';
 export type FailureStage = 'credentials' | 'accountMetadata' | 'listDatabases' | 'containerMetadata' | 'query';
 export type Finding =
@@ -44,7 +51,13 @@ export type Finding =
     | 'privateDns'
     | 'publicDns'
     | 'mixedDns'
-    | 'unresolvedDns';
+    | 'unresolvedDns'
+    | 'overviewRead'
+    | 'overviewDenied'
+    | 'overviewAuthentication'
+    | 'overviewLogsMissing'
+    | 'overviewUnavailable'
+    | 'overviewTimedOut';
 
 export interface NetworkSummary {
     publicAccess: 'enabled' | 'disabled' | 'securedByPerimeter' | 'unknown';
@@ -76,7 +89,7 @@ export interface DiagnosticsState {
     canAddDataRole?: boolean;
     phase: 'running' | 'completed' | 'cancelled';
     finishedAt?: number;
-    active?: Step;
+    active?: ActiveStep;
     checks: CheckResult[];
     /** Shareable trace only. Actual endpoints are kept in the local Output channel. */
     trace?: { runId: string; lines: readonly string[]; checkDurations?: Partial<Record<Step, number>> };

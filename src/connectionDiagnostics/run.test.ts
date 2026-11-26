@@ -11,7 +11,7 @@ import { AuthenticationMethod, getPreferredAuthenticationMethod } from '../cosmo
 import { type CosmosDBCredential } from '../cosmosdb/CosmosDBCredential';
 import { type GetCosmosClientOptions } from '../cosmosdb/getCosmosClient';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
-import { type DiagnosticsState } from './model';
+import { type DiagnosticsState, isOverviewStep, overviewSteps } from './model';
 import { phaseLabel, renderJsonReport, renderReport } from './presentation';
 import { runDiagnostics } from './run';
 import { type AccountDiagnosticsTarget, type DiagnosticsTarget } from './target';
@@ -30,6 +30,11 @@ const io = vi.hoisted(() => ({
     getManagedIdentityAuth: vi.fn(),
     log: vi.fn(),
     telemetry: vi.fn(),
+    metricsList: vi.fn(),
+    alertsList: vi.fn(),
+    advisorList: vi.fn(),
+    queryResource: vi.fn(),
+    createLogsQueryClient: vi.fn(),
 }));
 vi.mock('node:dns/promises', () => ({ lookup: io.lookup }));
 vi.mock('../cosmosdb/getCosmosClient', () => ({
@@ -42,6 +47,10 @@ vi.mock('../cosmosdb/AuthenticationMethod', { spy: true });
 vi.mock('../cosmosdb/utils/managedIdentityUtils', () => ({ getManagedIdentityAuth: io.getManagedIdentityAuth }));
 vi.mock('../utils/azureClients', () => ({
     createCosmosDBManagementClient: () => Promise.resolve({ databaseAccounts: io }),
+    createMonitorClient: () => Promise.resolve({ metrics: { list: io.metricsList } }),
+    createAlertsManagementClient: () => Promise.resolve({ alerts: { getAll: io.alertsList } }),
+    createAdvisorClient: () => Promise.resolve({ recommendations: { list: io.advisorList } }),
+    createLogsQueryClient: io.createLogsQueryClient,
 }));
 vi.mock('@microsoft/vscode-azext-utils', () => ({
     parseError: (error: Error) => ({ message: error.message }),
@@ -73,7 +82,7 @@ const cloud: Extract<DiagnosticsTarget, { kind: 'azure' }> = {
     kind: 'azure',
     probe: 'nosql',
     account: {
-        id: 'resource',
+        id: '/subscriptions/subscription/resourceGroups/group/providers/Microsoft.DocumentDB/databaseAccounts/account',
         name: 'account',
         resourceGroup: 'group',
         subscription: { subscriptionId: 'subscription', tenantId: 'tenant' },
@@ -126,6 +135,12 @@ describe('diagnosing a NoSQL connection', () => {
         io.fetchNext.mockResolvedValue({});
         io.readAll.mockReturnValue({ fetchNext: io.fetchNext });
         io.lookup.mockResolvedValue([{ address: '10.0.0.1', family: 4 }]);
+        io.metricsList.mockResolvedValue({ value: [] });
+        const emptyPage = { byPage: () => ({ next: async () => ({ value: [], done: false }) }) };
+        io.alertsList.mockReturnValue(emptyPage);
+        io.advisorList.mockReturnValue(emptyPage);
+        io.createLogsQueryClient.mockResolvedValue({ queryResource: io.queryResource });
+        io.queryResource.mockResolvedValue({ status: 'Success', tables: [{ columnDescriptors: [], rows: [] }] });
     });
 
     it.each([true, false])(
@@ -313,7 +328,7 @@ describe('diagnosing a NoSQL connection', () => {
                         authMethod: 'entra',
                         findingCodes: expect.stringContaining('firewallUnknown'),
                     }),
-                    measurements: { durationMs: expect.any(Number), checkCount: 3 },
+                    measurements: { durationMs: expect.any(Number), checkCount: 3 + overviewSteps.length },
                 }),
             ],
         ]);
@@ -339,6 +354,8 @@ describe('diagnosing a NoSQL connection', () => {
         expect(io.database).not.toHaveBeenCalled();
         expect(io.dispose).toHaveBeenCalledTimes(2);
         expect(io.lookup).not.toHaveBeenCalled();
+        expect(io.metricsList).not.toHaveBeenCalled();
+        expect(io.createLogsQueryClient).not.toHaveBeenCalled();
         expect(states.at(-1)).toMatchObject({
             phase: 'completed',
             checks: [
@@ -613,17 +630,16 @@ describe('diagnosing a NoSQL connection', () => {
             'target',
             'access',
             'dns',
+            'accountOverview',
         ]);
         expect(io.listReadOnlyKeys).not.toHaveBeenCalled();
         expect(io.listKeys).not.toHaveBeenCalled();
-        expect(states.at(-1)).toMatchObject({
-            checks: [
-                { finding: 'endpointReady' },
-                { network: { publicAccess: 'disabled', ipRules: 1, privateEndpoints: 1 } },
-                { finding: 'firewallPrivateEndpoint', auth: 'entra' },
-                { finding: 'privateDns' },
-            ],
-        });
+        expect(states.at(-1)?.checks.filter(({ step }) => !isOverviewStep(step))).toMatchObject([
+            { finding: 'endpointReady' },
+            { network: { publicAccess: 'disabled', ipRules: 1, privateEndpoints: 1 } },
+            { finding: 'firewallPrivateEndpoint', auth: 'entra' },
+            { finding: 'privateDns' },
+        ]);
         expect(JSON.stringify(states)).not.toContain('203.0.113.45');
     });
 
@@ -643,7 +659,7 @@ describe('diagnosing a NoSQL connection', () => {
             });
             const state = (await diagnose(cloud)).at(-1)!;
             expect(io.lookup).toHaveBeenCalledTimes(privateEndpoints > 0 ? 1 : 0);
-            expect(state.checks).toEqual([
+            expect(state.checks.filter(({ step }) => !isOverviewStep(step))).toEqual([
                 expect.objectContaining({ step: 'target', status: 'passed' }),
                 expect.objectContaining({ step: 'accountSettings', status: 'passed' }),
                 expect.objectContaining({ step: 'access', status: 'failed', finding: 'firewallUnknown' }),
@@ -665,15 +681,76 @@ describe('diagnosing a NoSQL connection', () => {
         expect(io.getCosmosClient).not.toHaveBeenCalled();
         expect(io.readAll).not.toHaveBeenCalled();
         expect(io.lookup).toHaveBeenCalledExactlyOnceWith('example.test', { all: true });
-        expect(states.at(-1)).toMatchObject({
-            phase: 'completed',
-            checks: [
-                { finding: 'endpointReady' },
-                { finding: 'settingsRead', network: { publicAccess: 'disabled' } },
-                { finding: 'apiProbeUnavailable', status: 'skipped' },
-                { finding: 'privateDns' },
-            ],
-        });
+        expect(states.at(-1)?.phase).toBe('completed');
+        expect(states.at(-1)?.checks.filter(({ step }) => !isOverviewStep(step))).toMatchObject([
+            { finding: 'endpointReady' },
+            { finding: 'settingsRead', network: { publicAccess: 'disabled' } },
+            { finding: 'apiProbeUnavailable', status: 'skipped' },
+            { finding: 'privateDns' },
+        ]);
+    });
+
+    it('verifies Overview reads independently and distinguishes a denied read from a missing log table', async () => {
+        io.get.mockResolvedValue({ documentEndpoint: 'https://example.test/', disableLocalAuth: true });
+        io.metricsList.mockRejectedValue({ statusCode: 403, message: 'private metric error' });
+        io.queryResource
+            .mockResolvedValueOnce({ status: 'Success', tables: [{ columnDescriptors: [], rows: [] }] })
+            .mockRejectedValueOnce({
+                code: 'SemanticError',
+                message: 'Failed to resolve table CDBQueryRuntimeStatistics',
+            });
+        const state = (await diagnose(cloud)).at(-1)!;
+        expect(phaseLabel(state)).toBe('Cosmos DB data-plane access verified.');
+        expect(state.checks.filter(({ step }) => isOverviewStep(step))).toEqual([
+            { step: 'metrics', finding: 'overviewDenied', status: 'info', http: { status: 403 } },
+            { step: 'alerts', finding: 'overviewRead', status: 'passed' },
+            { step: 'advisor', finding: 'overviewRead', status: 'passed' },
+            { step: 'requestLogs', finding: 'overviewRead', status: 'passed' },
+            { step: 'queryLogs', finding: 'overviewLogsMissing', status: 'info' },
+        ]);
+        expect(io.metricsList).toHaveBeenCalledExactlyOnceWith(
+            cloud.account.id,
+            expect.objectContaining({ metricnames: 'TotalRequests' }),
+        );
+        expect(io.alertsList).toHaveBeenCalledExactlyOnceWith(
+            '/subscriptions/subscription',
+            expect.objectContaining({ targetResource: cloud.account.id, pageCount: 1 }),
+        );
+        expect(io.advisorList).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ top: 1 }));
+        expect(io.createLogsQueryClient).toHaveBeenCalledExactlyOnceWith(
+            expect.anything(),
+            cloud.account.subscription,
+            { createIfNone: false },
+        );
+        expect(io.queryResource.mock.calls.map(([resource, query]) => [resource, query])).toEqual([
+            [cloud.account.id.slice(1), 'CDBDataPlaneRequests | take 0'],
+            [cloud.account.id.slice(1), 'CDBQueryRuntimeStatistics | take 0'],
+        ]);
+        const report = renderReport(state);
+        expect(report).toContain('## Account Overview access');
+        expect(report).toContain('Required diagnostic category: QueryRuntimeStatistics.');
+        expect(
+            report +
+                renderJsonReport(state) +
+                JSON.stringify(io.log.mock.calls) +
+                JSON.stringify(io.telemetry.mock.calls),
+        ).not.toMatch(/resourceGroups\/group|private metric error|take 0/);
+    });
+
+    it('keeps successful Overview reads when another read times out', async () => {
+        vi.useFakeTimers();
+        try {
+            io.get.mockResolvedValue({ documentEndpoint: 'https://example.test/', disableLocalAuth: true });
+            io.metricsList.mockImplementation(() => new Promise(() => {}));
+            const run = diagnose(cloud);
+            await vi.advanceTimersByTimeAsync(6_000);
+            const state = (await run).at(-1)!;
+            expect(state.checks.find(({ step }) => step === 'metrics')).toMatchObject({ finding: 'overviewTimedOut' });
+            expect(state.checks.find(({ step }) => step === 'alerts')).toMatchObject({ finding: 'overviewRead' });
+            expect(io.metricsList.mock.calls[0][1].abortSignal.aborted).toBe(true);
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     it('keeps the API probe skipped for a saved non-NoSQL connection', async () => {

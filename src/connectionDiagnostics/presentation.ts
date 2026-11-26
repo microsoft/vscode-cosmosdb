@@ -5,15 +5,29 @@
 
 import * as l10n from '@vscode/l10n';
 import { checkHelpTopics, diagnosticsHelpUrls, helpLabel } from './help';
-import { type CheckResult, type DiagnosticsState, type Finding, getPrimaryDataCheck, type Step } from './model';
+import {
+    type ActiveStep,
+    type CheckResult,
+    type DiagnosticsState,
+    type Finding,
+    getPrimaryDataCheck,
+    isOverviewStep,
+    type OverviewStep,
+} from './model';
 
-export function stepLabel(step: Step): string {
+export function stepLabel(step: ActiveStep): string {
     return {
         target: l10n.t('Connection endpoint'),
         accountSettings: l10n.t('Azure account settings (control plane)'),
         access: l10n.t('Cosmos DB data-plane access'),
         query: l10n.t('Selected container query'),
         dns: l10n.t('Server address (DNS)'),
+        accountOverview: l10n.t('Account Overview access'),
+        metrics: l10n.t('Azure Monitor metrics'),
+        alerts: l10n.t('Azure Monitor alerts'),
+        advisor: l10n.t('Azure Advisor recommendations'),
+        requestLogs: l10n.t('Log Analytics request logs'),
+        queryLogs: l10n.t('Log Analytics query runtime logs'),
     }[step];
 }
 
@@ -61,6 +75,20 @@ export function checkEvidence(check: CheckResult): string | undefined {
     if (check.network) return publicAccessText(check.network);
     if (check.auth) return authText(check.auth);
     return check.status === 'skipped' ? statusLabel(check.status) : undefined;
+}
+
+function overviewPermissionHint(step: OverviewStep): string {
+    if (step === 'requestLogs' || step === 'queryLogs') {
+        return l10n.t(
+            'Check effective log-query permissions and the workspace access mode. Log Analytics Reader is one way to grant this access.',
+        );
+    }
+    if (step === 'advisor') {
+        return l10n.t('Check Azure Advisor read access at subscription scope, for example through the Reader role.');
+    }
+    return l10n.t(
+        'Check Azure Monitor read permissions and their scope, for example through the Monitoring Reader role.',
+    );
 }
 
 export function checkText(
@@ -190,9 +218,29 @@ export function checkText(
         unresolvedDns: l10n.t(
             'Local name resolution was inconclusive. A proxy may resolve the hostname independently.',
         ),
+        overviewRead: l10n.t(
+            'The Azure read probe succeeded. This does not establish whether there are records to display.',
+        ),
+        overviewDenied: l10n.t('Azure denied the read request for the signed-in identity.'),
+        overviewAuthentication: l10n.t(
+            'Azure rejected the authentication for this request. Sign in to Azure and try again.',
+        ),
+        overviewLogsMissing: l10n.t(
+            'Log Analytics could not resolve the required table. Check resource-specific diagnostic log collection and wait for data to arrive.',
+        ),
+        overviewUnavailable: l10n.t(
+            'Could not verify read access. Retry, and check Azure sign-in or service availability if this persists.',
+        ),
+        overviewTimedOut: l10n.t('The Azure read probe timed out. This does not establish whether access is allowed.'),
     };
     const rowEvidence = omitRowEvidence ? checkEvidence(check) : undefined;
     const parts = [descriptions[check.finding]];
+    if (check.finding === 'overviewDenied' && isOverviewStep(check.step))
+        parts.push(overviewPermissionHint(check.step));
+    if (check.finding === 'overviewLogsMissing') {
+        if (check.step === 'requestLogs') parts.push(l10n.t('Required diagnostic category: DataPlaneRequests.'));
+        if (check.step === 'queryLogs') parts.push(l10n.t('Required diagnostic category: QueryRuntimeStatistics.'));
+    }
     if (check.failureStage) {
         const stage = {
             credentials: l10n.t('Credential acquisition'),
@@ -242,14 +290,16 @@ export function statusLabel(status: CheckResult['status']): string {
 
 export function renderReport(state: DiagnosticsState): string {
     const help = [...new Set(state.checks.flatMap((check) => checkHelpTopics(check, state.kind)))];
+    const overview = state.checks.filter(({ step }) => isOverviewStep(step));
+    const row = (check: CheckResult) =>
+        `- ${stepLabel(check.step)} (${statusLabel(check.status)}) — ${checkText(check, state.kind)}`;
     return [
         `# ${l10n.t('Cosmos DB connection diagnostics')}`,
         '',
         phaseLabel(state),
         '',
-        ...state.checks.map(
-            (check) => `- ${stepLabel(check.step)} (${statusLabel(check.status)}) — ${checkText(check, state.kind)}`,
-        ),
+        ...state.checks.filter(({ step }) => !isOverviewStep(step)).map(row),
+        ...(overview.length ? ['', `## ${stepLabel('accountOverview')}`, '', ...overview.map(row)] : []),
         ...(help.length
             ? [
                   '',

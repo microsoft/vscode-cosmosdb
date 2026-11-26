@@ -5,7 +5,8 @@
 
 import { DataPlaneProbe } from './dataPlaneProbe';
 import { checkDns, shouldCheckDnsAfterAccess } from './dnsProbe';
-import { type CheckResult, type DiagnosticsState, type Step } from './model';
+import { type ActiveStep, type CheckResult, type DiagnosticsState, overviewSteps, type Step } from './model';
+import { checkOverviewAccess } from './overviewProbe';
 import { DiagnosticsRunTrace, reportDiagnosticsOutcome } from './runTrace';
 import {
     checkAccountSettings,
@@ -29,19 +30,30 @@ export async function runDiagnostics(
     const scope = target.probe === 'query' ? 'container' : undefined;
     const trace = new DiagnosticsRunTrace(kind, target.probe);
     const checks: CheckResult[] = [];
-    let active: Step = azureAccount ? 'accountSettings' : 'target';
-    const begin = (step: Step) => {
-        active = step;
+    const progress: { active: ActiveStep } = { active: azureAccount ? 'accountSettings' : 'target' };
+    const begin = (step: ActiveStep) => {
+        progress.active = step;
         trace.recordChecks(checks);
-        trace.begin(step);
-        publish({ kind, scope, phase: 'running', active, checks: [...checks], trace: trace.snapshot() });
+        for (const started of step === 'accountOverview' ? overviewSteps : [step]) trace.begin(started);
+        publish({ kind, scope, phase: 'running', active: step, checks: [...checks], trace: trace.snapshot() });
     };
     try {
-        begin(active);
+        begin(progress.active);
         signal.throwIfAborted();
         await runChecks({ target, signal, emulator, azureAccount, trace, checks, begin, onRbacPrincipal });
+        if (target.kind === 'azure') {
+            signal.throwIfAborted();
+            begin('accountOverview');
+            checks.push(...(await checkOverviewAccess(target.account, signal)));
+        }
     } catch {
-        if (!signal.aborted) checks.push({ step: active, finding: 'unexpected', status: 'failed' });
+        if (!signal.aborted) {
+            if (progress.active === 'accountOverview') {
+                for (const step of overviewSteps) checks.push({ step, finding: 'overviewUnavailable', status: 'info' });
+            } else {
+                checks.push({ step: progress.active, finding: 'unexpected', status: 'failed' });
+            }
+        }
     } finally {
         trace.recordChecks(checks);
         const phase = signal.aborted ? 'cancelled' : 'completed';

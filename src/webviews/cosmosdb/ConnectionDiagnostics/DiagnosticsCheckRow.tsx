@@ -14,7 +14,12 @@ import {
 import * as l10n from '@vscode/l10n';
 import { type ReactNode } from 'react';
 import { checkHelpTopics, type DiagnosticsHelpTopic, helpLabel } from '../../../connectionDiagnostics/help';
-import { type CheckResult, type DiagnosticsState, type Step } from '../../../connectionDiagnostics/model';
+import {
+    type CheckResult,
+    type DiagnosticsState,
+    isOverviewStep,
+    type Step,
+} from '../../../connectionDiagnostics/model';
 import { checkEvidence, checkText, statusLabel, stepLabel } from '../../../connectionDiagnostics/presentation';
 import { useDiagnosticsStyles } from './styles';
 
@@ -110,6 +115,7 @@ export function DiagnosticsCheckRow({ step, state, ...details }: CheckRowProps) 
     const labelId = useId('diagnostics-check');
     const check = state?.checks.find((result) => result.step === step);
     const active = state?.phase === 'running' && state.active === step;
+    const checking = active || (state?.active === 'accountOverview' && isOverviewStep(step));
     const notRun = !check && state && state.phase !== 'running';
     const duration = check?.status !== 'skipped' ? state?.trace?.checkDurations?.[step] : undefined;
     return (
@@ -126,7 +132,7 @@ export function DiagnosticsCheckRow({ step, state, ...details }: CheckRowProps) 
                     </span>
                 )}
             </Text>
-            <CheckStatus status={active ? 'checking' : (check?.status ?? (notRun ? 'notRun' : 'waiting'))} />
+            <CheckStatus status={checking ? 'checking' : (check?.status ?? (notRun ? 'notRun' : 'waiting'))} />
             <div className={styles.details}>
                 {check && state ? (
                     <CheckDetails {...details} check={check} state={state} labelId={labelId} />

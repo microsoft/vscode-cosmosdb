@@ -129,6 +129,7 @@ it('announces a step once across repeated polls, then announces the outcome once
 
     const outcome = 'Could not verify Cosmos DB data-plane access.';
     await screen.findByRole('region', { name: outcome });
+    await waitFor(() => expect(announce).toHaveBeenCalledWith(expect.stringContaining(outcome), expect.anything()));
     const messages = announce.mock.calls.map(([message]) => message);
     expect(messages.filter((message) => message === 'Checking: Cosmos DB data-plane access')).toHaveLength(1);
     expect(messages.filter((message) => message.includes(outcome))).toHaveLength(1);
@@ -153,6 +154,35 @@ it('shows the outcome and check findings without a disclosure', async () => {
     expect(within(list).getByRole('img', { name: 'Passed' })).toBeVisible();
     expect(within(list).getByRole('img', { name: 'Failed' })).toBeVisible();
     expect(within(list).getByText('Not run')).not.toHaveAttribute('aria-hidden');
+});
+
+it('keeps Overview permissions separate from successful data-plane access', async () => {
+    client.state.query.mockResolvedValue({
+        ...completed,
+        kind: 'azure',
+        checks: [
+            { step: 'access', finding: 'connected', status: 'passed' },
+            { step: 'metrics', finding: 'overviewDenied', status: 'info' },
+            { step: 'queryLogs', finding: 'overviewLogsMissing', status: 'info' },
+        ],
+    } satisfies DiagnosticsState);
+    client.openHelp.mutate.mockResolvedValue(true);
+    const user = userEvent.setup();
+    renderPanel();
+
+    expect(await screen.findByRole('region', { name: 'Cosmos DB data-plane access verified.' })).toBeVisible();
+    const checks = within(screen.getByRole('list', { name: 'Account Overview access' }));
+    expect(checks.getByText(/Monitoring Reader/)).toBeVisible();
+    expect(checks.getByText('Required diagnostic category: QueryRuntimeStatistics.', { exact: false })).toBeVisible();
+    const help = within(checks.getByRole('group', { name: 'Azure Monitor metrics' })).getByRole('button', {
+        name: 'Review Azure Monitor permissions',
+    });
+    expect(help).toHaveTextContent('Review Azure Monitor permissions');
+    expect(help).toHaveAccessibleName('Review Azure Monitor permissions');
+    help.focus();
+    await user.keyboard('{Enter}');
+    expect(client.openHelp.mutate).toHaveBeenCalledExactlyOnceWith('monitorAccess');
+    expect(screen.queryByRole('button', { name: 'Add Data Contributor role' })).not.toBeInTheDocument();
 });
 
 it('distinguishes an ARM read from a data-plane firewall denial without showing a redundant DNS step', async () => {

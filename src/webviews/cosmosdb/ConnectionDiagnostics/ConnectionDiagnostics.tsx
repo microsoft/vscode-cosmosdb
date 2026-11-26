@@ -31,7 +31,13 @@ import { useTrpcClient } from '@microsoft/vscode-ext-webview/react';
 import * as l10n from '@vscode/l10n';
 import { useEffect, useRef, useState } from 'react';
 import { type DiagnosticsHelpTopic } from '../../../connectionDiagnostics/help';
-import { type DiagnosticsState, getPrimaryDataCheck, type Step } from '../../../connectionDiagnostics/model';
+import {
+    type DiagnosticsState,
+    getPrimaryDataCheck,
+    isOverviewStep,
+    overviewSteps,
+    type Step,
+} from '../../../connectionDiagnostics/model';
 import { phaseLabel, stepLabel } from '../../../connectionDiagnostics/presentation';
 import { type ConnectionDiagnosticsRouter } from '../../../panels/trpc/routers/connectionDiagnosticsRouter';
 import { DiagnosticsCheckRow } from './DiagnosticsCheckRow';
@@ -88,6 +94,39 @@ function checkedText(finishedAt: number, now: number): string {
     if (minutes === 1) return l10n.t('Checked 1 minute ago');
     if (minutes < 60) return l10n.t('Checked {0} minutes ago', minutes);
     return l10n.t('Checked on {0}', new Date(finishedAt).toLocaleString());
+}
+
+function OverviewChecks({
+    state,
+    helpFailure,
+    openHelp,
+}: {
+    state: DiagnosticsState;
+    helpFailure?: Step;
+    openHelp: (step: Step, topic: DiagnosticsHelpTopic) => Promise<void>;
+}) {
+    const styles = useDiagnosticsStyles();
+    const checking = state.active === 'accountOverview';
+    if (!checking && !state.checks.some(({ step }) => isOverviewStep(step))) return null;
+    const title = stepLabel('accountOverview');
+    return (
+        <ContainerSection
+            title={title}
+            subtitle={l10n.t('These checks use your Azure sign-in and do not affect the Cosmos DB connection result.')}
+        >
+            <ul className={styles.checks} aria-label={title} aria-busy={checking}>
+                {overviewSteps.map((step) => (
+                    <DiagnosticsCheckRow
+                        key={step}
+                        step={step}
+                        state={state}
+                        openHelp={(topic) => void openHelp(step, topic)}
+                        helpFailed={helpFailure === step}
+                    />
+                ))}
+            </ul>
+        </ContainerSection>
+    );
 }
 
 export function ConnectionDiagnostics() {
@@ -358,6 +397,7 @@ export function ConnectionDiagnostics() {
                             </MessageBar>
                         )}
                     </ContainerSection>
+                    {state && <OverviewChecks state={state} helpFailure={helpFailure} openHelp={openHelp} />}
                 </ContainerMain>
             </ContainerBody>
             <ContainerFooter

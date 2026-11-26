@@ -14,6 +14,10 @@ export const diagnosticsHelpUrls = {
     dataRbac: 'https://learn.microsoft.com/azure/cosmos-db/how-to-connect-role-based-access-control',
     proxy: 'https://code.visualstudio.com/docs/setup/network',
     emulator: 'https://learn.microsoft.com/azure/cosmos-db/emulator',
+    monitorAccess: 'https://learn.microsoft.com/azure/azure-monitor/fundamentals/roles-permissions-security',
+    advisorAccess: 'https://learn.microsoft.com/azure/advisor/permissions',
+    logsAccess: 'https://learn.microsoft.com/azure/azure-monitor/logs/manage-access',
+    diagnosticsSettings: 'https://learn.microsoft.com/azure/cosmos-db/monitor-resource-logs',
 } as const;
 
 export type DiagnosticsHelpTopic = keyof typeof diagnosticsHelpUrls;
@@ -27,12 +31,22 @@ export function helpLabel(topic: DiagnosticsHelpTopic): string {
         dataRbac: l10n.t('Learn about Cosmos DB data-plane roles'),
         proxy: l10n.t('Configure VS Code network and proxy settings'),
         emulator: l10n.t('Configure the Cosmos DB emulator'),
+        monitorAccess: l10n.t('Review Azure Monitor permissions'),
+        advisorAccess: l10n.t('Review Azure Advisor permissions'),
+        logsAccess: l10n.t('Review Log Analytics permissions'),
+        diagnosticsSettings: l10n.t('Configure Cosmos DB resource logs'),
     }[topic];
 }
 
 export function checkHelpTopics(check: CheckResult, kind: TargetKind): readonly DiagnosticsHelpTopic[] {
     if (kind === 'emulator') return check.status === 'failed' ? ['emulator'] : [];
     switch (check.finding) {
+        case 'overviewDenied':
+            if (check.step === 'advisor') return ['advisorAccess'];
+            if (check.step === 'requestLogs' || check.step === 'queryLogs') return ['logsAccess'];
+            return ['monitorAccess'];
+        case 'overviewLogsMissing':
+            return ['diagnosticsSettings'];
         case 'firewallPublic':
             return ['ipFirewall', 'forbidden'];
         case 'firewallServiceEndpoint':

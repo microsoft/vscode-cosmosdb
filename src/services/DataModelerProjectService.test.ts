@@ -137,6 +137,27 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('DataModelerProjectService', () => {
+    it('persists database association before deployment and preserves edits queued before association', async () => {
+        await service.loadState();
+        const state = snapshot();
+        const saving = service.saveState(state);
+        const associating = service.setDatabaseId('selected-db');
+        await Promise.all([saving, associating]);
+        const reopened = new DataModelerProjectService(endpoint);
+        expect(await reopened.loadState()).toEqual({ ...state, databaseId: 'selected-db' });
+        await reopened.saveState({ ...state, databaseId: 'selected-db', recommendation: { status: 'idle' } });
+        expect((await service.loadState())?.databaseId).toBe('selected-db');
+    });
+
+    it('associates a fresh model and leaves it unchanged if writing a replacement fails', async () => {
+        await service.loadState();
+        await service.setDatabaseId('first-db');
+        const before = await service.loadState();
+        vi.mocked(vscode.workspace.fs.rename).mockRejectedValueOnce(new Error('Cannot replace'));
+        await expect(service.saveState({ ...snapshot(), databaseId: 'second-db' })).rejects.toThrow('Cannot replace');
+        expect(await service.loadState()).toEqual(before);
+    });
+
     it('deletes all accounts, temporary files and legacy data while preserving other extension storage', async () => {
         const second = new DataModelerProjectService('https://account-b.documents.azure.com');
         await service.loadState();

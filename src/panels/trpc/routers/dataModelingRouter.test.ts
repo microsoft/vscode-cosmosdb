@@ -116,6 +116,38 @@ function context(): DataModelingRouterContext {
 describe('data modeler deployment procedure', () => {
     beforeEach(() => vi.clearAllMocks());
 
+    it.each([false, true])(
+        'rejects late autosaves, including replacement during validation: %s',
+        async (duringValidation) => {
+            const ctx = context();
+            ctx.project.saveState = vi.fn();
+            ctx.isModelActive = vi.fn().mockReturnValue(false);
+            if (duringValidation) vi.mocked(ctx.isModelActive).mockReturnValueOnce(true);
+            const state = { wizard: createInitialState(), recommendation: { status: 'idle' as const } };
+            await expect(dataModelingRouterDef.createCaller(ctx).saveState(state)).rejects.toThrow(
+                'This data model has been closed or is being replaced.',
+            );
+            expect(ctx.project.saveState).not.toHaveBeenCalled();
+            expect(ctx.actionContext?.telemetry.suppressAll).toBe(true);
+        },
+    );
+
+    it('keeps the host association on autosaves and updates it only after a successful save', async () => {
+        const ctx = context();
+        ctx.project.saveState = vi.fn().mockResolvedValue(undefined);
+        ctx.getDeploymentDatabaseId = () => 'launch-db';
+        ctx.setDeploymentDatabaseId = vi.fn();
+        const state = { wizard: createInitialState(), recommendation: { status: 'idle' as const } };
+        const caller = dataModelingRouterDef.createCaller(ctx);
+        await caller.saveState(state);
+        expect(ctx.project.saveState).toHaveBeenCalledWith({ ...state, databaseId: 'launch-db' });
+        expect(ctx.setDeploymentDatabaseId).toHaveBeenCalledWith('launch-db');
+        vi.mocked(ctx.project.saveState).mockRejectedValueOnce(new Error('Save failed'));
+        await expect(caller.saveState({ ...state, databaseId: 'other-db' })).rejects.toThrow('Save failed');
+        expect(ctx.setDeploymentDatabaseId).toHaveBeenCalledTimes(1);
+        expect(ctx.actionContext?.telemetry.properties).toEqual({});
+    });
+
     it.each([
         { choice: 'Yes', result: true },
         { choice: 'No', result: false },

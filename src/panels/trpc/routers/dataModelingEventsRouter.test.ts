@@ -13,6 +13,26 @@ vi.mock('../trpc', async () => {
 import { DataModelingEventSchema, dataModelingEventsRouterDef } from './dataModelingEventsRouter';
 
 describe('data modeler event correlation', () => {
+    it('replays the launch database before streaming later selections without generic telemetry', async () => {
+        const ctx = {
+            actionContext: { telemetry: {}, errorHandling: {} },
+            getDeploymentDatabaseId: () => 'launch-db',
+            eventSink: {
+                async *[Symbol.asyncIterator]() {
+                    yield { type: 'deploymentDatabaseSelected', databaseId: 'another-db' };
+                },
+            },
+        } as unknown as DataModelingRouterContext;
+        const stream = await dataModelingEventsRouterDef.createCaller(ctx).events();
+        const events = [];
+        for await (const event of stream) events.push(event);
+        expect(events).toEqual([
+            { type: 'deploymentDatabaseSelected', databaseId: 'launch-db' },
+            { type: 'deploymentDatabaseSelected', databaseId: 'another-db' },
+        ]);
+        expect(ctx.actionContext?.telemetry.suppressAll).toBe(true);
+    });
+
     it('keeps event-stream failures outside generic error telemetry', async () => {
         const error = new Error('PRIVATE RESPONSE');
         const ctx = {

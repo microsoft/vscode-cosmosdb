@@ -16,6 +16,7 @@ import {
     type ModelingAdvisorSnapshot,
 } from '../dataModeling/modelingAdvisorSchema';
 import { ext } from '../extensionVariables';
+import { createInitialSnapshot } from '../webviews/cosmosdb/DataModeling/dataModel';
 
 export interface DataModelerAccount {
     endpoint: string;
@@ -166,6 +167,7 @@ export class DataModelerProjectService {
             if (this.loadedRevision !== DataModelerProjectService.revision) {
                 throw new Error(l10n.t('Load the saved data model before saving changes.'));
             }
+
             const parsed = ModelingAdvisorSnapshotSchema.safeParse(snapshot);
             if (!parsed.success) {
                 throw new Error(l10n.t('The data modeler state is invalid and could not be saved.'));
@@ -173,6 +175,22 @@ export class DataModelerProjectService {
             // Outside load recovery, externally damaged or newer-version files still require reopening the modeler.
             const existing = await this.readProject();
             const state = parsed.data;
+            await this.writeProject({ version: 1, name: existing?.name ?? 'Data Modeler', state });
+            await this.pruneExpiredStates();
+        });
+    }
+
+    /** Associates an open model without overwriting edits already queued for autosave. */
+    public setDatabaseId(databaseId: string): Promise<void> {
+        return DataModelerProjectService.enqueue(async () => {
+            if (this.loadedRevision !== DataModelerProjectService.revision) {
+                throw new Error(l10n.t('Load the saved data model before saving changes.'));
+            }
+            const existing = await this.readProject();
+            const state = ModelingAdvisorSnapshotSchema.parse({
+                ...(existing?.state ?? createInitialSnapshot()),
+                databaseId,
+            });
             await this.writeProject({ version: 1, name: existing?.name ?? 'Data Modeler', state });
             await this.pruneExpiredStates();
         });

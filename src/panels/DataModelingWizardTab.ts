@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { UserCancelledError } from '@microsoft/vscode-azext-utils';
 import { TypedEventSink } from '@microsoft/vscode-ext-webview';
 import { attachTrpc } from '@microsoft/vscode-ext-webview/host';
 import * as l10n from '@vscode/l10n';
@@ -28,13 +29,17 @@ export class DataModelingWizardTab extends BaseTab {
 
     public readonly eventSink: TypedEventSink<DataModelingEvent>;
     public readonly modelingTelemetry: ModelingTelemetry;
+    private deploymentDatabaseId?: string;
+    private replacing = false;
 
     protected constructor(
         panel: vscode.WebviewPanel,
         private readonly project: DataModelerProjectService,
         private readonly account: DataModelerAccount,
+        databaseId?: string,
     ) {
         super(panel, DataModelingWizardTab.viewType);
+        this.deploymentDatabaseId = databaseId;
         DataModelingWizardTab.openTabs.add(this);
 
         this.eventSink = new TypedEventSink<DataModelingEvent>();
@@ -55,30 +60,21 @@ export class DataModelingWizardTab extends BaseTab {
     public static async render(
         account: DataModelerAccount,
         viewColumn?: vscode.ViewColumn,
+        databaseId?: string,
     ): Promise<DataModelingWizardTab> {
         const column = viewColumn ?? vscode.ViewColumn.Active;
         const project = DataModelerProjectService.getInstance(account.endpoint);
 
-        // Reuse an already-open wizard tab rather than stacking duplicates.
         const pending = this.pendingTabs.get(project);
-        const existing = pending
-            ? await pending
-            : [...DataModelingWizardTab.openTabs].find((tab) => tab.project === project);
-        if (existing) {
-            if (account.getControlPlane) {
-                existing.account.getControlPlane = account.getControlPlane;
+        if (pending) {
+            const tab = await pending;
+            if (databaseId !== undefined && databaseId !== tab.deploymentDatabaseId) {
+                return this.render(account, viewColumn, databaseId);
             }
-            if (account.getDeploymentTarget) {
-                existing.account.getDeploymentTarget = account.getDeploymentTarget;
-            }
-            if (account.getQueryConnection) {
-                existing.account.getQueryConnection = account.getQueryConnection;
-            }
-            existing.panel.reveal(column);
-            return existing;
+            this.reveal(tab, account, column);
+            return tab;
         }
-
-        const opening = this.openNew(account, project, column);
+        const opening = this.openOrReuse(account, project, column, databaseId);
         this.pendingTabs.set(project, opening);
         try {
             return await opening;
@@ -87,15 +83,61 @@ export class DataModelingWizardTab extends BaseTab {
         }
     }
 
-    private static async openNew(
+    private static reveal(
+        existing: DataModelingWizardTab,
+        account: DataModelerAccount,
+        column: vscode.ViewColumn,
+    ): void {
+        if (account.getControlPlane) {
+            existing.account.getControlPlane = account.getControlPlane;
+        }
+        if (account.getDeploymentTarget) {
+            existing.account.getDeploymentTarget = account.getDeploymentTarget;
+        }
+        if (account.getQueryConnection) {
+            existing.account.getQueryConnection = account.getQueryConnection;
+        }
+        existing.panel.reveal(column);
+    }
+
+    private static async openOrReuse(
         account: DataModelerAccount,
         project: DataModelerProjectService,
         column: vscode.ViewColumn,
+        databaseId?: string,
     ): Promise<DataModelingWizardTab> {
-        // The webview reloads and reports failures with Retry loading, so a failed read must not block opening.
-        const saved = await project.loadState().catch(() => null);
-        let choice: 'new' | 'continued' | 'replaced' = saved ? 'continued' : 'new';
-        if (saved) {
+        const existing = [...this.openTabs].find((tab) => tab.project === project);
+        if (existing && databaseId === undefined) {
+            this.reveal(existing, account, column);
+            return existing;
+        }
+        // Account-only opens retain Retry loading recovery; database launches must know which model they would replace.
+        const saved = existing
+            ? undefined
+            : databaseId !== undefined
+              ? await project.loadState()
+              : await project.loadState().catch(() => null);
+        const savedDatabaseId =
+            existing?.deploymentDatabaseId ?? saved?.databaseId ?? saved?.deployment?.input.databaseName;
+        let choice: 'new' | 'continued' | 'replaced' = saved || existing ? 'continued' : 'new';
+        if (databaseId !== undefined && savedDatabaseId !== undefined && databaseId !== savedDatabaseId) {
+            const ok = { title: l10n.t('OK') };
+            const cancel = { title: l10n.t('Cancel'), isCloseAffordance: true };
+            const answer = await vscode.window.showWarningMessage(
+                l10n.t('Replace the current data model?'),
+                {
+                    modal: true,
+                    detail: l10n.t(
+                        'The current data model is for database "{currentDatabase}". Replace it with a new model for "{database}"? Only the saved model will be replaced; Azure databases and containers will not be deleted.',
+                        { currentDatabase: savedDatabaseId, database: databaseId },
+                    ),
+                },
+                ok,
+                cancel,
+            );
+            if (answer !== ok) throw new UserCancelledError();
+            choice = 'replaced';
+        } else if (saved || existing) {
             const yes = { title: l10n.t('Yes') };
             const no = { title: l10n.t('No'), isCloseAffordance: true };
             const answer = await vscode.window.showWarningMessage(
@@ -110,11 +152,42 @@ export class DataModelingWizardTab extends BaseTab {
                 no,
             );
             if (answer === yes) {
-                await project.saveState(createInitialSnapshot());
                 choice = 'replaced';
             }
         }
 
+        const selectedDatabaseId = databaseId ?? (choice === 'replaced' ? undefined : savedDatabaseId);
+        if (existing) existing.replacing = true;
+        try {
+            if (choice === 'replaced') {
+                await project.saveState({
+                    ...createInitialSnapshot(),
+                    ...(selectedDatabaseId !== undefined ? { databaseId: selectedDatabaseId } : {}),
+                });
+            } else if (databaseId !== undefined) {
+                if (existing) {
+                    if (existing.deploymentDatabaseId !== databaseId) await project.setDatabaseId(databaseId);
+                } else {
+                    await project.saveState({ ...(saved ?? createInitialSnapshot()), databaseId });
+                }
+            }
+        } catch (error) {
+            if (existing) existing.replacing = false;
+            throw error;
+        }
+        if (existing && choice !== 'replaced') {
+            const databaseChanged = existing.deploymentDatabaseId !== selectedDatabaseId;
+            existing.deploymentDatabaseId = selectedDatabaseId;
+            existing.replacing = false;
+            if (databaseChanged && selectedDatabaseId !== undefined) {
+                existing.eventSink.emit({ type: 'deploymentDatabaseSelected', databaseId: selectedDatabaseId });
+            }
+            existing.modelingTelemetry.record({ type: 'sessionChoice', choice });
+            this.reveal(existing, account, column);
+            return existing;
+        }
+        // Retire the old RPC context before a new webview can autosave its replacement.
+        existing?.dispose();
         const panel = vscode.window.createWebviewPanel(
             DataModelingWizardTab.viewType,
             account.name ? l10n.t('Data Modeler: {name}', { name: account.name }) : l10n.t('Data Modeler'),
@@ -125,7 +198,7 @@ export class DataModelingWizardTab extends BaseTab {
             },
         );
 
-        const tab = new DataModelingWizardTab(panel, project, { ...account });
+        const tab = new DataModelingWizardTab(panel, project, { ...account }, selectedDatabaseId);
         tab.modelingTelemetry.record({ type: 'sessionChoice', choice });
         if (choice === 'replaced') tab.modelingTelemetry.persistenceSave(true);
         return tab;
@@ -180,6 +253,11 @@ export class DataModelingWizardTab extends BaseTab {
             eventSink: this.eventSink,
             wizardTabId: this.getId(),
             modelingTelemetry: this.modelingTelemetry,
+            getDeploymentDatabaseId: () => this.deploymentDatabaseId,
+            setDeploymentDatabaseId: (databaseId) => {
+                this.deploymentDatabaseId = databaseId;
+            },
+            isModelActive: () => !this.isDisposed && !this.replacing,
         };
     }
 }

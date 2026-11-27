@@ -167,6 +167,7 @@ export const WizardStateSchema: z.ZodType<WizardState> = StoredWizardStateSchema
 
 export const ModelingAdvisorSnapshotSchema = z
     .object({
+        databaseId: z.string().min(1).optional(),
         // Preserve invalid Data-tab estimates in drafts; recommendation requests enforce their limits and ordering.
         wizard: StoredWizardStateSchema,
         recommendation: z.object({

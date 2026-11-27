@@ -172,6 +172,9 @@ export type AccountOverviewRouterContext = CosmosDBRouterContext & {
 };
 
 export type DataModelingRouterContext = CosmosDBRouterContext & {
+    getDeploymentDatabaseId?: () => string | undefined;
+    setDeploymentDatabaseId?: (databaseId: string | undefined) => void;
+    isModelActive?: () => boolean;
     modelingTelemetry?: ModelingTelemetry;
     project: DataModelerProjectService;
     account: DataModelerAccount;

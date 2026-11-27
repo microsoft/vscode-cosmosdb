@@ -249,6 +249,78 @@ describe('data modeler saved-work choice and revisiting steps', () => {
         client.dataModeling.events.subscribe.mockReturnValue({ unsubscribe: vi.fn() });
     });
 
+    it('preselects the launch database in Deploy and retargets an already-open wizard', async () => {
+        client.dataModeling.loadState.query.mockResolvedValue(restored(4));
+        client.dataModeling.getDeploymentOptions.query.mockResolvedValue({
+            accountName: 'source',
+            databases: ['existing-db', 'second-db'],
+        });
+        renderReact(<DataModelingWizard />);
+        await continueExisting();
+        expect(screen.queryByText(/^Database: /)).not.toBeInTheDocument();
+        const callbacks = client.dataModeling.events.subscribe.mock.calls.at(-1)?.[1] as {
+            onData: (event: DataModelingEvent) => void;
+        };
+        act(() => callbacks.onData({ type: 'deploymentDatabaseSelected', databaseId: 'existing-db' }));
+        expect(await screen.findByText('Database: existing-db')).toBeVisible();
+        await waitFor(() => expect(lastSave().databaseId).toBe('existing-db'));
+        expect(screen.getByText('Database: existing-db').closest('output')).toHaveAttribute('aria-live', 'polite');
+        await enterDeployStep();
+
+        expect(screen.getByRole('radio', { name: 'Existing database' })).toBeChecked();
+        expect(screen.getByRole('combobox', { name: 'Existing database' })).toHaveTextContent('existing-db');
+        expect(screen.getByRole('combobox', { name: 'Existing database' })).toHaveAccessibleName('Existing database');
+
+        act(() => callbacks.onData({ type: 'deploymentDatabaseSelected', databaseId: 'second-db' }));
+        await waitFor(() =>
+            expect(screen.getByRole('combobox', { name: 'Existing database' })).toHaveTextContent('second-db'),
+        );
+        expect(screen.getByText('Database: second-db')).toBeVisible();
+        expect(screen.queryByText('Database: existing-db')).not.toBeInTheDocument();
+        const section = within(screen.getByRole('region', { name: 'Deploy data model' }));
+        fireEvent.click(section.getByRole('button', { name: 'Deploy' }));
+        await confirmDeployment();
+        expect(client.dataModeling.deploy.mutate).toHaveBeenCalledWith(
+            expect.objectContaining({ databaseMode: 'existing', databaseName: 'second-db' }),
+        );
+        await userEvent.click(screen.getByRole('radio', { name: 'New database' }));
+        expect(screen.queryByText(/^Database: /)).not.toBeInTheDocument();
+        fireEvent.change(screen.getByRole('textbox', { name: 'New database name' }), {
+            target: { value: 'new-target' },
+        });
+
+        expect(screen.getByText('Database: new-target')).toBeVisible();
+    });
+
+    it('restores a persisted database association before any deployment', async () => {
+        client.dataModeling.loadState.query.mockResolvedValue({ ...restored(4), databaseId: 'existing-db' });
+        renderReact(<DataModelingWizard />);
+        await continueExisting();
+        expect(screen.getByText('Database: existing-db')).toBeVisible();
+        await enterDeployStep();
+        expect(screen.getByRole('combobox', { name: 'Existing database' })).toHaveTextContent('existing-db');
+    });
+
+    it('does not silently select a different database if the launch database no longer exists', async () => {
+        client.dataModeling.loadState.query.mockResolvedValue(restored(4));
+        renderReact(<DataModelingWizard />);
+        await continueExisting();
+        const callbacks = client.dataModeling.events.subscribe.mock.calls.at(-1)?.[1] as {
+            onData: (event: DataModelingEvent) => void;
+        };
+        act(() => callbacks.onData({ type: 'deploymentDatabaseSelected', databaseId: 'deleted-db' }));
+        await enterDeployStep();
+        expect(screen.getByRole('radio', { name: 'Existing database' })).toBeChecked();
+        fireEvent.click(
+            within(screen.getByRole('region', { name: 'Deploy data model' })).getByRole('button', {
+                name: 'Deploy',
+            }),
+        );
+        expect(await screen.findByText('Select an existing database.')).toBeVisible();
+        expect(screen.getByRole('combobox', { name: 'Existing database' })).toHaveFocus();
+        expect(client.dataModeling.deploy.mutate).not.toHaveBeenCalled();
+    });
+
     it('reserves badge space beside a wrapping title and keeps the footer outside the sticky-navigation scroll region', async () => {
         vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 280, 32));
         const saved = restored(4);
@@ -612,7 +684,8 @@ describe('data modeler saved-work choice and revisiting steps', () => {
     });
 
     it('restores an existing-database deployment and clears saved completion when a retry is cancelled', async () => {
-        client.dataModeling.loadState.query.mockResolvedValue(deployedSnapshot());
+        const saved = deployedSnapshot();
+        client.dataModeling.loadState.query.mockResolvedValue(saved);
         render(<DataModelingWizard />);
         await continueExisting();
         expect(await screen.findByRole('region', { name: 'Deployment successful' })).toBeVisible();
@@ -622,7 +695,7 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             screen.getByText('Data model deployed to "existing-db": 0 container(s) created, 1 left unchanged.'),
         ).toBeVisible();
         expect(client.dataModeling.deploy.mutate).not.toHaveBeenCalled();
-        expect(client.dataModeling.saveState.mutate).not.toHaveBeenCalled();
+        expect(lastSave()).toEqual({ ...saved, databaseId: 'existing-db' });
         const deploy = within(screen.getByRole('region', { name: 'Deploy data model' })).getByRole('button', {
             name: 'Deploy',
         });
@@ -2593,7 +2666,8 @@ describe('data modeler saved-work choice and revisiting steps', () => {
             deliver('RenamedOrders');
             await enterDeployStep();
             expect(screen.queryByRole('region', { name: 'Deployment successful' })).not.toBeInTheDocument();
-            expect(screen.getByRole('textbox', { name: 'New database name' })).toHaveValue('');
+            expect(screen.getByRole('radio', { name: 'Existing database' })).toBeChecked();
+            expect(screen.getByRole('combobox', { name: 'Existing database' })).toHaveTextContent('existing-db');
         });
 
         it.each(['schema', 'document', 'arrays', 'query', 'scale', 'add', 'remove'] as const)(

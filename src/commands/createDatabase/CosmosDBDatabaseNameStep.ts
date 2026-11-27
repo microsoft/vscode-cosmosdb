@@ -8,6 +8,7 @@ import * as l10n from '@vscode/l10n';
 import { validateDatabaseName } from '../../cosmosdb/utils/validateResourceName';
 import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
+import { type AccountInfo } from '../../tree/cosmosdb/AccountInfo';
 import { type CreateDatabaseWizardContext } from './CreateDatabaseWizardContext';
 
 export class CosmosDBDatabaseNameStep extends AzureWizardPromptStep<CreateDatabaseWizardContext> {
@@ -19,7 +20,7 @@ export class CosmosDBDatabaseNameStep extends AzureWizardPromptStep<CreateDataba
             await context.ui.showInputBox({
                 prompt: l10n.t('Enter a database name'),
                 validateInput: (name: string) => this.validateInput(name),
-                asyncValidationTask: (name: string) => this.validateNameAvailable(context, name),
+                asyncValidationTask: (name: string) => validateDatabaseNameAvailable(context.accountInfo, name),
             })
         ).trim();
 
@@ -40,30 +41,30 @@ export class CosmosDBDatabaseNameStep extends AzureWizardPromptStep<CreateDataba
 
         return validateDatabaseName(name);
     }
+}
 
-    private async validateNameAvailable(
-        context: CreateDatabaseWizardContext,
-        name: string,
-    ): Promise<string | undefined> {
-        name = name.trim();
-        const error = validateDatabaseName(name);
-        if (error) return error;
+export async function validateDatabaseNameAvailable(
+    accountInfo: AccountInfo,
+    name: string,
+): Promise<string | undefined> {
+    name = name.trim();
+    const error = validateDatabaseName(name);
+    if (error) return error;
 
-        try {
-            const result = await withClaimsChallengeHandling(context.accountInfo, async (cosmosClient) =>
-                cosmosClient.databases.readAll().fetchAll(),
-            );
+    try {
+        const result = await withClaimsChallengeHandling(accountInfo, async (cosmosClient) =>
+            cosmosClient.databases.readAll().fetchAll(),
+        );
 
-            if (result.resources && result.resources.filter((c) => c.id === name).length > 0) {
-                return l10n.t('The database "{name}" already exists in the account.', { name });
-            }
-        } catch (error) {
-            ext.outputChannel.appendLine(
-                l10n.t('Failed to validate database name: {error}', { error: parseError(error).message }),
-            );
-            return undefined; // we don't want to block the user from continuing if we can't validate the name
+        if (result.resources && result.resources.filter((c) => c.id === name).length > 0) {
+            return l10n.t('The database "{name}" already exists in the account.', { name });
         }
-
-        return undefined;
+    } catch (error) {
+        ext.outputChannel.appendLine(
+            l10n.t('Failed to validate database name: {error}', { error: parseError(error).message }),
+        );
+        return undefined; // we don't want to block the user from continuing if we can't validate the name
     }
+
+    return undefined;
 }

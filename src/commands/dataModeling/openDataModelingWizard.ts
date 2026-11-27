@@ -14,7 +14,9 @@ import { resolveDataModelerAccount, type DataModelerAccountSource } from './reso
 export async function openDataModelingWizard(
     context: IActionContext,
     source?: DataModelerAccountSource,
+    databaseId?: string,
 ): Promise<void> {
+    if (databaseId) context.valuesToMask.push(databaseId);
     ensureDataModelerEnabled();
     await ensureAIFeaturesEnabled();
     const account = await resolveDataModelerAccount(context, source);
@@ -22,7 +24,7 @@ export async function openDataModelingWizard(
         await ensureAIFeaturesEnabled();
         ensureDataModelerEnabled();
         try {
-            await DataModelingWizardTab.render(account);
+            await DataModelingWizardTab.render(account, undefined, databaseId);
         } catch (error) {
             // Storage and prompt failures can contain local paths. Keep the command's error UI, not its telemetry.
             context.telemetry.suppressAll = true;

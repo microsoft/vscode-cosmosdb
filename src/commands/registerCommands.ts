@@ -20,6 +20,7 @@ import { cosmosDBCreateStoredProcedure } from './createStoredProcedure/createSto
 import { cosmosDBCreateTrigger } from './createTrigger/createTrigger';
 import { deleteAllDataModelerData } from './dataModeling/deleteAllDataModelerData';
 import { openDataModelingWizard } from './dataModeling/openDataModelingWizard';
+import { type DataModelerAccountSource } from './dataModeling/resolveDataModelerAccount';
 import { deleteAllSavedSchemas } from './deleteAllSavedSchemas/deleteAllSavedSchemas';
 import { cosmosDBDeleteContainer } from './deleteContainer/deleteContainer';
 import { cosmosDBDeleteDatabase } from './deleteDatabase/deleteDatabase';
@@ -138,7 +139,9 @@ export function registerTriggerCommands() {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.openTrigger', cosmosDBOpenTrigger, doubleClickDebounceDelay);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteTrigger', cosmosDBDeleteTrigger);
 
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.dataModeling.open', openDataModelingWizard);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.dataModeling.open', (context, source?: DataModelerAccountSource) =>
+        openDataModelingWizard(context, source),
+    );
 }
 
 export function registerMigrationCommands() {

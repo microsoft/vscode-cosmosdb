@@ -66,12 +66,17 @@ export interface DeploymentDraft {
 export function createDeploymentDraft(
     containers: DeploymentContainer[],
     deployment?: SuccessfulDeployment,
+    databaseId?: string,
 ): DeploymentDraft {
     return {
         deploymentMethod: 'direct',
-        databaseMode: deployment?.input.databaseMode ?? 'new',
+        databaseMode:
+            databaseId !== undefined && databaseId !== deployment?.input.databaseName
+                ? 'existing'
+                : (deployment?.input.databaseMode ?? 'new'),
         newDatabaseName: deployment?.input.databaseMode === 'new' ? deployment.input.databaseName : '',
-        existingDatabaseName: deployment?.input.databaseMode === 'existing' ? deployment.input.databaseName : '',
+        existingDatabaseName:
+            databaseId ?? (deployment?.input.databaseMode === 'existing' ? deployment.input.databaseName : ''),
         selectedContainers: (deployment?.input.containers ?? containers).map((container) => container.entity),
         templates: {
             bicep: { template: '', generatedTemplate: '' },
@@ -338,6 +343,7 @@ export function DeployPage({
         return undefined;
     }, [confirming, generating]);
 
+    // A newly selected database may have been created since this page loaded its inventory.
     useEffect(() => {
         let disposed = false;
         setOptions(undefined);
@@ -361,7 +367,7 @@ export function DeployPage({
         return () => {
             disposed = true;
         };
-    }, [loadOptions, loadAttempt]);
+    }, [loadOptions, loadAttempt, draft.existingDatabaseName]);
 
     const input = useMemo<DeploymentTemplateInput>(
         () => ({

@@ -149,6 +149,10 @@ const useStyles = makeStyles({
     workloadTitle: {
         overflowWrap: 'anywhere',
     },
+    databaseSubtitle: {
+        color: tokens.colorNeutralForeground2,
+        overflowWrap: 'anywhere',
+    },
     recommendationNotice: {
         display: 'flex',
         alignItems: 'center',
@@ -461,12 +465,37 @@ const HydratedDataModelingWizard = ({
         },
         [recommendation],
     );
+    const [pendingDeploymentDatabase, setPendingDeploymentDatabase] = useState<{ databaseId: string }>();
+    useEffect(() => {
+        // A new launch may retarget an open tab, but must not change an in-flight deployment.
+        if (pendingDeploymentDatabase && !deploymentBusy) {
+            setSnapshot((previous) => ({
+                ...previous,
+                databaseId: pendingDeploymentDatabase.databaseId,
+            }));
+            setDeploymentDraft(undefined);
+            setPendingDeploymentDatabase(undefined);
+        }
+    }, [pendingDeploymentDatabase, deploymentBusy, setSnapshot]);
     const initialDeploymentDraft = useMemo(
-        () => createDeploymentDraft(recommendation?.containers ?? [], snapshot.deployment),
-        [recommendation, snapshot.deployment],
+        () => createDeploymentDraft(recommendation?.containers ?? [], snapshot.deployment, snapshot.databaseId),
+        [recommendation, snapshot.deployment, snapshot.databaseId],
     );
     const currentDeploymentDraft =
         deploymentDraft && deploymentDraft.owner === recommendation ? deploymentDraft.value : initialDeploymentDraft;
+    const selectedDatabaseName =
+        currentDeploymentDraft.databaseMode === 'existing'
+            ? currentDeploymentDraft.existingDatabaseName
+            : currentDeploymentDraft.newDatabaseName;
+    useEffect(() => {
+        if (currentDeploymentDraft.databaseMode === 'existing' && selectedDatabaseName) {
+            setSnapshot((previous) =>
+                previous.databaseId === selectedDatabaseName
+                    ? previous
+                    : { ...previous, databaseId: selectedDatabaseName },
+            );
+        }
+    }, [currentDeploymentDraft.databaseMode, selectedDatabaseName, setSnapshot]);
     const updateDeploymentDraft = useCallback(
         (update: SetStateAction<DeploymentDraft>) => {
             setSnapshot((previous) => (previous.deployment ? { ...previous, deployment: undefined } : previous));
@@ -495,7 +524,11 @@ const HydratedDataModelingWizard = ({
                 previous.recommendation.value !== recommendation ||
                 previous.deployment === deployment
                     ? previous
-                    : { ...previous, deployment },
+                    : {
+                          ...previous,
+                          deployment,
+                          databaseId: deployment?.input.databaseName ?? previous.databaseId,
+                      },
             ),
         [setSnapshot, recommendation],
     );
@@ -507,6 +540,10 @@ const HydratedDataModelingWizard = ({
     useEffect(() => {
         const subscription = trpcClient.dataModeling.events.subscribe(undefined, {
             onData: (event: DataModelingEvent) => {
+                if (event.type === 'deploymentDatabaseSelected') {
+                    setPendingDeploymentDatabase({ databaseId: event.databaseId });
+                    return;
+                }
                 const pending = requestPending.current;
                 if (!pending) return;
                 if (!event.requestId && requireCorrelatedResponse.current) {
@@ -981,7 +1018,7 @@ const HydratedDataModelingWizard = ({
         setDeploymentDraft(undefined);
         setContainerTab('data');
         setPendingScenario(undefined);
-        setSnapshot(nextSnapshot);
+        setSnapshot({ ...nextSnapshot, databaseId: snapshot.databaseId });
     };
 
     const advance = () => {
@@ -1271,6 +1308,15 @@ const HydratedDataModelingWizard = ({
                                 <span className={styles.workloadTitle}>
                                     {l10n.t('Workload: {name}', { name: scenarioLabel ?? l10n.t('Not selected') })}
                                 </span>
+                            }
+                            subtitle={
+                                selectedDatabaseName ? (
+                                    <output aria-live="polite">
+                                        <Text size={200} className={styles.databaseSubtitle}>
+                                            {l10n.t('Database: {name}', { name: selectedDatabaseName })}
+                                        </Text>
+                                    </output>
+                                ) : undefined
                             }
                         />
                     }

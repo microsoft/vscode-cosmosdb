@@ -12,6 +12,10 @@ export * from '../../../dataModeling/recommendationSchema';
 
 export const DataModelingEventSchema = z.discriminatedUnion('type', [
     z.object({
+        type: z.literal('deploymentDatabaseSelected'),
+        databaseId: z.string().min(1),
+    }),
+    z.object({
         type: z.literal('recommendationReceived'),
         recommendation: PartitionKeyRecommendationSchema,
         requestId: z.string().uuid().optional(),
@@ -37,6 +41,10 @@ export const dataModelingEventsRouterDef = dataModelingRouter({
         })
         .subscription(async function* ({ ctx }) {
             const sink: TypedEventSink<DataModelingEvent> = ctx.eventSink;
+            const databaseId = ctx.getDeploymentDatabaseId?.();
+            if (databaseId !== undefined) {
+                yield { type: 'deploymentDatabaseSelected' as const, databaseId };
+            }
             for await (const event of sink) {
                 if (ctx.signal?.aborted) {
                     return;

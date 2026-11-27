@@ -10,6 +10,7 @@ import { type AccountInfo } from '../../tree/cosmosdb/AccountInfo';
 
 export interface CreateContainerWizardContext extends IActionContext {
     containerName?: string;
+    dataModelerSelected?: boolean;
     partitionKey?: PartitionKeyDefinition;
     throughput?: number;
     maxThroughput?: number;

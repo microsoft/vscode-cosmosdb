@@ -401,6 +401,7 @@ or manifest fields. Record the deployment outcome and any retry in the existing 
    requirements remain unchanged; explicit null support does not relax them.
    JSON-encoded values are not placeholders merely because they contain braces;
    reject actual placeholders within their decoded values without changing the stored strings.
+   Inspect JSON strings and arrays even when escape sequences hide placeholder text in their stored representation.
 - Resolve each `id` from its `idTemplate` and the selected identity mapping.
    Preserve the corresponding source-key values in their separate mapped fields.
    For `{uuid}` fallback entities, generate a valid UUID once and persist it directly

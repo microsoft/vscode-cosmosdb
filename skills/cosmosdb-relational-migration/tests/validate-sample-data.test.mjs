@@ -796,6 +796,7 @@ test('accepts JSON-encoded native values without treating object braces as place
         JSON.stringify({ vendorField: { $numberDecimal: '10.2500' }, values: [null, 'kept'], empty: {} }),
         JSON.stringify([{ value: { $numberInt: '7' } }]),
         JSON.stringify(JSON.stringify({ $numberInt: '7' })),
+        String.raw`"\u006bept"`,
     ];
     const before = structuredClone(data);
     assert.deepEqual(validateSampleData(model(), data), []);
@@ -808,6 +809,28 @@ test('rejects placeholders inside JSON-encoded objects, arrays and strings', () 
         data.sampleData[0].items[0].nativeValue = JSON.stringify({ nested: [JSON.stringify(value)] });
         assert(validateSampleData(model(), data).some(error =>
             error.path.endsWith('.nativeValue') && error.message === 'contains an unresolved placeholder'));
+    }
+});
+
+test('rejects JSON-escaped placeholders without changing their stored representations', () => {
+    for (const value of [
+        String.raw`"\u0054ODO"`,
+        String.raw`["\u0054ODO"]`,
+        JSON.stringify(String.raw`["\u0054ODO"]`),
+        JSON.stringify({ nested: [String.raw`"\u0054ODO"`] }),
+        String.raw`"\u003cvalue\u003e"`,
+        String.raw`["\u007bCustomerId\u007d"]`,
+    ]) {
+        const data = samples();
+        data.sampleData[0].items[0].nativeValue = value;
+        const before = structuredClone(data);
+        assert(
+            validateSampleData(model(), data).some(
+                (error) => error.path.endsWith('.nativeValue') && error.message === 'contains an unresolved placeholder',
+            ),
+            value,
+        );
+        assert.deepEqual(data, before);
     }
 });
 

@@ -50,12 +50,11 @@ function containsUnresolvedValue(value) {
     while (pending.length > 0) {
         const candidate = pending.pop();
         if (typeof candidate === 'string') {
-            if (!UNRESOLVED_VALUE.test(candidate)) continue;
             try {
                 pending.push(JSON.parse(candidate));
             } catch (error) {
                 if (!(error instanceof SyntaxError)) throw error;
-                return true;
+                if (UNRESOLVED_VALUE.test(candidate)) return true;
             }
         } else if (candidate !== null && typeof candidate === 'object') {
             for (const child of Object.values(candidate)) pending.push(child);

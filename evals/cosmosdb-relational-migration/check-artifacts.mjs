@@ -15,6 +15,7 @@ import {
     sourceDatasets,
 } from '../../skills/cosmosdb-migration/scripts/source-contract.mjs';
 import { createSourceResolver } from '../../skills/cosmosdb-migration/scripts/validate-source-evidence.mjs';
+import { assertFreshInventory } from '../cosmosdb-migration/fresh-inventory.mjs';
 import { prepareFixture } from './fixtures.mjs';
 
 function snapshot(root) {
@@ -180,6 +181,7 @@ export async function checkArtifacts(workspace, phase, skillRoot) {
         const manifest = JSON.parse(after.get(`${discovery}/preflight-manifest.json`));
         assert.equal(Object.hasOwn(manifest, 'sdkCompatibility'), false, 'SDK compatibility is discovery-owned');
         const inventory = manifest.sourceInventory;
+        if (phase === 'preflight' || phase === 'discovery') assertFreshInventory(inventory);
         const tables = sourceDatasets(inventory).map(relationalDetails);
         assert.deepEqual(
             tables.map(({ name }) => name),

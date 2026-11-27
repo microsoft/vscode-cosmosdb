@@ -140,6 +140,136 @@ test('inference judge receives code and inventory without requiring synthesized 
     assert.throws(() => buildJudgeEvidence(trajectory, stimulus('preflight'), validation), /ENOENT/);
 });
 
+test('inference retains generated SQL and DDL regardless of suffix case without relaxing file safety', async (t) => {
+    const { root, write, trajectory } = fixture(t);
+    const dir = `${migration}phases/1-discovery/schema-ddl`;
+    const generated = ['Generated.SQL', 'Generated.ddl', 'Another.DdL'];
+    rmSync(join(root, 'app', dir, 'Example.sql'));
+    for (const name of generated) write(`${dir}/${name}`, `-- ${name}\n`);
+    const build = () => buildJudgeEvidence(trajectory, stimulus('inferred-ddl'), validation, 'access-boundary').packet;
+    const packet = build();
+    assert.deepEqual(packet.absentOptionalFiles, []);
+    for (const name of generated) {
+        assert.equal(packet.files.find(({ path }) => path === `app/${dir}/${name}`)?.content, `-- ${name}\n`);
+    }
+    assert.throws(() => buildJudgeEvidence(trajectory, stimulus('preflight'), validation), /No \.sql evidence files/);
+    await t.test('newly recognized names cannot be symlinks', { skip: process.platform === 'win32' }, () => {
+        symlinkSync(join(root, 'app', '.env'), join(root, 'app', dir, 'Unsafe.DDL'));
+        assert.throws(build, (error) => error.category === 'evidence-path');
+    });
+});
+
+async function inferredSpec() {
+    const { stimuli } = await loadEvalSpec(join(import.meta.dirname, 'adventureworks/eval.yaml'));
+    const stimulus = stimuli.find((item) => item.tags.scenario === 'inferred-ddl');
+    return { stimulus, config: stimulus.graders.find(({ type }) => type === 'adventureworks-judge').config };
+}
+
+test('inferred discovery separates inventory from access without losing complete files, criteria or audit', async (t) => {
+    const { write, trajectory } = fixture(t);
+    const { stimulus, config } = await inferredSpec();
+    const discovery = `${migration}phases/1-discovery`;
+    // Each scope fits, but delivering this audit alongside the complete inventory reproduces the live overflow.
+    const command = 'node validate.mjs --check ' + 'x'.repeat(155_000);
+    trajectory.events = [
+        { type: 'tool_call', data: { toolName: 'bash', arguments: { command } } },
+        { type: 'tool_result', data: { toolName: 'bash', success: false } },
+    ];
+    const baseline = buildJudgeEvidence(trajectory, stimulus, validation).packet;
+    const inventory = { sourceInventory: { version: 2, facts: 'complete typed record\n'.repeat(10000) } };
+    const report = 'complete discovery finding\n'.repeat(7500);
+    write(`${discovery}/preflight-manifest.json`, inventory);
+    write(`${discovery}/discovery-report.md`, report);
+    assert.throws(() => buildJudgeEvidence(trajectory, stimulus, validation), /No content was truncated/);
+    const groups = judgeEvidenceGroups(stimulus, config);
+    assert.deepEqual(
+        groups.map(({ scope, indices }) => [scope, indices]),
+        [
+            ['inventory', [0, 1]],
+            ['access-boundary', [2, 3]],
+        ],
+    );
+    assert.deepEqual(
+        groups.flatMap(({ rubric }) => rubric),
+        stimulus.rubric,
+    );
+    const [schema, access] = groups.map(({ scope }) => {
+        const { bytes, packet } = buildJudgeEvidence(trajectory, stimulus, validation, scope);
+        assert.ok(bytes <= MAX_EVIDENCE_BYTES);
+        if (scope === 'inventory') {
+            assert.deepEqual(packet.audit, []);
+            assert.ok(bytes + Buffer.byteLength(JSON.stringify(baseline.audit)) - 2 > MAX_EVIDENCE_BYTES);
+        } else {
+            assert.deepEqual(packet.audit, baseline.audit);
+            assert.equal(packet.audit[0].arguments.command, command);
+        }
+        assert.equal(packet.agentOutput, trajectory.output);
+        assert.deepEqual(packet.structuralValidation, validation);
+        return new Map(packet.files.map(({ path, content }) => [path.slice('app/'.length), content]));
+    });
+    for (const { path } of baseline.files) {
+        const file = path.slice('app/'.length);
+        assert.ok(schema.has(file) || access.has(file), `Lost phase evidence: ${file}`);
+    }
+    assert.equal(schema.get(`${discovery}/preflight-manifest.json`), JSON.stringify(inventory));
+    assert.ok(!access.has(`${discovery}/preflight-manifest.json`), 'Do not duplicate inventory in the audit packet');
+    assert.equal(access.get(`${discovery}/schema-ddl/Example.sql`), 'CREATE TABLE Example (Id INT PRIMARY KEY);');
+    assert.ok(!schema.has(`${discovery}/schema-ddl/Example.sql`));
+    assert.equal(access.get(`${discovery}/discovery-report.md`), report);
+    for (const path of [
+        'Models/sampledbContext.cs',
+        'Models/ProductCategory.cs',
+        'Controllers/CustomersController.cs',
+        'Controllers/ProductCategoriesController.cs',
+        'Controllers/ProductsController.cs',
+        'AdventureWorks.Web.csproj',
+        'Program.cs',
+        'Startup.cs',
+        `${discovery}/preflight-summary.md`,
+    ]) {
+        assert.ok(schema.has(path) && access.has(path), `Missing shared source or context: ${path}`);
+    }
+    for (const path of [
+        'Views/Customers/Index.cshtml',
+        'Views/ProductCategories/Create.cshtml',
+        'Views/Products/Index.cshtml',
+        `${discovery}/discovery-manifest.json`,
+        `${discovery}/access-patterns/access-patterns.md`,
+        `${discovery}/volumetrics/volumetrics.md`,
+        `${discovery}/volumetrics/workload.json`,
+    ]) {
+        assert.ok(access.has(path), `Missing access or workload evidence: ${path}`);
+    }
+});
+
+test('inference accepts an empty schema directory but refuses missing or oversized access evidence before judging', async (t) => {
+    const { root, write, trajectory } = fixture(t);
+    const { stimulus, config: scopedConfig } = await inferredSpec();
+    const discovery = `${migration}phases/1-discovery`;
+    rmSync(join(root, 'app', `${discovery}/schema-ddl/Example.sql`));
+    const { packet } = buildJudgeEvidence(trajectory, stimulus, validation, 'access-boundary');
+    assert.deepEqual(packet.absentOptionalFiles, [`app/${discovery}/schema-ddl/*.{sql,ddl}`]);
+    let calls = 0;
+    const grader = createAdventureWorksJudge({
+        sample: 'offline',
+        checkSample() {},
+        checkArtifacts() {},
+        createClient() {
+            calls++;
+            throw new Error('No model calls expected');
+        },
+    });
+    const grade = () => grader.grade({ trajectory, stimulus, config: { ...config, ...scopedConfig } });
+    write(`${discovery}/discovery-report.md`, 'ë'.repeat(MAX_EVIDENCE_BYTES / 2));
+    const oversized = await grade();
+    assert.equal(oversized.metadata.error_category, 'evidence-too-large');
+    assert.match(oversized.evidence, /No content was truncated/);
+    write(`${discovery}/discovery-report.md`, 'Complete report.');
+    rmSync(join(root, 'app', 'Program.cs'));
+    assert.equal((await grade()).metadata.error_category, 'evidence-unavailable');
+    assert.equal(calls, 0);
+});
+
 test('audit preserves commands and executable edits without duplicating migration patches or skill bodies', (t) => {
     const { trajectory } = fixture(t);
     trajectory.events = [

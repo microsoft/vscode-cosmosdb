@@ -191,6 +191,12 @@ and `behaviors:[{kind,definition,semantic}]`. Directions are `ascending | descen
 references an inventory obligation. Preserve included columns, filters, actions, nullability,
 collation, precision/scale, sequences, procedures, computed expressions, and triggers as native evidence.
 
+Keep a length bound in the native type: for example, record SQL Server `varbinary(max)` as `varbinary(max)`,
+not just `varbinary`. If the ORM does not specify a separate `length` or `maxLength`, omit that facet or use
+JSON `null`. A concrete facet must agree with the type (for example, `128` for `varchar(128)` or `"max"` for
+`varbinary(max)`). Explain why a facet is unknown in the preflight summary, alongside the source reference,
+not in a length field. Missing ORM configuration alone does not prove a database bound.
+
 Every native column has exactly one literal-property field with the same type.
 The primary identity matches the exact ordered PK. Every native FK has exactly one
 `foreign-key` relationship with exact ordered endpoints and constraint name. Dropping relational

@@ -283,7 +283,9 @@ test('persists only explicitly saved phase guidance through the version 1 fields
     const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
     const projectFormat = fs.readFileSync(path.join(skillRoot, 'references', 'contracts', 'project-state-and-artifacts.md'), 'utf8');
     assert.match(skill, /project-state-and-artifacts\.md/u);
-    assert.match(projectFormat, /`preflight` or `discovery`: `phases\.discovery\.discoveryInstructions`/u);
+    assert.match(skill, /Never save a whole run request as phase instructions/u);
+    assert.match(projectFormat, /requires an explicit save\/reuse request or entry in a phase's instruction field/u);
+    assert.match(projectFormat, /`discovery`: `phases\.discovery\.discoveryInstructions`/u);
     assert.match(projectFormat, /`assessment`: `phases\.assessment\.assessmentInstructions`/u);
     assert.match(projectFormat, /`schema-conversion`: `phases\.schemaConversion\.schemaConversionInstructions`/u);
     assert.match(projectFormat, /`code-migration`: root `migrationInstructions`/u);

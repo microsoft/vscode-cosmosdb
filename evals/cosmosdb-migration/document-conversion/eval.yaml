@@ -1,0 +1,69 @@
+name: cosmosdb-migration-document-conversion
+description: Convert a reviewed schema-only document assessment and verify the submitted model against unseen inputs.
+type: capability
+
+agent_environment:
+  skills:
+    - ../../../skills/cosmosdb-migration
+    - ../../../skills/cosmosdb-best-practices
+  files:
+    - { src: ../document/fixtures.mjs, dest: fixtures.mjs }
+    - { src: ../document/setup.mjs, dest: setup.mjs }
+  commands: [node setup.mjs document-conversion]
+
+defaults:
+  executor: copilot-sdk
+  model: gpt-6.1-terra
+  reasoning_effort: high
+  judge_model: gpt-6.1-sol
+  judge_reasoning_effort: high
+  runs: 1
+  timeout: 15m
+
+scoring:
+  threshold: 1
+
+stimuli:
+  - name: document-conversion
+    tags: { category: synthetic, phase: schema-conversion, contract: document-conversion }
+    prompt: |
+      Run schema conversion only for the reviewed schema-only migration in ./app. Design the Azure Cosmos DB
+      for NoSQL model using the accepted assessment and source evidence; complete and validate the domain
+      and merged conversion artifacts, mapping decisions, and executable examples. Preserve document content
+      and source-key semantics on supported inputs. For this open schema, distinguish what the mapping
+      demonstrates from what must stop an import until a lossless disposition is available.
+      Explain how your routing and indexing serve the declared workload, where
+      the target's uniqueness guarantee applies, and any restructuring, tradeoffs or remaining assumptions.
+      Work autonomously and offline. Do not edit the accepted inputs or earlier checkpoints, infer an
+      application, install software, connect to services, provision anything, or start code migration.
+      Preserve project bookkeeping; if recording a conversion run count, use runCounts.schemaConversion.
+    rubric:
+      - Convert the assessed domain despite the absence of application mappings. Preserve all predecessor evidence and stop at schema conversion.
+      - Reconcile collection-wide native identity with the complete target routing tuple. For supported inputs, demonstrate lossless mapping of inventoried content and ordinary noncolliding additional properties, retaining native identity types, precision, literal names, nesting, array order, and missing versus null. Explain reversible representations and their impact on queries or writes.
+      - For legitimate additional root names that conflict with target metadata (such as id or docType), or unobserved BSON variants without an approved lossless representation, either demonstrate a supported reversible mapping or explicitly block affected writes before data is lost. Identify the evidence, remapping and verification needed to resume; do not infer native types from wrapper-like JSON alone.
+      - Ground the target design in the engineer's declared tenant access pattern without asserting production traffic or an observed ID lookup. Start from the document shape; justify any reshape with specific evidence, Cosmos DB benefit and tradeoffs. Do not assume global enforcement from partition-local uniqueness.
+      - Produce and validate usable domain and merged models and executable mapping examples; do not claim live deployment, service equivalence, or production measurements.
+    graders:
+      - type: completed
+      - type: skill-invocation
+        config: { required: [cosmosdb-migration, cosmosdb-best-practices] }
+      - type: source-migration-artifacts
+        config: { scenario: document-conversion }
+      - type: prompt
+        config:
+          scoring: binary
+          threshold: 1
+          evidence: [trajectory, diff, repo]
+          prompt: >-
+            Require every rubric criterion, using generated artifacts and trajectory rather than completion claims.
+            Accept equivalent lossless representations and justified alternative target layouts, container names,
+            and routing/enforcement designs. A documented pre-import stop pending inventory and a verified reversible
+            mapping for an unseen collision or unrepresentable BSON variant is a safe disposition, not a missing
+            required field mapping. Do not demand arbitrary dynamic escaping, a production BSON codec, or universal
+            parity from the finite example executor. Conversely a caveat cannot excuse missing supported fields,
+            omitted ordinary extras, precision loss, or silent overwrites. Reject invented approval, evidence, or a
+            schema-only justification for omitting a source domain. Do not demand a specific tool sequence or exact wording.
+      - type: output-matches
+        config: { pattern: '\S' }
+    artifacts:
+      include: [app/.cosmosdb-migration/**]

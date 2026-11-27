@@ -3,7 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { parseSuiteFilter } from '@microsoft/vally';
+import { filterStimuli, parseSuiteFilter } from '@microsoft/vally';
+
+export function requiresAdventureWorksSample(specs, filter) {
+    return specs.some((spec) =>
+        filterStimuli(spec.stimuli, spec.tags, filter).matched.some(
+            (stimulus) => stimulus.tags?.sample === 'adventureworks',
+        ),
+    );
+}
 
 export function resolveEvalSelection(arguments_) {
     const args = [...arguments_];

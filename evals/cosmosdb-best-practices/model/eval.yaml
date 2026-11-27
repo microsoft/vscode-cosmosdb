@@ -24,8 +24,10 @@ stimuli:
       Cosmos DB Profiles and Leases share an owner and may have equal native IDs.
       A proposed container uses HPK [/ownerId, /type]. Explain discrimination,
       ID collisions, transaction scope and scaling tradeoffs versus embedding,
-      sharing a complete key, or separate containers. Include pooling and
-      hot-owner limits; preserve original keys when comparing identity changes.
+      sharing a complete key, or separate containers. What do different complete
+      keys tell us about logical partitioning, placement on physical partitions,
+      and how evenly load is distributed? Include pooling and hot-owner limits;
+      preserve original keys when comparing identity changes.
       Operations across owners also exist. Do not write files.
     rubric:
       - Persist distinct type values for filtering/deserialization and explain that [owner, profile] and [owner, lease] are different logical partitions, not a shared transactional batch boundary.

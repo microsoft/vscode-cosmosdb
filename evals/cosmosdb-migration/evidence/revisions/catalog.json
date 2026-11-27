@@ -1,0 +1,1 @@
+{ "collection": "native.orders", "identity": { "field": "_id", "scope": "tenant" } }

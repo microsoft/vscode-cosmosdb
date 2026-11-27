@@ -18,20 +18,24 @@ import { dirname, join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { checkPhaseCompletion } from '../../skills/cosmosdb-migration/scripts/check-phase-completion.mjs';
+import { buildCompatibilityReport } from '../../skills/cosmosdb-migration/scripts/check-sdk-compatibility.mjs';
 import { buildFreshnessManifest } from '../../skills/cosmosdb-migration/scripts/freshness.mjs';
 import { buildProvisioningArtifacts } from '../../skills/cosmosdb-migration/scripts/generate-provisioning-artifacts.mjs';
 import { normalizeLegacyInventory } from '../../skills/cosmosdb-migration/scripts/source-contract.mjs';
 import {
     assessmentFixture,
-    discoveryFixture,
     evidenceReport,
     writeFixture,
 } from '../../skills/cosmosdb-migration/tests/source-evidence-fixtures.mjs';
 import { checkArtifacts, registerGraders } from './check-artifacts.mjs';
+import { reviewedDdlV2 } from './ddl-inventory-fixture.mjs';
 import { prepareFixture } from './fixtures.mjs';
 
 const skillRoot = fileURLToPath(new URL('../../skills/cosmosdb-migration/', import.meta.url));
-const { evals, errors } = await discoverEvals([import.meta.dirname]);
+const { evals, errors } = await discoverEvals([
+    import.meta.dirname,
+    join(import.meta.dirname, '../cosmosdb-migration'),
+]);
 assert.deepEqual(errors, []);
 const specs = await Promise.all(evals.map(({ filePath }) => loadEvalSpec(filePath)));
 const stimuli = specs.flatMap((spec) => spec.stimuli);
@@ -91,6 +95,7 @@ async function completeFixture(root, phase) {
         return;
     }
     if (phase === 'preflight' || phase === 'discovery') {
+        const fresh = reviewedDdlV2(inventory);
         writeFixture(
             root,
             'phases/1-discovery/preflight-summary.md',
@@ -101,29 +106,44 @@ async function completeFixture(root, phase) {
             'phases/1-discovery/preflight-manifest.json',
             JSON.stringify({
                 version: 1,
-                sourceSha256: inventory.sha256,
-                sourceInventory: inventory,
+                sourceSha256: fresh.sha256,
+                sourceInventory: fresh,
                 blockingIssues: [],
             }),
         );
         project.phases.discovery.preflightStatus = 'complete';
         project.freshness = { preflight: buildFreshnessManifest(root, project, 'preflight') };
         if (phase === 'discovery') {
-            discoveryFixture(root, inventory, project, {
-                patterns: [
-                    {
-                        id: 'R001',
-                        kind: 'read',
-                        tables: ['dbo.Orders'],
-                        sourcePaths: ['orders.ts'],
-                        evidence: 'code',
-                        tps: 10,
-                        operation: 'SELECT Id, TenantId, Pk FROM dbo.Orders WHERE Id = @id',
-                    },
-                ],
-                noObservedAccess: [],
-            });
+            writeFixture(
+                root,
+                'phases/1-discovery/discovery-report.md',
+                evidenceReport(['Source Overview', 'Read Patterns', 'Write Patterns', 'Source Semantics', 'Warnings']),
+            );
+            writeFixture(
+                root,
+                'phases/1-discovery/discovery-manifest.json',
+                JSON.stringify({
+                    version: 1,
+                    sourceSha256: fresh.sha256,
+                    datasets: ['dbo.Orders'],
+                    patterns: [
+                        {
+                            id: 'R001',
+                            kind: 'read',
+                            datasets: ['dbo.Orders'],
+                            sourcePaths: ['orders.ts'],
+                            evidence: 'code',
+                            tps: 10,
+                            operation: 'SELECT Id, TenantId, Pk FROM dbo.Orders WHERE Id = @id',
+                        },
+                    ],
+                    noObservedAccess: [],
+                    sdkCompatibility: buildCompatibilityReport(['TypeScript']),
+                    blockingIssues: [],
+                }),
+            );
             project.phases.discovery.status = 'complete';
+            project.freshness.discovery = buildFreshnessManifest(root, project, 'discovery');
         }
     } else {
         project.phases.assessment.domains = [
@@ -170,6 +190,11 @@ test('coverage includes every phase, critical workflow boundaries and negative a
         'domain-ownership',
         'domain-selection',
         'peer-design',
+        'operation-results',
+        'copied-version',
+        'grouping-scope',
+        'operation-indexes',
+        'container-specific-routing',
         'provisioning-approval',
         'target-switch',
         'code-approval',
@@ -196,6 +221,23 @@ test('coverage includes every phase, critical workflow boundaries and negative a
             .sort(),
         ['assessment', 'discovery', 'preflight', 'provisioning'],
     );
+    for (const [contract, phase] of Object.entries({
+        'document-preflight': 'preflight',
+        'document-discovery': 'discovery',
+        'document-assessment': 'assessment',
+        'document-conversion': 'schema-conversion',
+        'document-planning': 'code-migration',
+        'unfamiliar-preflight': 'preflight',
+        'resume-code': 'code-migration',
+        'resume-metadata': 'code-migration',
+    })) {
+        assert.ok(
+            stimuli.some(
+                ({ tags }) => tags.category === 'synthetic' && tags.contract === contract && tags.phase === phase,
+            ),
+            `Missing synthetic ${phase} contract: ${contract}`,
+        );
+    }
 });
 
 async function grade(
@@ -242,11 +284,12 @@ async function grade(
         async shutdown() {},
     });
     registerGraders(registry);
-    if (stimulus.tags.sample === 'adventureworks') {
-        // Only exercise verdict wiring here; real sample contracts have separate offline and live checks.
+    if (stimulus.tags.sample === 'adventureworks' || stimulus.tags.category === 'synthetic') {
+        // Only exercise verdict wiring here; the fixture-specific checks have their own tests.
+        const name = stimulus.tags.category === 'synthetic' ? 'source-migration-artifacts' : 'adventureworks-artifacts';
         registry.register({
             metadata: {
-                name: 'adventureworks-artifacts',
+                name,
                 description: 'Synthetic artifact verdict for pipeline wiring tests',
                 behavior: {},
                 determinism: 'static',
@@ -254,9 +297,12 @@ async function grade(
                 temporalScope: 'trajectory-level',
                 costProfile: 'free',
             },
-            async grade() {
+            async grade({ config }) {
+                if (stimulus.tags.category === 'synthetic') {
+                    assert.equal(config.scenario, stimulus.tags.contract);
+                }
                 return {
-                    name: 'adventureworks-artifacts',
+                    name,
                     kind: 'code',
                     passed: artifactVerdict,
                     score: artifactVerdict ? 1 : 0,
@@ -318,15 +364,19 @@ for (const spec of specs) {
         const stimulus = rawStimulus.turns ? { ...rawStimulus, prompt: rawStimulus.turns.join('\n\n') } : rawStimulus;
         test(`${stimulus.name}: grading fails closed`, async (t) => {
             const root = workspace(t);
-            if (stimulus.tags.category === 'artifacts') {
+            if (stimulus.graders.some(({ type }) => type === 'migration-artifacts')) {
                 await completeFixture(join(root, 'app'), stimulus.tags.phase);
             }
             assert.equal(await grade(spec, stimulus, root), true);
             for (const options of [{ verdict: 0 }, { output: ' \n' }, { wrongSkill: true }, { error: true }]) {
                 assert.equal(await grade(spec, stimulus, root, options), false, JSON.stringify(options));
             }
-            if (stimulus.tags.sample === 'adventureworks') {
-                assert.equal(await grade(spec, stimulus, root, { artifactVerdict: false }), false);
+            if (stimulus.tags.sample === 'adventureworks' || stimulus.tags.category === 'synthetic') {
+                assert.equal(
+                    await grade(spec, stimulus, root, { artifactVerdict: false }),
+                    false,
+                    'An optimistic model verdict cannot override a failed artifact check',
+                );
             }
             if (stimulus.graders.some(({ type }) => type === 'diff-empty')) {
                 assert.equal(
@@ -479,7 +529,7 @@ test('assessment accepts dataset IDs from validated legacy inventory without rew
     await checkArtifacts(root, 'assessment', skillRoot);
 });
 
-for (const phase of ['preflight', 'assessment']) {
+for (const phase of ['preflight', 'discovery', 'assessment']) {
     test(`${phase}: fixtures start incomplete and have valid prerequisites`, async (t) => {
         const root = workspace(t);
         await prepareFixture(root, phase, skillRoot);

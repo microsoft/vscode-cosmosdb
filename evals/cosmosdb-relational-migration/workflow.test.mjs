@@ -3,12 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { discoverEvals, filterStimuli, loadEvalSpec } from '@microsoft/vally';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
+import { requiresAdventureWorksSample, resolveEvalSelection } from '../../scripts/eval-options.mjs';
 
 const workflow = readFileSync(new URL('../../.github/workflows/migration-evals.yml', import.meta.url), 'utf8');
 
@@ -67,7 +69,7 @@ test('CI runs models only for skill changes or manual dispatch', { skip: process
     assert.equal(detect('workflow_dispatch'), 'offline=true\nlive=true');
 });
 
-test('live suites run independently and retain separate reports without masking failures', () => {
+test('live suites run independently and retain separate reports without masking failures', async () => {
     const live = workflow.match(/^  live:\n([\s\S]*?)^  gate:/m)[1];
     assert.match(live, /needs: \[changes, validate\]/);
     assert.match(live, /strategy:\n\s+fail-fast: false\n\s+matrix:/);
@@ -116,6 +118,23 @@ test('live suites run independently and retain separate reports without masking 
     assert.match(commands.adventureworks, /--tag category=extended --max-retries 0$/);
     assert.match(commands.integration, /--tag category=integration --max-retries 0$/);
     assert.equal(commands.handoff, 'npm run eval:handoff');
+    const { evals, errors } = await discoverEvals([join(import.meta.dirname, '..')]);
+    assert.deepEqual(errors, []);
+    const specs = await Promise.all(evals.map(({ filePath }) => loadEvalSpec(filePath)));
+    assert.equal(new Set(specs.map(({ name }) => name)).size, specs.length, 'Report names must be unique');
+    const filterFor = (suite) => resolveEvalSelection(commands[suite].split(' -- ')[1].split(' ')).filter;
+    const names = (filter) =>
+        specs.flatMap((s) => filterStimuli(s.stimuli, s.tags, filter).matched.map(({ name }) => name));
+    const defaults = names(resolveEvalSelection([]).filter).sort();
+    assert.deepEqual([...names(filterFor('small')), ...names(filterFor('adventureworks'))].sort(), defaults);
+    assert.equal(new Set(defaults).size, defaults.length, 'Default stimulus names must be unique');
+    const synthetic = resolveEvalSelection(['--tag', 'category=synthetic']).filter;
+    assert.ok(
+        names(synthetic).length > 0 && names(synthetic).every((name) => names(filterFor('small')).includes(name)),
+    );
+    assert.equal(requiresAdventureWorksSample(specs, filterFor('small')), false);
+    assert.equal(requiresAdventureWorksSample(specs, synthetic), false);
+    assert.equal(requiresAdventureWorksSample(specs, filterFor('adventureworks')), true);
     assert.match(live, /- name: Publish reports\n\s+if: always\(\)/);
     assert.match(live, /SUITE: \$\{\{ matrix\.suite }}/);
     assert.match(live, /uses: actions\/upload-artifact@[^\n]+\n\s+if: always\(\)/);

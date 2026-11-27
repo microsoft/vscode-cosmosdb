@@ -6,7 +6,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { isAbsolute, join, relative, sep } from 'node:path';
-import { markdownSections } from '../../../skills/cosmosdb-relational-migration/scripts/phase-summary.mjs';
+import { markdownSections } from '../../../skills/cosmosdb-migration/scripts/phase-summary.mjs';
 
 export const MAX_EVIDENCE_BYTES = 384_000;
 const MAX_FILE_BYTES = 512_000;
@@ -286,11 +286,25 @@ export function buildJudgeEvidence(trajectory, stimulus, structuralValidation, s
         }
     } else if (['preflight', 'discovery', 'inferred-ddl'].includes(phase)) {
         source();
-        inventory();
-        if (phase !== 'inferred-ddl') {
+        if (scope !== 'access-boundary') inventory();
+        if (phase === 'inferred-ddl') {
+            add('Program.cs', 'application entry point and runtime evidence');
+            if (scope !== 'inventory') {
+                const ddl = directoryFiles(
+                    `${discovery}schema-ddl`,
+                    /\.(?:sql|ddl)$/iu,
+                    'generated SQL/DDL in inference workspace',
+                    { optional: true },
+                );
+                if (!ddl) absentOptionalFiles.push(`app/${discovery}schema-ddl/*.{sql,ddl}`);
+            }
+        } else {
             directoryFiles(`${discovery}schema-ddl`, '.sql', 'authoritative DDL');
-        } else if (existsSync(join(root, `${discovery}schema-ddl`))) {
-            directoryFiles(`${discovery}schema-ddl`, '.sql', 'optional generated DDL; not required for inference');
+        }
+        if (scope === 'access-boundary') {
+            for (const controller of ['Customers', 'ProductCategories', 'Products']) {
+                directoryFiles(`Views/${controller}`, '.cshtml', 'source CRUD view and navigation evidence');
+            }
         }
         add(`${discovery}preflight-summary.md`, 'preflight findings');
         if (scope !== 'inventory') {

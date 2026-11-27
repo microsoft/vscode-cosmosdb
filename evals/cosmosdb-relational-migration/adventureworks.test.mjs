@@ -38,6 +38,7 @@ import { judgeEvidenceGroups } from './adventureworks/judge-evidence.mjs';
 import { checkPlanTasks } from './adventureworks/plan-contract.mjs';
 import { fetchSample, verifySample } from './adventureworks/sample.mjs';
 import { setupAdventureWorks, workloadContent } from './adventureworks/setup.mjs';
+import { reviewedDdlV2 } from './ddl-inventory-fixture.mjs';
 
 const ddl = fileURLToPath(new URL('./adventureworks/AdventureworksLT.sql', import.meta.url));
 
@@ -473,6 +474,17 @@ for (const phase of phaseOrder) {
         assert.throws(() => checkAdventureWorks(app, phase, sample));
         if (analyticalPhases.includes(phase)) {
             await materializePrerequisites(app, phaseOrder[phaseOrder.indexOf(phase) + 1]);
+            if (phase === 'preflight') {
+                assert.throws(() => checkAdventureWorks(app, phase, sample), /Fresh preflight/);
+                const path = join(app, '.cosmosdb-migration/phases/1-discovery/preflight-manifest.json');
+                const manifest = JSON.parse(readFileSync(path, 'utf8'));
+                manifest.sourceInventory = reviewedDdlV2(manifest.sourceInventory);
+                manifest.sourceSha256 = manifest.sourceInventory.sha256;
+                writeFileSync(path, JSON.stringify(manifest));
+                const state = JSON.parse(readFileSync(projectPath, 'utf8'));
+                state.freshness.preflight = buildFreshnessManifest(app, state, phase, readCheckpoint(phase).consulted);
+                writeFileSync(projectPath, JSON.stringify(state));
+            }
             checkAdventureWorks(app, phase, sample);
             const completedProject = JSON.parse(readFileSync(projectPath, 'utf8'));
             completedProject.name = 'RenamedMigration';
@@ -644,10 +656,23 @@ test('code-only inference requires exact application evidence and cannot claim d
     const inventory = {
         version: 2,
         files: [{ path, sha256: hash, kind: 'code', disposition: 'used' }],
-        datasets: [{ coverage: { basis: 'code', complete: false }, evidence: [path] }],
+        datasets: [
+            {
+                fields: [{ id: '$.Id', path: [{ kind: 'property', name: 'Id' }] }],
+                coverage: { basis: 'code', complete: false },
+                evidence: [path],
+            },
+        ],
     };
     checkInferenceEvidence(inventory, source);
+    const legacy = schemaInventory();
+    legacy.files[0].origin = 'inferred';
+    legacy.files[0].sourcePaths = [path];
+    assert.throws(() => checkInferenceEvidence(legacy, source), /Fresh preflight/);
     for (const mutate of [
+        (value) => {
+            value.datasets[0].fields[0].id = 'opaque';
+        },
         (value) => {
             value.files[0].path = 'invented.cs';
         },

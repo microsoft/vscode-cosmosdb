@@ -1,0 +1,9 @@
+{
+  "engine": "LoomCell",
+  "namespace": "weather",
+  "wideColumnFamily": "pulses",
+  "routingTupleInOrder": ["station", "day"],
+  "uniqueRowKeyInOrder": ["station", "day", "ordinal"],
+  "keyTypes": { "station": "text", "day": "text", "ordinal": "integer" },
+  "otherCells": "open"
+}

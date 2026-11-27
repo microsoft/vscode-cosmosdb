@@ -299,9 +299,9 @@ stimuli:
       Validate discovery and stop before assessment or target model design.
     rubric:
       - Infer all twelve mapped tables with the declared columns and ordered primary/foreign keys, including composite keys and ProductCategory self-reference, from the EF/model evidence rather than inventing constraints.
-      - Record a version-2 typed source inventory with code/inferred coverage and exact source-file provenance, without synthesizing DDL; distinguish unresolved source facts from validated source-engine behavior.
+      - Record a version-2 typed source inventory with code/inferred coverage and exact source-file provenance; distinguish unresolved source facts from validated source-engine behavior.
       - Derive real access patterns from all three CRUD controllers and evaluate the .NET SDK while identifying the obsolete framework; classify schema-only mappings honestly.
-      - Write processable inferred DDL under the migration schema folder and complete and validate discovery without modifying application code or advancing assessment; label workload values as synthetic rather than measured production data.
+      - Complete and validate discovery without synthesizing DDL, modifying application code or advancing assessment, and label workload values as synthetic rather than measured production data.
     graders:
       - *completed
       - *migration

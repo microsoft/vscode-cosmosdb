@@ -3,12 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { discoverEvals, filterStimuli, loadEvalSpec } from '@microsoft/vally';
+import { discoverEvals, loadEvalSpec } from '@microsoft/vally';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { fetchSample } from '../evals/cosmosdb-relational-migration/adventureworks/sample.mjs';
-import { resolveEvalSelection } from './eval-options.mjs';
+import { requiresAdventureWorksSample, resolveEvalSelection } from './eval-options.mjs';
 
 const { evals, errors } = await discoverEvals([fileURLToPath(new URL('../evals/', import.meta.url))]);
 if (errors.length) {
@@ -20,13 +20,8 @@ if (!evals.length) {
 
 const { args, filter } = resolveEvalSelection(process.argv.slice(2));
 const specs = await Promise.all(evals.map(({ filePath }) => loadEvalSpec(filePath)));
-const requiresSample = specs.some((spec) =>
-    filterStimuli(spec.stimuli, spec.tags, filter).matched.some(
-        (stimulus) => stimulus.tags?.sample === 'adventureworks',
-    ),
-);
 const environment = { ...process.env };
-if (requiresSample) {
+if (requiresAdventureWorksSample(specs, filter)) {
     environment.MIGRATION_EVAL_ADVENTUREWORKS_SOURCE = fetchSample();
 }
 const require = createRequire(import.meta.url);
@@ -35,6 +30,8 @@ const result = spawnSync(
     [
         require.resolve('@microsoft/vally-cli/dist/index.js'),
         'eval',
+        '--grader-plugin',
+        fileURLToPath(new URL('../evals/cosmosdb-migration/check-artifacts.mjs', import.meta.url)),
         '--grader-plugin',
         fileURLToPath(new URL('../evals/cosmosdb-relational-migration/check-artifacts.mjs', import.meta.url)),
         '--grader-plugin',

@@ -18,6 +18,7 @@ import {
 } from '../../../skills/cosmosdb-migration/scripts/source-contract.mjs';
 import { validateCodeMigrationPlan } from '../../../skills/cosmosdb-migration/scripts/validate-code-migration-plan.mjs';
 import { createSourceResolver } from '../../../skills/cosmosdb-migration/scripts/validate-source-evidence.mjs';
+import { assertFreshInventory } from '../../cosmosdb-migration/fresh-inventory.mjs';
 import { phaseOrder, prerequisiteStages, readCheckpoint, sha256 } from './checkpoints.mjs';
 import { captureHandoffBaseline, checkHandoffBoundary } from './handoff.mjs';
 import { createAdventureWorksJudge } from './judge.mjs';
@@ -126,34 +127,21 @@ export function checkControllerCoverage(discovery) {
 }
 
 export function checkInferenceEvidence(inventory, sourceFiles) {
-    if (inventory.version === 2) {
-        for (const file of inventory.files) {
-            assert.ok(sourceFiles.has(file.path), `Invalid inference evidence: ${file.path}`);
-            assert.equal(sourceFiles.get(file.path), file.sha256, `Changed inference evidence: ${file.path}`);
-        }
-        const code = new Set(
-            inventory.files
-                .filter((file) => file.kind === 'code' && file.disposition === 'used')
-                .map((file) => file.path),
+    assertFreshInventory(inventory);
+    for (const file of inventory.files) {
+        assert.ok(sourceFiles.has(file.path), `Invalid inference evidence: ${file.path}`);
+        assert.equal(sourceFiles.get(file.path), file.sha256, `Changed inference evidence: ${file.path}`);
+    }
+    const code = new Set(
+        inventory.files.filter((file) => file.kind === 'code' && file.disposition === 'used').map((file) => file.path),
+    );
+    for (const dataset of inventory.datasets) {
+        assert.ok(['code', 'inferred'].includes(dataset.coverage.basis), 'Inferred coverage must retain its origin');
+        assert.equal(dataset.coverage.complete, false, 'Code cannot certify a complete deployed schema');
+        assert.ok(
+            dataset.evidence.some((path) => code.has(path)),
+            'Inferred dataset requires application code evidence',
         );
-        for (const dataset of inventory.datasets) {
-            assert.ok(
-                ['code', 'inferred'].includes(dataset.coverage.basis),
-                'Inferred coverage must retain its origin',
-            );
-            assert.equal(dataset.coverage.complete, false, 'Code cannot certify a complete deployed schema');
-            assert.ok(
-                dataset.evidence.some((path) => code.has(path)),
-                'Inferred dataset requires application code evidence',
-            );
-        }
-    } else {
-        for (const file of inventory.files) {
-            assert.equal(file.origin, 'inferred', 'Inferred schema must retain its origin');
-            assert.ok(file.sourcePaths?.length > 0, 'Inferred schema must identify its application evidence');
-            for (const source of file.sourcePaths)
-                assert.ok(sourceFiles.has(evidencePath(source)), `Invalid inference evidence: ${source}`);
-        }
     }
 }
 
@@ -206,6 +194,7 @@ export function checkAdventureWorks(workspace, scenario, sample, handoffBaseline
     if (isolated) checkPhaseBoundary(workspace, scenario, project);
     if (handoff) checkHandoffBoundary(workspace, handoffBaseline);
     const inventory = json('phases/1-discovery/preflight-manifest.json').sourceInventory;
+    if (scenario === 'preflight' || scenario === 'supplied-ddl') assertFreshInventory(inventory);
     checkAdventureWorksInventory(inventory, { source: scenario === 'inferred-ddl' ? 'inferred' : 'supplied' });
     const phases = isolated
         ? [...prerequisiteStages(scenario), ...(scenario === 'provisioning' ? [] : [scenario])]

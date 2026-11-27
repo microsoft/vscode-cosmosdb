@@ -11,6 +11,70 @@ import { build } from 'vite';
 import { expect, it } from 'vitest';
 import { copyStaticAssets } from '../plugins/vite-plugin-copy-static-assets.mjs';
 
+it('removes renamed assets on watch restart without removing unrelated output', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'cosmosdb-copy-restart-'));
+    const source = path.join(root, 'resources');
+    const output = path.join(root, 'dist', 'resources');
+    const entry = path.join(root, 'entry.js');
+
+    const runWatchBuild = async () => {
+        const watcher = await build({
+            root,
+            configFile: false,
+            publicDir: false,
+            logLevel: 'silent',
+            plugins: [copyStaticAssets({ targets: [{ src: 'resources' }] })],
+            build: {
+                watch: {},
+                emptyOutDir: false,
+                minify: false,
+                lib: { entry, formats: ['es'], fileName: 'probe' },
+            },
+        });
+        if (!('close' in watcher)) {
+            throw new Error('Vite did not return a build watcher.');
+        }
+        try {
+            await new Promise<void>((resolve, reject) => {
+                watcher.on('event', (event) => {
+                    if (event.code === 'END') {
+                        resolve();
+                    } else if (event.code === 'ERROR') {
+                        reject(event.error);
+                    }
+                });
+            });
+        } finally {
+            await watcher.close();
+        }
+    };
+
+    try {
+        await mkdir(source);
+        await writeFile(entry, 'export const entry = true;\n');
+        await writeFile(path.join(source, 'old.txt'), 'asset');
+        await runWatchBuild();
+        expect(await readdir(output)).toEqual(['old.txt']);
+
+        await rename(path.join(source, 'old.txt'), path.join(source, 'new.txt'));
+        await writeFile(path.join(output, 'webview.txt'), 'unrelated output');
+        await runWatchBuild();
+
+        expect((await readdir(output)).sort()).toEqual(['new.txt', 'webview.txt']);
+        expect(await readFile(path.join(output, 'webview.txt'), 'utf8')).toBe('unrelated output');
+
+        const intermediate = path.join(source, 'intermediate.txt');
+        await rename(path.join(source, 'new.txt'), intermediate);
+        await rename(intermediate, path.join(source, 'NEW.txt'));
+        await runWatchBuild();
+
+        expect(await readFile(path.join(output, 'NEW.txt'), 'utf8')).toBe('asset');
+        expect((await readdir(output)).map((name) => name.toLowerCase()).sort()).toEqual(['new.txt', 'webview.txt']);
+    } finally {
+        await rm(root, { recursive: true, force: true });
+    }
+});
+
 it('refreshes watched assets and replaces paths in a populated dist', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'cosmosdb-copy-watch-'));
 

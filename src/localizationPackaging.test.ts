@@ -21,13 +21,15 @@ it.each(['development', 'production'])(
         );
         const copyPlugin = config.plugins.find((plugin) => plugin.name === 'copy-static-assets');
         expect(copyPlugin).toBeDefined();
-        const outputDirectory = await mkdtemp(path.join(tmpdir(), 'cosmosdb-localization-'));
+        const tempDirectory = await mkdtemp(path.join(tmpdir(), 'cosmosdb-localization-'));
+        const outputDirectory = path.join(tempDirectory, 'dist');
 
         try {
             await build({
                 configFile: false,
                 root,
                 mode,
+                cacheDir: path.join(tempDirectory, 'cache'),
                 logLevel: 'silent',
                 publicDir: false,
                 plugins: [copyPlugin],
@@ -73,7 +75,7 @@ it.each(['development', 'production'])(
                 );
             }
         } finally {
-            await rm(outputDirectory, { recursive: true, force: true });
+            await rm(tempDirectory, { recursive: true, force: true });
         }
     },
 );

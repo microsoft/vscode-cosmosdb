@@ -3,10 +3,108 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { cp, glob, lstat, mkdir, readdir, readFile, rm, rmdir, stat, writeFile } from 'node:fs/promises';
+import { createHash, randomUUID } from 'node:crypto';
+import {
+    cp,
+    glob,
+    lstat,
+    mkdir,
+    readdir,
+    readFile,
+    realpath,
+    rename,
+    rm,
+    rmdir,
+    stat,
+    writeFile,
+} from 'node:fs/promises';
 import path from 'node:path';
 
 /** @import { CopyTarget } from './vite-plugin-copy-static-assets.d.mts' */
+
+function isInside(directory, file) {
+    const relative = path.relative(directory, file);
+    return relative !== '' && relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+}
+
+async function readOwnership(inventory, outDir) {
+    let contents;
+    try {
+        contents = await readFile(inventory, 'utf8');
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            return { ownedFiles: new Set(), ownedDirectories: new Set() };
+        }
+        throw error;
+    }
+    const { files, directories } = JSON.parse(contents);
+    const resolvePaths = (entries) => {
+        if (!Array.isArray(entries)) {
+            throw new Error(`Invalid static asset inventory "${inventory}".`);
+        }
+        return new Set(
+            entries.map((entry) => {
+                if (typeof entry !== 'string' || path.isAbsolute(entry)) {
+                    throw new Error(`Invalid path in static asset inventory "${inventory}".`);
+                }
+                const output = path.resolve(outDir, entry);
+                if (!isInside(outDir, output)) {
+                    throw new Error(`Path escapes the output directory in static asset inventory "${inventory}".`);
+                }
+                return output;
+            }),
+        );
+    };
+    return { ownedFiles: resolvePaths(files), ownedDirectories: resolvePaths(directories) };
+}
+
+async function writeOwnership(inventory, outDir, { copiedFiles, ownedDirectories }) {
+    const relativePaths = (entries) => [...entries].map((entry) => path.relative(outDir, entry)).sort();
+    await mkdir(path.dirname(inventory), { recursive: true });
+    const pending = `${inventory}.${randomUUID()}.tmp`;
+    try {
+        await writeFile(
+            pending,
+            JSON.stringify({ files: relativePaths(copiedFiles), directories: relativePaths(ownedDirectories) }),
+        );
+        await rename(pending, inventory);
+    } finally {
+        await rm(pending, { force: true });
+    }
+}
+
+async function removeStaleFiles(outDir, { ownedFiles, copiedFiles, bundledFiles }) {
+    const realOutDir = await realpath(outDir);
+    const activeFiles = new Set([...copiedFiles, ...bundledFiles]);
+    const activeByCaseFoldedPath = Map.groupBy(activeFiles, (file) => file.toLowerCase());
+    for (const previousFile of ownedFiles) {
+        if (activeFiles.has(previousFile)) {
+            continue;
+        }
+        try {
+            // A different build may have replaced the file or its parents. Never delete through a redirected path.
+            if (!(await lstat(previousFile)).isFile()) {
+                continue;
+            }
+            const realFile = await realpath(previousFile);
+            if (
+                !isInside(realOutDir, realFile) ||
+                path.relative(realOutDir, realFile).toLowerCase() !== path.relative(outDir, previousFile).toLowerCase()
+            ) {
+                continue;
+            }
+            const aliases = activeByCaseFoldedPath.get(previousFile.toLowerCase()) ?? [];
+            if ((await Promise.all(aliases.map((file) => realpath(file)))).includes(realFile)) {
+                continue;
+            }
+            await rm(previousFile, { force: true });
+        } catch (error) {
+            if (error.code !== 'ENOENT' && error.code !== 'ENOTDIR') {
+                throw error;
+            }
+        }
+    }
+}
 
 async function removeOwnedDirectory(directory, { ownedFiles, ownedDirectories, copiedFiles, bundledFiles }) {
     const files = [];
@@ -50,7 +148,7 @@ async function copyFile(source, output, transform) {
     }
 }
 
-async function copyWatchedAsset(source, output, transform, state) {
+async function copyAsset(source, output, transform, state) {
     const { ownedFiles, ownedDirectories, copiedFiles, bundledFiles } = state;
     const sourceIsDirectory = !transform && (await stat(source)).isDirectory();
     const existing = await lstat(output).catch((error) => {
@@ -67,10 +165,10 @@ async function copyWatchedAsset(source, output, transform, state) {
         }
         ownedFiles.delete(output);
         await mkdir(output, { recursive: true });
-        // A normal build may have created this directory. Before removing it, verify that every descendant is ours.
+        // The directory may be shared. Before removing it, verify that every descendant is ours.
         ownedDirectories.add(output);
         for (const name of await readdir(source)) {
-            await copyWatchedAsset(path.join(source, name), path.join(output, name), undefined, state);
+            await copyAsset(path.join(source, name), path.join(output, name), undefined, state);
         }
     } else {
         if (existing?.isDirectory()) {
@@ -93,15 +191,16 @@ async function copyWatchedAsset(source, output, transform, state) {
  */
 export function copyStaticAssets({ targets }) {
     let root;
+    let cacheDir;
     let resolvedTargets;
     const matchedTargets = new Set();
-    const ownershipByOutDir = new Map();
 
     return {
         name: 'copy-static-assets',
         apply: 'build',
         configResolved(config) {
             root = config.root;
+            cacheDir = config.cacheDir;
         },
         async buildStart() {
             resolvedTargets = [];
@@ -136,41 +235,22 @@ export function copyStaticAssets({ targets }) {
             }
 
             const outDir = path.resolve(root, dir);
-            let state;
-            if (this.meta.watchMode) {
-                let ownership = ownershipByOutDir.get(outDir);
-                if (!ownership) {
-                    ownership = { ownedFiles: new Set(), ownedDirectories: new Set() };
-                    ownershipByOutDir.set(outDir, ownership);
-                }
-                state = {
-                    ...ownership,
-                    copiedFiles: new Set(),
-                    bundledFiles: new Set(Object.keys(bundle).map((filename) => path.join(outDir, filename))),
-                };
-            }
+            const outputKey = createHash('sha256').update(outDir).digest('hex');
+            // Keep the inventory outside dist so it survives a watcher restart without being packaged.
+            const inventory = path.join(cacheDir, 'copy-static-assets', `${outputKey}.json`);
+            const state = {
+                ...(await readOwnership(inventory, outDir)),
+                copiedFiles: new Set(),
+                bundledFiles: new Set(Object.keys(bundle).map((filename) => path.join(outDir, filename))),
+            };
             for (const { source, destination, transform } of resolvedTargets) {
                 const output = path.join(outDir, destination);
                 await mkdir(path.dirname(output), { recursive: true });
-                if (state) {
-                    await copyWatchedAsset(source, output, transform, state);
-                } else if (transform) {
-                    await copyFile(source, output, transform);
-                } else {
-                    await cp(source, output, { recursive: true, dereference: true });
-                }
+                await copyAsset(source, output, transform, state);
             }
 
-            if (state) {
-                for (const previousFile of state.ownedFiles) {
-                    if (!state.copiedFiles.has(previousFile)) {
-                        if (!state.bundledFiles.has(previousFile)) {
-                            await rm(previousFile, { force: true });
-                        }
-                        state.ownedFiles.delete(previousFile);
-                    }
-                }
-            }
+            await removeStaleFiles(outDir, state);
+            await writeOwnership(inventory, outDir, state);
         },
     };
 }

@@ -207,8 +207,20 @@ export async function evaluateAdditional(world: World, detector: string): Promis
         case 'DX-004': {
             assert.ok(world.idle);
             const peak = world.idle.peakRuPerBucket;
+            const metricReads: string[] = [];
+            world.idleMetricReads = metricReads;
             const observedPeak = await withMetrics(
-                metricResponse('TotalRequestUnits', [peak === undefined ? [] : [peak]], 'total'),
+                (options) => {
+                    metricReads.push(options?.metricnames ?? '');
+                    if (options?.metricnames === 'NormalizedRUConsumption' && world.idleUtilizationDenied) {
+                        throw Object.assign(new Error('Monitor denied utilization'), { statusCode: 403 });
+                    }
+                    return metricResponse(
+                        'TotalRequestUnits',
+                        [peak === undefined && !world.idleNullSamples ? [] : [peak]],
+                        'total',
+                    );
+                },
                 (client) =>
                     getContainerIdlePeak(
                         client,
@@ -219,7 +231,8 @@ export async function evaluateAdditional(world: World, detector: string): Promis
                         world.idle?.containerId === undefined ? [scope.containerId] : undefined,
                     ),
             );
-            const input = { ...world.idle, peakRuPerBucket: observedPeak, resourceAgeDays: world.age };
+            // Classifier-only fixtures omit ARM and represent an established offer unless they supply an age.
+            const input = { ...world.idle, peakRuPerBucket: observedPeak, resourceAgeDays: world.age ?? 30 };
             world.inputs.idleContainers = [input];
             world.result = idleContainerDetector.evaluateResult(
                 input,
@@ -431,8 +444,11 @@ function outcome(pattern: RegExp, execute: Binding['execute']): Binding {
 export const additionalOutcomes: readonly Binding[] = [
     outcome(/^the recoverable capacity is (\S+) RU\/s$/, (world, match) => {
         const value = observed(world, 'recoverableRu');
-        assert.equal(typeof value, 'number');
-        near(typeof value === 'number' ? value : undefined, match[1]);
+        if (value === undefined && number(match[1]) === 0) {
+            assert.equal(world.advisory, undefined, 'A non-finding must not recommend retiring capacity.');
+        } else {
+            near(typeof value === 'number' ? value : undefined, match[1]);
+        }
     }),
     outcome(/^DX-004 applies to it$/, (world) => {
         assert.ok(world.applicabilityMode);

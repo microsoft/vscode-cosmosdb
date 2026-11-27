@@ -219,6 +219,10 @@ unused or oversized throughput, possible capacity-mode changes, expensive config
 query fan-out and shared-throughput contention.
 
 Open a finding for its evidence and suggested action. Shared guidance appears before resource-specific details.
+If the extension measures HTTP 429 responses but cannot establish a capacity problem, expand **Observed
+throttling by resource** to see the measured counts, rates, and any reason a recommendation was withheld.
+This is separate from the account-wide throttling result. A regional skew finding with partial coverage is
+evidence to investigate in that region, not a diagnosis for every region or for a specific partition key.
 Dismissal hides that finding in the current dashboard; it does not fix the resource or dismiss an Azure alert.
 Dismissals survive Refresh but reset when the dashboard is remounted.
 

@@ -134,7 +134,7 @@ describe.each([
     {
         metric: 'TotalRequests',
         run: (client: MonitorClient) => getThrottleRate(client, 'resource', '7D', 'db', 'container'),
-        zero: { ratePercent: 0, totalRequests: 0 },
+        zero: { ratePercent: 0, totalRequests: 0, throttledRequests: 0 },
     },
 ])('$metric diagnostic failures', ({ metric, run, zero }) => {
     const samples = [{ data: [{ timeStamp: '2026-01-01T00:00:00.000Z', total: 0, maximum: 0, count: 0 }] }];

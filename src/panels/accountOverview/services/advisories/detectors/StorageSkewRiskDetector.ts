@@ -16,6 +16,12 @@ import {
     type DerivedAdvisorySeverity,
 } from '../core/types';
 import {
+    partitionCohorts,
+    partitionCoverage,
+    withPartitionWitness,
+    type PartitionCoverageEvidence,
+} from '../fetchers/partitionEvidence';
+import {
     balanceRatio,
     GIB,
     PARTITION_STORAGE_LIMIT_BYTES,
@@ -37,38 +43,74 @@ import {
 function evaluateStorageSkewRisk(
     input: ContainerStorageInput,
     balanceThreshold: number,
-): AdvisoryEvaluation<'StorageSkewRisk'> {
+): AdvisoryEvaluation<'StorageSkewRisk'> & { partitionEvidence?: PartitionCoverageEvidence } {
     if (
         balanceThreshold <= 0 ||
         !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.storageSkew.minResourceAgeDays)
     ) {
         return { rootCause: 'insufficient_data' };
     }
-    const sizes = input.partitions
-        .map((partition) => {
-            const values = partition.samples
-                .map((sample) => sample.bytes)
-                .filter((bytes): bytes is number => Number.isFinite(bytes));
-            return values.length > 0 ? Math.max(...values) : undefined;
-        })
-        .filter((bytes): bytes is number => bytes !== undefined);
-    const ratio = balanceRatio(sizes);
-    if (sizes.length === 0) {
-        return { rootCause: 'insufficient_data' };
+    const classify = (sizes: readonly number[]) => {
+        const ratio = balanceRatio(sizes);
+        const busiestBytes = Math.max(...sizes);
+        const rootCause =
+            sizes.length === 0
+                ? 'insufficient_data'
+                : sizes.length === 1
+                  ? 'single_partition'
+                  : busiestBytes < STORAGE_SKEW_MIN_BUSIEST_BYTES
+                    ? 'too_small'
+                    : ratio === undefined || ratio >= balanceThreshold
+                      ? 'uniform_storage'
+                      : 'storage_skew';
+        const rank = busiestBytes >= STORAGE_SKEW_HIGH_BYTES ? 3 : busiestBytes >= STORAGE_SKEW_MEDIUM_BYTES ? 2 : 1;
+        return { rootCause, busiestBytes, ratio, rank } as const;
+    };
+    const { regionalEvidence } = input;
+    let partitionEvidence = regionalEvidence && partitionCoverage(regionalEvidence);
+    let result: ReturnType<typeof classify>;
+    if (regionalEvidence && partitionEvidence) {
+        const classified = [...partitionCohorts(regionalEvidence)].map((cohort) => ({
+            ...cohort,
+            result: classify(cohort.histories.map((history) => Math.max(...history.values()))),
+        }));
+        const witness = classified
+            .filter(({ result }) => result.rootCause === 'storage_skew')
+            .sort((a, b) => b.result.rank - a.result.rank || b.buckets - a.buckets)[0];
+        if (witness) {
+            result = witness.result;
+            partitionEvidence = withPartitionWitness(partitionEvidence, witness);
+        } else {
+            if (!partitionEvidence.coverageComplete || classified.length === 0) {
+                return { rootCause: 'insufficient_data', partitionEvidence };
+            }
+            const causes = new Set(classified.map(({ result }) => result.rootCause));
+            const rootCause = causes.size === 1 ? classified[0].result.rootCause : 'no_regional_skew';
+            return { rootCause, partitionEvidence };
+        }
+    } else {
+        const sizes = input.partitions
+            .map((partition) => {
+                const values = partition.samples
+                    .map((sample) => sample.bytes)
+                    .filter((bytes): bytes is number => Number.isFinite(bytes) && bytes >= 0);
+                return values.length > 0 ? Math.max(...values) : undefined;
+            })
+            .filter((bytes): bytes is number => bytes !== undefined);
+        result = classify(sizes);
+        if (
+            result.rootCause === 'single_partition' &&
+            input.physicalPartitionCount !== undefined &&
+            input.physicalPartitionCount !== 1
+        ) {
+            return { rootCause: 'insufficient_data' };
+        }
     }
-    if (sizes.length === 1) {
-        return { rootCause: 'single_partition' };
+    const { rootCause, busiestBytes, ratio, rank } = result;
+    if (rootCause !== 'storage_skew' || ratio === undefined) {
+        return { rootCause, partitionEvidence };
     }
-    const busiestBytes = Math.max(...sizes);
-    if (busiestBytes < STORAGE_SKEW_MIN_BUSIEST_BYTES) {
-        return { rootCause: 'too_small' };
-    }
-    if (ratio === undefined || ratio >= balanceThreshold) {
-        return { rootCause: 'uniform_storage' };
-    }
-
-    const severity: DerivedAdvisorySeverity =
-        busiestBytes >= STORAGE_SKEW_HIGH_BYTES ? 'High' : busiestBytes >= STORAGE_SKEW_MEDIUM_BYTES ? 'Medium' : 'Low';
+    const severity: DerivedAdvisorySeverity = rank === 3 ? 'High' : rank === 2 ? 'Medium' : 'Low';
     const scope = containerKey(input.databaseId, input.containerId);
     const busiestGiB = Math.round((busiestBytes / GIB) * 10) / 10;
     const balance = Math.round(ratio * 100) / 100;
@@ -99,6 +141,12 @@ function evaluateStorageSkewRisk(
                 ),
         ),
         suggestedAction:
+            (partitionEvidence?.witnessRegion
+                ? l10n.t('Storage skew was observed in {region}.', { region: partitionEvidence.witnessRegion }) + ' '
+                : '') +
+            (partitionEvidence && !partitionEvidence.coverageComplete
+                ? l10n.t('Coverage is partial; investigate the observed region first.') + ' '
+                : '') +
             l10n.t('Review the partition key for a higher-cardinality choice so data spreads evenly.') +
             ' ' +
             l10n.t('Split or archive the oversized logical keys concentrating storage on one partition.'),
@@ -106,8 +154,13 @@ function evaluateStorageSkewRisk(
             threshold,
         }),
         scope,
+        evidence: partitionEvidence && {
+            partitionCoverageComplete: partitionEvidence.coverageComplete,
+            witnessRegion: partitionEvidence.witnessRegion ?? null,
+            comparableBuckets: partitionEvidence.comparableBuckets ?? null,
+        },
     };
-    return { rootCause: 'storage_skew', advisory };
+    return { rootCause: 'storage_skew', advisory, partitionEvidence };
 }
 
 export class StorageSkewRiskDetector extends Detector {

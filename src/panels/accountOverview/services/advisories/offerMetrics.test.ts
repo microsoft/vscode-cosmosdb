@@ -14,14 +14,19 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { API } from '../../../../AzureDBExperiences';
 import { dims, GB, pagedItems, pdims } from '../testFixtures';
 import { collectDerivedAdvisories } from './collect';
-import { DEFAULT_ADVISORY_THRESHOLDS } from './core/thresholds';
+import { DEFAULT_ADVISORY_THRESHOLDS, DIAGNOSTIC_POLICY } from './core/thresholds';
 import { getContainerIdlePeak } from './fetchers/metrics';
 
 afterEach(() => {
     vi.restoreAllMocks();
 });
 
-function fixture(mode: 'manual' | 'autoscale', activeShared = false, deniedMetric?: string) {
+function fixture(
+    mode: 'manual' | 'autoscale',
+    activeShared = false,
+    deniedMetric?: string,
+    databaseAge: 'old' | 'young' | 'unknown' = 'old',
+) {
     const credential = {
         getToken: async () => {
             throw new Error('Network access is forbidden in offer metric tests.');
@@ -30,10 +35,14 @@ function fixture(mode: 'manual' | 'autoscale', activeShared = false, deniedMetri
     const cosmosClient = new CosmosDBManagementClient(credential, 'fixture');
     const monitorClient = new MonitorClient(credential, 'fixture');
     const createdAt = new Date('2020-01-01T00:00:00.000Z');
+    const databaseCreatedAt = databaseAge === 'old' ? createdAt : databaseAge === 'young' ? new Date() : undefined;
     const notFound = Object.assign(new Error('No dedicated offer'), { statusCode: 404 });
-    vi.spyOn(cosmosClient.databaseAccounts, 'get').mockResolvedValue({ systemData: { createdAt } });
+    vi.spyOn(cosmosClient.databaseAccounts, 'get').mockResolvedValue({
+        systemData: { createdAt },
+        locations: [{ locationName: 'East US' }],
+    });
     vi.spyOn(cosmosClient.sqlResources, 'listSqlDatabases').mockImplementation(() =>
-        pagedItems([{ resource: { id: 'mixed-db' }, systemData: { createdAt } }]),
+        pagedItems([{ resource: { id: 'mixed-db' }, systemData: { createdAt: databaseCreatedAt } }]),
     );
     vi.spyOn(cosmosClient.sqlResources, 'listSqlContainers').mockImplementation(() =>
         pagedItems(
@@ -71,8 +80,20 @@ function fixture(mode: 'manual' | 'autoscale', activeShared = false, deniedMetri
     const list = vi.spyOn(monitorClient.metrics, 'list').mockImplementation(async (_resource, options) => {
         const metric = options?.metricnames ?? '';
         const collection = options?.filter?.match(/CollectionName eq '((?:''|[^'])*)'/)?.[1]?.replaceAll("''", "'");
+        const regional = options?.filter?.includes("Region eq 'East US'");
+        const regionalPoints = (value: number): MetricValue[] => {
+            const { bucketMs, windowMs } = DIAGNOSTIC_POLICY.partitionSaturation.observation;
+            const start = Date.parse(options?.timespan?.split('/')[0] ?? '');
+            return Array.from({ length: windowMs / bucketMs }, (_, index) => ({
+                timeStamp: new Date(start + index * bucketMs),
+                maximum: value,
+            }));
+        };
         if (metric === deniedMetric && collection === 'shared-b') {
             throw Object.assign(new Error('Metric access denied'), { statusCode: 403 });
+        }
+        if (regional && collection === 'dedicated' && metric === 'PhysicalPartitionCount') {
+            return response(metric, [{ metadatavalues: dims('mixed-db', collection), data: regionalPoints(2) }]);
         }
         if (metric === 'NormalizedRUConsumption' || metric === 'AutoscaledRU') {
             // Shared throughput has offer-level telemetry, not per-member utilization series.
@@ -91,7 +112,7 @@ function fixture(mode: 'manual' | 'autoscale', activeShared = false, deniedMetri
                 metric,
                 values.map((value, index) => ({
                     metadatavalues: pdims('mixed-db', collection ?? '', 'PhysicalPartitionId', `${index}`),
-                    data: points('maximum', value),
+                    data: regional ? regionalPoints(value) : points('maximum', value),
                 })),
             );
         }
@@ -101,13 +122,19 @@ function fixture(mode: 'manual' | 'autoscale', activeShared = false, deniedMetri
             return response(metric, [{ data: points('total', total) }]);
         }
         if (metric === 'TotalRequests') {
+            if (options?.filter?.includes('OperationType')) {
+                return response(metric, [
+                    {
+                        metadatavalues: [{ name: { value: 'OperationType' }, value: 'Create' }],
+                        data: points('count', 920),
+                    },
+                ]);
+            }
             const counts = collection === undefined ? [2080, 920] : collection === 'dedicated' ? [100, 900] : [990, 10];
             return response(
                 metric,
                 counts.map((count, index) => ({
-                    metadatavalues: options?.filter?.includes('OperationType')
-                        ? [{ name: { value: 'OperationType' }, value: index === 0 ? 'Read' : 'Create' }]
-                        : dims('mixed-db', collection ?? '', index === 0 ? '200' : '429'),
+                    metadatavalues: dims('mixed-db', collection ?? '', index === 0 ? '200' : '429'),
                     data: points('count', count),
                 })),
             );
@@ -143,6 +170,50 @@ function fixture(mode: 'manual' | 'autoscale', activeShared = false, deniedMetri
 }
 
 describe('mixed shared and dedicated offer metric acquisition', () => {
+    it.each(['young', 'unknown'] as const)(
+        'does not use an old account or old members to pass a %s shared database age gate',
+        async (age) => {
+            const { collect } = fixture('manual', false, undefined, age);
+            const result = await collect();
+
+            expect(result.advisories.filter(({ rule }) => rule === 'IdleContainer')).toEqual([]);
+            expect(result.detectorCoverage.find(({ rule }) => rule === 'IdleContainer')).toMatchObject({
+                status: 'partial',
+                evaluatedCount: 1,
+                insufficientDataCount: 1,
+                matchedCount: 0,
+            });
+        },
+    );
+
+    it.each([false, true])(
+        'does not call a shared offer idle when a member has no samples (null=%s)',
+        async (allNull) => {
+            const { collect, list } = fixture('manual');
+            const originalList = list.getMockImplementation()!;
+            list.mockImplementation(async (resource, options) => {
+                const response = await originalList(resource, options);
+                if (options?.metricnames === 'TotalRequestUnits' && options.filter?.includes("'shared-b'")) {
+                    for (const metric of response.value) {
+                        for (const series of metric.timeseries ?? []) {
+                            series.data = allNull ? [{ timeStamp: new Date('2026-01-01') }] : [];
+                        }
+                    }
+                }
+                return response;
+            });
+
+            const result = await collect();
+            expect(result.advisories.filter(({ rule }) => rule === 'IdleContainer')).toEqual([]);
+            expect(result.detectorCoverage.find(({ rule }) => rule === 'IdleContainer')).toMatchObject({
+                status: 'partial',
+                evaluatedCount: 1,
+                insufficientDataCount: 1,
+                matchedCount: 0,
+            });
+        },
+    );
+
     it.each(['manual', 'autoscale'] as const)(
         'does not let busy dedicated traffic hide an idle %s shared offer',
         async (mode) => {
@@ -165,7 +236,7 @@ describe('mixed shared and dedicated offer metric acquisition', () => {
                     "CollectionName eq 'shared-b' and DatabaseName eq 'mixed-db'",
                 ]),
             );
-            expect(result.metricSource).toEqual({ available: true, failures: [] });
+            expect(result.metricSource.failures.filter(({ rule }) => rule === 'IdleContainer')).toEqual([]);
         },
     );
 
@@ -177,7 +248,15 @@ describe('mixed shared and dedicated offer metric acquisition', () => {
             const sharedRules = result.advisories
                 .filter((advisory) => advisory.scope === 'mixed-db')
                 .map((advisory) => advisory.rule);
-            expect(sharedRules).toContain(mode === 'manual' ? 'OverProvisioning' : 'AutoscaleMaxOverProvisioned');
+            expect(sharedRules.includes('OverProvisioning')).toBe(mode === 'manual');
+            expect(sharedRules).not.toContain('AutoscaleMaxOverProvisioned');
+            expect(
+                result.metricSource.failures.filter(
+                    ({ rule, scope }) => rule === 'AutoscaleMaxOverProvisioned' && scope === 'mixed-db',
+                ),
+            ).toEqual(
+                mode === 'manual' ? [] : [{ rule: 'AutoscaleMaxOverProvisioned', scope: 'mixed-db', reason: 'noData' }],
+            );
             expect(sharedRules).not.toContain('IdleContainer');
             expect(sharedRules).not.toContain('SustainedThrottlingInRegion');
             expect(sharedRules).not.toContain('HotPartitionRisk');
@@ -212,7 +291,11 @@ describe('mixed shared and dedicated offer metric acquisition', () => {
         },
     );
 
-    it('sums aligned member buckets before taking the idle peak', async () => {
+    it.each([
+        { indexes: [0, 1], matching: true, peak: 40 },
+        { indexes: [0, 1], matching: false, peak: 80 },
+        { indexes: [1, 2], matching: true, peak: undefined },
+    ])('only sums complete aligned member buckets: %j', async ({ indexes, matching, peak }) => {
         const { monitorClient, list } = fixture('manual');
         list.mockImplementation(async (_resource, options) => ({
             timespan: '',
@@ -224,12 +307,9 @@ describe('mixed shared and dedicated offer metric acquisition', () => {
                     unit: 'Count',
                     timeseries: [
                         {
-                            data: [0, 1].map((index) => ({
+                            data: (options?.filter?.includes("'shared-a'") ? [0, 1] : indexes).map((index) => ({
                                 timeStamp: new Date(Date.UTC(2026, 0, 1, index)),
-                                total:
-                                    options?.filter?.includes("CollectionName eq 'shared-a'") === (index === 0)
-                                        ? 40
-                                        : 0,
+                                total: !matching || options?.filter?.includes("'shared-a'") === (index === 0) ? 40 : 0,
                             })),
                         },
                     ],
@@ -242,7 +322,7 @@ describe('mixed shared and dedicated offer metric acquisition', () => {
                 'shared-b',
                 'shared-a',
             ]),
-        ).toBe(40);
+        ).toBe(peak);
     });
 
     it('requires membership and does not discover containers through a database-wide idle query', async () => {
@@ -250,7 +330,9 @@ describe('mixed shared and dedicated offer metric acquisition', () => {
         await expect(getContainerIdlePeak(monitorClient, 'fixture', 'mixed-db', undefined)).rejects.toThrow(
             'authoritative container membership',
         );
-        expect(await getContainerIdlePeak(monitorClient, 'fixture', 'mixed-db', undefined, undefined, [])).toBe(0);
+        expect(
+            await getContainerIdlePeak(monitorClient, 'fixture', 'mixed-db', undefined, undefined, []),
+        ).toBeUndefined();
         expect(list).not.toHaveBeenCalled();
     });
 });

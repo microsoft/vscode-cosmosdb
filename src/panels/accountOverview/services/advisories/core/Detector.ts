@@ -9,6 +9,7 @@ import {
     type DerivedAdvisoryRule,
     type DerivedAdvisoryThresholds,
     type DetectorCoverage,
+    type ScopedCapacityThrottling,
     type UtilizationBand,
 } from './types';
 
@@ -19,11 +20,15 @@ export interface DetectorContext {
 }
 
 /** Only classifications and the optional finding are needed to summarize an evaluation. */
-export type DetectorEvaluation = { advisory?: DerivedAdvisory } & ({ rootCause: string } | { band: UtilizationBand });
+export type DetectorEvaluation = {
+    advisory?: DerivedAdvisory;
+    capacityThrottling?: ScopedCapacityThrottling;
+} & ({ rootCause: string } | { band: UtilizationBand });
 
 export interface DetectorAnalysis {
     advisories: DerivedAdvisory[];
     coverage: DetectorCoverage;
+    capacityThrottling?: ScopedCapacityThrottling[];
 }
 
 /**
@@ -52,6 +57,7 @@ export abstract class Detector {
     analyze(ctx: DetectorContext): DetectorAnalysis {
         const evaluations = this.evaluateInputs(ctx);
         const advisories: DerivedAdvisory[] = [];
+        const capacityThrottling: ScopedCapacityThrottling[] = [];
         const coverage: DetectorCoverage = {
             rule: this.rule,
             status: 'insufficientData',
@@ -63,6 +69,9 @@ export abstract class Detector {
         };
 
         for (const evaluation of evaluations) {
+            if (evaluation.capacityThrottling) {
+                capacityThrottling.push(evaluation.capacityThrottling);
+            }
             const classification = 'rootCause' in evaluation ? evaluation.rootCause : evaluation.band;
             if (evaluation.advisory) {
                 advisories.push(evaluation.advisory);
@@ -91,6 +100,6 @@ export abstract class Detector {
             coverage.status = 'notApplicable';
         }
 
-        return { advisories, coverage };
+        return { advisories, coverage, ...(capacityThrottling.length > 0 && { capacityThrottling }) };
     }
 }

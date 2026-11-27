@@ -232,18 +232,31 @@ describe('native DX-021 throttled operation investigation', () => {
         ).toBeUndefined();
     });
 
-    it('preserves independent-source share semantics rather than normalizing missing operations to 100%', () => {
-        const result = throttlingByOperationDetector.evaluate({
-            statusCounts: { 200: 900, 429: 100 },
-            throttledOperationCounts: { Query: 50 },
-        });
+    it.each<Record<string, number> | undefined>([undefined, {}, { Query: 50 }, { Query: 200 }])(
+        'preserves 429s without partial attribution: %j',
+        (counts) => {
+            const result = throttlingByOperationDetector.evaluateResult({
+                statusCounts: { 200: 900, 429: 100 },
+                throttledOperationCounts: counts,
+            });
 
-        expect(result?.evidence).toMatchObject({ querySharePercent: 50, dominantSharePercent: 50 });
-    });
+            expect(result).toEqual({
+                rootCause: 'insufficient_data',
+                observations: { totalRequests: 1000, totalThrottled: 100, throttleRatePercent: 10 },
+                abstentionReason: !counts?.Query
+                    ? 'no_operation_breakdown'
+                    : counts.Query < 100
+                      ? 'partial_operation_breakdown'
+                      : 'inconsistent_operation_breakdown',
+                attributedThrottled: counts?.Query ?? 0,
+            });
+        },
+    );
 
-    it('preserves the CODA not_throttling root when no operation breakdown is available', () => {
-        expect(throttlingByOperationDetector.evaluateResult({ statusCounts: { 200: 900, 429: 100 } })).toEqual({
-            rootCause: 'not_throttling',
+    it('reports measured throttling below the 1% alert gate', () => {
+        expect(throttlingByOperationDetector.evaluateResult({ statusCounts: { 200: 9901, 429: 99 } })).toEqual({
+            rootCause: 'below_throttle_threshold',
+            observations: { totalRequests: 10_000, totalThrottled: 99, throttleRatePercent: 0.99 },
         });
     });
 
@@ -368,7 +381,7 @@ describe('native DX-022 and DX-023 configuration reviews', () => {
                 scopeProvisionedRuTotal: 5000,
                 accountRequests: {
                     statusCounts: { 200: 800, 404: 100, 429: 100 },
-                    throttledOperationCounts: { Create: 70 },
+                    throttledOperationCounts: { Create: 100 },
                 },
             },
             DEFAULT_ADVISORY_THRESHOLDS,

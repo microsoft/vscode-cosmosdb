@@ -11,8 +11,8 @@ import { clampRationale } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import { type AccountConfigInput, type AdvisoryEvaluation } from '../core/types';
 
-/** Cosmos DB APIs whose drivers cannot use multi-region-write failover, so the flag is always a misconfiguration. */
-const NON_MULTI_WRITE_APIS = new Map<
+/** API families where configuration alone warrants checking client-side write failover. */
+const CLIENT_FAILOVER_APIS = new Map<
     NonNullable<AccountConfigInput['api']>,
     'cassandra' | 'gremlin' | 'table' | 'mongo'
 >([
@@ -22,13 +22,25 @@ const NON_MULTI_WRITE_APIS = new Map<
     ['MongoDB', 'mongo'],
 ]);
 
+const MULTI_WRITE_REMEDIATION = 'global-multi-region-write-antipattern';
+
+function clientFailoverCheck(api: 'cassandra' | 'gremlin' | 'table' | 'mongo'): string {
+    switch (api) {
+        case 'cassandra':
+            return l10n.t("Check the driver's load-balancing policy and preferred regions.");
+        case 'gremlin':
+            return l10n.t('Check whether the client uses the global endpoint or selects regional endpoints.');
+        case 'table':
+            return l10n.t('Check regional routing and fallback in the Table SDK and version your application uses.');
+        case 'mongo':
+            return l10n.t('Check the preferred write region in your MongoDB connection settings.');
+    }
+}
+
 /**
- * MultiRegionWriteAntipattern (CODA DX-008): multi-region writes are enabled where the RTO=0 write-failover
- * benefit cannot or need not apply. The wrong-API case (Cassandra/Gremlin/Table drivers cannot use the
- * failover) is highest confidence; a single write region with the flag set is a latent tripwire (no benefit today,
- * doubled write cost the moment a second write region is added); non-production with ≥ 2 write regions does not
- * need RTO=0 write failover. Two-or-more write regions in production is legitimate active-active HA and never
- * fires. Pure.
+ * MultiRegionWriteAntipattern (CODA DX-008): ARM reveals write-region configuration, not application failover.
+ * For Cassandra, Gremlin, Table and MongoDB, advise verifying the client. Otherwise check the single-region
+ * tripwire and non-production use before treating the configuration as legitimate HA. Pure.
  */
 function evaluateMultiRegionWrites(config: AccountConfigInput): AdvisoryEvaluation<'MultiRegionWriteAntipattern'> {
     if (!config.multiRegionWritesEnabled) {
@@ -36,36 +48,35 @@ function evaluateMultiRegionWrites(config: AccountConfigInput): AdvisoryEvaluati
     }
 
     const base = { id: 'MultiRegionWriteAntipattern', rule: 'MultiRegionWriteAntipattern' as const };
-    const disableAction = l10n.t(
-        'Review multi-region-write compatibility and availability requirements before changing the flag. Disabling multi-write while keeping all regions does not remove their provisioned capacity.',
-    );
-
-    // Wrong-API: the failover benefit is impossible regardless of environment — highest confidence.
-    const apiCode = config.api === undefined ? undefined : NON_MULTI_WRITE_APIS.get(config.api);
+    const apiCode = config.api === undefined ? undefined : CLIENT_FAILOVER_APIS.get(config.api);
     if (config.api !== undefined && apiCode !== undefined) {
         const apiLabel = config.api === 'MongoDB' ? 'MongoDB' : getExperienceFromApi(config.api).shortName;
         return {
             rootCause: `${apiCode}_multi_region_writes`,
+            observations: { regionalCapacityQuantified: false, clientWriteFailover: 'not_assessed' },
             advisory: {
                 ...base,
-                severity: 'High',
-                title: l10n.t('Multi-region writes on a {api} account', { api: apiLabel }),
+                severity: 'Low',
+                agentKitRule: null,
+                title: l10n.t('Verify client write failover on a {api} account', { api: apiLabel }),
                 rationale: clampRationale(
                     l10n.t('Multi-region writes are enabled on a {api} API account.', { api: apiLabel }) +
                         ' ' +
                         l10n.t(
-                            "The {api} drivers cannot use Cosmos DB's multi-region-write failover, so the RTO=0 HA benefit never materialises.",
-                            {
-                                api: apiLabel,
-                            },
-                        ) +
-                        ' ' +
-                        l10n.t(
-                            'Review the write-conflict and pricing implications against the current API and region configuration.',
+                            'Account configuration does not show whether your application redirects writes when its usual write region is unavailable.',
                         ),
                 ),
-                suggestedAction: disableAction,
-                thresholdReference: l10n.t('Threshold: multi-region writes enabled on a non-SQL API account'),
+                suggestedAction:
+                    l10n.t('Verify client write failover for your {api} application.', { api: apiLabel }) +
+                    ' ' +
+                    clientFailoverCheck(apiCode) +
+                    ' ' +
+                    l10n.t(
+                        'Run a controlled test to check whether writes resume within your recovery target when the usual write region is unavailable.',
+                    ),
+                thresholdReference: l10n.t('Configuration: multi-region writes enabled on a {api} account', {
+                    api: apiLabel,
+                }),
             },
         };
     }
@@ -78,6 +89,7 @@ function evaluateMultiRegionWrites(config: AccountConfigInput): AdvisoryEvaluati
             advisory: {
                 ...base,
                 severity: 'Low',
+                agentKitRule: MULTI_WRITE_REMEDIATION,
                 title: l10n.t('Multi-region writes with a single write region'),
                 rationale: clampRationale(
                     l10n.t('Multi-region writes are enabled but the account has a single write region.') +
@@ -106,6 +118,7 @@ function evaluateMultiRegionWrites(config: AccountConfigInput): AdvisoryEvaluati
         advisory: {
             ...base,
             severity: 'Medium',
+            agentKitRule: MULTI_WRITE_REMEDIATION,
             title: l10n.t('Multi-region writes on a non-production account'),
             rationale: clampRationale(
                 l10n.t(
@@ -132,6 +145,8 @@ function evaluateRegionalCapacity(
     manualRu?: number,
 ): AdvisoryEvaluation<'MultiRegionWriteAntipattern'> {
     const result = evaluateMultiRegionWrites(config);
+    const clientWriteFailover = result.observations?.clientWriteFailover;
+    const clientEvidence = clientWriteFailover ? { clientWriteFailover } : undefined;
     if (
         config.isServerless !== false ||
         manualRu === undefined ||
@@ -140,10 +155,16 @@ function evaluateRegionalCapacity(
         !Number.isInteger(config.regionCount) ||
         config.regionCount < 1
     ) {
-        return { ...result, observations: { regionalCapacityQuantified: false } };
+        return {
+            ...result,
+            observations: { regionalCapacityQuantified: false, ...clientEvidence },
+            advisory:
+                result.advisory && clientEvidence ? { ...result.advisory, evidence: clientEvidence } : result.advisory,
+        };
     }
     const observations = {
         regionalCapacityQuantified: true as const,
+        ...clientEvidence,
         configuredPerRegionRu: manualRu,
         globalRegionalFootprintRu: manualRu * config.regionCount,
         removableExtraRegionRu:

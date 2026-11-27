@@ -14,18 +14,32 @@ const ACTIVITY_LOG_LOOKBACK_DAYS = 89;
 type CreatedAtValue = Date | string | undefined;
 
 export function getSystemCreatedAt(resource: unknown): string | undefined {
+    return getSystemTimestamp(resource, 'createdAt');
+}
+
+export function hasMalformedCreationTime(resource: { systemData?: { createdAt?: unknown } }): boolean {
+    const createdAt = resource.systemData?.createdAt;
+    return createdAt !== undefined && createdAt !== null && getSystemCreatedAt(resource) === undefined;
+}
+
+/** A last-modified timestamp proves existence by that time, not when the resource was created. */
+export function getSystemLastModifiedAt(resource: unknown): string | undefined {
+    return getSystemTimestamp(resource, 'lastModifiedAt');
+}
+
+function getSystemTimestamp(resource: unknown, property: 'createdAt' | 'lastModifiedAt'): string | undefined {
     if (!resource || typeof resource !== 'object' || !('systemData' in resource)) {
         return undefined;
     }
     const systemData = resource.systemData;
-    if (!systemData || typeof systemData !== 'object' || !('createdAt' in systemData)) {
+    if (!systemData || typeof systemData !== 'object') {
         return undefined;
     }
-    const createdAt = systemData.createdAt;
-    if (!(createdAt instanceof Date) && typeof createdAt !== 'string') {
+    const value = (systemData as Partial<Record<typeof property, unknown>>)[property];
+    if (!(value instanceof Date) && typeof value !== 'string') {
         return undefined;
     }
-    const timestamp = parseMonitorTimestamp(createdAt);
+    const timestamp = parseMonitorTimestamp(value);
     return timestamp === undefined ? undefined : new Date(timestamp).toISOString();
 }
 

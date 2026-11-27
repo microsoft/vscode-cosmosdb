@@ -832,6 +832,18 @@ export const DerivedAdvisories = ({
             </Tooltip>
         ) : null;
 
+    const throttling = result?.available ? result.throttlingObservation : undefined;
+    const capacityThrottling = result?.available ? result.capacityThrottling : undefined;
+    const formatRate = (percent: number): string =>
+        (percent / 100).toLocaleString(undefined, { style: 'percent', maximumSignificantDigits: 3 });
+    const throttlingSummary = throttling
+        ? l10n.t('HTTP 429s over the last seven days: {throttled} of {total} requests ({rate}).', {
+              throttled: throttling.totalThrottled.toLocaleString(),
+              total: throttling.totalRequests.toLocaleString(),
+              rate: formatRate(throttling.throttleRatePercent),
+          })
+        : undefined;
+
     let body: ReactNode;
     if (loading && !result) {
         body = <Text className={styles.emptyState}>{l10n.t('Analyzing your telemetry…')}</Text>;
@@ -883,6 +895,34 @@ export const DerivedAdvisories = ({
                 {result?.available && result.costSource?.available === false && (
                     <CostCoverageNotice source={result.costSource} />
                 )}
+                <output>
+                    {throttlingSummary && (
+                        <Text>
+                            {throttlingSummary}
+                            {throttling?.attributionIncomplete && ` ${l10n.t('Operation attribution is incomplete.')}`}
+                        </Text>
+                    )}
+                </output>
+                {!!capacityThrottling?.length && (
+                    <details>
+                        <summary>
+                            {l10n.t('Observed throttling by resource ({count})', { count: capacityThrottling.length })}
+                        </summary>
+                        <ul>
+                            {capacityThrottling.map((item) => (
+                                <li key={item.scope}>
+                                    {l10n.t('{scope}: {throttled} of {total} requests returned HTTP 429 ({rate}).', {
+                                        scope: item.scope,
+                                        throttled: item.throttledRequests.toLocaleString(),
+                                        total: item.totalRequests.toLocaleString(),
+                                        rate: formatRate(item.throttleRatePercent),
+                                    })}
+                                    {item.explanation && ` ${item.explanation}`}
+                                </li>
+                            ))}
+                        </ul>
+                    </details>
+                )}
                 {body}
             </div>
             <AdvisoryDetailDialog
@@ -918,14 +958,14 @@ const CostEstimateDetails = ({ estimate }: { estimate: NonNullable<DerivedAdviso
             <Text weight="semibold">{l10n.t('Estimated capacity savings: {amount}', { amount })}</Text>
             <Text>
                 {l10n.t(
-                    'Modeled at a blended amortized throughput rate, using 730 hours per month. This is not a guaranteed bill reduction; reservations, commitments and future demand affect realization. Estimates can overlap and must not be added together.',
+                    'Modeled at the matching amortized throughput meter rate, using 730 hours per month. This is not a guaranteed bill reduction; reservations, commitments and future demand affect realization. Estimates can overlap and must not be added together.',
                 )}
             </Text>
             <Text>
                 {estimate.rate.scope === 'account'
                     ? l10n.t('Rate scope: account.')
                     : l10n.t(
-                          'Rate scope: subscription fallback after a successful account query returned no usable rate. This blended rate is not account-attributed.',
+                          'Rate scope: subscription fallback after a successful account query returned no usable matching rate. This rate is not account-attributed.',
                       )}
             </Text>
             <Text>
@@ -942,15 +982,18 @@ const CostEstimateDetails = ({ estimate }: { estimate: NonNullable<DerivedAdviso
             </Text>
             <Text>
                 {l10n.t(
-                    'Model: {ru} recoverable RU/s at {rate} {currency} per RU/s-month, without additional region, autoscale or zone multipliers.',
+                    'Model: {ru} recoverable RU/s maps to {units} billed 100-RU/s units per hour for this account. The meter rate is {rate} {currency} per billed unit-hour.',
                     {
                         ru: format(estimate.recoverableRu),
-                        rate: estimate.rate.perRuMonth.toLocaleString(undefined, { maximumSignificantDigits: 6 }),
+                        units: format(estimate.billedUnitsPerHour),
+                        rate: (estimate.rate.cost / estimate.rate.usage100RuHours).toLocaleString(undefined, {
+                            maximumSignificantDigits: 6,
+                        }),
                         currency: estimate.currency,
                     },
                 )}
             </Text>
-            <Text>{l10n.t('Contributing meters: {meters}', { meters: estimate.rate.meters.join(', ') })}</Text>
+            <Text>{l10n.t('Throughput meter: {meter}', { meter: estimate.rate.meters.join(', ') })}</Text>
         </>
     ) : (
         <>

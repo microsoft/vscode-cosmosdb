@@ -21,7 +21,39 @@ export interface CostContext {
     locationNames: readonly string[];
     /** Raw ARM setting; absent is unknown, not a single-write account. */
     multiRegionWritesEnabled?: boolean;
+    writeRegionCount?: number;
+    zoneRedundantRegionCount?: number;
+    freeTier?: boolean;
+    isServerless?: boolean;
     abortSignal?: AbortSignal;
+}
+
+export const STANDARD_METER = '100 RU/s';
+export const MULTI_WRITE_METER = '100 Multi-master RU/s';
+type ThroughputMeter = typeof STANDARD_METER | typeof MULTI_WRITE_METER;
+
+export function throughputMeter(context: CostContext): ThroughputMeter | undefined {
+    const regionNames = context.locationNames.map((name) => name.trim().toLowerCase().replace(/\s+/g, ''));
+    if (
+        context.freeTier !== false ||
+        context.isServerless !== false ||
+        regionNames.length === 0 ||
+        regionNames.includes('') ||
+        new Set(regionNames).size !== regionNames.length
+    ) {
+        return undefined;
+    }
+    if (context.multiRegionWritesEnabled === false && context.writeRegionCount === 1) {
+        return STANDARD_METER;
+    }
+    if (
+        context.multiRegionWritesEnabled === true &&
+        regionNames.length >= 2 &&
+        context.writeRegionCount === regionNames.length
+    ) {
+        return MULTI_WRITE_METER;
+    }
+    return undefined;
 }
 
 export class CostEvidenceError extends Error {
@@ -108,12 +140,16 @@ export async function getThroughputRate(
     accountId: string,
     now: number,
 ): Promise<ThroughputRate> {
-    const accountRate = await queryThroughputRate(client, context, accountId, now, 'account');
+    const meter = throughputMeter(context);
+    if (!meter) {
+        throw new CostEvidenceError('noData');
+    }
+    const accountRate = await queryThroughputRate(client, context, accountId, now, 'account', meter);
     if (accountRate) {
         return accountRate;
     }
 
-    const subscriptionRate = await queryThroughputRate(client, context, accountId, now, 'subscription_fallback');
+    const subscriptionRate = await queryThroughputRate(client, context, accountId, now, 'subscription_fallback', meter);
     if (!subscriptionRate) {
         throw new CostEvidenceError('noData');
     }
@@ -127,6 +163,7 @@ async function queryThroughputRate(
     accountId: string,
     now: number,
     scope: ThroughputRate['scope'],
+    expectedMeter: ThroughputMeter,
 ): Promise<ThroughputRate | undefined> {
     const end = new Date(now);
     end.setUTCHours(0, 0, 0, 0);
@@ -183,14 +220,13 @@ async function queryThroughputRate(
     let cost = 0;
     let usage = 0;
     let currency: string | undefined;
-    const meters = new Set<string>();
     for (const row of rows) {
         const category = row[categoryIndex];
         const meter = row[meterIndex];
         if (row.length !== columns.length || typeof category !== 'string' || typeof meter !== 'string') {
             throw new CostEvidenceError('invalidData');
         }
-        if (category !== 'Azure Cosmos DB' || !meter.trim().endsWith('RU/s')) {
+        if (category !== 'Azure Cosmos DB' || meter.trim() !== expectedMeter) {
             continue;
         }
         const rowCost = row[costIndex];
@@ -210,7 +246,6 @@ async function queryThroughputRate(
         cost += rowCost;
         usage += rowUsage;
         currency = rowCurrency;
-        meters.add(meter.trim());
     }
     if (!Number.isFinite(cost) || !Number.isFinite(usage) || cost <= 0 || usage <= 0 || currency === undefined) {
         return undefined;
@@ -225,7 +260,7 @@ async function queryThroughputRate(
         currency,
         cost,
         usage100RuHours: usage,
-        meters: [...meters].sort(),
+        meters: [expectedMeter],
         observationStart,
         observationEnd,
         perRuMonth,

@@ -14,6 +14,10 @@ const context: CostContext = {
     subscriptionId: 'sub',
     resourceManagerEndpoint: 'https://management.azure.com/',
     locationNames: ['East US'],
+    multiRegionWritesEnabled: false,
+    writeRegionCount: 1,
+    isServerless: false,
+    freeTier: false,
 };
 const columns = [
     { name: 'UsageQuantity', type: 'Number' },
@@ -100,11 +104,11 @@ describe('CODA account-first throughput billing', () => {
             scope: 'account',
             source: 'customerAmortizedBill',
             currency: 'EUR',
-            cost: 24,
-            usage100RuHours: 2000,
-            meters: ['100 Multi-master RU/s', '100 RU/s'],
+            cost: 8,
+            usage100RuHours: 1000,
+            meters: ['100 RU/s'],
         });
-        expect(rate.perRuMonth).toBeCloseTo((24 / 2000 / 100) * 730, 12);
+        expect(rate.perRuMonth).toBeCloseTo((8 / 1000 / 100) * 730, 12);
     });
 
     it.each([
@@ -136,6 +140,7 @@ describe('CODA account-first throughput billing', () => {
 
     it.each([
         { accountRows: [] },
+        { accountRows: [row(16, 1000, 'USD', '100 Multi-master RU/s')] },
         { accountRows: [row(0, 1000)] },
         { accountRows: [row(-1)] },
         { accountRows: [row(Number.MAX_VALUE), row(Number.MAX_VALUE)] },

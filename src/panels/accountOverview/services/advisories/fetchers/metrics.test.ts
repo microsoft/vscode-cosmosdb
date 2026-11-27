@@ -15,7 +15,7 @@ import {
 
 const timestamp = '2026-01-01T00:00:00.000Z';
 const readers = [
-    { metric: 'TotalRequestUnits', read: getContainerIdlePeak, regionalPeak: 60, emptyPeak: 0 },
+    { metric: 'TotalRequestUnits', read: getContainerIdlePeak, regionalPeak: 60, emptyPeak: undefined },
     { metric: 'PhysicalPartitionCount', read: getContainerPartitionCount, regionalPeak: 8, emptyPeak: undefined },
     { metric: 'DataUsage', read: getContainerMergeStoragePeak, regionalPeak: 8, emptyPeak: undefined },
 ];

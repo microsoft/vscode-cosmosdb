@@ -5,6 +5,7 @@
 
 import assert from 'node:assert/strict';
 import { type ThroughputMode } from '../../inventory';
+import { type CollectedDerivedAdvisories } from '../collect';
 import {
     type AccountConfigInput,
     type AdvisoryEvaluation,
@@ -40,6 +41,19 @@ export interface World {
     queries?: CrossPartitionInput;
     shared?: SharedThroughputInput;
     idle?: IdleContainerInput;
+    idleNullSamples?: boolean;
+    idleUtilizationDenied?: boolean;
+    idleMetricReads?: string[];
+    pool?: { databaseAge?: string; containerAge?: string; memberRead?: string; malformedAge?: boolean };
+    idleBill?: { multiWrite: boolean; regions: number; zoneRegions?: number; cost?: number; meter?: string };
+    backupStorage?: { total: number; observed?: number; price: number };
+    backupStorageTop?: number;
+    operationDenied?: boolean;
+    operationReads?: number;
+    indexingBatch?: number;
+    storageDenied?: boolean;
+    storageReads?: number;
+    collected?: CollectedDerivedAdvisories;
     merge?: PartitionMergeInput;
     storage?: ContainerStorageInput;
     indexing?: IndexingUsageInput;

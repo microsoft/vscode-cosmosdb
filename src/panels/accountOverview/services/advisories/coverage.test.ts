@@ -7,11 +7,10 @@ import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { API } from '../../../../AzureDBExperiences';
 import * as inventory from '../inventory';
-import * as partitionHealth from '../partitionHealth';
 import { captureReadDiagnostics, withReadDiagnostics } from '../readDiagnostics';
 import * as resourceAge from '../resourceAge';
-import { GB, iso, mockClient, pdims } from '../testFixtures';
-import { DAY } from '../units';
+import { GB, iso, mockClient } from '../testFixtures';
+import { DAY, HOUR } from '../units';
 import { collectDerivedAdvisories } from './collect';
 import { DEFAULT_ADVISORY_THRESHOLDS } from './core/thresholds';
 import {
@@ -91,7 +90,7 @@ describe('pure detector coverage', () => {
         'preserves CODA operation classifications without inventing a decomposition: %j',
         ({ statusCounts, sufficient, throttling, throttledOperationCounts }) => {
             const hasOperation = (throttledOperationCounts?.Create ?? 0) > 0;
-            const insufficient = !sufficient;
+            const insufficient = !sufficient || (throttling && !hasOperation);
             const matches = sufficient && throttling && hasOperation;
             const result = analyzeDerivedAdvisories(
                 {
@@ -121,9 +120,10 @@ describe('pure detector coverage', () => {
                 { maxP99: 95, minP99: 30 },
             ].map((observations) => ({ ...observations, physicalPartitionCount })),
         ),
-    )('preserves CODA classifications independently of physical-count metadata: %j', (observations) => {
+    )('requires corroboration before treating saturated series as a complete offer: %j', (observations) => {
         const hotMatch = observations.maxP99 === 95 && observations.minP99 === 30;
         const underProvisionedMatch = observations.maxP99 === 95 && observations.minP99 === 80;
+        const capacityInsufficient = underProvisionedMatch && observations.physicalPartitionCount === 3;
         const result = analyzeDerivedAdvisories(
             { ...emptyInputs, partitions: [partition({ ...observations, partitionCount: 2 })] },
             DEFAULT_ADVISORY_THRESHOLDS,
@@ -132,18 +132,20 @@ describe('pure detector coverage', () => {
             {
                 rule: 'HotPartitionRisk',
                 matchedCount: Number(hotMatch),
+                insufficient: false,
             },
             {
                 rule: 'SustainedThrottlingInRegion',
-                matchedCount: Number(underProvisionedMatch),
+                matchedCount: Number(underProvisionedMatch && !capacityInsufficient),
+                insufficient: capacityInsufficient,
             },
         ];
 
-        for (const { rule, matchedCount } of expectations) {
+        for (const { rule, matchedCount, insufficient } of expectations) {
             expect(result.detectorCoverage.find((entry) => entry.rule === rule)).toMatchObject({
-                status: 'evaluated',
-                evaluatedCount: 1,
-                insufficientDataCount: 0,
+                status: insufficient ? 'insufficientData' : 'evaluated',
+                evaluatedCount: Number(!insufficient),
+                insufficientDataCount: Number(insufficient),
                 matchedCount,
             });
             expect(result.advisories.filter((advisory) => advisory.rule === rule)).toHaveLength(matchedCount);
@@ -170,8 +172,8 @@ describe('pure detector coverage', () => {
             );
 
             expect(result.detectorCoverage.find(({ rule }) => rule === 'SustainedThrottlingInRegion')).toMatchObject({
-                status: 'evaluated',
-                evaluatedCount: 1,
+                status: throttleRatePercent === 0 ? 'evaluated' : 'insufficientData',
+                evaluatedCount: Number(throttleRatePercent === 0),
                 matchedCount: 0,
             });
             expect(result.detectorCoverage.find(({ rule }) => rule === 'HotPartitionRisk')).toMatchObject({
@@ -183,34 +185,37 @@ describe('pure detector coverage', () => {
         },
     );
 
-    it.each([undefined, 1, 2])('uses CODA observed singleton classification (%s)', (physicalPartitionCount) => {
-        const result = analyzeDerivedAdvisories(
-            {
-                ...emptyInputs,
-                partitions: [partition({ partitionCount: 1, physicalPartitionCount })],
-                storage: [
-                    {
-                        databaseId: 'private-db',
-                        containerId: 'private-container',
-                        resourceAgeDays: 30,
-                        physicalPartitionCount,
-                        partitions: [{ partitionId: '0', samples: [{ timestamp: 0, bytes: GB }] }],
-                    },
-                ],
-            },
-            DEFAULT_ADVISORY_THRESHOLDS,
-        );
+    it.each([undefined, 1, 2])(
+        'does not assume a sampled singleton is the whole offer (%s)',
+        (physicalPartitionCount) => {
+            const result = analyzeDerivedAdvisories(
+                {
+                    ...emptyInputs,
+                    partitions: [partition({ partitionCount: 1, physicalPartitionCount })],
+                    storage: [
+                        {
+                            databaseId: 'private-db',
+                            containerId: 'private-container',
+                            resourceAgeDays: 30,
+                            physicalPartitionCount,
+                            partitions: [{ partitionId: '0', samples: [{ timestamp: 0, bytes: GB }] }],
+                        },
+                    ],
+                },
+                DEFAULT_ADVISORY_THRESHOLDS,
+            );
 
-        for (const rule of ['HotPartitionRisk', 'StorageSkewRisk']) {
-            expect(result.detectorCoverage.find((entry) => entry.rule === rule)).toMatchObject({
-                status: 'notApplicable',
-                notApplicableCount: 1,
-                matchedCount: 0,
-            });
-        }
+            for (const rule of ['HotPartitionRisk', 'StorageSkewRisk']) {
+                expect(result.detectorCoverage.find((entry) => entry.rule === rule)).toMatchObject({
+                    status: physicalPartitionCount === 2 ? 'insufficientData' : 'notApplicable',
+                    notApplicableCount: Number(physicalPartitionCount !== 2),
+                    matchedCount: 0,
+                });
+            }
 
-        expect(result.advisories).toEqual([]);
-    });
+            expect(result.advisories).toEqual([]);
+        },
+    );
 
     it.each([undefined, 0.1, 30])(
         'applies the CODA age gate before singleton classification (%s days)',
@@ -408,7 +413,7 @@ describe('pure detector coverage', () => {
         { rule: 'StorageGrowthRisk', sizes: [[45, 46], []], status: 'evaluated', matches: 1 },
         { rule: 'StorageSkewRisk', sizes: [[30], [30], []], status: 'evaluated', matches: 0 },
         { rule: 'StorageSkewRisk', sizes: [[0.5], [0.1], []], status: 'evaluated', matches: 0 },
-        { rule: 'StorageSkewRisk', sizes: [[30], []], status: 'notApplicable', matches: 0 },
+        { rule: 'StorageSkewRisk', sizes: [[30], []], status: 'insufficientData', matches: 0 },
         { rule: 'StorageSkewRisk', sizes: [[30], [30]], status: 'evaluated', matches: 0 },
         { rule: 'StorageSkewRisk', sizes: [[30]], status: 'notApplicable', matches: 0 },
         { rule: 'StorageSkewRisk', sizes: [[40], [5], []], status: 'evaluated', matches: 1 },
@@ -511,7 +516,7 @@ describe('detector dependency coverage', () => {
             const cosmosClient = new CosmosDBManagementClient({ getToken: async () => null }, 'sub');
             const monitorClient = mockClient({});
 
-            vi.spyOn(cosmosClient.databaseAccounts, 'get').mockResolvedValue({});
+            vi.spyOn(cosmosClient.databaseAccounts, 'get').mockResolvedValue({ locations: [{ locationName: 'West' }] });
             vi.spyOn(inventory, 'getSqlInventoryDetails').mockResolvedValue({
                 rows: [target],
                 databases: [target.databaseId],
@@ -539,91 +544,115 @@ describe('detector dependency coverage', () => {
             };
         }
 
+        function mockRegionalReads(
+            monitorClient: ReturnType<typeof mockClient>,
+            {
+                count,
+                ru,
+                sizes,
+                countFailed,
+                throttleFailed,
+            }: {
+                count?: number;
+                ru: number[];
+                sizes: number[];
+                countFailed?: boolean;
+                throttleFailed?: boolean;
+            },
+        ) {
+            vi.spyOn(monitorClient.metrics, 'list').mockImplementation(async (_resource, options) => {
+                const name = options?.metricnames;
+                if (
+                    (countFailed && name === 'PhysicalPartitionCount') ||
+                    (throttleFailed && name === 'TotalRequests')
+                ) {
+                    throw Object.assign(new Error('private-metric-error'), { statusCode: 403 });
+                }
+                const values =
+                    name === 'PhysicalPartitionCount' && count !== undefined
+                        ? [count]
+                        : name === 'NormalizedRUConsumption'
+                          ? ru
+                          : name === 'PhysicalPartitionSizeInfo'
+                            ? sizes
+                            : [];
+                const [start, end] = (options?.timespan ?? '').split('/').map(Date.parse);
+                return {
+                    timespan: '',
+                    value:
+                        values.length === 0 || !name
+                            ? []
+                            : [
+                                  {
+                                      id: name,
+                                      type: 'Microsoft.Insights/metrics',
+                                      name: { value: name },
+                                      unit: name === 'PhysicalPartitionSizeInfo' ? 'Bytes' : 'Count',
+                                      timeseries: values.map((maximum, index) => ({
+                                          metadatavalues: [
+                                              { name: { value: 'PhysicalPartitionId' }, value: `${index}` },
+                                          ],
+                                          data: Array.from({ length: Math.ceil((end - start) / HOUR) }, (_, i) => ({
+                                              timeStamp: new Date(start + i * HOUR),
+                                              maximum,
+                                          })),
+                                      })),
+                                  },
+                              ],
+                };
+            });
+        }
+
         it.each(
             (['single', 'balanced', 'positive', 'empty', 'young'] as const).flatMap((state) =>
                 [false, true].map((countFailed) => ({ state, countFailed })),
             ),
         )(
-            'attributes only required physical-count failures ($state, failure: $countFailed)',
+            'retains a skew witness but requires inventory proof for a negative ($state, count failure: $countFailed)',
             async ({ state, countFailed }) => {
                 const target = row({
                     resourceCreatedAt: iso(Date.now() - (state === 'young' ? 0.1 : 30) * DAY),
                 });
                 const params = setup(target);
-                const timeStamp = iso(Date.now());
-                const ru = state === 'balanced' ? [80, 80] : state === 'positive' ? [95, 30] : [95];
-                const sizes = state === 'balanced' ? [GB, GB] : state === 'positive' ? [40 * GB, 5 * GB] : [GB];
+                const ru =
+                    state === 'empty' ? [] : state === 'balanced' ? [80, 80] : state === 'positive' ? [95, 30] : [95];
+                const sizes =
+                    state === 'empty'
+                        ? []
+                        : state === 'balanced'
+                          ? [GB, GB]
+                          : state === 'positive'
+                            ? [40 * GB, 5 * GB]
+                            : [GB];
                 const getCount = vi.spyOn(metrics, 'getContainerPartitionCount');
-                const needsCount = state === 'single' || state === 'young';
-                const unavailable = needsCount && countFailed;
-                const evaluated = state === 'balanced' || state === 'positive';
-                const monitorClient = mockClient({
-                    NormalizedRUConsumption: {
-                        value: [
-                            {
-                                timeseries: ru.map((maximum, index) => ({
-                                    metadatavalues: pdims(
-                                        target.databaseId,
-                                        target.containerId,
-                                        'PhysicalPartitionId',
-                                        String(index),
-                                    ),
-                                    data: state === 'empty' ? [] : [{ timeStamp, maximum }],
-                                })),
-                            },
-                        ],
-                    },
-                    PhysicalPartitionSizeInfo: {
-                        value: [
-                            {
-                                timeseries: sizes.map((maximum, index) => ({
-                                    metadatavalues: pdims(
-                                        target.databaseId,
-                                        target.containerId,
-                                        'PhysicalPartitionId',
-                                        String(index),
-                                    ),
-                                    data: state === 'empty' ? [] : [{ timeStamp, maximum }],
-                                })),
-                            },
-                        ],
-                    },
-                });
-                const list = monitorClient.metrics.list.bind(monitorClient.metrics);
+                const match = state === 'positive';
+                const evaluated = match || (state === 'balanced' && !countFailed);
+                const singleton = state === 'single' && !countFailed;
+                mockRegionalReads(params.monitorClient, { count: Math.max(ru.length, 1), ru, sizes, countFailed });
 
-                vi.spyOn(monitorClient.metrics, 'list').mockImplementation(async (resource, options) => {
-                    if (countFailed && options?.metricnames === 'PhysicalPartitionCount') {
-                        throw Object.assign(new Error('private-count-error'), { statusCode: 403 });
-                    }
-
-                    return list(resource, options);
-                });
-
-                const captured = await captureReadDiagnostics(() =>
-                    collectDerivedAdvisories({ ...params, monitorClient }),
-                );
+                const captured = await captureReadDiagnostics(() => collectDerivedAdvisories(params));
 
                 for (const rule of ['HotPartitionRisk', 'StorageSkewRisk']) {
                     expect(captured.result.detectorCoverage.find((entry) => entry.rule === rule)).toMatchObject({
-                        status: unavailable
-                            ? state === 'single'
+                        status: countFailed
+                            ? match
                                 ? 'partial'
                                 : 'unavailable'
                             : evaluated
                               ? 'evaluated'
-                              : state === 'single'
+                              : singleton
                                 ? 'notApplicable'
                                 : 'insufficientData',
-                        notApplicableCount: state === 'single' ? 1 : 0,
-                        evaluatedCount: evaluated ? 1 : 0,
-                        matchedCount: state === 'positive' ? 1 : 0,
-                        unavailableReasons: unavailable ? ['rbac'] : [],
+                        notApplicableCount: Number(singleton),
+                        evaluatedCount: Number(evaluated),
+                        matchedCount: Number(match),
+                        unavailableReasons: countFailed ? ['rbac'] : [],
                     });
                     expect(
                         captured.result.metricSource.failures.some(
                             (failure) => failure.rule === rule && failure.reason === 'rbac',
                         ),
-                    ).toBe(unavailable);
+                    ).toBe(countFailed);
                 }
 
                 expect(getCount).toHaveBeenCalledTimes(1);
@@ -642,71 +671,23 @@ describe('detector dependency coverage', () => {
             async ({ state, ageFailed }) => {
                 const target = row({ resourceCreatedAt: undefined });
                 const params = setup(target);
-                const timeStamp = iso(Date.now());
                 const rejected = Object.assign(new Error('private-age-error'), { statusCode: 403 });
                 const getCount = vi.spyOn(metrics, 'getContainerPartitionCount');
 
-                params.monitorClient = mockClient({
-                    PhysicalPartitionCount: {
-                        value: [{ timeseries: [{ data: [{ timeStamp, maximum: state === 'multiple' ? 2 : 1 }] }] }],
-                    },
-                    NormalizedRUConsumption: {
-                        value: [
-                            {
-                                timeseries: [
-                                    {
-                                        metadatavalues: pdims(
-                                            target.databaseId,
-                                            target.containerId,
-                                            'PhysicalPartitionId',
-                                            '0',
-                                        ),
-                                        data: [{ timeStamp, maximum: 95 }],
-                                    },
-                                    ...(state === 'missing' || state === 'multiple'
-                                        ? [
-                                              {
-                                                  metadatavalues: pdims(
-                                                      target.databaseId,
-                                                      target.containerId,
-                                                      'PhysicalPartitionId',
-                                                      '1',
-                                                  ),
-                                                  data: [],
-                                              },
-                                          ]
-                                        : []),
-                                ],
-                            },
-                        ],
-                    },
-                    PhysicalPartitionSizeInfo: {
-                        value: [
-                            {
-                                timeseries: [
-                                    {
-                                        metadatavalues: pdims(
-                                            target.databaseId,
-                                            target.containerId,
-                                            'PhysicalPartitionId',
-                                            '0',
-                                        ),
-                                        data:
-                                            state === 'empty'
-                                                ? []
-                                                : [{ timeStamp, maximum: state === 'nonfinite' ? NaN : GB }],
-                                    },
-                                ],
-                            },
-                        ],
-                    },
+                mockRegionalReads(params.monitorClient, {
+                    count: state === 'missing' ? undefined : state === 'multiple' ? 2 : 1,
+                    ru: [95],
+                    sizes: state === 'empty' ? [] : [state === 'nonfinite' ? NaN : GB],
                 });
                 vi.mocked(params.cosmosClient.databaseAccounts.get).mockImplementation(async () => {
                     if (ageFailed) {
                         throw rejected;
                     }
 
-                    return { systemData: { createdAt: new Date('2020-01-01T00:00:00Z') } };
+                    return {
+                        locations: [{ locationName: 'West' }],
+                        systemData: { createdAt: new Date('2020-01-01T00:00:00Z') },
+                    };
                 });
                 vi.spyOn(resourceAge, 'getContainerCreatedAt').mockImplementation(async () => {
                     if (ageFailed) {
@@ -716,27 +697,17 @@ describe('detector dependency coverage', () => {
                     return undefined;
                 });
 
-                if (state === 'missing') {
-                    getCount.mockResolvedValue(undefined);
-                }
-
                 const result = await collectDerivedAdvisories(params);
                 const coverage = result.detectorCoverage.find(({ rule }) => rule === 'StorageSkewRisk');
-                const storageSingleton = state === 'missing' || state === 'multiple' || state === 'valid';
-                const requiredAgeFailure = ageFailed && state !== 'valid';
+                const storageSingleton = state === 'valid' && !ageFailed;
+                const hotSingleton = state !== 'missing' && state !== 'multiple' && !ageFailed;
 
                 expect(coverage).toMatchObject({
-                    status: requiredAgeFailure
-                        ? storageSingleton
-                            ? 'partial'
-                            : 'unavailable'
-                        : storageSingleton
-                          ? 'notApplicable'
-                          : 'insufficientData',
-                    notApplicableCount: storageSingleton ? 1 : 0,
+                    status: ageFailed ? 'unavailable' : storageSingleton ? 'notApplicable' : 'insufficientData',
+                    notApplicableCount: Number(storageSingleton),
                     evaluatedCount: 0,
                     matchedCount: 0,
-                    unavailableReasons: requiredAgeFailure ? ['rbac'] : [],
+                    unavailableReasons: ageFailed ? ['rbac'] : [],
                 });
                 expect(
                     result.metricSource.failures.some(
@@ -744,67 +715,37 @@ describe('detector dependency coverage', () => {
                     ),
                 ).toBe(ageFailed);
                 expect(result.detectorCoverage.find(({ rule }) => rule === 'HotPartitionRisk')).toMatchObject({
-                    status: ageFailed && (state === 'missing' || state === 'multiple') ? 'partial' : 'notApplicable',
-                    notApplicableCount: 1,
+                    status: ageFailed ? 'unavailable' : hotSingleton ? 'notApplicable' : 'insufficientData',
+                    notApplicableCount: Number(hotSingleton),
                     evaluatedCount: 0,
                     matchedCount: 0,
-                    unavailableReasons: ageFailed && (state === 'missing' || state === 'multiple') ? ['rbac'] : [],
+                    unavailableReasons: ageFailed ? ['rbac'] : [],
                 });
                 expect(getCount).toHaveBeenCalledTimes(1);
-                expect(result.advisories.map(({ rule }) => rule)).toEqual(['IdleContainer']);
+                expect(result.advisories).toEqual([]);
             },
         );
 
         it.each([1, 2])(
-            'keeps applicability separate from failed throttle and age reads (%s partitions)',
+            'keeps partition skew evaluation independent of a failed throttle read (%s partitions)',
             async (count) => {
-                const params = setup(row({ resourceCreatedAt: undefined }));
-                const rejected = Object.assign(new Error('private-error'), { statusCode: 403 });
-
-                vi.mocked(params.cosmosClient.databaseAccounts.get).mockRejectedValue(rejected);
-                vi.spyOn(resourceAge, 'getContainerCreatedAt').mockRejectedValue(rejected);
-                vi.spyOn(partitionHealth, 'getPartitionHealth').mockResolvedValue({
-                    available: true,
-                    mode: 'ru',
-                    databaseId: 'private-db',
-                    containerId: 'private-container',
-                    tiles: [],
-                    skewScore: 0,
-                    topPartitionShare: 95,
-                    maxSaturationPercent: 95,
-                    minSaturationPercent: 95,
-                    partitionCount: count,
-                    topN: 5,
-                    generatedAt: 0,
-                });
-                vi.spyOn(partitionHealth, 'getPartitionStorageSeries').mockResolvedValue({
-                    available: true,
-                    databaseId: 'private-db',
-                    containerId: 'private-container',
-                    generatedAt: 0,
-                    partitions: Array.from({ length: count }, (_, index) => ({
-                        partitionId: String(index),
-                        samples: [{ timestamp: 0, bytes: GB }],
-                    })),
-                });
-                vi.spyOn(metrics, 'getContainerPartitionCount').mockResolvedValue(count);
-                vi.spyOn(params.monitorClient.metrics, 'list').mockImplementation(async (_resource, options) => {
-                    if (options?.metricnames === 'TotalRequests') {
-                        throw rejected;
-                    }
-                    return { cost: 0, timespan: 'window', value: [] };
+                const params = setup(row());
+                mockRegionalReads(params.monitorClient, {
+                    count,
+                    ru: count === 1 ? [95] : [95, 30],
+                    sizes: count === 1 ? [GB] : [GB, GB],
+                    throttleFailed: true,
                 });
                 const result = await collectDerivedAdvisories(params);
 
                 for (const rule of ['HotPartitionRisk', 'StorageSkewRisk']) {
                     expect(result.detectorCoverage.find((entry) => entry.rule === rule)).toMatchObject({
-                        status: count === 1 ? 'notApplicable' : rule === 'HotPartitionRisk' ? 'unavailable' : 'partial',
+                        status: count === 1 ? 'notApplicable' : 'evaluated',
                         notApplicableCount: count === 1 ? 1 : 0,
-                        evaluatedCount: count === 2 && rule === 'StorageSkewRisk' ? 1 : 0,
-                        matchedCount: 0,
-                        unavailableReasons: count === 1 ? [] : ['rbac'],
+                        evaluatedCount: count === 2 ? 1 : 0,
+                        matchedCount: count === 2 && rule === 'HotPartitionRisk' ? 1 : 0,
+                        unavailableReasons: [],
                     });
-                    expect(result.metricSource.failures).toContainEqual({ rule, scope: undefined, reason: 'rbac' });
                 }
                 expect(
                     result.detectorCoverage.find(({ rule }) => rule === 'SustainedThrottlingInRegion'),
@@ -818,7 +759,9 @@ describe('detector dependency coverage', () => {
                     scope: 'private-db/private-container',
                     reason: 'rbac',
                 });
-                expect(result.advisories.map(({ rule }) => rule)).toEqual(['IdleContainer']);
+                expect(result.advisories.map(({ rule, severity }) => ({ rule, severity }))).toEqual(
+                    count === 1 ? [] : [{ rule: 'HotPartitionRisk', severity: 'Medium' }],
+                );
             },
         );
 
@@ -863,8 +806,10 @@ describe('detector dependency coverage', () => {
                 });
             }
             expect(result.detectorCoverage.find(({ rule }) => rule === 'IdleContainer')).toMatchObject({
-                status: typeof state === 'number' ? 'unavailable' : 'evaluated',
-                matchedCount: typeof state === 'number' ? 0 : 1,
+                status: typeof state === 'number' ? 'unavailable' : 'insufficientData',
+                evaluatedCount: 0,
+                matchedCount: 0,
+                insufficientDataCount: typeof state === 'number' ? 0 : 1,
                 unavailableReasons: typeof state === 'number' ? [state === 403 ? 'rbac' : 'noData'] : [],
             });
             expect(result.metricSource.available).toBe(false);
@@ -873,9 +818,7 @@ describe('detector dependency coverage', () => {
                 scope: 'private-db/private-container',
                 reason: state === 403 ? 'rbac' : 'noData',
             });
-            expect(result.advisories.map(({ rule }) => rule)).toEqual(
-                typeof state === 'number' ? [] : ['IdleContainer'],
-            );
+            expect(result.advisories).toEqual([]);
             expect(JSON.stringify(result.detectorCoverage)).not.toContain('private-');
         });
 

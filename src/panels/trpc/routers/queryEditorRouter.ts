@@ -39,6 +39,7 @@ import { toStringUniversal } from '../../../utils/strings';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
 import * as vscodeUtil from '../../../utils/vscodeUtils';
+import { ConnectionDiagnosticsTab } from '../../ConnectionDiagnosticsTab';
 import { DocumentTab } from '../../DocumentTab';
 import { QueryEditorTab } from '../../QueryEditorTab';
 import { type QueryEditorRouterContext } from '../appRouter';
@@ -107,6 +108,27 @@ type ConnectionState = {
 // Fire-and-forget telemetry calls with separate IDs (e.g. `cosmosDB.ai.*`) are kept as-is.
 
 export const queryEditorRouterDef = queryEditorRouter({
+    diagnoseConnection: queryEditorProcedure
+        .input(z.object({ connectionVersion: z.number().int().nonnegative().nullable() }))
+        .mutation(async ({ ctx, input }) => {
+            if (ctx.actionContext) {
+                ctx.actionContext.telemetry.maskEntireErrorMessage = true;
+            }
+            // A failed init can leave a retained connection on the host. Only a connected editor sends a version.
+            const connection =
+                input.connectionVersion !== null &&
+                !ctx.state.isChangingConnection &&
+                ctx.state.connectionVersion === input.connectionVersion
+                    ? ctx.state.connection
+                    : undefined;
+            if (connection) {
+                if (ctx.actionContext) maskConnectionTelemetry(ctx.actionContext, connection);
+                ConnectionDiagnosticsTab.render({ kind: 'queryEditor', probe: 'query', connection });
+                return;
+            }
+            await vscode.commands.executeCommand('cosmosDB.diagnoseConnection');
+        }),
+
     /**
      * Initializes the query editor webview with connection state, query history,
      * throughput buckets, initial query, survey status, and AI features status.

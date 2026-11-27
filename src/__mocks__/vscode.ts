@@ -15,6 +15,14 @@ const { createVSCodeMock } = require('jest-mock-vscode');
 // so passing `vi` works perfectly with Vitest.
 const vsCodeMock = createVSCodeMock(vi);
 
+vsCodeMock.env = {
+    ...vsCodeMock.env,
+    openExternal: vi.fn(),
+    get language() {
+        return 'en';
+    },
+};
+
 vsCodeMock.l10n = {
     t: vi.fn((msg) => msg),
 };

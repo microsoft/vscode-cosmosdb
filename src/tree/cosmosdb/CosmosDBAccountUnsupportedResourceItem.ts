@@ -7,10 +7,14 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { type TreeElement } from '../TreeElement';
-import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
+import { TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
-import { type CosmosDBAttachedAccountModel } from '../workspace-view/cosmosdb/CosmosDBAttachedAccountModel';
-import { type CosmosDBAccountModel } from './models/CosmosDBAccountModel';
+import {
+    type CosmosDBAttachedAccountModel,
+    isCosmosDBAttachedAccountModel,
+} from '../workspace-view/cosmosdb/CosmosDBAttachedAccountModel';
+import { cosmosDBConnectionTargetContext } from './connectionDiagnosticsTarget';
+import { type CosmosDBAccountModel, isAzureCosmosDBAccount } from './models/CosmosDBAccountModel';
 
 export class CosmosDBAccountUnsupportedResourceItem
     implements TreeElement, TreeElementWithExperience, TreeElementWithContextValue
@@ -24,6 +28,12 @@ export class CosmosDBAccountUnsupportedResourceItem
         public readonly reason: string = l10n.t('Unsupported account type'),
     ) {
         this.id = account.id ?? globalThis.crypto.randomUUID();
+        if (isAzureCosmosDBAccount(account) || isCosmosDBAttachedAccountModel(account)) {
+            this.contextValue = TreeElementWithContextValue.createContextValue([
+                this.contextValue,
+                cosmosDBConnectionTargetContext,
+            ]);
+        }
     }
 
     /**

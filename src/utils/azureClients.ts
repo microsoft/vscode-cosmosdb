@@ -128,6 +128,7 @@ export async function createMonitorClient(
 export async function createLogsQueryClient(
     context: IActionContext,
     subscription: AzureSubscription,
+    { createIfNone = true }: { createIfNone?: boolean } = {},
 ): Promise<LogsQueryClient> {
     context.valuesToMask.push(subscription.subscriptionId);
     const { LogsQueryClient, KnownMonitorLogsQueryAudience } = await import('@azure/monitor-query-logs');
@@ -135,7 +136,7 @@ export async function createLogsQueryClient(
     const scopes = [`${audience}/.default`];
     // The default subscription credential always returns an ARM token, ignoring the SDK's requested scopes.
     const credential = createCredential(() =>
-        subscription.authentication.getSessionWithScopes(scopes, { createIfNone: true }),
+        subscription.authentication.getSessionWithScopes(scopes, { createIfNone }),
     );
     return new LogsQueryClient(credential, {
         audience,

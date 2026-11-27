@@ -79,7 +79,7 @@ export async function getAccessTokenForVSCode(
  * Extracts the `oid` (object ID) claim from a JWT access token.
  * This gives the user's principal ID in the tenant the token was issued for.
  */
-function getOidFromToken(accessToken: string): string | undefined {
+export function getOidFromToken(accessToken: string): string | undefined {
     try {
         const parts = accessToken.split('.');
         if (parts.length !== 3) return undefined;

@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { createDefaultHttpClient, type PipelineRequest, type PipelineResponse } from '@azure/core-rest-pipeline';
 import { CosmosClient, type CosmosClientOptions } from '@azure/cosmos';
 import { ManagedIdentityCredential } from '@azure/identity';
 import { appendExtensionUserAgent } from '@microsoft/vscode-azext-utils';
@@ -16,11 +17,23 @@ import { AuthenticationMethod, getPreferredAuthenticationMethod } from './Authen
 import { getCosmosDBKeyCredential, type CosmosDBCredential } from './CosmosDBCredential';
 import { createCosmosHttpClient } from './createCosmosHttpClient';
 import { isNoSqlQueryConnection, type NoSqlQueryConnection } from './NoSqlQueryConnection';
-import { getAccessTokenForVSCode } from './utils/azureSessionHelper';
+import { SilentCosmosAuthenticationError } from './SilentCosmosAuthenticationError';
+import { type AccessToken, getAccessTokenForVSCode, getOidFromToken } from './utils/azureSessionHelper';
 
 export type GetCosmosClientOptions = Partial<CosmosClientOptions> & {
     wwwAuthenticate?: string; // Optional challenge for EntraID authentication
     isLlmTool?: boolean;
+    silentAuthentication?: boolean;
+    onAuthenticationMethod?: (method: CosmosDBCredential['type'], principalId?: string) => void;
+    onAuthenticationAttempt?: (
+        method: CosmosDBCredential['type'],
+        outcome: 'succeeded' | 'unavailable' | 'failed',
+        identity?: 'default' | 'clientId',
+    ) => void;
+    onHttpRequest?: (request: PipelineRequest) => void;
+    onHttpResponse?: (response: PipelineResponse) => void;
+    onHttpError?: (request: PipelineRequest, error: unknown) => void;
+    onProxyConfiguration?: (mode: unknown, configured: boolean, strictSSL: boolean) => void;
 };
 
 export function getCosmosClient(connection: NoSqlQueryConnection, options?: GetCosmosClientOptions): CosmosClient;
@@ -72,19 +85,32 @@ export function getCosmosClient(
 
     const keyCred = getCosmosDBKeyCredential(credentials);
 
-    const { isLlmTool = false, ...clientOptions } = options ?? {};
+    const {
+        isLlmTool = false,
+        silentAuthentication = false,
+        wwwAuthenticate,
+        onAuthenticationMethod,
+        onAuthenticationAttempt,
+        onHttpRequest,
+        onHttpResponse,
+        onHttpError,
+        onProxyConfiguration,
+        httpClient: suppliedHttpClient,
+        ...clientOptions
+    } = options ?? {};
     const agent =
         clientOptions.agent ??
         (isEmulator && endpoint.startsWith('https:') ? new https.Agent({ rejectUnauthorized: false }) : undefined);
+    const http = vscode.workspace.getConfiguration('http');
+    const strictSSL = http.get('proxyStrictSSL') !== false;
+    onProxyConfiguration?.(http.get('proxySupport'), !!http.get('proxy'), strictSSL);
+    const httpClient = suppliedHttpClient ?? (agent ? undefined : createCosmosHttpClient(strictSSL));
+    const observeTransport = onHttpRequest || onHttpResponse || onHttpError;
+    const transport = httpClient ?? (observeTransport ? createDefaultHttpClient() : undefined);
     const commonProperties: CosmosClientOptions = {
         endpoint,
         userAgentSuffix: `${appendExtensionUserAgent()}${isLlmTool ? '/llm-tool' : ''}`,
-        agent: agent,
-        httpClient:
-            clientOptions.httpClient ??
-            (agent
-                ? undefined
-                : createCosmosHttpClient(vscode.workspace.getConfiguration('http').get('proxyStrictSSL') !== false)),
+        agent,
         connectionPolicy,
     };
 
@@ -94,9 +120,10 @@ export function getCosmosClient(
     // @todo: Add telemetry to monitor usage of each credential type
     if (keyCred) {
         commonProperties.key = keyCred?.key;
+        onAuthenticationMethod?.(keyCred.type);
     } else if (nonKeyCredentials.length > 0) {
         commonProperties.aadCredentials = {
-            getToken: async (scopes, _options) => {
+            getToken: async (scopes, tokenOptions) => {
                 // Fix scopes for test environments
                 const normalizedAuthScopes = normalizeCosmosScopes(scopes);
 
@@ -106,7 +133,14 @@ export function getCosmosClient(
                 async function tryCredential(
                     credential: CosmosDBCredential,
                     forcePrompt: boolean,
-                ): Promise<{ token: string; expiresOnTimestamp: number } | null> {
+                ): Promise<AccessToken | null> {
+                    let token: AccessToken | null;
+                    const identity =
+                        credential.type === AuthenticationMethod.managedIdentity
+                            ? credential.clientId
+                                ? 'clientId'
+                                : 'default'
+                            : undefined;
                     try {
                         switch (credential.type) {
                             case AuthenticationMethod.accountKey:
@@ -114,20 +148,21 @@ export function getCosmosClient(
                                 return null;
 
                             case AuthenticationMethod.entraId: {
-                                const { wwwAuthenticate } = options || {};
-                                return await getAccessTokenForVSCode(
+                                token = await getAccessTokenForVSCode(
                                     wwwAuthenticate
                                         ? { scopes: normalizedAuthScopes, wwwAuthenticate }
                                         : normalizedAuthScopes,
                                     credential.tenantId,
-                                    { createIfNone: forcePrompt },
+                                    silentAuthentication ? { silent: true } : { createIfNone: forcePrompt },
                                 );
+                                break;
                             }
 
                             case AuthenticationMethod.managedIdentity: {
                                 const { clientId } = credential;
                                 const auth = new ManagedIdentityCredential({ clientId });
-                                return await auth.getToken(normalizedAuthScopes);
+                                token = await auth.getToken(normalizedAuthScopes, tokenOptions);
+                                break;
                             }
 
                             default:
@@ -139,6 +174,12 @@ export function getCosmosClient(
                                 return null;
                         }
                     } catch (e) {
+                        onAuthenticationAttempt?.(
+                            credential.type,
+                            e instanceof Error && e.name === 'CredentialUnavailableError' ? 'unavailable' : 'failed',
+                            identity,
+                        );
+                        if (silentAuthentication) return null;
                         const message = l10n.t('{type} auth failed: {error}', {
                             type: credential.type,
                             error: e instanceof Error ? e.message : String(e),
@@ -146,6 +187,9 @@ export function getCosmosClient(
                         errors.push(message);
                         return null;
                     }
+                    onAuthenticationAttempt?.(credential.type, token ? 'succeeded' : 'unavailable', identity);
+                    if (token) onAuthenticationMethod?.(credential.type, getOidFromToken(token.token));
+                    return token;
                 }
 
                 // THREE-STEP AUTHENTICATION STRATEGY:
@@ -167,6 +211,10 @@ export function getCosmosClient(
                 for (let i = 1; i < credentials.length; i++) {
                     const result = await tryCredential(credentials[i], false);
                     if (result) return result;
+                }
+
+                if (silentAuthentication) {
+                    throw new SilentCosmosAuthenticationError();
                 }
 
                 // 3. Last resort - Try EntraID again with forced prompting
@@ -194,7 +242,26 @@ export function getCosmosClient(
         throw Error(l10n.t('No credential available to create CosmosClient.'));
     }
 
-    return new CosmosClient(merge(clientOptions, commonProperties));
+    return new CosmosClient({
+        ...merge(clientOptions, commonProperties),
+        // Wrap the SDK's HTTP transport only when diagnostics needs to observe it. Record the request before sending
+        // so a connection failure without a response can still be tied to an SDK operation. Observe the HTTP status
+        // and Cosmos DB substatus on response without changing the underlying transport or its proxy settings.
+        httpClient:
+            observeTransport && transport
+                ? {
+                      async sendRequest(request) {
+                          onHttpRequest?.(request);
+                          const response = await transport.sendRequest(request).catch((error: unknown) => {
+                              onHttpError?.(request, error);
+                              throw error;
+                          });
+                          onHttpResponse?.(response);
+                          return response;
+                      },
+                  }
+                : transport,
+    });
 }
 
 function normalizeCosmosScopes(scopes: string | string[]): string[] {

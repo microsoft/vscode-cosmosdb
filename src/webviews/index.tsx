@@ -19,16 +19,15 @@ import { WebviewRegistry } from './WebviewRegistry';
 export type ViewKey = keyof typeof WebviewRegistry;
 
 // Wrapper to manage focus after mounting
-function FocusManager({ children }: { children: React.ReactNode }) {
+function FocusManager({ focusOnMount, children }: { focusOnMount: boolean; children: React.ReactNode }) {
     const containerRef = useRef<HTMLDivElement>(null);
     const { findFirstFocusable } = useFocusFinders();
 
     useEffect(() => {
-        // Find first focusable element and focus it
-        if (containerRef.current) {
+        if (focusOnMount && containerRef.current) {
             findFirstFocusable(containerRef.current)?.focus();
         }
-    }, [findFirstFocusable]);
+    }, [focusOnMount, findFirstFocusable]);
 
     return <div ref={containerRef}>{children}</div>;
 }
@@ -43,6 +42,8 @@ export function render<V extends ViewKey>(key: V, vscodeApi: WebviewApi<WebviewS
     }
 
     const root = createRoot(container);
+    // Let users Tab into the diagnostics scroll region instead of outlining the entire view on open.
+    const focusOnMount = key !== 'cosmosDbConnectionDiagnostics';
 
     // Kick off the dynamic import for the requested view only. Other views
     // (and their transitive deps like Monaco) are not fetched.
@@ -51,7 +52,7 @@ export function render<V extends ViewKey>(key: V, vscodeApi: WebviewApi<WebviewS
             <AriaLiveAnnouncer>
                 <VSCodeFluentProvider>
                     <WithWebviewContext vscodeApi={vscodeApi}>
-                        <FocusManager>
+                        <FocusManager focusOnMount={focusOnMount}>
                             <Component />
                         </FocusManager>
                     </WithWebviewContext>

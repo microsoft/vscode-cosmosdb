@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { createGenericElement } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
@@ -11,6 +10,7 @@ import { getControlPlane } from '../../cosmosdb/controlPlane';
 import { compareResourceIds } from '../../utils/strings';
 import { countExperienceUsageForSurvey } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
+import { createGenericTreeElement } from '../createGenericTreeElement';
 import { type TreeElement } from '../TreeElement';
 import { TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
@@ -40,16 +40,14 @@ export abstract class CosmosDBDatabaseResourceItem
         const sortedContainers = containers.sort((a, b) => compareResourceIds(a.id, b.id));
 
         if (containers.length === 0) {
-            // no databases in there:
             return [
-                createGenericElement({
-                    contextValue: this.contextValue,
+                createGenericTreeElement({
                     id: `${this.id}/no-containers`,
                     label: l10n.t('Create Container…'),
                     iconPath: new vscode.ThemeIcon('plus'),
                     commandId: 'cosmosDB.createContainer',
                     commandArgs: [this],
-                }) as TreeElement,
+                }),
             ];
         }
         countExperienceUsageForSurvey(ExperienceKind.NoSQL, UsageImpact.Low);

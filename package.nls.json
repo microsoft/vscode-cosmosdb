@@ -19,6 +19,7 @@
   "cosmosdb.command.account.overview.advisories": "Advisories",
   "cosmosdb.command.connection.add": "New Connection…",
   "cosmosdb.command.connection.copy": "Copy Connection String",
+  "cosmosdb.command.connection.diagnose": "Diagnose Connection",
   "cosmosdb.command.connection.emulator.add": "New Emulator Connection…",
   "cosmosdb.command.connection.remove": "Remove Connection…",
   "cosmosdb.command.container.create": "Create Container…",

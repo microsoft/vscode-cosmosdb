@@ -3,7 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { createHttpHeaders, createPipelineRequest } from '@azure/core-rest-pipeline';
 import { CosmosClient, type CosmosClientOptions } from '@azure/cosmos';
+import { ManagedIdentityCredential } from '@azure/identity';
 import * as https from 'node:https';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
@@ -12,6 +14,8 @@ import { type CosmosDBCredential } from './CosmosDBCredential';
 import { createCosmosHttpClient } from './createCosmosHttpClient';
 import { getCosmosClient } from './getCosmosClient';
 import { type NoSqlQueryConnection } from './NoSqlQueryConnection';
+import { SilentCosmosAuthenticationError } from './SilentCosmosAuthenticationError';
+import { getAccessTokenForVSCode } from './utils/azureSessionHelper';
 
 vi.mock('@azure/cosmos', () => ({
     CosmosClient: vi.fn(function (_options: CosmosClientOptions) {}),
@@ -29,7 +33,11 @@ vi.mock('./CosmosDBCredential', () => ({
 vi.mock('./NoSqlQueryConnection', () => ({
     isNoSqlQueryConnection: (value: object) => 'databaseId' in value,
 }));
-vi.mock('./utils/azureSessionHelper', () => ({ getAccessTokenForVSCode: vi.fn() }));
+vi.mock('@microsoft/vscode-azext-azureauth', () => ({ getSessionFromVSCode: vi.fn() }));
+vi.mock(import('./utils/azureSessionHelper'), async (original) => ({
+    ...(await original()),
+    getAccessTokenForVSCode: vi.fn(),
+}));
 vi.mock('./createCosmosHttpClient', { spy: true });
 
 const connection: NoSqlQueryConnection = {
@@ -58,6 +66,36 @@ describe('Cosmos client transport configuration', () => {
 
         expect(vi.mocked(CosmosClient).mock.calls[0][0].httpClient).toBe(httpClient);
         expect(createCosmosHttpClient).not.toHaveBeenCalled();
+    });
+
+    it('observes the transport response before Cosmos converts it to an SDK error', async () => {
+        const request = createPipelineRequest({ url: 'https://alternate.example.com/dbs' });
+        const response = { request, status: 403, headers: createHttpHeaders() };
+        const sendRequest = vi.fn().mockResolvedValue(response);
+        const onHttpResponse = vi.fn();
+        getCosmosClient(connection, { httpClient: { sendRequest }, onHttpResponse });
+
+        const actual = vi.mocked(CosmosClient).mock.calls[0][0].httpClient;
+        await expect(actual?.sendRequest(request)).resolves.toBe(response);
+        expect(sendRequest).toHaveBeenCalledExactlyOnceWith(request);
+        expect(onHttpResponse).toHaveBeenCalledExactlyOnceWith(response);
+    });
+
+    it('observes the request even when the transport rejects without a response', async () => {
+        const request = createPipelineRequest({ url: 'https://account.example.com/' });
+        const error = new Error('Connection refused');
+        const onHttpRequest = vi.fn();
+        const onHttpResponse = vi.fn();
+        const onHttpError = vi.fn();
+        const sendRequest = vi.fn().mockRejectedValue(error);
+        getCosmosClient(connection, { httpClient: { sendRequest }, onHttpRequest, onHttpResponse, onHttpError });
+
+        const actual = vi.mocked(CosmosClient).mock.calls[0][0].httpClient;
+        await expect(actual?.sendRequest(request)).rejects.toBe(error);
+        expect(onHttpRequest).toHaveBeenCalledExactlyOnceWith(request);
+        expect(onHttpRequest).toHaveBeenCalledBefore(sendRequest);
+        expect(onHttpResponse).not.toHaveBeenCalled();
+        expect(onHttpError).toHaveBeenCalledExactlyOnceWith(request, error);
     });
 
     it.each([
@@ -107,5 +145,63 @@ describe('Cosmos client transport configuration', () => {
         } finally {
             agent.destroy();
         }
+    });
+
+    it('does not prompt or log raw credential errors for diagnostic authentication', async () => {
+        vi.mocked(getAccessTokenForVSCode).mockRejectedValueOnce(new Error('sensitive auth details'));
+        const onAuthenticationMethod = vi.fn();
+        getCosmosClient(
+            {
+                ...connection,
+                credentials: [{ type: AuthenticationMethod.entraId, tenantId: 'test-tenant' }],
+            },
+            { silentAuthentication: true, onAuthenticationMethod },
+        );
+
+        const credential = vi.mocked(CosmosClient).mock.calls[0][0].aadCredentials!;
+        await expect(credential.getToken(['https://cosmos.azure.com/.default'])).rejects.toBeInstanceOf(
+            SilentCosmosAuthenticationError,
+        );
+        expect(getAccessTokenForVSCode).toHaveBeenCalledExactlyOnceWith(
+            ['https://cosmos.azure.com/.default'],
+            'test-tenant',
+            { silent: true },
+        );
+        expect(onAuthenticationMethod).not.toHaveBeenCalled();
+    });
+
+    it('reports the fallback method that acquired a token without prompting for Entra', async () => {
+        const oid = 'f89e099d-3d03-46b0-b36d-d0ab4eaa81af';
+        const accessToken = {
+            token: `test.${Buffer.from(JSON.stringify({ oid })).toString('base64url')}.test`,
+            expiresOnTimestamp: 0,
+        };
+        vi.mocked(getAccessTokenForVSCode).mockResolvedValueOnce(null);
+        vi.spyOn(ManagedIdentityCredential.prototype, 'getToken').mockResolvedValueOnce(accessToken);
+        const onAuthenticationMethod = vi.fn();
+        const onAuthenticationAttempt = vi.fn();
+        getCosmosClient(
+            {
+                ...connection,
+                credentials: [
+                    { type: AuthenticationMethod.entraId, tenantId: 'test-tenant' },
+                    { type: AuthenticationMethod.managedIdentity, clientId: undefined },
+                ],
+            },
+            { silentAuthentication: true, onAuthenticationMethod, onAuthenticationAttempt },
+        );
+
+        const credential = vi.mocked(CosmosClient).mock.calls[0][0].aadCredentials!;
+        await expect(credential.getToken('https://cosmos.azure.com/.default')).resolves.toBe(accessToken);
+        expect(getAccessTokenForVSCode).toHaveBeenCalledExactlyOnceWith(
+            ['https://cosmos.azure.com/.default'],
+            'test-tenant',
+            { silent: true },
+        );
+        expect(onAuthenticationMethod).toHaveBeenCalledExactlyOnceWith(AuthenticationMethod.managedIdentity, oid);
+        expect(onAuthenticationAttempt.mock.calls).toEqual([
+            [AuthenticationMethod.entraId, 'unavailable', undefined],
+            [AuthenticationMethod.managedIdentity, 'succeeded', 'default'],
+        ]);
     });
 });

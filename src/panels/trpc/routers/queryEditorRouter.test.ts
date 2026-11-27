@@ -7,6 +7,7 @@ import { vi } from 'vitest';
 import * as vscode from 'vscode';
 import { type NoSqlQueryConnection } from '../../../cosmosdb/NoSqlQueryConnection';
 import { QuerySession, type QueryExecutionResult } from '../../../cosmosdb/session/QuerySession';
+import { ext } from '../../../extensionVariables';
 import { type QueryEditorRouterContext } from '../appRouter';
 import { queryEditorRouterDef } from './queryEditorRouter';
 
@@ -17,6 +18,7 @@ const mocks = vi.hoisted(() => ({
     readContainer: vi.fn(),
     pickConnection: vi.fn(),
     openDocument: vi.fn(),
+    openDiagnostics: vi.fn(),
     readSchema: vi.fn(),
 }));
 
@@ -42,9 +44,13 @@ vi.mock('../../../services/StorageService', () => ({
 }));
 vi.mock('../../../utils/aiUtils', () => ({}));
 vi.mock('../../../utils/dialogs/getConfirmation', () => ({ getConfirmationAsInSettings: mocks.confirm }));
-vi.mock('../../../utils/survey', () => ({ promptAfterActionEventually: vi.fn() }));
+vi.mock('../../../utils/survey', () => ({
+    getIsSurveyDisabledGlobally: () => false,
+    promptAfterActionEventually: vi.fn(),
+}));
 vi.mock('../../../utils/vscodeUtils', () => ({}));
 vi.mock('../../DocumentTab', () => ({ DocumentTab: { render: mocks.openDocument } }));
+vi.mock('../../ConnectionDiagnosticsTab', () => ({ ConnectionDiagnosticsTab: { render: mocks.openDiagnostics } }));
 vi.mock('../../QueryEditorTab', () => ({ QueryEditorTab: { title: 'Query Editor' } }));
 vi.mock('@vscode/l10n', () => ({ t: (message: string) => message }));
 vi.mock('@microsoft/vscode-azext-utils', () => ({
@@ -113,6 +119,71 @@ describe('query editor connection ownership', () => {
             failed: [],
             aborted: false,
         });
+    });
+
+    it('opens a container diagnostic for the current editor connection', async () => {
+        const ctx = createContext();
+        const caller = queryEditorRouterDef.createCaller(ctx);
+        await caller.diagnoseConnection({ connectionVersion: 0 });
+        expect(mocks.openDiagnostics).toHaveBeenCalledExactlyOnceWith({
+            kind: 'queryEditor',
+            probe: 'query',
+            connection: connectionA,
+        });
+    });
+
+    it('opens the target picker after failed initialization even if the host retains the connection', async () => {
+        const executeCommand = vi.spyOn(vscode.commands, 'executeCommand').mockResolvedValue(undefined);
+        const channel: typeof ext.outputChannel = {
+            name: 'Query Editor',
+            logLevel: vscode.LogLevel.Info,
+            onDidChangeLogLevel: vi.fn(),
+            append: vi.fn(),
+            appendLine: vi.fn(),
+            appendLog: vi.fn(),
+            replace: vi.fn(),
+            clear: vi.fn(),
+            show: vi.fn(),
+            hide: vi.fn(),
+            dispose: vi.fn(),
+            trace: vi.fn(),
+            debug: vi.fn(),
+            info: vi.fn(),
+            warn: vi.fn(),
+            error: vi.fn(),
+        };
+        const output = vi.spyOn(ext, 'outputChannel', 'get').mockReturnValue(channel);
+        try {
+            const ctx = createContext();
+            const caller = queryEditorRouterDef.createCaller(ctx);
+            mocks.readContainer.mockRejectedValueOnce(new Error('Container unavailable'));
+            const result = await caller.init();
+            expect(result.connectionState).toBeUndefined();
+            expect(ctx.state.connection).toBe(connectionA);
+            expect(ctx.state.connectionVersion).toBe(result.connectionVersion);
+
+            await caller.diagnoseConnection({ connectionVersion: null });
+            expect(executeCommand).toHaveBeenCalledExactlyOnceWith('cosmosDB.diagnoseConnection');
+            expect(mocks.openDiagnostics).not.toHaveBeenCalled();
+        } finally {
+            output.mockRestore();
+            executeCommand.mockRestore();
+        }
+    });
+
+    it.each(['disconnected', 'switching', 'stale'] as const)('opens the target picker when %s', async (mode) => {
+        const executeCommand = vi.spyOn(vscode.commands, 'executeCommand').mockResolvedValue(undefined);
+        try {
+            const ctx = createContext();
+            if (mode === 'disconnected') ctx.state.connection = undefined;
+            if (mode === 'switching') ctx.state.isChangingConnection = true;
+            if (mode === 'stale') ctx.state.connectionVersion = 1;
+            await queryEditorRouterDef.createCaller(ctx).diagnoseConnection({ connectionVersion: 0 });
+            expect(executeCommand).toHaveBeenCalledExactlyOnceWith('cosmosDB.diagnoseConnection');
+            expect(mocks.openDiagnostics).not.toHaveBeenCalled();
+        } finally {
+            executeCommand.mockRestore();
+        }
     });
 
     for (const bulk of [false, true]) {

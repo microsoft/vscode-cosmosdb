@@ -6,7 +6,6 @@
 import {
     callWithTelemetryAndErrorHandling,
     callWithTelemetryAndErrorHandlingSync,
-    createGenericElement,
     type IActionContext,
     parseError,
 } from '@microsoft/vscode-azext-utils';
@@ -19,9 +18,11 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { API } from '../AzureDBExperiences';
 import { ext } from '../extensionVariables';
+import { getConnectionDiagnosticsTarget } from './cosmosdb/connectionDiagnosticsTarget';
+import { createGenericTreeElement } from './createGenericTreeElement';
 import { type FabricArtifact } from './fabric/models/FabricArtifact';
 import { type TreeElement } from './TreeElement';
-import { isTreeElementWithContextValue, TreeElementWithContextValue } from './TreeElementWithContextValue';
+import { isTreeElementWithContextValue } from './TreeElementWithContextValue';
 import { isTreeElementWithExperience } from './TreeElementWithExperience';
 
 /**
@@ -121,6 +122,9 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                         if (isTreeElementWithContextValue(element)) {
                             context.telemetry.properties.parentContext = element.contextValue;
                         }
+                        if (getConnectionDiagnosticsTarget(element)) {
+                            context.telemetry.maskEntireErrorMessage = true;
+                        }
                         if (isTreeElementWithExperience(element)) {
                             context.telemetry.properties.experience = element.experience?.api ?? API.Common;
                         }
@@ -153,6 +157,16 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                 )) ?? []
             );
         } catch (error) {
+            if (getConnectionDiagnosticsTarget(element)) {
+                return [
+                    createGenericTreeElement({
+                        id: `${element.id}/connection-error`,
+                        label: l10n.t('Could not load databases. Diagnose Connection…'),
+                        commandId: 'cosmosDB.diagnoseConnection',
+                        commandArgs: [element],
+                    }),
+                ];
+            }
             return [
                 this.createErrorElement(
                     l10n.t('Error: {0}', parseError(error).message),
@@ -385,11 +399,10 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
     }
 
     private createErrorElement(message: string, id: string): TreeElement {
-        return createGenericElement({
-            contextValue: TreeElementWithContextValue.createContextValue([this.contextValue, 'item.error']),
+        return createGenericTreeElement({
             label: message,
             id: id,
-        }) as TreeElement;
+        });
     }
 
     /**

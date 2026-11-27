@@ -12,6 +12,11 @@ import { type CosmosDBManagedIdentityCredential } from '../CosmosDBCredential';
 let isRunningOnAzurePromise: Promise<boolean> | undefined = undefined;
 let isRunningOnAzureResult: boolean | undefined = undefined;
 
+export type ObserveManagedIdentity = (
+    outcome: 'imdsNotDetected' | 'preflightSucceeded' | 'preflightFailed' | 'configured',
+    selector?: 'default' | 'clientId',
+) => void;
+
 /**
  * Determines if the current environment is running on Azure by checking for the
  * Azure Instance Metadata Service (IMDS).
@@ -80,15 +85,17 @@ async function getHasManagedIdentity(
     accountEndpoint: string,
     clientId?: string,
     silent: boolean = true,
+    abortSignal?: AbortSignal,
 ): Promise<boolean> {
     const cred = new ManagedIdentityCredential({ clientId: clientId });
     try {
         const endpointUrl = new URL(accountEndpoint);
         // Strip port from endpoint - just use protocol and hostname
         const endpointWithoutPort = `${endpointUrl.protocol}//${endpointUrl.hostname}`;
-        await cred.getToken(`${endpointWithoutPort}/.default`);
+        await cred.getToken(`${endpointWithoutPort}/.default`, { abortSignal });
         return true;
     } catch (error) {
+        abortSignal?.throwIfAborted();
         if (!silent) {
             ext.outputChannel.error(
                 `Managed Identity token acquisition failed for account "${accountEndpoint}": ${String(error)}`,
@@ -101,11 +108,15 @@ async function getHasManagedIdentity(
 export async function getManagedIdentityAuth(
     accountEndpoint: string,
     force: boolean,
+    abortSignal?: AbortSignal,
+    observe?: ObserveManagedIdentity,
 ): Promise<CosmosDBManagedIdentityCredential | undefined> {
     // If not forcing and not on Azure, return early
     if (!force && !(await getIsRunningOnAzure())) {
+        observe?.('imdsNotDetected');
         return undefined;
     }
+    abortSignal?.throwIfAborted();
 
     // Get client ID from settings
     const managedIdentityClientId =
@@ -117,7 +128,13 @@ export async function getManagedIdentityAuth(
     // which will likely fail if not on Azure with an auth error being logged.
     // This behaviour is expected as the user is forcing managed identity in settings.
     // In Automatic mode we want this to fail silently if not on Azure.
-    if (force || (await getHasManagedIdentity(accountEndpoint, managedIdentityClientId, !force))) {
+    const available =
+        force || (await getHasManagedIdentity(accountEndpoint, managedIdentityClientId, !force, abortSignal));
+    observe?.(
+        force ? 'configured' : available ? 'preflightSucceeded' : 'preflightFailed',
+        managedIdentityClientId ? 'clientId' : 'default',
+    );
+    if (available) {
         return {
             type: AuthenticationMethod.managedIdentity,
             clientId: managedIdentityClientId,

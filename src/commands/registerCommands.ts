@@ -27,6 +27,7 @@ import { cosmosDBDeleteDatabaseAccount } from './deleteDatabaseAccount/deleteDat
 import { cosmosDBDeleteItem } from './deleteItems/deleteItems';
 import { cosmosDBDeleteStoredProcedure } from './deleteStoredProcedure/deleteStoredProcedure';
 import { cosmosDBDeleteTrigger } from './deleteTrigger/deleteTrigger';
+import { diagnoseConnection } from './diagnoseConnection';
 import { cosmosDBExecuteStoredProcedure } from './executeStoredProcedure/executeStoredProcedure';
 import { filterTreeItems } from './filterTreeItems/filterTreeItems';
 import { importDocuments } from './importDocuments/importDocuments';
@@ -89,6 +90,7 @@ export function registerCommands(): void {
 }
 
 export function registerAccountCommands() {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.diagnoseConnection', diagnoseConnection);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.createDatabase', cosmosDBCreateDatabase);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteAccount', cosmosDBDeleteDatabaseAccount);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.newConnection', newConnection);

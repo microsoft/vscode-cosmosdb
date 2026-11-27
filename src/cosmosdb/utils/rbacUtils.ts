@@ -13,6 +13,7 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
+import { createHash } from 'node:crypto';
 import * as vscode from 'vscode';
 import { createCosmosDBManagementClient } from '../../utils/azureClients';
 import { getDatabaseAccountNameFromId } from '../../utils/azureUtils';
@@ -110,6 +111,7 @@ export async function addRbacContributorPermission(
     resourceGroup: string,
     context: IActionContext,
     subscription: AzureSubscription,
+    options?: { idempotent?: boolean },
 ): Promise<string | undefined> {
     const defaultRoleId = COSMOS_DB_DATA_CONTRIBUTOR_ROLE_DEFINITION_ID;
     const fullAccountId = `/subscriptions/${subscription.subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.DocumentDB/databaseAccounts/${databaseAccount}`;
@@ -120,7 +122,10 @@ export async function addRbacContributorPermission(
         scope: fullAccountId,
     };
 
-    const roleAssignmentId = globalThis.crypto.randomUUID();
+    const roleAssignmentId = options?.idempotent
+        ? stableRoleAssignmentId(fullAccountId, defaultRoleId, principalId)
+        : globalThis.crypto.randomUUID();
+    if (options?.idempotent) context.valuesToMask.push(roleAssignmentId);
     const client = await createCosmosDBManagementClient(context, subscription);
     const create = await client.sqlResources.createUpdateSqlRoleAssignment(
         resourceGroup,
@@ -130,6 +135,21 @@ export async function addRbacContributorPermission(
     );
 
     return create.id;
+}
+
+/**
+ * Derives an ARM assignment ID from the account scope, role, and principal, ignoring case.
+ * If Azure saves the assignment but the response is lost, a retry targets the same PUT URL, even after a restart.
+ * The first 16 bytes of the SHA-256 digest supply the payload; the masks set the UUIDv8 version and variant bits.
+ * Keep this derivation stable so retries still target IDs created by earlier versions.
+ */
+function stableRoleAssignmentId(accountScope: string, roleId: string, principalId: string): string {
+    const name = JSON.stringify(['cosmosdb-data-role-assignment', accountScope, roleId, principalId]).toLowerCase();
+    const digest = createHash('sha256').update(name).digest();
+    digest.writeUInt8((digest.readUInt8(6) & 0x0f) | 0x80, 6);
+    digest.writeUInt8((digest.readUInt8(8) & 0x3f) | 0x80, 8);
+    const hex = digest.toString('hex', 0, 16);
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
 /**

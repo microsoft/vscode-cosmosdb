@@ -147,6 +147,18 @@ it('rejects a missing development origin when DEVSERVER is enabled', () => {
     );
 });
 
+it('declares the VS Code display language on the webview document', () => {
+    const language = vi.spyOn(vscode.env, 'language', 'get').mockReturnValue('cs');
+    try {
+        const panel = createPanel('Document');
+        tabs.push(new TestTab(panel));
+        const document = new DOMParser().parseFromString(panel.webview.html, 'text/html');
+        expect(document.documentElement.lang).toBe('cs');
+    } finally {
+        language.mockRestore();
+    }
+});
+
 describe.each([
     { name: 'production', extensionMode: vscode.ExtensionMode.Production, devServer: undefined },
     { name: 'development', extensionMode: vscode.ExtensionMode.Development, devServer: '1' },

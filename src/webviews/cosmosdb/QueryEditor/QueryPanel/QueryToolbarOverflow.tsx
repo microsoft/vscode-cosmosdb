@@ -11,6 +11,7 @@ import {
     MenuTrigger,
     Overflow,
     OverflowItem,
+    tokens,
     Toolbar,
     type ToolbarProps,
     useOverflowMenu,
@@ -25,6 +26,7 @@ import { useQueryEditorState } from '../state/QueryEditorContext';
 import { AIButton } from './AIButton';
 import { CancelQueryButton } from './CancelQueryButton';
 import { ConnectionButton } from './ConnectionButton';
+import { DiagnoseConnectionButton } from './DiagnoseConnectionButton';
 import { DuplicateTabButton } from './DuplicateTabButton';
 import { LearnButton } from './LearnButton';
 import { OpenFileButton } from './OpenFileButton';
@@ -97,6 +99,9 @@ const OverflowMenu = () => {
                     <ToolbarOverflowMenuItem id="10">
                         <ConnectionButton type={'menuitem'} />
                     </ToolbarOverflowMenuItem>
+                    <ToolbarOverflowMenuItem id="12">
+                        <DiagnoseConnectionButton type="menuitem" />
+                    </ToolbarOverflowMenuItem>
                 </MenuList>
             </MenuPopover>
         </Menu>
@@ -149,6 +154,12 @@ export const QueryToolbarOverflow = (props: Partial<ToolbarProps>) => {
                 <ToolbarOverflowDivider groupId="2" />
                 <OverflowItem id={'10'} groupId={'3'}>
                     <ConnectionButton type={'button'} />
+                </OverflowItem>
+                <OverflowItem id="12">
+                    {/* Overflow measures the item width, including padding but not gap or margin. */}
+                    <div style={{ paddingInlineStart: tokens.spacingHorizontalS }}>
+                        <DiagnoseConnectionButton type="button" />
+                    </div>
                 </OverflowItem>
                 <OverflowMenu />
             </Toolbar>

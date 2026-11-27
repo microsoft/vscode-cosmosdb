@@ -20,7 +20,7 @@ function deferred<T>() {
     return { promise, resolve, reject };
 }
 
-async function setup(initDelay?: Promise<void>) {
+async function setup({ initDelay, initConnected = true }: { initDelay?: Promise<void>; initConnected?: boolean } = {}) {
     let emitEvent: (event: QueryEditorEvent) => void = () => {
         throw new Error('Query Editor event subscription is not ready');
     };
@@ -30,7 +30,9 @@ async function setup(initDelay?: Promise<void>) {
                 await initDelay;
                 return {
                     connectionVersion: 0,
-                    connectionState: { connectionVersion: 0, dbName: 'db', containerName: 'A' },
+                    connectionState: initConnected
+                        ? { connectionVersion: 0, dbName: 'db', containerName: 'A' }
+                        : undefined,
                     queryHistory: [],
                     isSurveyCandidate: false,
                     isAIFeaturesEnabled: false,
@@ -38,6 +40,7 @@ async function setup(initDelay?: Promise<void>) {
                 };
             }),
         },
+        diagnoseConnection: { mutate: vi.fn().mockResolvedValue(undefined) },
         setConnection: { mutate: vi.fn() },
         disconnectFromDatabase: { mutate: vi.fn() },
         prepareQuery: { mutate: vi.fn().mockResolvedValue({ cleanQuery: 'SELECT * FROM c' }) },
@@ -121,6 +124,30 @@ describe('query execution origin', () => {
 });
 
 describe('query editor connection transitions', () => {
+    it('requests the connection picker during initialization and after a failed container read', async () => {
+        const init = deferred<void>();
+        const { provider, routes, getState, dispatchAction } = await setup({
+            initDelay: init.promise,
+            initConnected: false,
+        });
+
+        await provider.diagnoseConnection(getState().isConnected);
+        expect(routes.diagnoseConnection.mutate).toHaveBeenCalledExactlyOnceWith({ connectionVersion: null });
+
+        init.resolve();
+        await vi.waitFor(() => expect(dispatchAction).toHaveBeenCalledWith({ type: 'databaseDisconnected' }));
+        await provider.diagnoseConnection(getState().isConnected);
+        expect(routes.diagnoseConnection.mutate).toHaveBeenNthCalledWith(2, { connectionVersion: null });
+        provider.dispose();
+    });
+
+    it('requests the current connection with its version after a successful init', async () => {
+        const { provider, routes, getState } = await setup();
+        await provider.diagnoseConnection(getState().isConnected);
+        expect(routes.diagnoseConnection.mutate).toHaveBeenCalledExactlyOnceWith({ connectionVersion: 0 });
+        provider.dispose();
+    });
+
     for (const target of ['B', 'A', 'disconnected']) {
         it(`ignores a pending throughput refresh after switching to ${target}`, async () => {
             const { provider, routes, getState, dispatchAction, emitEvent } = await setup();
@@ -216,7 +243,7 @@ describe('query editor connection transitions', () => {
 
     it('waits for initialization before changing connections', async () => {
         const init = deferred<void>();
-        const { provider, routes, getState } = await setup(init.promise);
+        const { provider, routes, getState } = await setup({ initDelay: init.promise });
         routes.setConnection.mutate.mockResolvedValue({ connectionVersion: 1, dbName: 'db', containerName: 'B' });
         const switching = provider.setConnection('db', 'B');
         expect(routes.setConnection.mutate).not.toHaveBeenCalled();

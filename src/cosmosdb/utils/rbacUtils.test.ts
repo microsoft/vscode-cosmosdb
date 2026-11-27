@@ -90,6 +90,39 @@ describe('rbacUtils', () => {
         await expect(result).resolves.toBe('assignment-id');
     });
 
+    it('reuses the same ARM assignment after a lost response without sharing it across scopes or principals', async () => {
+        const client = createArmTestClient();
+        vi.mocked(createCosmosDBManagementClient).mockResolvedValue(client);
+        const assignments = new Set<string>();
+        let loseResponse = true;
+        vi.spyOn(client.pipeline, 'sendRequest').mockImplementation(async (_httpClient, request) => {
+            const assignmentId = new URL(request.url).pathname.split('/').at(-1)!;
+            assignments.add(assignmentId);
+            if (loseResponse) {
+                loseResponse = false;
+                throw new Error('Connection lost after assignment was saved');
+            }
+            return {
+                request,
+                status: 200,
+                headers: createHttpHeaders(),
+                bodyAsText: JSON.stringify({ id: assignmentId, properties: { provisioningState: 'Succeeded' } }),
+            };
+        });
+        const assign = (account: string, principal: string, group: string, context = createArmTestContext()) =>
+            addRbacContributorPermission(account, principal, group, context, armTestSubscription, { idempotent: true });
+
+        await expect(assign('account', 'principal-a', 'RG')).rejects.toThrow('Connection lost');
+        const context = createArmTestContext();
+        const recovered = await assign('account', 'PRINCIPAL-A', 'rg', context);
+        expect(recovered).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-8[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+        expect([...assignments]).toEqual([recovered]);
+        expect(context.valuesToMask).toContain(recovered);
+        await assign('account', 'principal-b', 'rg');
+        await assign('other-account', 'principal-a', 'rg');
+        expect(assignments.size).toBe(3);
+    });
+
     describe('isRbacException', () => {
         it('returns true when the error message mentions the required RBAC permission', () => {
             const error = new Error(
@@ -137,8 +170,7 @@ describe('rbacUtils', () => {
                 ): Thenable<string | undefined>;
             } = vscode.window;
             vi.spyOn(stringMessageWindow, 'showErrorMessage').mockResolvedValue('Learn more');
-            const openExternal = vi.fn().mockResolvedValue(true);
-            (vscode as unknown as { env: { openExternal: typeof openExternal } }).env = { openExternal };
+            const openExternal = vi.spyOn(vscode.env, 'openExternal').mockResolvedValue(true);
 
             await showRbacPermissionError('my-account');
 
@@ -148,8 +180,7 @@ describe('rbacUtils', () => {
 
         it('does not open any link when the user dismisses the message', async () => {
             vi.spyOn(vscode.window, 'showErrorMessage').mockResolvedValue(undefined);
-            const openExternal = vi.fn().mockResolvedValue(true);
-            (vscode as unknown as { env: { openExternal: typeof openExternal } }).env = { openExternal };
+            const openExternal = vi.spyOn(vscode.env, 'openExternal').mockResolvedValue(true);
 
             await showRbacPermissionError('my-account');
 

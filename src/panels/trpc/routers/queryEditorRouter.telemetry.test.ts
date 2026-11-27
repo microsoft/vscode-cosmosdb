@@ -58,6 +58,7 @@ vi.mock('../../../utils/aiUtils', () => ({}));
 vi.mock('../../../utils/dialogs/getConfirmation', () => ({}));
 vi.mock('../../../utils/survey', () => ({}));
 vi.mock('../../../utils/vscodeUtils', () => ({}));
+vi.mock('../../ConnectionDiagnosticsTab', () => ({}));
 vi.mock('../../DocumentTab', () => ({}));
 vi.mock('../../QueryEditorTab', () => ({}));
 

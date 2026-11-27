@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { RestError, type CosmosClient } from '@azure/cosmos';
-import { createGenericElement } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
@@ -17,10 +16,13 @@ import { ext } from '../../extensionVariables';
 import { compareResourceIds } from '../../utils/strings';
 import { rejectOnTimeout, TimeoutError } from '../../utils/timeout';
 import { CosmosDBAccountResourceItemBase } from '../azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
+import { createGenericTreeElement } from '../createGenericTreeElement';
 import { type TreeElement } from '../TreeElement';
+import { TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithStorageId } from '../TreeElementWithStorageId';
 import { type CosmosDBAttachedAccountModel } from '../workspace-view/cosmosdb/CosmosDBAttachedAccountModel';
 import { getAccountInfo, type AccountInfo } from './AccountInfo';
+import { cosmosDBConnectionTargetContext } from './connectionDiagnosticsTarget';
 import { type DatabaseResource } from './models/CosmosDBTypes';
 
 export abstract class CosmosDBAccountAttachedResourceItem
@@ -28,6 +30,7 @@ export abstract class CosmosDBAccountAttachedResourceItem
     implements TreeElementWithStorageId
 {
     declare public readonly account: CosmosDBAttachedAccountModel;
+    declare public readonly contextValue: string;
 
     public get storageId(): string {
         return this.account.storageId;
@@ -38,6 +41,10 @@ export abstract class CosmosDBAccountAttachedResourceItem
 
     protected constructor(account: CosmosDBAttachedAccountModel, experience: Experience) {
         super(account, experience);
+        this.contextValue = TreeElementWithContextValue.createContextValue([
+            this.contextValue,
+            cosmosDBConnectionTargetContext,
+        ]);
     }
 
     public async getChildren(): Promise<TreeElement[]> {
@@ -48,16 +55,14 @@ export abstract class CosmosDBAccountAttachedResourceItem
         );
 
         if (databases.length === 0) {
-            // no databases in there:
             return [
-                createGenericElement({
-                    contextValue: this.contextValue,
+                createGenericTreeElement({
                     id: `${this.id}/no-databases`,
                     label: l10n.t('Create Database…'),
                     iconPath: new vscode.ThemeIcon('plus'),
                     commandId: 'cosmosDB.createDatabase',
                     commandArgs: [this],
-                }) as TreeElement,
+                }),
             ];
         }
 

@@ -106,6 +106,9 @@ test('handoff baseline freezes fresh artifacts, project identity and predecessor
     writeFileSync(join(migration, 'phases/3-schema-conversion/model.json'), '{"fresh":"not a checked-in model"}');
     const project = {
         name: 'fresh',
+        userMetadata: { preserve: true },
+        userPreferences: ['keep'],
+        execution: { runId: 'conversion' },
         freshness: { conversion: 'original' },
         phases: { schemaConversion: { status: 'complete' }, codeMigration: { status: 'not-started' } },
     };
@@ -113,10 +116,24 @@ test('handoff baseline freezes fresh artifacts, project identity and predecessor
     writeFileSync(path, JSON.stringify(project));
     const baseline = captureHandoffBaseline(root);
     project.phases.codeMigration.status = 'complete';
+    project.execution.runId = 'planning';
     writeFileSync(path, JSON.stringify(project));
     writeFileSync(join(migration, 'code-migration-plan.md'), taskPlan);
     checkHandoffBoundary(root, baseline);
     assert.throws(() => checkHandoffBoundary(root), /host-captured/);
+    for (const [key, replacement] of [
+        ['userMetadata', { preserve: false }],
+        ['userPreferences', ['changed']],
+    ]) {
+        const changedProject = structuredClone(project);
+        changedProject[key] = replacement;
+        writeFileSync(path, JSON.stringify(changedProject));
+        assert.throws(() => checkHandoffBoundary(root, baseline), new RegExp(`Changed handoff project ${key}`));
+        delete changedProject[key];
+        writeFileSync(path, JSON.stringify(changedProject));
+        assert.throws(() => checkHandoffBoundary(root, baseline), new RegExp(`Changed handoff project ${key}`));
+    }
+    writeFileSync(path, JSON.stringify(project));
     project.freshness.conversion = 'rebased';
     writeFileSync(path, JSON.stringify(project));
     assert.throws(() => checkHandoffBoundary(root, baseline), /freshness/);

@@ -39,8 +39,9 @@ export function checkHandoffBoundary(workspace, baseline) {
             `Out-of-phase handoff artifact: ${path}`,
         );
     }
-    for (const key of ['version', 'name', 'sourceCode', 'customMetadata', 'freshness']) {
-        assert.deepEqual(actual.project[key], baseline.project[key], `Changed handoff project ${key}`);
+    for (const [key, value] of Object.entries(baseline.project)) {
+        if (key === 'execution' || key === 'phases') continue;
+        assert.deepEqual(actual.project[key], value, `Changed handoff project ${key}`);
     }
     for (const [phase, state] of Object.entries(baseline.project.phases)) {
         if (phase !== 'codeMigration')

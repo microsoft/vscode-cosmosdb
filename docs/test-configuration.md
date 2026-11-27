@@ -223,6 +223,8 @@ The suite includes:
 - An opt-in conversion-to-planning handoff, reusing the isolated phase specifications and their current rubrics.
   It runs fresh conversion first, then passes its exact accepted outputs to a new planning session instead of
   substituting the reviewed conversion fixture. It is not included in an unfiltered `npm run eval`.
+  Planning preserves every captured root property except mutable `execution` activity and separately checked `phases`.
+  Unknown user metadata is protected; code-migration phase progress remains mutable.
 
 Every scenario requires completion, correct skill activation, a nonempty answer, and binary correctness
 at threshold `1`. Guidance scenarios also require no workspace edits. Offline fake-judge tests exercise

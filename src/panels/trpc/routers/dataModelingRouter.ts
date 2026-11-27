@@ -39,6 +39,12 @@ const RecommendationRequestSchema = z.intersection(
     z.object({ requestId: z.string().uuid().optional() }),
 );
 
+function ensureModelActive(isModelActive?: () => boolean): void {
+    if (isModelActive?.() === false) {
+        throw new Error(l10n.t('This data model has been closed or is being replaced. Reopen the Data Modeler.'));
+    }
+}
+
 // Modeling requests, autosaves, and deployments contain user inputs and AI output. Suppress validation telemetry too.
 // The webview presents request/storage failures; deployment helpers also show native VS Code notifications.
 const stateProcedure = dataModelingProcedure.use(({ ctx, next }) => {
@@ -46,6 +52,7 @@ const stateProcedure = dataModelingProcedure.use(({ ctx, next }) => {
         ctx.actionContext.telemetry.suppressAll = true;
         ctx.actionContext.errorHandling.suppressDisplay = true;
     }
+    ensureModelActive(ctx.isModelActive);
     return next();
 });
 
@@ -131,7 +138,11 @@ export const dataModelingRouterDef = dataModelingRouter({
     }),
     saveState: stateProcedure.input(ModelingAdvisorSnapshotSchema).mutation(async ({ ctx, input }) => {
         try {
-            await ctx.project.saveState(input);
+            ensureModelActive(ctx.isModelActive);
+            const databaseId =
+                input.databaseId ?? input.deployment?.input.databaseName ?? ctx.getDeploymentDatabaseId?.();
+            await ctx.project.saveState(databaseId === undefined ? input : { ...input, databaseId });
+            ctx.setDeploymentDatabaseId?.(databaseId);
             ctx.modelingTelemetry?.persistenceSave(true);
         } catch (error) {
             ctx.modelingTelemetry?.persistenceSave(false);

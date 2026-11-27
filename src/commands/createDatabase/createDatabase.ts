@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizard, callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { AzureWizard, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import { API, type Experience } from '../../AzureDBExperiences';
@@ -21,6 +21,7 @@ import { nonNullValue } from '../../utils/nonNull';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { isDataModelerFeatureEnabled } from '../dataModeling/dataModelerFeatureFlag';
 import { openDataModelingWizard } from '../dataModeling/openDataModelingWizard';
+import { reportDataModelerEntryPoint } from '../dataModeling/reportDataModelerEntryPoint';
 import { CosmosDBDatabaseNameStep } from './CosmosDBDatabaseNameStep';
 import { CosmosDBExecuteStep } from './CosmosDBExecuteStep';
 import { type CreateDatabaseWizardContext } from './CreateDatabaseWizardContext';
@@ -76,7 +77,7 @@ export async function createDatabase(
         const choice = await promptDatabaseNameOrDataModeler(accountInfo);
         context.telemetry.properties.creationChoice = choice.kind;
         if (choice.kind === 'dataModeler') {
-            await reportDataModelerSelectedFromCreateDatabase();
+            await reportDataModelerEntryPoint('createDatabase');
             await openDataModelingWizard(context, accountInfo);
             return;
         }
@@ -96,16 +97,4 @@ export async function createDatabase(
 
     const newDatabaseName = nonNullValue(wizardContext.databaseName);
     showConfirmationAsInSettings(l10n.t('The "{name}" database has been created.', { name: newDatabaseName }));
-}
-
-/**
- * Records a best-effort event when Data Modeler is chosen from database creation. It is separate from the command event
- * because a Data Modeler open failure suppresses that event's telemetry. No file contents, paths, or names are emitted.
- */
-async function reportDataModelerSelectedFromCreateDatabase(): Promise<void> {
-    await callWithTelemetryAndErrorHandling('cosmosDB.dataModeler.entryPointSelected', async (telemetryContext) => {
-        telemetryContext.errorHandling.suppressDisplay = true;
-        telemetryContext.errorHandling.rethrow = false;
-        telemetryContext.telemetry.properties.entryPoint = 'createDatabase';
-    });
 }

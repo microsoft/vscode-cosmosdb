@@ -22,6 +22,7 @@ import { CosmosDBExecuteStep as CreateContainerStep } from './createContainer/Co
 import { CosmosDBThroughputStep } from './createContainer/CosmosDBThroughputStep';
 import { cosmosDBCreateContainer, createContainer } from './createContainer/createContainer';
 import { type CreateContainerWizardContext } from './createContainer/CreateContainerWizardContext';
+import { promptContainerNameOrDataModeler } from './createContainer/promptContainerNameOrDataModeler';
 import { CosmosDBExecuteStep as CreateDatabaseStep } from './createDatabase/CosmosDBExecuteStep';
 import { cosmosDBCreateDatabase, createDatabase } from './createDatabase/createDatabase';
 import { type CreateDatabaseWizardContext } from './createDatabase/CreateDatabaseWizardContext';
@@ -67,7 +68,7 @@ vi.mock('@microsoft/vscode-azext-utils', async (importOriginal) => ({
             prompt = async () => {
                 await mocks.prompt();
                 if ('databaseId' in this.context) {
-                    this.context.containerName = 'new-container';
+                    this.context.containerName ??= 'new-container';
                 } else {
                     this.context.databaseName ??= 'new-database';
                 }
@@ -97,6 +98,7 @@ vi.mock('../utils/pickItem/pickAppResource', () => ({ pickAppResource: vi.fn() }
 vi.mock('./dataModeling/dataModelerFeatureFlag', () => ({ isDataModelerFeatureEnabled: vi.fn() }));
 vi.mock('./dataModeling/openDataModelingWizard', () => ({ openDataModelingWizard: vi.fn() }));
 vi.mock('./createDatabase/promptDatabaseNameOrDataModeler', () => ({ promptDatabaseNameOrDataModeler: vi.fn() }));
+vi.mock('./createContainer/promptContainerNameOrDataModeler', () => ({ promptContainerNameOrDataModeler: vi.fn() }));
 
 function accountInfo(overrides: Partial<AccountInfo> = {}): AccountInfo {
     return {
@@ -122,6 +124,7 @@ beforeEach(() => {
     vi.mocked(isDataModelerFeatureEnabled).mockReset().mockReturnValue(true);
     vi.mocked(openDataModelingWizard).mockReset();
     vi.mocked(promptDatabaseNameOrDataModeler).mockReset();
+    vi.mocked(promptContainerNameOrDataModeler).mockReset();
     mocks.telemetryEvents.length = 0;
 });
 
@@ -130,6 +133,71 @@ afterEach(() => {
 });
 
 describe('shared creation wizards', () => {
+    it('keeps the typed container name and continues the partition key and throughput wizard', async () => {
+        ext.isAIFeaturesEnabled = true;
+        const context = createArmTestContext();
+        const info = accountInfo();
+        vi.mocked(promptContainerNameOrDataModeler).mockResolvedValue({ kind: 'manual', name: 'typed-container' });
+
+        await createContainer(context, info, 'selected-db', CoreExperience);
+
+        expect(promptContainerNameOrDataModeler).toHaveBeenCalledExactlyOnceWith(info, 'selected-db');
+        expect(AzureWizard).toHaveBeenCalledWith(
+            expect.objectContaining({ databaseId: 'selected-db', containerName: 'typed-container' }),
+            expect.objectContaining({ promptSteps: expect.arrayContaining([expect.any(CosmosDBThroughputStep)]) }),
+        );
+        expect(mocks.execute).toHaveBeenCalledOnce();
+        expect(context.valuesToMask).toContain('typed-container');
+        expect(mocks.telemetryEvents).toEqual([]);
+        expect(showConfirmationAsInSettings).toHaveBeenCalledWith('The "typed-container" container has been created.');
+    });
+
+    it.each([undefined, new Error('Modeler failed')])(
+        'records the container entry point and passes its database even if launching fails: %s',
+        async (failure) => {
+            ext.isAIFeaturesEnabled = true;
+            const context = createArmTestContext();
+            const info = accountInfo();
+            vi.mocked(promptContainerNameOrDataModeler).mockResolvedValue({ kind: 'dataModeler' });
+            if (failure) vi.mocked(openDataModelingWizard).mockRejectedValue(failure);
+            const result = createContainer(context, info, 'selected-db', CoreExperience);
+            await expect(result.catch((error: unknown) => error)).resolves.toBe(failure);
+
+            expect(openDataModelingWizard).toHaveBeenCalledExactlyOnceWith(context, info, 'selected-db');
+            expect(AzureWizard).not.toHaveBeenCalled();
+            expect(showConfirmationAsInSettings).not.toHaveBeenCalled();
+            expect(mocks.telemetryEvents).toHaveLength(1);
+            expect(mocks.telemetryEvents[0].name).toBe('cosmosDB.dataModeler.entryPointSelected');
+            expect(mocks.telemetryEvents[0].context.telemetry.properties).toEqual({ entryPoint: 'createContainer' });
+            expect(mocks.telemetryEvents[0].context.errorHandling).toMatchObject({
+                suppressDisplay: true,
+                rethrow: false,
+            });
+        },
+    );
+
+    it('cancels the container choice without creating resources or recording a click', async () => {
+        ext.isAIFeaturesEnabled = true;
+        const error = new UserCancelledError();
+        vi.mocked(promptContainerNameOrDataModeler).mockRejectedValue(error);
+        await expect(createContainer(createArmTestContext(), accountInfo(), 'db', CoreExperience)).rejects.toBe(error);
+        expect(AzureWizard).not.toHaveBeenCalled();
+        expect(openDataModelingWizard).not.toHaveBeenCalled();
+        expect(mocks.telemetryEvents).toEqual([]);
+    });
+
+    it.each([
+        [CoreExperience, false, true],
+        [CoreExperience, true, false],
+        [FabricNativeExperience, true, true],
+    ] as const)('preserves the plain container flow when unavailable: %j, %s, %s', async (experience, ai, modeler) => {
+        ext.isAIFeaturesEnabled = ai;
+        vi.mocked(isDataModelerFeatureEnabled).mockReturnValue(modeler);
+        await createContainer(createArmTestContext(), accountInfo(), 'db', experience);
+        expect(promptContainerNameOrDataModeler).not.toHaveBeenCalled();
+        expect(mocks.execute).toHaveBeenCalledOnce();
+    });
+
     it('creates the database named in the combined prompt without prompting again', async () => {
         ext.isAIFeaturesEnabled = true;
         const context = createArmTestContext();

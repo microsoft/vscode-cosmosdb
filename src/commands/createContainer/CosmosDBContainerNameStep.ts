@@ -8,6 +8,7 @@ import * as l10n from '@vscode/l10n';
 import { validateContainerName } from '../../cosmosdb/utils/validateResourceName';
 import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
+import { type AccountInfo } from '../../tree/cosmosdb/AccountInfo';
 import { type CreateContainerWizardContext } from './CreateContainerWizardContext';
 
 export class CosmosDBContainerNameStep extends AzureWizardPromptStep<CreateContainerWizardContext> {
@@ -21,7 +22,8 @@ export class CosmosDBContainerNameStep extends AzureWizardPromptStep<CreateConta
             await context.ui.showInputBox({
                 prompt,
                 validateInput: (name: string) => this.validateInput(name),
-                asyncValidationTask: (name: string) => this.validateNameAvailable(context, name),
+                asyncValidationTask: (name: string) =>
+                    validateContainerNameAvailable(context.accountInfo, databaseId, name),
             })
         ).trim();
 
@@ -42,33 +44,34 @@ export class CosmosDBContainerNameStep extends AzureWizardPromptStep<CreateConta
 
         return validateContainerName(name);
     }
+}
 
-    private async validateNameAvailable(
-        context: CreateContainerWizardContext,
-        name: string,
-    ): Promise<string | undefined> {
-        name = name.trim();
-        const error = validateContainerName(name);
-        if (error) return error;
+export async function validateContainerNameAvailable(
+    accountInfo: AccountInfo,
+    databaseId: string,
+    name: string,
+): Promise<string | undefined> {
+    name = name.trim();
+    const error = validateContainerName(name);
+    if (error) return error;
 
-        try {
-            const result = await withClaimsChallengeHandling(context.accountInfo, async (cosmosClient) =>
-                cosmosClient.database(context.databaseId).containers.readAll().fetchAll(),
-            );
+    try {
+        const result = await withClaimsChallengeHandling(accountInfo, async (cosmosClient) =>
+            cosmosClient.database(databaseId).containers.readAll().fetchAll(),
+        );
 
-            if (result.resources && result.resources.filter((c) => c.id === name).length > 0) {
-                return l10n.t('The container "{name}" already exists in the database "{databaseId}".', {
-                    name,
-                    databaseId: context.databaseId,
-                });
-            }
-        } catch (error) {
-            ext.outputChannel.appendLine(
-                l10n.t('Failed to validate container name: {error}', { error: parseError(error).message }),
-            );
-            return undefined; // we don't want to block the user from continuing if we can't validate the name
+        if (result.resources && result.resources.filter((c) => c.id === name).length > 0) {
+            return l10n.t('The container "{name}" already exists in the database "{databaseId}".', {
+                name,
+                databaseId,
+            });
         }
-
-        return undefined;
+    } catch (error) {
+        ext.outputChannel.appendLine(
+            l10n.t('Failed to validate container name: {error}', { error: parseError(error).message }),
+        );
+        return undefined; // we don't want to block the user from continuing if we can't validate the name
     }
+
+    return undefined;
 }

@@ -6,8 +6,9 @@
 import { AzureWizard, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
-import { type Experience } from '../../AzureDBExperiences';
+import { API, type Experience } from '../../AzureDBExperiences';
 import { maskConnectionTelemetry } from '../../cosmosdb/maskConnectionTelemetry';
+import { ext } from '../../extensionVariables';
 import { type AccountInfo } from '../../tree/cosmosdb/AccountInfo';
 import { type CosmosDBDatabaseResourceItem } from '../../tree/cosmosdb/CosmosDBDatabaseResourceItem';
 import { isFabricTreeElement, type FabricTreeElement } from '../../tree/fabric-resources-view/FabricTreeElement';
@@ -17,11 +18,15 @@ import { isTreeElementWithExperience } from '../../tree/TreeElementWithExperienc
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { nonNullValue } from '../../utils/nonNull';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
+import { isDataModelerFeatureEnabled } from '../dataModeling/dataModelerFeatureFlag';
+import { openDataModelingWizard } from '../dataModeling/openDataModelingWizard';
+import { reportDataModelerEntryPoint } from '../dataModeling/reportDataModelerEntryPoint';
 import { CosmosDBContainerNameStep } from './CosmosDBContainerNameStep';
 import { CosmosDBExecuteStep } from './CosmosDBExecuteStep';
 import { CosmosDBPartitionKeyStep } from './CosmosDBPartitionKeyStep';
 import { CosmosDBThroughputStep } from './CosmosDBThroughputStep';
 import { type CreateContainerWizardContext } from './CreateContainerWizardContext';
+import { promptContainerNameOrDataModeler } from './promptContainerNameOrDataModeler';
 
 export async function cosmosDBCreateContainer(
     context: IActionContext,
@@ -75,6 +80,18 @@ export async function createContainer(
         throughput: undefined,
         maxThroughput: undefined,
     };
+
+    if (experience.api === API.Core && ext.isAIFeaturesEnabled && isDataModelerFeatureEnabled()) {
+        const choice = await promptContainerNameOrDataModeler(accountInfo, databaseId);
+        context.telemetry.properties.creationChoice = choice.kind;
+        if (choice.kind === 'dataModeler') {
+            await reportDataModelerEntryPoint('createContainer');
+            await openDataModelingWizard(context, accountInfo, databaseId);
+            return;
+        }
+        context.valuesToMask.push(choice.name);
+        wizardContext.containerName = choice.name;
+    }
 
     const wizard = new AzureWizard(wizardContext, {
         title: l10n.t('Create container'),

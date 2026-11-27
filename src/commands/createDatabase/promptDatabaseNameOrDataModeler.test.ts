@@ -7,12 +7,15 @@ import { UserCancelledError } from '@microsoft/vscode-azext-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { type AccountInfo } from '../../tree/cosmosdb/AccountInfo';
+import { validateContainerNameAvailable } from '../createContainer/CosmosDBContainerNameStep';
+import { promptContainerNameOrDataModeler } from '../createContainer/promptContainerNameOrDataModeler';
 import { validateDatabaseNameAvailable } from './CosmosDBDatabaseNameStep';
 import { promptDatabaseNameOrDataModeler } from './promptDatabaseNameOrDataModeler';
 
 vi.mock('@vscode/extension-telemetry', () => ({ default: class {} }));
 vi.mock('@microsoft/vscode-azureresources-api', () => ({}));
 vi.mock('./CosmosDBDatabaseNameStep', () => ({ validateDatabaseNameAvailable: vi.fn() }));
+vi.mock('../createContainer/CosmosDBContainerNameStep', () => ({ validateContainerNameAvailable: vi.fn() }));
 
 type Item = vscode.QuickPickItem & { action?: string };
 
@@ -74,6 +77,40 @@ beforeEach(() => {
     quickPick = new FakeQuickPick();
     vi.mocked(vscode.window.createQuickPick).mockReturnValue(quickPick as unknown as vscode.QuickPick<Item>);
     vi.mocked(validateDatabaseNameAvailable).mockReset().mockResolvedValue(undefined);
+    vi.mocked(validateContainerNameAvailable).mockReset().mockResolvedValue(undefined);
+});
+
+describe('container name and Data Modeler prompt', () => {
+    it('validates container names in the selected database and restores Data Modeler only when cleared', async () => {
+        const choice = promptContainerNameOrDataModeler(accountInfo, 'selected-db');
+        expect(quickPick.title).toBe('Create container');
+        expect(quickPick.placeholder).toBe('Enter a container name for selected-db');
+        expect(quickPick.items[2].label).toBe('Try Data Modeler');
+        quickPick.type('bad/name');
+        await quickPick.accept();
+        expect(quickPick.createItem.detail).toContain('Container name cannot contain');
+        expect(validateContainerNameAvailable).not.toHaveBeenCalled();
+        vi.mocked(validateContainerNameAvailable).mockResolvedValueOnce('Already exists');
+        quickPick.type('orders');
+        await quickPick.accept();
+        expect(validateContainerNameAvailable).toHaveBeenCalledExactlyOnceWith(accountInfo, 'selected-db', 'orders');
+        expect(quickPick.items).toHaveLength(1);
+        expect(quickPick.createItem.detail).toBe('Already exists');
+        quickPick.type('');
+        expect(quickPick.items[2].label).toBe('Try Data Modeler');
+        await quickPick.accept('dataModeler');
+        await expect(choice).resolves.toEqual({ kind: 'dataModeler' });
+    });
+
+    it('accepts a trimmed container name with the Enter/Escape hint', async () => {
+        const choice = promptContainerNameOrDataModeler(accountInfo, 'selected-db');
+        quickPick.type('  orders  ');
+        expect(quickPick.createItem.description).toBe(
+            `Create container "orders" (Press 'Enter' to confirm or 'Escape' to cancel)`,
+        );
+        await quickPick.accept();
+        await expect(choice).resolves.toEqual({ kind: 'manual', name: 'orders' });
+    });
 });
 
 describe('promptDatabaseNameOrDataModeler', () => {

@@ -327,7 +327,7 @@ Azure Monitor ingestion delays and different collection windows can explain diff
 ## Account actions and capacity
 
 **Add database** and **Add container** use the existing native VS Code wizards for this account.
-When AI features and Data Modeler are enabled, the **Add database** name prompt also offers **Try Data Modeler**.
+When AI features and Data Modeler are enabled, empty **Add database** and **Add container** name prompts offer **Try Data Modeler**, with **Add container** preselecting its database for deployment and the selected database shown beneath the workload heading.
 With All databases selected, Add container asks you to choose a database in the same account.
 Overview is dimmed with a centered progress spinner while a creation wizard runs and until inventory reload finishes.
 Cancel returns without changes; successful creation refreshes inventory.

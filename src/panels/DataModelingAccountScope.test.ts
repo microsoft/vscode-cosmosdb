@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type IActionContext } from '@microsoft/vscode-azext-utils';
+import { UserCancelledError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { attachTrpc } from '@microsoft/vscode-ext-webview/host';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
@@ -23,6 +23,7 @@ import { type DataModelingRouterContext } from './trpc/appRouter';
 
 vi.mock('@microsoft/vscode-azext-utils', () => ({
     callWithTelemetryAndErrorHandling: vi.fn().mockResolvedValue(undefined),
+    UserCancelledError: class extends Error {},
 }));
 
 vi.mock('../extensionVariables', () => ({
@@ -53,10 +54,12 @@ vi.mock('../cosmosdb/controlPlane', () => ({ getControlPlane: vi.fn() }));
 vi.mock('../utils/pickItem/pickAppResource', () => ({ pickAppResource: vi.fn() }));
 vi.mock('./BaseTab', () => ({
     BaseTab: class {
+        public isDisposed = false;
         protected readonly id = globalThis.crypto.randomUUID();
         protected disposables: vscode.Disposable[] = [];
         constructor(protected readonly panel: vscode.WebviewPanel) {}
         dispose() {
+            this.isDisposed = true;
             this.panel.dispose();
         }
     },
@@ -115,6 +118,7 @@ beforeEach(() => {
     vi.spyOn(vscode.window, 'createWebviewPanel').mockImplementation(() => panel());
     vi.spyOn(DataModelerProjectService.prototype, 'loadState').mockResolvedValue(null);
     vi.spyOn(DataModelerProjectService.prototype, 'saveState').mockResolvedValue(undefined);
+    vi.spyOn(DataModelerProjectService.prototype, 'setDatabaseId').mockResolvedValue(undefined);
     vi.mocked(vscode.window.showWarningMessage).mockReset();
 });
 afterEach(() => {
@@ -125,6 +129,190 @@ afterEach(() => {
 describe('data modeler account scope', () => {
     const render = DataModelingWizardTab.render.bind(DataModelingWizardTab);
     const open = openDataModelingWizard;
+
+    it('persists the selected database and continues an already-open model for the same database', async () => {
+        vi.mocked(DataModelerProjectService.prototype.loadState).mockResolvedValue(createInitialSnapshot());
+        const context = actionContext();
+        await open(context, firstAccount, 'first-db');
+        const ctx = lastContext();
+        expect(ctx.getDeploymentDatabaseId?.()).toBe('first-db');
+        expect(context.valuesToMask).toContain('first-db');
+        const tab = [...DataModelingWizardTab.openTabs][0];
+        const emit = vi.spyOn(tab.eventSink, 'emit');
+
+        await open(context, firstAccount, 'first-db');
+
+        expect(vscode.window.createWebviewPanel).toHaveBeenCalledOnce();
+        expect(ctx.getDeploymentDatabaseId?.()).toBe('first-db');
+        expect(emit).not.toHaveBeenCalled();
+        await open(context, secondAccount);
+        expect(lastContext().getDeploymentDatabaseId?.()).toBeUndefined();
+        expect(DataModelerProjectService.prototype.saveState).toHaveBeenCalledExactlyOnceWith({
+            ...createInitialSnapshot(),
+            databaseId: 'first-db',
+        });
+        expect(DataModelerProjectService.prototype.setDatabaseId).not.toHaveBeenCalled();
+    });
+
+    it.each(['Yes', 'No'])('keeps the existing choice for a saved model in the same database: %s', async (answer) => {
+        const saved = { ...createInitialSnapshot(), databaseId: 'db' };
+        saved.wizard.scenario = 'other';
+        vi.mocked(DataModelerProjectService.prototype.loadState).mockResolvedValue(saved);
+        vi.mocked(vscode.window.showWarningMessage).mockImplementation(async (_message, _options, ...items) =>
+            items.find((item) => item.title === answer),
+        );
+        await open(actionContext(), firstAccount, 'db');
+        expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
+            'Start a new data model?',
+            expect.anything(),
+            { title: 'Yes' },
+            { title: 'No', isCloseAffordance: true },
+        );
+        expect(DataModelerProjectService.prototype.saveState).toHaveBeenCalledWith(
+            answer === 'Yes' ? { ...createInitialSnapshot(), databaseId: 'db' } : saved,
+        );
+    });
+
+    it('replaces a different saved database only on OK', async () => {
+        vi.mocked(DataModelerProjectService.prototype.loadState).mockResolvedValue({
+            ...createInitialSnapshot(),
+            databaseId: 'old-db',
+        });
+        vi.mocked(vscode.window.showWarningMessage).mockImplementation(
+            async (_message, _options, ...items) => items[0],
+        );
+        await open(actionContext(), firstAccount, 'new-db');
+        expect(DataModelerProjectService.prototype.saveState).toHaveBeenCalledExactlyOnceWith({
+            ...createInitialSnapshot(),
+            databaseId: 'new-db',
+        });
+        expect(lastContext().getDeploymentDatabaseId?.()).toBe('new-db');
+        expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
+            'Replace the current data model?',
+            expect.anything(),
+            { title: 'OK' },
+            { title: 'Cancel', isCloseAffordance: true },
+        );
+    });
+
+    it.each(['Cancel', undefined])('preserves a different saved database on cancellation: %s', async (answer) => {
+        const saved = { ...createInitialSnapshot(), databaseId: 'old-db' };
+        vi.mocked(DataModelerProjectService.prototype.loadState).mockResolvedValue(saved);
+        vi.mocked(vscode.window.showWarningMessage).mockImplementation(async (_message, _options, ...items) =>
+            items.find((item) => item.title === answer),
+        );
+        await expect(open(actionContext(), firstAccount, 'new-db')).rejects.toBeInstanceOf(UserCancelledError);
+        expect(DataModelerProjectService.prototype.saveState).not.toHaveBeenCalled();
+        expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
+        expect(vscode.window.showWarningMessage).toHaveBeenCalledExactlyOnceWith(
+            'Replace the current data model?',
+            {
+                modal: true,
+                detail: 'The current data model is for database "old-db". Replace it with a new model for "new-db"? Only the saved model will be replaced; Azure databases and containers will not be deleted.',
+            },
+            { title: 'OK' },
+            { title: 'Cancel', isCloseAffordance: true },
+        );
+    });
+
+    it('leaves an open model untouched on Cancel and retires it only after replacement is saved', async () => {
+        const original = await render(firstAccount, undefined, 'old-db');
+        const oldContext = lastContext();
+        const emit = vi.spyOn(original.eventSink, 'emit');
+        vi.mocked(DataModelerProjectService.prototype.saveState).mockClear();
+        await expect(render(firstAccount, undefined, 'new-db')).rejects.toBeInstanceOf(UserCancelledError);
+        expect(original.isDisposed).toBe(false);
+        expect(oldContext.getDeploymentDatabaseId?.()).toBe('old-db');
+        expect(oldContext.isModelActive?.()).toBe(true);
+        expect(emit).not.toHaveBeenCalled();
+        expect(DataModelerProjectService.prototype.saveState).not.toHaveBeenCalled();
+
+        vi.mocked(vscode.window.showWarningMessage).mockImplementation(
+            async (_message, _options, ...items) => items[0],
+        );
+        let finishSave!: () => void;
+        vi.mocked(DataModelerProjectService.prototype.saveState).mockImplementationOnce(
+            () =>
+                new Promise<void>((resolve) => {
+                    finishSave = resolve;
+                }),
+        );
+        const replacing = render(firstAccount, undefined, 'new-db');
+        await vi.waitFor(() => expect(oldContext.isModelActive?.()).toBe(false));
+        expect(original.isDisposed).toBe(false);
+        finishSave();
+        const replacement = await replacing;
+        expect(replacement).not.toBe(original);
+        expect(original.isDisposed).toBe(true);
+        expect(oldContext.isModelActive?.()).toBe(false);
+        expect(lastContext().getDeploymentDatabaseId?.()).toBe('new-db');
+    });
+
+    it('preserves the open model and allows retry if replacement cannot be saved', async () => {
+        const original = await render(firstAccount, undefined, 'old-db');
+        const oldContext = lastContext();
+        vi.mocked(vscode.window.showWarningMessage).mockImplementation(
+            async (_message, _options, ...items) => items[0],
+        );
+        vi.mocked(DataModelerProjectService.prototype.saveState).mockRejectedValueOnce(new Error('Write failed'));
+        await expect(render(firstAccount, undefined, 'new-db')).rejects.toThrow('Write failed');
+        expect(oldContext.isModelActive?.()).toBe(true);
+        expect(oldContext.getDeploymentDatabaseId?.()).toBe('old-db');
+        expect(original.isDisposed).toBe(false);
+        expect(await render(firstAccount, undefined, 'new-db')).not.toBe(original);
+    });
+
+    it('restores a persisted association on account-only opens without inferring one for older models', async () => {
+        vi.mocked(DataModelerProjectService.prototype.loadState)
+            .mockResolvedValueOnce({
+                ...createInitialSnapshot(),
+                databaseId: 'db',
+            })
+            .mockResolvedValueOnce(createInitialSnapshot());
+        await render(firstAccount);
+        expect(lastContext().getDeploymentDatabaseId?.()).toBe('db');
+        await render(secondAccount, undefined, 'selected-db');
+        expect(vscode.window.showWarningMessage).toHaveBeenLastCalledWith(
+            'Start a new data model?',
+            expect.anything(),
+            expect.anything(),
+            expect.anything(),
+        );
+        expect(lastContext().getDeploymentDatabaseId?.()).toBe('selected-db');
+    });
+
+    it('uses the database from a legacy successful deployment to detect a mismatch', async () => {
+        const saved = createInitialSnapshot();
+        saved.recommendation = {
+            status: 'received',
+            value: { summary: '', containers: [{ entity: 'Orders', partitionKey: '/id', rationale: '' }] },
+        };
+        saved.deployment = {
+            input: {
+                databaseMode: 'existing',
+                databaseName: 'legacy-db',
+                containers: [{ entity: 'Orders', partitionKey: '/id' }],
+            },
+            result: { status: 'deployed', databaseName: 'legacy-db', createdCount: 1, existingCount: 0 },
+        };
+        vi.mocked(DataModelerProjectService.prototype.loadState).mockResolvedValue(saved);
+        await expect(render(firstAccount, undefined, 'new-db')).rejects.toBeInstanceOf(UserCancelledError);
+        expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
+            'Replace the current data model?',
+            expect.objectContaining({ detail: expect.stringContaining('"legacy-db"') }),
+            expect.anything(),
+            expect.anything(),
+        );
+        expect(DataModelerProjectService.prototype.saveState).not.toHaveBeenCalled();
+    });
+
+    it('blocks database-specific opens if the existing model cannot be read', async () => {
+        vi.mocked(DataModelerProjectService.prototype.loadState).mockRejectedValue(new Error('Read failed'));
+        await expect(open(actionContext(), firstAccount, 'db')).rejects.toThrow('Read failed');
+        expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
+        expect(DataModelerProjectService.prototype.saveState).not.toHaveBeenCalled();
+        expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
+    });
 
     function mockSavedFile(read: () => Promise<Uint8Array>) {
         vi.mocked(DataModelerProjectService.prototype.loadState).mockRestore();

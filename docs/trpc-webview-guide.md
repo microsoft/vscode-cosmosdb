@@ -17,6 +17,15 @@ event per edit or save. Closing the panel produces one summary containing visite
 feedback, recommendation attempt counts, and visible time measured from host panel visibility transitions.
 No persisted model identifiers, entity names, property names, queries, code, prompts, or raw exceptions are emitted.
 
+Creation prompts report `cosmosDB.dataModeler.entryPointSelected` with only the bounded `entryPoint` value
+(`createDatabase` or `createContainer`), before opening the modeler; the selected deployment database is never included.
+
+Data Modeler snapshots optionally persist `databaseId` before deployment. Container launches retain the existing
+continue/start-new prompt for the same database or a legacy model with no known database. A different database requires
+OK/Cancel confirmation to replace only the local model, never Azure resources; Cancel leaves the saved and open model
+unchanged. This also applies to already-open wizards. Replacement retires the old RPC context so late autosaves cannot
+overwrite the new model. Legacy successful deployments supply the database association when `databaseId` is absent.
+
 Each recommendation request can carry an ephemeral UUID `requestId`, which is forwarded in the prompt, report-tool
 input, and recommendation event but is never persisted. Only the latest matching attempt is delivered; duplicate
 identified responses and stale responses are ignored. Request-to-result and result-to-display durations require

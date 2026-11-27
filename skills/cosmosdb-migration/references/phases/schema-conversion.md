@@ -349,6 +349,9 @@ from a storage forecast or substitute sliding expiration for an absolute source 
 The initial backfill is a new target write: copying the original duration restarts the clock.
 For fixed deadlines, demonstrate the remaining lifetime at backfill and after a later write,
 and decide separately how to handle already-expired records (zero is not a valid TTL).
+When reviewing missing expiration evidence, identify each affected target, including projections.
+For each one, require a backfill and a later update of the **same item ID and complete partition key**.
+Matching deadlines on two different items do not demonstrate what an update does to the first item.
 Inspect root `ttl` fields before copying documents into TTL-enabled containers: explicitly
 rename business data or map a deliberate item override. Omit `ttl` to inherit the default;
 `null` is not inheritance. See the [executable evidence contract](../contracts/source-inventory.md).

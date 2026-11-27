@@ -177,65 +177,12 @@ npm run eval:test
 
 # Requires Copilot authentication and access to both configured models.
 npm run eval
-npm run eval -- --tag category=guidance
-# Fixed-deadline retention, item override collisions, and populated-container rollout
-npm run eval -- --tag contract=ttl-preservation --max-retries 0
-# Read-only readiness review of conversion evidence and staged seed items
-npm run eval -- --tag contract=ttl-readiness --max-retries 0
-npm run eval -- --tag category=artifacts --tag phase=preflight
-# Check persisted project identity and artifact regeneration for an approved database switch.
-npm run eval -- --tag contract=target-switch --max-retries 0
-# Focused regressions for implied readiness cycles and unselected implementation mechanisms.
-npm run eval -- --tag regression=planning-quality --max-retries 0
-# Parser fallback explanations and the actual first-use permission request.
-npm run eval -- --tag contract=parser-consent --max-retries 0
-# Independent real-sample phases and inference; fetches the pinned application once.
-npm run eval -- --tag category=extended --max-retries 0
-# Run one phase from reviewed prerequisites, without rerunning earlier phases.
-npm run eval -- --tag category=extended --tag phase=provisioning --max-retries 0
-# Explicit opt-in: one conversation chaining discovery through planning.
-npm run eval -- --tag category=integration --max-retries 0
-# Opt-in handoff: fresh conversion, then a separate planning session using those exact outputs.
-npm run eval:handoff
-# Run the smaller suite without downloading the external sample.
-npm run eval -- --tag category!=extended
-# Optional model overrides, without changing the committed specs.
-npm run eval -- --model <agent-model> --judge-model <judge-model>
+
+# Run a single synthetic phase without downloading AdventureWorks.
+npm run eval -- --tag category=synthetic --tag phase=discovery --max-retries 0
 ```
 
-The suite includes:
-
-- Guidance scenarios for all six phases, parser consent and fallback, source authority, SDK eligibility,
-  domain ownership, peer-skill design guidance, approval gates, reruns, project scope,
-  historical code-migration completion, and project-local memory.
-  Planning regressions cover implementation-versus-production readiness, activation-versus-observation cycles,
-  and unresolved service mechanisms being mislabeled as resolved work.
-  Parser coverage includes both fallback explanations and presenting the first-use choice with dependency/license
-  disclosure, then stopping without selecting or invoking a parser. The headless scenario tests the permission
-  request and pause, not a real user-approval round trip or dependency installation.
-- An unrelated PostgreSQL prompt that must activate neither migration nor best-practices skills.
-- A read-only TTL artifact review checks whether the agent blocks acceptance on missing projected-copy
-  expiration evidence and an undeclared seed override, despite a saved conversion-complete status.
-- Three artifact-producing scenarios: preflight from supplied synthetic inputs, assessment from a valid
-  discovery checkpoint, and a database target switch from a synthetic completed provisioning checkpoint.
-  Each trial gets a separate `app` fixture and local copies of both skills.
-  A host-side grader plugin reruns trusted migration completion validators, checks source inventory and ownership,
-  and rejects source edits, changed predecessor evidence, lost user metadata, and out-of-phase artifacts.
-  The model judge also inspects the generated files, not just the agent's completion claim.
-  The target-switch case replaces the prose-only identity-preservation check: it verifies the saved project name,
-  accepted root/domain models, upstream state and freshness, account coordinates, and reused sample data.
-  It requires the approved database in saved state, exact target-dependent artifact regeneration, and incomplete,
-  unverified provisioning. Old readback may be removed or retained unchanged as historical evidence, but must not be
-  retargeted or refreshed into new verification. The semantic judge checks the decision summary and execution
-  boundaries without requiring the final reply to enumerate every preserved field.
-- Seven extended AdventureWorks scenarios: independent preflight, discovery, assessment, schema conversion,
-  artifact-only provisioning and code-migration planning, plus discovery that infers DDL from the real
-  Entity Framework application without receiving the supplied schema.
-- An opt-in integration scenario chaining discovery through planning in one conversation. The runner
-  excludes it unless `--tag category=integration` explicitly selects it, including on an unfiltered `npm run eval`.
-- An opt-in conversion-to-planning handoff, reusing the isolated phase specifications and their current rubrics.
-  It runs fresh conversion first, then passes its exact accepted outputs to a new planning session instead of
-  substituting the reviewed conversion fixture. It is not included in an unfiltered `npm run eval`.
+The chained AdventureWorks integration and conversion-to-planning handoff remain opt-in.
 
 AdventureWorks artifact checks preserve the initialized migration name and reject root-level code-migration planning
 artifacts during discovery-only inference. Handoff planning preserves every captured root property except mutable

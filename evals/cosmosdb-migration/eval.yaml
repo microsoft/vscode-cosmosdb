@@ -100,6 +100,27 @@ stimuli:
         config: { pattern: '\S' }
       - type: diff-empty
 
+  - name: conversion-fixed-expiration
+    tags: { category: guidance, phase: schema-conversion, contract: ttl-preservation, regression: conversion-semantics }
+    prompt: |
+      Review a document-to-Cosmos DB migration before approving conversion. A reservation
+      must expire at epoch second 1040 even if edited. Its source document has a root
+      ttl: 45 (a business score, not a duration) and details.ttl: 7 (also a score).
+      The proposed mapping copies both unchanged. The target container has defaultTtl: -1.
+      The author claims preservation because "1000 + 40 = 1040". Backfill writes this
+      reservation at second 1000; a later edit writes the same reservation at 1025.
+      Is the claim supported? Describe the smallest safe mapping and the executable
+      evidence you would accept, including whether it would still pass with TTL off.
+      For rollout to a populated container, also explain which existing items are at
+      risk when enabling TTL versus shortening an already-enabled positive default.
+      Explain only; do not write files, deploy, or access services.
+    rubric:
+      - Reject copying the root business score as an item override; preserve it under another name without changing the nested score. Distinguish the renamed business data from an intentional, explicitly mapped root ttl in seconds.
+      - Require evidence from the modeled container and mapped outputs for the same item and full partition key. With item-only TTL enabled, demonstrate effective item overrides of 40 at backfill and 15 at update for the unchanged deadline 1040; a single arithmetic example or reusing 40 after the edit is insufficient.
+      - Distinguish enabled-without-default from TTL off. With TTL off even valid item overrides cannot preserve this finite deadline.
+      - Require separate approval before changing TTL on a populated container. Enabling TTL activates existing positive overrides and any positive default against last-modified time. Shortening an enabled default affects inheriting items only; positive overrides retain their durations and item-level -1 remains non-expiring.
+    graders: *design-guidance
+
   - name: conversion-copy-results
     tags:
       { category: guidance, phase: schema-conversion, contract: operation-results, regression: conversion-semantics }

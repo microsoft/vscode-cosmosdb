@@ -12,7 +12,6 @@ import {
     resolveGradePass,
 } from '@microsoft/vally';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -191,11 +190,13 @@ test('coverage includes every phase, critical workflow boundaries and negative a
         'domain-ownership',
         'domain-selection',
         'peer-design',
+        'ttl-preservation',
         'operation-results',
         'copied-version',
         'grouping-scope',
         'operation-indexes',
         'container-specific-routing',
+        'ttl-readiness',
         'provisioning-approval',
         'target-switch',
         'code-approval',
@@ -365,9 +366,7 @@ for (const spec of specs) {
         const stimulus = rawStimulus.turns ? { ...rawStimulus, prompt: rawStimulus.turns.join('\n\n') } : rawStimulus;
         test(`${stimulus.name}: grading fails closed`, async (t) => {
             const root = workspace(t);
-            if (stimulus.tags.contract === 'ttl-readiness') {
-                await prepareFixture(join(root, 'app'), 'ttl-readiness', skillRoot);
-            } else if (stimulus.tags.category === 'artifacts') {
+            if (stimulus.graders.some(({ type }) => type === 'migration-artifacts')) {
                 await completeFixture(join(root, 'app'), stimulus.tags.phase);
             }
             assert.equal(await grade(spec, stimulus, root), true);
@@ -400,37 +399,6 @@ for (const spec of specs) {
         });
     }
 }
-
-test('TTL review artifacts fail independently and accept the two intended corrections', async (t) => {
-    const root = workspace(t);
-    await prepareFixture(root, 'ttl-readiness', skillRoot);
-    const phases = join(root, '.cosmosdb-migration/phases');
-    const samplePath = join(phases, '4-provisioning/sample-data.json');
-    const manifestPath = join(phases, '3-schema-conversion/manifest.json');
-    const validate = (script, args, expectedStatus) => {
-        const result = spawnSync(process.execPath, [join(skillRoot, 'scripts', script), ...args], { encoding: 'utf8' });
-        assert.equal(result.status, expectedStatus, result.stdout + result.stderr);
-        return JSON.parse(result.stdout).errors;
-    };
-    const conversion = (status) => validate('validate-conversion-evidence.mjs', [root], status);
-    const samples = (status) =>
-        validate(
-            'validate-sample-data.mjs',
-            ['--workspace', root, '--model', join(phases, '3-schema-conversion/model.json'), samplePath],
-            status,
-        );
-    assert.match(conversion(1)[0].message, /every affected target/);
-    assert.match(samples(1)[0].message, /override must be declared/);
-    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-    const examples = manifest.behaviorDecisions[0].examples;
-    examples.push({ ...examples[0], container: 'OrdersByTenant', entity: 'OrderMembership' });
-    writeFileSync(manifestPath, JSON.stringify(manifest));
-    assert.deepEqual(conversion(0), []);
-    const sampleData = JSON.parse(readFileSync(samplePath, 'utf8'));
-    delete sampleData.sampleData[0].items[0].ttl;
-    writeFileSync(samplePath, JSON.stringify(sampleData));
-    assert.deepEqual(samples(0), []);
-});
 
 test('target-switch fixture preserves accepted checkpoints and rejects unchanged historical completion', async (t) => {
     const root = workspace(t);

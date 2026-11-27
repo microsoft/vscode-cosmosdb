@@ -13,21 +13,23 @@ import manifest from '../package.json';
 const root = path.resolve(import.meta.dirname, '..');
 
 it.each(['development', 'production'])(
-    'packages every shipped localization bundle at the manifest path in %s',
+    'copies extension assets and every shipped localization bundle in %s',
     async (mode) => {
         const config = await resolveConfig(
             { root, configFile: path.join(root, 'vite.config.ext.mjs'), mode, logLevel: 'silent' },
             'build',
         );
-        const copyPlugin = config.plugins.find((plugin) => plugin.name === 'vite-plugin-static-copy:build');
+        const copyPlugin = config.plugins.find((plugin) => plugin.name === 'copy-static-assets');
         expect(copyPlugin).toBeDefined();
-        const outputDirectory = await mkdtemp(path.join(tmpdir(), 'cosmosdb-localization-'));
+        const tempDirectory = await mkdtemp(path.join(tmpdir(), 'cosmosdb-localization-'));
+        const outputDirectory = path.join(tempDirectory, 'dist');
 
         try {
             await build({
                 configFile: false,
                 root,
                 mode,
+                cacheDir: path.join(tempDirectory, 'cache'),
                 logLevel: 'silent',
                 publicDir: false,
                 plugins: [copyPlugin],
@@ -43,14 +45,26 @@ it.each(['development', 'production'])(
                 },
             });
 
-            expect(JSON.parse(await readFile(path.join(outputDirectory, 'package.json'), 'utf8'))).toHaveProperty(
-                'l10n',
-                manifest.l10n,
+            expect(JSON.parse(await readFile(path.join(outputDirectory, 'package.json'), 'utf8'))).toMatchObject({
+                l10n: manifest.l10n,
+                main: './main.mjs',
+            });
+            const readme = await readFile(path.join(outputDirectory, 'README.md'), 'utf8');
+            const sourceReadme = await readFile(path.join(root, 'README.md'), 'utf8');
+            const marketplaceMarker = '<!-- region exclude-from-marketplace -->';
+            expect(sourceReadme).toContain(marketplaceMarker);
+            expect(readme.includes(marketplaceMarker)).toBe(mode === 'development');
+            expect(readme === sourceReadme).toBe(mode === 'development');
+            expect(await readFile(path.join(outputDirectory, 'resources', 'azurecosmosdb.png'))).toEqual(
+                await readFile(path.join(root, 'resources', 'azurecosmosdb.png')),
             );
+            expect(await readdir(path.join(outputDirectory, 'skills'))).toContain('cosmosdb-best-practices');
+            expect(await readdir(path.join(outputDirectory, 'syntaxes'))).toContain('nosql.tmLanguage.json');
             const locales = (await readdir(outputDirectory))
                 .map((filename) => /^package\.nls\.(.+)\.json$/.exec(filename)?.[1])
                 .filter((locale) => locale !== undefined);
             expect(locales).toContain('fr');
+            expect(locales).not.toContain('qps-plocm');
 
             const bundleNames = locales.map((locale) => `bundle.l10n.${locale}.json`).sort();
             const bundleDirectory = path.join(outputDirectory, manifest.l10n);
@@ -61,7 +75,7 @@ it.each(['development', 'production'])(
                 );
             }
         } finally {
-            await rm(outputDirectory, { recursive: true, force: true });
+            await rm(tempDirectory, { recursive: true, force: true });
         }
     },
 );

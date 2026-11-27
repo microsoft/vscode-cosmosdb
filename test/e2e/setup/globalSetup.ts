@@ -11,8 +11,8 @@
  *
  *   1. Ensures the extension build (`dist/`) is **fresh** relative to the
  *      sources it was produced from, and is a **production** build.
- *      Manifest, Vite config, `src/`, and `l10n/` mtimes are compared against `dist/main.mjs` and
- *      `dist/package.json`; a sidecar marker also detects when `dist/` was
+ *      Manifest, Vite config, `plugins/`, `src/`, and `l10n/` mtimes are compared against `dist/main.mjs` and
+ *      `dist/package.json`. A sidecar marker also detects when `dist/` was
  *      overwritten by the `vite-watch:ext` dev task (a development build that
  *      doesn't render the webviews). If either check fails, `npm run vite-prod`
  *      is invoked automatically. Override with `COSMOSDB_E2E_SKIP_BUILD=1`
@@ -123,7 +123,7 @@ function maxMtimeMs(dir: string): number {
 }
 
 /**
- * Heuristic: dist is stale if any build input (manifests, Vite configs, src/, or l10n/)
+ * Heuristic: dist is stale if any build input (manifests, Vite configs, plugins/, src/, or l10n/)
  * has an mtime newer than the dist's main.mjs OR dist's package.json. Either
  * staleness condition triggers a rebuild — the bundler copies package.json
  * into dist, so a mismatched manifest is the very symptom that prompted us
@@ -168,7 +168,7 @@ function isDistStale(extensionDevelopmentPath: string): { stale: boolean; reason
             return { stale: true, reason: `${filename} newer than dist/` };
         }
     }
-    for (const directory of ['src', 'l10n']) {
+    for (const directory of ['src', 'l10n', 'plugins']) {
         if (maxMtimeMs(path.join(repoRoot, directory)) > distMin) {
             return { stale: true, reason: `${directory}/ has files newer than dist/` };
         }

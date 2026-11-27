@@ -19,9 +19,14 @@ There are several ways you can contribute to the [vscode-cosmosdb repository](ht
 
   - Open the terminal (press <kbd>CTRL</kbd>+<kbd>\`</kbd>) and run `npm install`.
 
-  - Build: press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd>, or press <kbd>F1</kbd> and type `Tasks: Run Build Task`.
+  - Build: run `npm run build` to type-check with TypeScript 7. In VS Code, press
+    <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd> to start `tsc` in watch mode. The recommended **TypeScript 7**
+    extension uses the workspace compiler for editor diagnostics.
 
   - Debug: Select the `Launch Extension` configuration in the Debug side bar and press <kbd>F5</kbd> to start debugging the extension.
+
+Run `npm run lint` (or `npm run lint-fix` for autofixes). The Oxlint scripts also check `scripts`, `resources`,
+and `skills` for restricted syntax without applying the main lint rules to those directories.
 
 ## Network access in Vitest
 

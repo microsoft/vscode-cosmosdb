@@ -4,6 +4,7 @@
     "ms-playwright.playwright",
     "amodio.tsl-problem-matcher",
     "oxc.oxc-vscode",
+    "TypeScriptTeam.native-preview",
     "vitest.explorer"
   ]
 }

@@ -24,14 +24,11 @@ testWorkspace/**
 *.zip
 .editorconfig
 .env*
-.eslintignore
-.eslintrc.js
 .gitignore
 .nvmrc
 .prettierrc
 .swcrc
 .travis.yml
-eslint.config.mjs
 prettier.config.mjs
 gulp*
 stats.json

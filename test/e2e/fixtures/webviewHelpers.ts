@@ -103,7 +103,10 @@ export async function resizeWindowViewport(
         try {
             await expect
                 .poll(async () => {
-                    const expected = await element.evaluate((iframe) => [iframe.clientWidth, iframe.clientHeight]);
+                    const expected = await element.evaluate((iframe: HTMLIFrameElement) => [
+                        iframe.clientWidth,
+                        iframe.clientHeight,
+                    ]);
                     const actual = await frame.evaluate(() => [window.innerWidth, window.innerHeight]);
                     return actual.map((dimension, index) => dimension - expected[index]);
                 })

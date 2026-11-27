@@ -8,8 +8,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { loadEnv } from 'vite';
 import { analyzer } from 'vite-bundle-analyzer';
-import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { bundleReport } from './plugins/vite-plugin-bundle-report.mjs';
+import { copyStaticAssets } from './plugins/vite-plugin-copy-static-assets.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,8 +20,9 @@ const analyze = !!process.env.BUNDLE_ANALYZE;
 /** Node built-ins that must stay external (available natively in Node.js runtime) */
 const NODE_EXTERNALS = new Set([...builtinModules, ...builtinModules.map((m) => `node:${m}`)]);
 
-const excludeRegion = /<!-- region exclude-from-marketplace -->.*?<!-- endregion exclude-from-marketplace -->/gis;
-const supportedLanguages = [
+const marketplaceExcludedRegion =
+    /<!-- region exclude-from-marketplace -->.*?<!-- endregion exclude-from-marketplace -->/gis;
+const shippedLocales = [
     'cs',
     'de',
     'es',
@@ -36,7 +37,7 @@ const supportedLanguages = [
     'zh-Hans',
     'zh-Hant',
     'qps-ploc',
-]; // From VSCode L10n
+];
 
 export default ({ mode }) => {
     const isDev = mode === 'development';
@@ -208,50 +209,36 @@ export default ({ mode }) => {
             'process.env.COSMOSDB_WEBVIEW_ORIGIN': JSON.stringify(isDev ? env.COSMOSDB_WEBVIEW_ORIGIN : ''),
         },
         plugins: [
-            viteStaticCopy({
+            copyStaticAssets({
                 targets: [
-                    {
-                        src: `l10n/bundle.l10n.{${supportedLanguages.join(',')}}.json`,
-                        dest: 'l10n',
-                        rename: { stripBase: true },
-                    },
-                    { src: 'resources', dest: '.' },
+                    // Track the shipped files explicitly instead of recursively watching the root (which contains dist).
+                    ...shippedLocales.flatMap((locale) => [
+                        { src: `l10n/bundle.l10n.${locale}.json`, dest: 'l10n' },
+                        { src: `package.nls.${locale}.json` },
+                    ]),
+                    { src: 'package.nls.json' },
+                    { src: 'resources' },
+                    { src: 'skills' },
+                    { src: 'CHANGELOG.md' },
+                    { src: 'LICENSE.md' },
+                    { src: 'NOTICE.html' },
+                    { src: 'SECURITY.md' },
+                    { src: 'SUPPORT.md' },
+                    { src: '.vscodeignore' },
+                    { src: 'packages/nosql-language-service/syntaxes/nosql.tmLanguage.json', dest: 'syntaxes' },
+                    { src: 'packages/nosql-language-service/language-configuration.json' },
                     {
                         src: 'package.json',
-                        dest: '.',
                         transform: (content) => {
-                            const pkg = JSON.parse(content);
-                            pkg.main = './main.mjs';
-                            return JSON.stringify(pkg, null, 2);
+                            const manifest = JSON.parse(content);
+                            manifest.main = './main.mjs';
+                            return JSON.stringify(manifest, null, 2);
                         },
                     },
-                    { src: 'package.nls.json', dest: '.' },
-                    {
-                        src: `package.nls.{${supportedLanguages.join(',')}}.json`,
-                        dest: '.',
-                    },
-                    { src: 'CHANGELOG.md', dest: '.' },
-                    { src: 'LICENSE.md', dest: '.' },
-                    { src: 'NOTICE.html', dest: '.' },
                     {
                         src: 'README.md',
-                        dest: '.',
-                        transform: isDev ? undefined : (content) => content.toString().replace(excludeRegion, ''),
+                        transform: isDev ? undefined : (content) => content.replace(marketplaceExcludedRegion, ''),
                     },
-                    { src: 'skills', dest: '.' },
-                    {
-                        src: 'packages/nosql-language-service/syntaxes/nosql.tmLanguage.json',
-                        dest: './syntaxes',
-                        rename: { stripBase: true },
-                    },
-                    {
-                        src: 'packages/nosql-language-service/language-configuration.json',
-                        dest: '.',
-                        rename: { stripBase: true },
-                    },
-                    { src: 'SECURITY.md', dest: '.' },
-                    { src: 'SUPPORT.md', dest: '.' },
-                    { src: '.vscodeignore', dest: '.' },
                 ],
             }),
             !isDev && !analyze && bundleReport({ outFile: 'bundle-analysis/extension-report-vite.json' }),

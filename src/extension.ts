@@ -100,12 +100,12 @@ export async function activateInternal(
         activateContext.telemetry.measurements.startTime = startTime;
         activateContext.telemetry.properties.migrationFeatureEnabled = String(isMigrationFeatureEnabled());
 
-        // eslint-disable-next-line no-restricted-syntax
+        // oxlint-disable-next-line cosmosdb/no-restricted-syntax -- Read the bundle provided by VS Code.
         if (vscode.l10n.uri) {
             const l10nStartTime = performance.now();
 
             l10n.config({
-                // eslint-disable-next-line no-restricted-syntax
+                // oxlint-disable-next-line cosmosdb/no-restricted-syntax -- Seed @vscode/l10n with the host bundle.
                 contents: vscode.l10n.bundle ?? {},
             });
 

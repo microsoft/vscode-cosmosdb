@@ -12,7 +12,7 @@
     "unicorn",
     "vitest"
   ],
-  "jsPlugins": ["eslint-plugin-license-header"],
+  "extends": ["./.oxlintrc.restricted-syntax.jsonc"],
   "options": {
     "typeAware": true
   },
@@ -39,7 +39,7 @@
     "**/*.d.ts"
   ],
   "rules": {
-    "license-header/header": [
+    "cosmosdb/license-header": [
       "error",
       [
         "/*---------------------------------------------------------------------------------------------",

@@ -47,7 +47,7 @@ describe('DashboardCard', () => {
         expect(card).not.toHaveAttribute('tabindex');
         const styles = getComputedStyle(card);
         expect(styles.getPropertyValue('--fui-Card--size')).toBe('16px');
-        expect(styles.gap).toBe('var(--spacingVerticalM)');
+        expect(styles.gap).toBe(webLightTheme.spacingVerticalM);
         expect(styles.overflow).toBe('visible');
     });
 

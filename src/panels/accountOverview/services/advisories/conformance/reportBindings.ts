@@ -49,9 +49,9 @@ function armAge(age: string | undefined, now: number) {
         return {};
     }
     if (age.startsWith('modified-')) {
-        return { lastModifiedAt: new Date(now - number(age.slice('modified-'.length)) * DAY) };
+        return { ts: (now - number(age.slice('modified-'.length)) * DAY) / 1000 };
     }
-    return { createdAt: new Date(now - number(age) * DAY) };
+    return { systemData: { createdAt: new Date(now - number(age) * DAY) } };
 }
 
 async function collectFixture(world: World, mode: 'idle' | 'operations' | 'indexing' | 'backup'): Promise<void> {
@@ -61,6 +61,8 @@ async function collectFixture(world: World, mode: 'idle' | 'operations' | 'index
     const ids =
         mode === 'idle' && world.pool ? ['a', 'b', 'dedicated'] : Array.from({ length: count }, (_, i) => `c${i}`);
     const serverless = mode !== 'idle';
+    const { ts: dbTs, systemData: dbSystemData } = armAge(world.pool?.databaseAge, now);
+    const { ts: containerTs, systemData: containerSystemData } = armAge(world.pool?.containerAge ?? '30', now);
     const retainedSpies: { mockRestore(): void }[] = [
         vi
             .spyOn(cosmos.databaseAccounts, 'get')
@@ -70,10 +72,8 @@ async function collectFixture(world: World, mode: 'idle' | 'operations' | 'index
                 ids.length
                     ? [
                           {
-                              resource: { id: 'db' },
-                              systemData: world.pool?.malformedAge
-                                  ? { createdAt: new Date(NaN) }
-                                  : armAge(world.pool?.databaseAge, now),
+                              resource: { id: 'db', ts: dbTs },
+                              systemData: world.pool?.malformedAge ? { createdAt: new Date(NaN) } : dbSystemData,
                           },
                       ]
                     : [],
@@ -84,11 +84,12 @@ async function collectFixture(world: World, mode: 'idle' | 'operations' | 'index
                 ids.map((id) => ({
                     resource: {
                         id,
+                        ts: containerTs,
                         indexingPolicy: {
                             indexingMode: mode === 'indexing' && !world.storageDenied ? 'consistent' : 'none',
                         },
                     },
-                    systemData: armAge(world.pool?.containerAge ?? '30', now),
+                    systemData: containerSystemData,
                 })),
             ),
         ),

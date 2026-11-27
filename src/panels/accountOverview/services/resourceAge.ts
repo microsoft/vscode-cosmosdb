@@ -23,7 +23,18 @@ export function hasMalformedCreationTime(resource: { systemData?: { createdAt?: 
 }
 
 /** A last-modified timestamp proves existence by that time, not when the resource was created. */
-export function getSystemLastModifiedAt(resource: unknown): string | undefined {
+export function getSqlResourceExistedAt(resource: {
+    resource?: { ts?: number };
+    systemData?: unknown;
+}): string | undefined {
+    // ARM exposes the Cosmos resource's wire `_ts` (Unix seconds) as `resource.ts` in the SDK.
+    const ts = resource.resource?.ts;
+    if (typeof ts === 'number' && ts > 0) {
+        const timestamp = parseMonitorTimestamp(new Date(ts * 1000));
+        if (timestamp !== undefined) {
+            return new Date(timestamp).toISOString();
+        }
+    }
     return getSystemTimestamp(resource, 'lastModifiedAt');
 }
 

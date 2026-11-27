@@ -11,7 +11,7 @@ import {
 } from '@azure/arm-cosmosdb';
 import { type ReadDiagnosticsResult } from '../accessRequirements';
 import { readItems, reportReadFailure } from './readDiagnostics';
-import { getSystemCreatedAt, getSystemLastModifiedAt, hasMalformedCreationTime } from './resourceAge';
+import { getSqlResourceExistedAt, getSystemCreatedAt, hasMalformedCreationTime } from './resourceAge';
 import { classifyUnavailable, type UnavailableReason } from './shared';
 
 // ─── Static databases/containers inventory ──────────────────────────────────────
@@ -149,7 +149,7 @@ export async function getSqlInventoryDetails(
                 throughputRU: resolvedDatabaseOffer.ru,
                 ...(db.resource?.rid && { ownerRid: db.resource.rid }),
                 resourceCreatedAt: databaseCreatedAt,
-                resourceExistedAt: getSystemLastModifiedAt(db),
+                resourceExistedAt: getSqlResourceExistedAt(db),
                 ...(hasMalformedCreationTime(db) && { malformedCreationTime: true as const }),
             });
         }
@@ -212,7 +212,7 @@ export async function getSqlInventoryDetails(
                             throughputRU,
                             ...(container.resource?.rid && { ownerRid: container.resource.rid }),
                             resourceCreatedAt: containerCreatedAt,
-                            resourceExistedAt: getSystemLastModifiedAt(container),
+                            resourceExistedAt: getSqlResourceExistedAt(container),
                             ...(hasMalformedCreationTime(container) && { malformedCreationTime: true as const }),
                         });
                     }

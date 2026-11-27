@@ -795,8 +795,9 @@ The November 11 read-only check found no shared database offers in the operator'
 so no qualifying mixed target was available. No database, offer, workload or billable verification fixture was created.
 Duplicate/invalid offer inventory records incomplete coverage and withholds the account materiality denominator.
 DX-004 requires evidence that the resource is at least seven days old: the database for a shared offer and the
-container for a dedicated offer. A verified modification timestamp at least seven days old can establish this lower
-bound, but a recent modification does not prove the resource is new. Account age is never substituted.
+container for a dedicated offer. When the resource's ARM creation time is missing, its Cosmos `_ts` last-modified
+timestamp can establish that lower bound, but a recent modification does not prove the resource is new.
+Account age is never substituted. DX-004 does not apply to serverless accounts.
 Empty or all-null responses are `insufficient_data`; measured zero remains valid.
 For a shared offer, sum each verified shared member once per aligned timestamp.
 If any member's data is missing, the total is incomplete; a dedicated sibling is evaluated on its own.

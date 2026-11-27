@@ -357,20 +357,18 @@ export async function collectDerivedAdvisories(
             now,
         );
     const idleResourceAgeDays = (offer: InventoryThroughputOffer): number | undefined => {
-        const createdAge = getKnownResourceAgeDays(
-            offer.offerLevel === 'database'
-                ? offer.resourceCreatedAt
-                : (rowsByScope.get(scopeOf(offer))?.resourceCreatedAt ?? offer.resourceCreatedAt),
-            undefined,
-            now,
-        );
+        const createdAge = getKnownResourceAgeDays(offer.resourceCreatedAt, undefined, now);
+        if (createdAge !== undefined) {
+            return createdAge;
+        }
         const existenceAge = getKnownResourceAgeDays(offer.resourceExistedAt, undefined, now);
-        return (
-            createdAge ??
-            (existenceAge !== undefined && existenceAge >= DIAGNOSTIC_POLICY.idle.minResourceAgeDays
-                ? existenceAge
-                : undefined)
-        );
+        if (existenceAge !== undefined && existenceAge >= DIAGNOSTIC_POLICY.idle.minResourceAgeDays) {
+            return existenceAge;
+        }
+        // The container lookup can return a retained write, not necessarily a creation event.
+        return offer.offerLevel === 'container'
+            ? getKnownResourceAgeDays(rowsByScope.get(scopeOf(offer))?.resourceCreatedAt, undefined, now)
+            : undefined;
     };
     const scopeProvisionedRuTotal =
         inventory.value?.throughputInventoryComplete !== true || invalidOfferScopes.size > 0

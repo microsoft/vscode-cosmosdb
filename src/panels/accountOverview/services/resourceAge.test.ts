@@ -8,8 +8,8 @@ import { describe, expect, it, vi } from 'vitest';
 import {
     getContainerCreatedAt,
     getKnownResourceAgeDays,
+    getSqlResourceExistedAt,
     getSystemCreatedAt,
-    getSystemLastModifiedAt,
 } from './resourceAge';
 import { pagedItems } from './testFixtures';
 import { DAY } from './units';
@@ -31,10 +31,16 @@ describe('known resource age', () => {
 
     it('keeps valid modification evidence separate from creation metadata', () => {
         const lastModifiedAt = new Date(0);
-        const resource = { systemData: { lastModifiedAt } };
+        const now = Date.UTC(2026, 0, 10);
+        const resource = { resource: { ts: (now - 7 * DAY) / 1000 }, systemData: { lastModifiedAt } };
         expect(getSystemCreatedAt(resource)).toBeUndefined();
-        expect(getSystemLastModifiedAt(resource)).toBe(lastModifiedAt.toISOString());
-        expect(getSystemLastModifiedAt({ systemData: { lastModifiedAt: new Date(NaN) } })).toBeUndefined();
+        expect(getKnownResourceAgeDays(getSqlResourceExistedAt(resource), undefined, now)).toBe(7);
+        expect(getSqlResourceExistedAt({ systemData: { lastModifiedAt } })).toBe(lastModifiedAt.toISOString());
+        expect(getSqlResourceExistedAt({ systemData: { lastModifiedAt: new Date(NaN) } })).toBeUndefined();
+    });
+
+    it.each([0, -1, NaN, Infinity, Number.MAX_SAFE_INTEGER])('ignores invalid Cosmos timestamps (%s)', (ts) => {
+        expect(getSqlResourceExistedAt({ resource: { ts } })).toBeUndefined();
     });
 
     it('resolves a young container on an older account from the earliest retained write event', async () => {

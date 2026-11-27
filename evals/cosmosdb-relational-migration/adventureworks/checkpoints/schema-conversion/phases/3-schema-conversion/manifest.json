@@ -5,14 +5,14 @@
   "databaseName": "adventureworks-eval",
   "capacityMode": "serverless",
   "domainSha256": {
-    "Catalog": "39b9465e5bd440ab76e5fd73ca309fd4c1aedbd7f3b9e052319730bbc48075b2",
+    "Catalog": "7472a250f18970befc82cd39cf8061c84603466bde332dbe3599f30f400ca1dc",
     "Customers": "8efd48607203b34d4d036899d7ee9248952b5ec1a16aac3b6cab9e92eb3bf7b7",
     "Operations": "84306bd11c238b73b9dd143c92ecd402ce04298c5c901c50b63ddb512514b2ce",
     "Orders": "0dffa7179421960e47f7b27e4dff21b49b9b21b661117d0a3f41bf92c8af5cf6"
   },
   "identityMapping": {
     "version": 1,
-    "modelSha256": "0eb9978e5d2c314d1c43f86a11809fa14a7e023b9b89b74a538284d986f5e6b5",
+    "modelSha256": "6096b4cd63bcc868e2a4cbb68fc19f982636ff3590070cdc653b52e409a85a82",
     "mappings": [
       {
         "containerName": "Catalog",

@@ -368,16 +368,16 @@
     "Controllers/ProductsController.cs"
   ],
   "files": {
-    "phases/3-schema-conversion/domains/Catalog/cosmos-model.json": "fb0e3c4716dc28c257ebb4a90b4e0f3b70b8722bdc582de297e82e1ac960c5d3",
-    "phases/3-schema-conversion/domains/Catalog/summary.md": "cea0d5e8b4ee7d29da321a93fcb285054cd0041300fef5d1f14f02dd6a7958f8",
+    "phases/3-schema-conversion/domains/Catalog/cosmos-model.json": "0d3d5c9ed5ba18091148c4bbeeba3f3a5c1a89d6c036e024954875794ce06988",
+    "phases/3-schema-conversion/domains/Catalog/summary.md": "627e69008f37629d3925e899a224a4c37e3aebfb3d8e98e03afe2e8a3f2c183d",
     "phases/3-schema-conversion/domains/Customers/cosmos-model.json": "e29b0666664251cc556a1d8fd735118dddea90c4c847c39e44d6486ca432b1e2",
     "phases/3-schema-conversion/domains/Customers/summary.md": "c711772d150b1124e5ca43cc5760c58ff18741c1a26ce8c747ce58106874e611",
     "phases/3-schema-conversion/domains/Operations/cosmos-model.json": "2f3eff0ab7cc0134fc9c141226e6aa2e2f86c6c804a1254058404de13fd4c243",
     "phases/3-schema-conversion/domains/Operations/summary.md": "9f178f08a37ada5061cd7d18cc23621ebb07b0d0bbe89b4cdad03368440ce59a",
     "phases/3-schema-conversion/domains/Orders/cosmos-model.json": "51bed1f0dab65747fcd85728c23d48f35135d0f3a168082a932fc830b0828760",
     "phases/3-schema-conversion/domains/Orders/summary.md": "7d9fa72c88e12f7533de5f34e27d7989d12f1c0ef822b212bcf32620b677da12",
-    "phases/3-schema-conversion/manifest.json": "287eda36b914851661c8a83710d7b04702c459d8cb6bd869b265fbe2cd8e09d4",
-    "phases/3-schema-conversion/model.json": "0eb9978e5d2c314d1c43f86a11809fa14a7e023b9b89b74a538284d986f5e6b5",
+    "phases/3-schema-conversion/manifest.json": "3f5671fe12fa384a4d1aae117b34676583a884738d7f8adea82295271f1a3efb",
+    "phases/3-schema-conversion/model.json": "6096b4cd63bcc868e2a4cbb68fc19f982636ff3590070cdc653b52e409a85a82",
     "phases/3-schema-conversion/summary.md": "dfcfffc3ee0c7fc12537eb05da917e64f72cfdd64c3bed0cae41fad644ea9ec5"
   }
 }

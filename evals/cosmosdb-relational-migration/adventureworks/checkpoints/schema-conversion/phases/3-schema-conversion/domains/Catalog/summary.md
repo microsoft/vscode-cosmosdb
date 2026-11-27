@@ -271,9 +271,12 @@ related target ID for hydration rather than embedding a second authoritative ent
 | R005 | same | Cross-partition projected category selection. |
 | R006 | [Product controller](../../../../../Controllers/ProductsController.cs) | Cross-partition product query; hydrate optional category and model by point reads. |
 | R007 | same | Point-read product; hydrate category/model only for includes. |
-| R008 | same | Two cross-partition projected queries for category and model selections. |
+| R008 | same | Two cross-partition projected queries returning the respective numeric `productCategoryId` / `productModelId`, plus `id` and `name`, for category and model selections. |
 | W004, W005, W006 | Category controller | Coordinator-mediated category create/update/delete, including unique names, parent existence and dependent NO ACTION. |
 | W007, W008, W009 | Product controller | Coordinator-mediated product create/update/delete, including unique keys, category/model existence and Orders NO ACTION. |
+
+Use the stored numeric category/model keys as selection values; the prefixed Cosmos `id` is routing metadata,
+not the original controller's numeric selection value. Run the selection-query template once per docType.
 
 Static inspection records one submitted entity per SaveChanges and no explicit multi-entity transaction; it does
 not prove absence of database-side behavior or external writers. Read results, including lists and hydrated related

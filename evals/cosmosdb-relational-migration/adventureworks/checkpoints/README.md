@@ -47,6 +47,10 @@ The original completion timestamps remain historical provenance, not evidence th
 or executed in a database. Source DDL, domain ownership, canonical models and identity contracts are unchanged.
 The impossible 1,000-row BuildVersion example is retained only in the separate contradiction guidance scenario.
 
+The R008 selection-list projections retain the numeric category/model keys consumed by the pinned product controller.
+The canonical model and dependent snapshot hashes were regenerated without changing source evidence, ownership,
+identity templates, or non-selection operations.
+
 Each `checkpoint.json` binds the application revision, exact schema/workload bytes, phase file hashes,
 project state and consulted paths. Setup verifies these bindings before copying anything. It then
 reconstructs freshness for the fixture in its new isolated workspace and runs the normal completion

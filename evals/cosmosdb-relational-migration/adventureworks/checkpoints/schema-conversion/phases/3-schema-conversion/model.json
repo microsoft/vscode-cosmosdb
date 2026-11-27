@@ -1606,8 +1606,8 @@
       "target": {
         "type": "query",
         "container": "Catalog",
-        "operation": "Run two projected docType queries",
-        "query": "SELECT c.id, c.name FROM c WHERE c.docType = @docType",
+        "operation": "Run two projected docType queries; use productCategoryId and productModelId as the respective numeric selection values",
+        "query": "SELECT c.id, c.productCategoryId, c.productModelId, c.name FROM c WHERE c.docType = @docType",
         "isCrossPartition": true
       }
     },
@@ -1791,7 +1791,7 @@
     {
       "name": "Catalog: Selection lists",
       "container": "Catalog",
-      "query": "SELECT c.id, c.name FROM c WHERE c.docType = @docType",
+      "query": "SELECT c.id, c.productCategoryId, c.productModelId, c.name FROM c WHERE c.docType = @docType",
       "reason": "No partition key is available for all category or model choices.",
       "estimatedRUCost": "medium, unmeasured planning class",
       "optimizations": [

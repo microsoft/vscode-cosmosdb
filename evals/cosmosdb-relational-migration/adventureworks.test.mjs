@@ -15,6 +15,7 @@ import { acceptedTrial, handoffSpec, runHandoff } from '../../scripts/eval-hando
 import { resolveEvalSelection } from '../../scripts/eval-options.mjs';
 import { checkPhaseCompletions } from '../../skills/cosmosdb-migration/scripts/check-phase-completion.mjs';
 import { buildFreshnessManifest } from '../../skills/cosmosdb-migration/scripts/freshness.mjs';
+import { sourceFilesHash } from '../../skills/cosmosdb-migration/scripts/validate-source-evidence.mjs';
 import {
     applicationSnapshot,
     checkAdventureWorks,
@@ -520,13 +521,43 @@ test('inferred discovery rejects root-level planning outputs even without a code
     const migration = join(app, '.cosmosdb-migration');
     const manifestPath = join(migration, 'phases/1-discovery/preflight-manifest.json');
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-    for (const file of manifest.sourceInventory.files) {
-        file.origin = 'inferred';
-        file.sourcePaths = ['Models/sampledbContext.cs'];
+    const inventory = reviewedDdlV2(manifest.sourceInventory);
+    const sourcePath = 'Models/sampledbContext.cs';
+    const evidence = [sourcePath];
+    inventory.files = [
+        {
+            path: sourcePath,
+            sha256: sha256(readFileSync(join(app, sourcePath))),
+            kind: 'code',
+            disposition: 'used',
+            rationale: 'Synthetic application evidence for boundary grading.',
+            provenance: { method: 'code', scope: 'offline fixture' },
+        },
+    ];
+    inventory.sha256 = sourceFilesHash(inventory.source.engine, inventory.files);
+    for (const dataset of inventory.datasets) {
+        dataset.evidence = evidence;
+        dataset.coverage = { basis: 'code', complete: false, scope: 'Synthetic application mappings.', sampling: null };
+        for (const field of dataset.fields) field.evidence = evidence;
+        for (const identity of dataset.identities) identity.evidence = evidence;
     }
+    for (const relationship of inventory.relationships) relationship.evidence = evidence;
+    manifest.sourceInventory = inventory;
+    manifest.sourceSha256 = inventory.sha256;
     writeFileSync(manifestPath, JSON.stringify(manifest));
+    rmSync(join(migration, 'phases/1-discovery/schema-ddl/AdventureworksLT.sql'));
+    const discoveryPath = join(migration, 'phases/1-discovery/discovery-manifest.json');
+    const discovery = JSON.parse(readFileSync(discoveryPath, 'utf8'));
+    discovery.sourceSha256 = inventory.sha256;
+    writeFileSync(discoveryPath, JSON.stringify(discovery));
+    const reportPath = join(migration, 'phases/1-discovery/discovery-report.md');
+    writeFileSync(
+        reportPath,
+        readFileSync(reportPath, 'utf8').replace('## Relational Semantics', '## Source Semantics'),
+    );
     const projectPath = join(migration, 'project.json');
     const project = JSON.parse(readFileSync(projectPath, 'utf8'));
+    project.phases.discovery.schemaInventory = { files: [`../${sourcePath}`] };
     delete project.phases.codeMigration;
     for (const phase of ['preflight', 'discovery']) {
         project.freshness[phase] = buildFreshnessManifest(app, project, phase, readCheckpoint(phase).consulted);

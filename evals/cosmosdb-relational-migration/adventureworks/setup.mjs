@@ -9,6 +9,8 @@ import { basename, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { materializePrerequisites, phaseOrder } from './checkpoints.mjs';
 
+export const projectName = 'AdventureWorksEvaluation';
+
 export const plannedTarget = Object.freeze({
     type: 'provision',
     accountName: 'vally-adventureworks',
@@ -88,7 +90,7 @@ export async function setupAdventureWorks(workspace, sample, schema, phase, root
         JSON.stringify(
             {
                 version: 1,
-                name: 'AdventureWorksEvaluation',
+                name: projectName,
                 sourceCode: 'parent',
                 customMetadata: { preserve: 'adventureworks-evaluation' },
                 phases: {

@@ -216,6 +216,7 @@ The suite includes:
 - Seven extended AdventureWorks scenarios: independent preflight, discovery, assessment, schema conversion,
   artifact-only provisioning and code-migration planning, plus discovery that infers DDL from the real
   Entity Framework application without receiving the supplied schema.
+  Artifact checks require the migration name initialized by the fixture to remain unchanged.
 - An opt-in integration scenario chaining discovery through planning in one conversation. The runner
   excludes it unless `--tag category=integration` explicitly selects it, including on an unfiltered `npm run eval`.
 - An opt-in conversion-to-planning handoff, reusing the isolated phase specifications and their current rubrics.

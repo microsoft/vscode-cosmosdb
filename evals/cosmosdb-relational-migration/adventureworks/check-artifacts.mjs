@@ -17,7 +17,7 @@ import { captureHandoffBaseline, checkHandoffBoundary } from './handoff.mjs';
 import { createAdventureWorksJudge } from './judge.mjs';
 import { checkPlanTasks } from './plan-contract.mjs';
 import { verifySample } from './sample.mjs';
-import { plannedTarget, workloadContent } from './setup.mjs';
+import { plannedTarget, projectName, workloadContent } from './setup.mjs';
 import { checkAdventureWorksInventory, tableNames } from './source-contract.mjs';
 
 export { checkAdventureWorksInventory } from './source-contract.mjs';
@@ -152,6 +152,7 @@ export function checkAdventureWorks(workspace, scenario, sample, handoffBaseline
     const read = (path) => readFileSync(join(root, path), 'utf8');
     const json = (path) => JSON.parse(read(path));
     const project = json('project.json');
+    assert.equal(project.name, projectName, 'Changed migration project name');
     assert.deepEqual(project.customMetadata, { preserve: 'adventureworks-evaluation' }, 'Lost user metadata');
     assert.equal(
         read('phases/1-discovery/volumetrics/workload.json'),

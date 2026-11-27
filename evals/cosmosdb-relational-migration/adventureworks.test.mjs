@@ -445,6 +445,10 @@ for (const phase of phaseOrder) {
         if (analyticalPhases.includes(phase)) {
             await materializePrerequisites(app, phaseOrder[phaseOrder.indexOf(phase) + 1]);
             checkAdventureWorks(app, phase, sample);
+            const completedProject = JSON.parse(readFileSync(projectPath, 'utf8'));
+            completedProject.name = 'RenamedMigration';
+            writeFileSync(projectPath, JSON.stringify(completedProject));
+            assert.throws(() => checkAdventureWorks(app, phase, sample), /Changed migration project name/);
         }
     });
 }

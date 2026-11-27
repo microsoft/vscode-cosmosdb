@@ -4,8 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import type * as AzExtUtils from '@microsoft/vscode-azext-utils';
-import { AzureWizard, UserCancelledError } from '@microsoft/vscode-azext-utils';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AzureWizard, GoBackError, UserCancelledError } from '@microsoft/vscode-azext-utils';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
+import * as vscode from 'vscode';
 import { CoreExperience, FabricNativeExperience } from '../AzureDBExperiences';
 import { armTestSubscription, createArmTestContext } from '../cosmosdb/armTestUtils';
 import { AuthenticationMethod } from '../cosmosdb/AuthenticationMethod';
@@ -64,10 +65,20 @@ vi.mock('@microsoft/vscode-azext-utils', async (importOriginal) => ({
     ),
     AzureWizard: vi.fn(
         class {
-            constructor(private readonly context: CreateContainerWizardContext | CreateDatabaseWizardContext) {}
+            constructor(
+                private readonly context: CreateContainerWizardContext | CreateDatabaseWizardContext,
+                private readonly options: AzExtUtils.IWizardOptions<
+                    CreateContainerWizardContext | CreateDatabaseWizardContext
+                >,
+            ) {}
             prompt = async () => {
                 await mocks.prompt();
                 if ('databaseId' in this.context) {
+                    const nameStep = this.options.promptSteps?.[0];
+                    if (nameStep?.getSubWizard) {
+                        await nameStep.prompt(this.context);
+                        return;
+                    }
                     this.context.containerName ??= 'new-container';
                 } else {
                     this.context.databaseName ??= 'new-database';
@@ -132,6 +143,145 @@ afterEach(() => {
     vi.useRealTimers();
 });
 
+async function useRealContainerWizard() {
+    const actual = await vi.importActual<typeof AzExtUtils>('@microsoft/vscode-azext-utils');
+    vi.mocked(AzureWizard).mockImplementationOnce(function (context, options) {
+        return new actual.AzureWizard(context, options);
+    });
+    const execute = vi.spyOn(actual.AzureWizard.prototype, 'execute').mockResolvedValue();
+    const completed = new vscode.EventEmitter<AzExtUtils.PromptResult>();
+    const context = createArmTestContext();
+    context.ui = { ...context.ui, onDidFinishPrompt: completed.event };
+    const picks: Array<{
+        buttons: readonly vscode.QuickInputButton[];
+        hide: () => void;
+    }> = [];
+    const disposables: vscode.Disposable[] = [completed];
+    const createQuickPick = vi.spyOn(vscode.window, 'createQuickPick').mockImplementation(() => {
+        const hidden = new vscode.EventEmitter<void>();
+        disposables.push(hidden);
+        const unusedEvent = () => ({ dispose: vi.fn() });
+        const pick = {
+            value: '',
+            title: undefined,
+            step: undefined,
+            totalSteps: undefined,
+            placeholder: undefined,
+            prompt: undefined,
+            enabled: true,
+            busy: false,
+            ignoreFocusOut: false,
+            canSelectMany: false,
+            matchOnDescription: false,
+            matchOnDetail: false,
+            items: [],
+            activeItems: [],
+            selectedItems: [],
+            buttons: [] as readonly vscode.QuickInputButton[],
+            onDidHide: hidden.event,
+            onDidChangeValue: unusedEvent,
+            onDidAccept: unusedEvent,
+            onDidTriggerButton: unusedEvent,
+            onDidTriggerItemButton: unusedEvent,
+            onDidChangeActive: unusedEvent,
+            onDidChangeSelection: unusedEvent,
+            show: vi.fn(),
+            hide: () => hidden.fire(),
+            dispose: vi.fn(),
+        } satisfies vscode.QuickPick<vscode.QuickPickItem>;
+        picks.push(pick);
+        return pick;
+    });
+    onTestFinished(() => {
+        execute.mockRestore();
+        createQuickPick.mockRestore();
+        disposables.forEach((disposable) => {
+            disposable.dispose();
+        });
+    });
+    return { context, completed, execute, picks };
+}
+
+describe('container wizard Back navigation', () => {
+    it.each(['partition key', 'throughput'])(
+        'returns from %s to edit the name and rebuilds the remaining steps',
+        async (from) => {
+            ext.isAIFeaturesEnabled = true;
+            const { context, completed, execute, picks } = await useRealContainerWizard();
+            const info = accountInfo();
+            const names = ['original', 'corrected'];
+            vi.mocked(promptContainerNameOrDataModeler).mockImplementation(async () => {
+                // Opening the custom picker hides the wizard's loading picker without cancelling the wizard.
+                picks.at(-1)?.hide();
+                const name = names.shift();
+                if (!name) throw new Error('Unexpected extra name prompt');
+                return { kind: 'manual', name };
+            });
+            const answers =
+                from === 'throughput'
+                    ? ['/oldKey', '', new GoBackError(), new GoBackError(), new GoBackError(), '/tenant', '', '400']
+                    : [new GoBackError(), '/tenant', '', '400'];
+            vi.spyOn(context.ui, 'showInputBox').mockImplementation(async () => {
+                expect(picks.at(-1)?.buttons).toContain(vscode.QuickInputButtons.Back);
+                const answer = answers.shift();
+                if (answer instanceof Error) throw answer;
+                if (answer === undefined) throw new Error('Unexpected extra prompt');
+                completed.fire({ value: answer });
+                return answer;
+            });
+
+            await createContainer(context, info, 'db', CoreExperience);
+
+            expect(promptContainerNameOrDataModeler).toHaveBeenNthCalledWith(1, info, 'db', '');
+            expect(promptContainerNameOrDataModeler).toHaveBeenNthCalledWith(2, info, 'db', 'original');
+            expect(answers).toEqual([]);
+            expect(execute).toHaveBeenCalledOnce();
+            expect(showConfirmationAsInSettings).toHaveBeenCalledExactlyOnceWith(
+                'The "corrected" container has been created.',
+            );
+            expect(context.valuesToMask).toEqual(expect.arrayContaining(['original', 'corrected', '/tenant']));
+            expect(openDataModelingWizard).not.toHaveBeenCalled();
+        },
+    );
+
+    it('can switch to Data Modeler after going Back without prompting for keys or executing creation', async () => {
+        ext.isAIFeaturesEnabled = true;
+        const { context, execute } = await useRealContainerWizard();
+        const info = accountInfo();
+        vi.mocked(promptContainerNameOrDataModeler)
+            .mockResolvedValueOnce({ kind: 'manual', name: 'original' })
+            .mockResolvedValueOnce({ kind: 'dataModeler' });
+        const input = vi.spyOn(context.ui, 'showInputBox').mockRejectedValue(new GoBackError());
+
+        await createContainer(context, info, 'selected-db', CoreExperience);
+
+        expect(input).toHaveBeenCalledOnce();
+        expect(execute).not.toHaveBeenCalled();
+        expect(openDataModelingWizard).toHaveBeenCalledExactlyOnceWith(context, info, 'selected-db');
+        expect(mocks.telemetryEvents.map(({ context: event }) => event.telemetry.properties)).toEqual([
+            { entryPoint: 'createContainer' },
+        ]);
+        expect(showConfirmationAsInSettings).not.toHaveBeenCalled();
+    });
+
+    it('propagates cancellation after returning to the name', async () => {
+        ext.isAIFeaturesEnabled = true;
+        const { context, execute } = await useRealContainerWizard();
+        const cancelled = new UserCancelledError();
+        vi.mocked(promptContainerNameOrDataModeler)
+            .mockResolvedValueOnce({ kind: 'manual', name: 'original' })
+            .mockRejectedValueOnce(cancelled);
+        vi.spyOn(context.ui, 'showInputBox').mockRejectedValue(new GoBackError());
+
+        await expect(createContainer(context, accountInfo(), 'db', CoreExperience)).rejects.toBe(cancelled);
+
+        expect(execute).not.toHaveBeenCalled();
+        expect(openDataModelingWizard).not.toHaveBeenCalled();
+        expect(mocks.telemetryEvents).toEqual([]);
+        expect(showConfirmationAsInSettings).not.toHaveBeenCalled();
+    });
+});
+
 describe('shared creation wizards', () => {
     it('keeps the typed container name and continues the partition key and throughput wizard', async () => {
         ext.isAIFeaturesEnabled = true;
@@ -141,10 +291,12 @@ describe('shared creation wizards', () => {
 
         await createContainer(context, info, 'selected-db', CoreExperience);
 
-        expect(promptContainerNameOrDataModeler).toHaveBeenCalledExactlyOnceWith(info, 'selected-db');
+        expect(promptContainerNameOrDataModeler).toHaveBeenCalledExactlyOnceWith(info, 'selected-db', '');
         expect(AzureWizard).toHaveBeenCalledWith(
             expect.objectContaining({ databaseId: 'selected-db', containerName: 'typed-container' }),
-            expect.objectContaining({ promptSteps: expect.arrayContaining([expect.any(CosmosDBThroughputStep)]) }),
+            expect.objectContaining({
+                promptSteps: [expect.objectContaining({ id: 'cosmosDB.createContainer.nameStep' })],
+            }),
         );
         expect(mocks.execute).toHaveBeenCalledOnce();
         expect(context.valuesToMask).toContain('typed-container');
@@ -164,7 +316,7 @@ describe('shared creation wizards', () => {
             await expect(result.catch((error: unknown) => error)).resolves.toBe(failure);
 
             expect(openDataModelingWizard).toHaveBeenCalledExactlyOnceWith(context, info, 'selected-db');
-            expect(AzureWizard).not.toHaveBeenCalled();
+            expect(mocks.execute).not.toHaveBeenCalled();
             expect(showConfirmationAsInSettings).not.toHaveBeenCalled();
             expect(mocks.telemetryEvents).toHaveLength(1);
             expect(mocks.telemetryEvents[0].name).toBe('cosmosDB.dataModeler.entryPointSelected');
@@ -181,7 +333,7 @@ describe('shared creation wizards', () => {
         const error = new UserCancelledError();
         vi.mocked(promptContainerNameOrDataModeler).mockRejectedValue(error);
         await expect(createContainer(createArmTestContext(), accountInfo(), 'db', CoreExperience)).rejects.toBe(error);
-        expect(AzureWizard).not.toHaveBeenCalled();
+        expect(mocks.execute).not.toHaveBeenCalled();
         expect(openDataModelingWizard).not.toHaveBeenCalled();
         expect(mocks.telemetryEvents).toEqual([]);
     });

@@ -10,6 +10,7 @@ import * as vscode from 'vscode';
 type ResourceCreationChoice = { kind: 'manual'; name: string } | { kind: 'dataModeler' };
 
 interface ResourceNamePromptOptions {
+    value?: string;
     title: string;
     placeholder: string;
     detail: string;
@@ -61,6 +62,7 @@ export async function promptResourceNameOrDataModeler(
     quickPick.title = options.title;
     quickPick.placeholder = options.placeholder;
     quickPick.ignoreFocusOut = true;
+    quickPick.value = options.value ?? '';
     update();
 
     try {

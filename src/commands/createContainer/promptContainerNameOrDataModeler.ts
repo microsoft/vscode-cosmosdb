@@ -9,7 +9,7 @@ import { type AccountInfo } from '../../tree/cosmosdb/AccountInfo';
 import { promptResourceNameOrDataModeler } from '../dataModeling/promptResourceNameOrDataModeler';
 import { validateContainerNameAvailable } from './CosmosDBContainerNameStep';
 
-export async function promptContainerNameOrDataModeler(accountInfo: AccountInfo, databaseId: string) {
+export async function promptContainerNameOrDataModeler(accountInfo: AccountInfo, databaseId: string, value = '') {
     return promptResourceNameOrDataModeler({
         title: l10n.t('Create container'),
         placeholder: l10n.t('Enter a container name for {databaseId}', { databaseId }),
@@ -17,5 +17,6 @@ export async function promptContainerNameOrDataModeler(accountInfo: AccountInfo,
         createLabel: (name) => l10n.t('Create container "{name}"', { name }),
         validateName: validateContainerName,
         validateNameAvailable: (name) => validateContainerNameAvailable(accountInfo, databaseId, name),
+        value,
     });
 }

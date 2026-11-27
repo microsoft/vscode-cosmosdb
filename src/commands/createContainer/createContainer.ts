@@ -3,9 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizard, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { AzureWizard, type IActionContext, type PromptResult } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
+import { EventEmitter } from 'vscode';
 import { API, type Experience } from '../../AzureDBExperiences';
 import { maskConnectionTelemetry } from '../../cosmosdb/maskConnectionTelemetry';
 import { ext } from '../../extensionVariables';
@@ -81,32 +82,73 @@ export async function createContainer(
         maxThroughput: undefined,
     };
 
-    if (experience.api === API.Core && ext.isAIFeaturesEnabled && isDataModelerFeatureEnabled()) {
-        const choice = await promptContainerNameOrDataModeler(accountInfo, databaseId);
-        context.telemetry.properties.creationChoice = choice.kind;
-        if (choice.kind === 'dataModeler') {
-            await reportDataModelerEntryPoint('createContainer');
-            await openDataModelingWizard(context, accountInfo, databaseId);
-            return;
-        }
-        context.valuesToMask.push(choice.name);
-        wizardContext.containerName = choice.name;
+    const containerSteps = [
+        new CosmosDBPartitionKeyStep('first'),
+        new CosmosDBPartitionKeyStep('second'),
+        new CosmosDBPartitionKeyStep('third'),
+        new CosmosDBThroughputStep(),
+    ];
+    const modelerEnabled = experience.api === API.Core && ext.isAIFeaturesEnabled && isDataModelerFeatureEnabled();
+    const completedPrompt = new EventEmitter<PromptResult>();
+    const forwardCompletion = modelerEnabled
+        ? context.ui.onDidFinishPrompt((result) => completedPrompt.fire(result))
+        : undefined;
+    let customPromptActive = false;
+    let previousName = '';
+    if (modelerEnabled) {
+        // AzureWizard tracks Back history and input caching through this event, not just the return from step.prompt.
+        // Forward all other members (including the wizard reference) to the original input implementation.
+        wizardContext.ui = new Proxy(context.ui, {
+            get(target, property, receiver): unknown {
+                if (property === 'onDidFinishPrompt') return completedPrompt.event;
+                if (property === 'isPrompting' && customPromptActive) return true;
+                return Reflect.get(target, property, receiver);
+            },
+        });
     }
-
+    const nameStep = new CosmosDBContainerNameStep(
+        modelerEnabled
+            ? async (stepContext) => {
+                  customPromptActive = true;
+                  try {
+                      const choice = await promptContainerNameOrDataModeler(accountInfo, databaseId, previousName);
+                      stepContext.telemetry.properties.creationChoice = choice.kind;
+                      stepContext.dataModelerSelected = choice.kind === 'dataModeler';
+                      if (choice.kind === 'manual') {
+                          previousName = choice.name;
+                          stepContext.containerName = choice.name;
+                          stepContext.valuesToMask.push(choice.name);
+                          completedPrompt.fire({ value: choice.name });
+                      }
+                  } finally {
+                      customPromptActive = false;
+                  }
+              }
+            : undefined,
+    );
+    if (modelerEnabled) {
+        nameStep.getSubWizard = async (stepContext) =>
+            stepContext.dataModelerSelected ? undefined : { promptSteps: containerSteps.slice() };
+    }
     const wizard = new AzureWizard(wizardContext, {
         title: l10n.t('Create container'),
-        promptSteps: [
-            new CosmosDBContainerNameStep(),
-            new CosmosDBPartitionKeyStep('first'),
-            new CosmosDBPartitionKeyStep('second'),
-            new CosmosDBPartitionKeyStep('third'),
-            new CosmosDBThroughputStep(),
-        ].filter((s) => !!s),
+        promptSteps: modelerEnabled ? [nameStep] : [nameStep, ...containerSteps],
         executeSteps: [new CosmosDBExecuteStep()],
         showLoadingPrompt: true,
     });
 
-    await wizard.prompt();
+    try {
+        await wizard.prompt();
+    } finally {
+        forwardCompletion?.dispose();
+        completedPrompt.dispose();
+        wizardContext.ui = context.ui;
+    }
+    if (wizardContext.dataModelerSelected) {
+        await reportDataModelerEntryPoint('createContainer');
+        await openDataModelingWizard(context, accountInfo, databaseId);
+        return;
+    }
     await wizard.execute();
 
     const newContainerName = nonNullValue(wizardContext.containerName);

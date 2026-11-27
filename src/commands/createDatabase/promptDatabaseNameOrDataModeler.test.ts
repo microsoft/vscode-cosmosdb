@@ -81,6 +81,17 @@ beforeEach(() => {
 });
 
 describe('container name and Data Modeler prompt', () => {
+    it('prefills the previous name on Back and shows Data Modeler only after the name is cleared', async () => {
+        const choice = promptContainerNameOrDataModeler(accountInfo, 'db', 'previous-name');
+        expect(quickPick.value).toBe('previous-name');
+        expect(quickPick.items).toHaveLength(1);
+        expect(quickPick.createItem.description).toContain('Create container "previous-name"');
+        quickPick.type('');
+        expect(quickPick.items[2].label).toBe('Try Data Modeler');
+        await quickPick.accept('dataModeler');
+        await expect(choice).resolves.toEqual({ kind: 'dataModeler' });
+    });
+
     it('validates container names in the selected database and restores Data Modeler only when cleared', async () => {
         const choice = promptContainerNameOrDataModeler(accountInfo, 'selected-db');
         expect(quickPick.title).toBe('Create container');

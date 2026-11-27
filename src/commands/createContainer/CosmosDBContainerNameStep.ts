@@ -15,7 +15,15 @@ export class CosmosDBContainerNameStep extends AzureWizardPromptStep<CreateConta
     public id = 'cosmosDB.createContainer.nameStep';
     public hideStepCount: boolean = false;
 
+    public constructor(private readonly promptName?: (context: CreateContainerWizardContext) => Promise<void>) {
+        super();
+    }
+
     public async prompt(context: CreateContainerWizardContext): Promise<void> {
+        if (this.promptName) {
+            await this.promptName(context);
+            return;
+        }
         const { databaseId } = context;
         const prompt = l10n.t('Enter a container name for {databaseId}', { databaseId });
         context.containerName = (

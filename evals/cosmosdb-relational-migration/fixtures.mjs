@@ -9,7 +9,10 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 export async function prepareFixture(workspace, phase, skillRoot) {
-    assert.ok(['preflight', 'assessment', 'provisioning'].includes(phase), `Unknown artifact scenario: ${phase}`);
+    assert.ok(
+        ['preflight', 'discovery', 'assessment', 'provisioning'].includes(phase),
+        `Unknown artifact scenario: ${phase}`,
+    );
     const { sourceFixture, discoveryFixture, assessmentFixture, conversionFixture, verificationSummary, writeFixture } =
         await import(pathToFileURL(join(skillRoot, 'tests/source-evidence-fixtures.mjs')).href);
     const { buildFreshnessManifest } = await import(pathToFileURL(join(skillRoot, 'scripts/freshness.mjs')).href);
@@ -22,6 +25,7 @@ export async function prepareFixture(workspace, phase, skillRoot) {
             discovery: {
                 status: 'not-started',
                 preflightStatus: 'not-started',
+                discoveryInstructions: 'Focus on tenant isolation in the discovery report.',
                 ddlParsing: { method: 'model', decisionSource: 'explicit' },
                 applicationAnalysis: {
                     projectName: 'Orders',
@@ -49,7 +53,7 @@ export async function prepareFixture(workspace, phase, skillRoot) {
         writeFileSync(file, readFileSync(file, 'utf8').replaceAll('observed', 'synthetic evaluation input'));
     }
     project.freshness.preflight = buildFreshnessManifest(workspace, project, 'preflight');
-    if (phase !== 'preflight') {
+    if (phase === 'assessment' || phase === 'provisioning') {
         discoveryFixture(workspace, inventory, project, {
             patterns: [
                 {

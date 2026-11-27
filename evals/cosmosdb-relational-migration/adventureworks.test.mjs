@@ -787,6 +787,32 @@ test('source semantics require supplied FK actions but preserve genuine inferenc
     assert.throws(() => checkAdventureWorksInventory(inventory), /update action/);
 });
 
+test('null inferred FK actions cannot mask concrete claims or substitute for supplied evidence', () => {
+    const inventory = schemaInventory();
+    const detail = inventory.tables.find(({ name }) => name === 'SalesLT.SalesOrderDetail');
+    const fk = detail.foreignKeys.find(({ columns }) => columns.includes('SalesOrderID'));
+    Object.assign(fk, {
+        onUpdate: null,
+        onDelete: null,
+        databaseDeleteAction: null,
+        ormDeleteBehavior: 'ClientSetNull',
+    });
+    const check = (source) => checkAdventureWorksInventory(inventory, { source });
+    check('inferred');
+    assert.throws(() => check('supplied'), /action is missing/);
+
+    fk.databaseDeleteAction = 'CASCADE';
+    fk.databaseUpdateAction = 'NO ACTION';
+    check('inferred');
+    fk.databaseDeleteAction = 'SET NULL';
+    assert.throws(() => check('inferred'), /delete action/);
+    fk.databaseDeleteAction = 'CASCADE';
+    fk.databaseUpdateAction = 'CASCADE';
+    assert.throws(() => check('inferred'), /update action/);
+    fk.updateAction = 'NO ACTION';
+    assert.throws(() => check('inferred'), /contradictory fields/);
+});
+
 test('source semantics reject missing, combined, invented or filtered uniqueness', async (t) => {
     for (const [name, mutate] of [
         [
@@ -865,15 +891,49 @@ test('inference does not require convention-only nonunique indexes or physical c
     assert.throws(() => checkAdventureWorksInventory(inventory, { source: 'inferred' }), /ProductNumber.*missing/);
 });
 
+test('unknown physical result type needs computed evidence and cannot hide contradictory mapped facts', () => {
+    const inventory = schemaInventory();
+    const detail = inventory.tables.find(({ name }) => name === 'SalesLT.SalesOrderDetail');
+    const line = detail.columns.find(({ name }) => name === 'LineTotal');
+    line.type = 'unknown';
+    checkAdventureWorksInventory(inventory);
+    line.scale = 2;
+    assert.throws(() => checkAdventureWorksInventory(inventory), /contradictory scale/);
+    delete line.scale;
+    line.efType = 'decimal(10,2)';
+    assert.throws(() => checkAdventureWorksInventory(inventory), /EF mapped type/);
+    delete line.efType;
+    delete line.computed;
+    assert.throws(() => checkAdventureWorksInventory(inventory), /computed-column evidence is missing/);
+});
+
+test('explicit null marks only computed nullability unknown and must agree with other claims', () => {
+    const inventory = schemaInventory();
+    const detail = inventory.tables.find(({ name }) => name === 'SalesLT.SalesOrderDetail');
+    const line = detail.columns.find(({ name }) => name === 'LineTotal');
+    line.nullable = null;
+    checkAdventureWorksInventory(inventory);
+    line.isNullable = 'unknown';
+    checkAdventureWorksInventory(inventory);
+    line.isNullable = false;
+    assert.throws(() => checkAdventureWorksInventory(inventory), /contradictory fields/);
+    delete line.isNullable;
+    const quantity = detail.columns.find(({ name }) => name === 'OrderQty');
+    quantity.nullable = null;
+    assert.throws(() => checkAdventureWorksInventory(inventory), /explicit boolean evidence/);
+});
+
 test('computed SQL expression aliases retain typed source evidence checks', () => {
-    for (const alias of ['computedExpression', 'computedSql']) {
+    for (const alias of ['computedExpression', 'computedSql', 'computed']) {
+        const asEvidence = (expression) => (alias === 'computed' ? { expression, persisted: false } : expression);
         const inventory = schemaInventory();
         for (const table of inventory.tables) {
             for (const column of table.columns.filter((column) => typeof column.computed === 'string')) {
-                column[alias] = column.computed;
+                const expression = column.computed;
+                delete column.computed;
+                column[alias] = asEvidence(expression);
                 column.type = column.efType;
                 column.nullable = false;
-                delete column.computed;
                 delete column.efType;
             }
         }
@@ -883,7 +943,7 @@ test('computed SQL expression aliases retain typed source evidence checks', () =
                 const changed = structuredClone(inventory);
                 changed.tables
                     .find(({ name }) => name === 'SalesLT.SalesOrderDetail')
-                    .columns.find(({ name }) => name === 'LineTotal')[alias] = invalid;
+                    .columns.find(({ name }) => name === 'LineTotal')[alias] = asEvidence(invalid);
                 assert.throws(
                     () => checkAdventureWorksInventory(changed, { source }),
                     /computed-column evidence is missing/,

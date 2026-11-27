@@ -154,7 +154,8 @@ be inferred safely.
   [Review and Fix](./references/workflow/interaction-and-checkpoints.md#review-and-fix).
   A supplied phase scopes the review, including prerequisites, not execution. Require
   explicit approval before writes or phase execution; this overrides mode fallback and rerun defaults.
-- `additional instructions`: optional phase guidance supplied with the request.
+- `additional instructions`: optional phase guidance supplied with the request. Never save a whole run request as phase
+  instructions; persist only explicitly reusable guidance.
 - `workspace`: selected application project root; default to the sole workspace folder
   only when it is also the target project root. An explicit workspace does not override
   a conflicting selected migration. Apply the Project Scope conflict check below first.
@@ -353,8 +354,8 @@ is supplied, execute exactly that phase and stop after its checkpoint in either 
 
 ## Checkpoint Rules
 
-- Before setting a phase `in-progress`, persist additional instructions from the
-  current request in the corresponding version 1 `project.json` field. Follow the
+- Before setting a phase `in-progress`, persist only explicitly saved phase guidance in the
+  corresponding version 1 `project.json` field. Follow the
   mapping and merge rules in [project-state-and-artifacts.md](./references/contracts/project-state-and-artifacts.md).
 - Write a persisted phase's status as `in-progress` before changing its artifacts.
 - Write artifacts before setting the phase status to `complete`.

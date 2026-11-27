@@ -6,6 +6,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { isAbsolute, join, relative, sep } from 'node:path';
+import { markdownSections } from '../../../skills/cosmosdb-relational-migration/scripts/phase-summary.mjs';
 
 export const MAX_EVIDENCE_BYTES = 384_000;
 const MAX_FILE_BYTES = 512_000;
@@ -24,6 +25,18 @@ const phases = [
     'code-migration',
     'inferred-ddl',
 ];
+const phaseScopes = {
+    'schema-conversion': ['design', 'boundary'],
+    'code-migration': ['implementation', 'dependencies', 'boundary'],
+    'inferred-ddl': ['inventory', 'access-boundary'],
+};
+// Keep custom sections: an unfamiliar heading may describe another readiness gate.
+const implementationOnlySections = new Set([
+    'affected files',
+    'access pattern migration',
+    'configuration and authentication',
+    'applied rules',
+]);
 
 export class JudgeEvidenceError extends Error {
     constructor(category, message) {
@@ -41,12 +54,7 @@ export function evidencePhase(stimulus) {
 export function judgeEvidenceGroups(stimulus, config) {
     const phase = evidencePhase(stimulus);
     const groups = config.evidence_groups ?? { complete: stimulus.rubric.map((_, index) => index) };
-    const allowed =
-        phase === 'schema-conversion'
-            ? ['design', 'boundary']
-            : phase === 'code-migration'
-              ? ['implementation', 'dependencies', 'boundary']
-              : [];
+    const allowed = phaseScopes[phase] ?? [];
     if (!groups || typeof groups !== 'object' || Array.isArray(groups)) {
         throw new JudgeEvidenceError('evidence-configuration', 'Evidence groups must map scopes to rubric indices');
     }
@@ -170,13 +178,8 @@ function auditEvents(events) {
 export function buildJudgeEvidence(trajectory, stimulus, structuralValidation, scope = 'complete') {
     const phase = evidencePhase(stimulus);
     const scoped = scope !== 'complete';
-    if (
-        scoped &&
-        !(
-            (phase === 'schema-conversion' && ['design', 'boundary'].includes(scope)) ||
-            (phase === 'code-migration' && ['implementation', 'dependencies', 'boundary'].includes(scope))
-        )
-    )
+    const auditScope = phase === 'inferred-ddl' ? 'access-boundary' : 'boundary';
+    if (scoped && !phaseScopes[phase]?.includes(scope))
         throw new JudgeEvidenceError('evidence-configuration', `Unsupported ${phase} evidence scope: ${scope}`);
     const workDir = realpathSync(trajectory.workDir);
     if (lstatSync(join(workDir, 'app')).isSymbolicLink()) {
@@ -186,7 +189,7 @@ export function buildJudgeEvidence(trajectory, stimulus, structuralValidation, s
     const files = [];
     const selected = new Set();
     const absentOptionalFiles = [];
-    const add = (path, role, { optional = false, project = false } = {}) => {
+    const add = (path, role, { optional = false, project = false, dependencyPlan = false } = {}) => {
         if (selected.has(path)) return;
         if (optional && !existsSync(join(root, path))) {
             absentOptionalFiles.push(`app/${path}`);
@@ -196,7 +199,22 @@ export function buildJudgeEvidence(trajectory, stimulus, structuralValidation, s
         let content = text;
         let representation = 'complete text';
         let omittedProperties;
-        if (path.endsWith('.json')) {
+        let omittedSections;
+        if (dependencyPlan) {
+            const sections = markdownSections(text);
+            const included = [];
+            omittedSections = [];
+            for (const [heading, body] of sections) {
+                if (implementationOnlySections.has(heading.toLowerCase())) omittedSections.push(heading);
+                else included.push([heading, body]);
+            }
+            if (!included.some(([heading, body]) => heading.toLowerCase() === 'ordered changes' && body)) {
+                throw new JudgeEvidenceError('evidence-unavailable', 'Missing Ordered Changes in dependency evidence');
+            }
+            content = included.map(([heading, body]) => `## ${heading}\n${body}`).join('\n\n');
+            representation =
+                'plan section projection; complete retained sections in original order, without the preamble';
+        } else if (path.endsWith('.json')) {
             let value = JSON.parse(text);
             representation = 'complete JSON, compact serialization';
             if (project) {
@@ -217,19 +235,23 @@ export function buildJudgeEvidence(trajectory, stimulus, structuralValidation, s
             sourceBytes: bytes.length,
             representation,
             ...(omittedProperties ? { omittedProperties } : {}),
+            ...(omittedSections ? { omittedSections } : {}),
             content,
         });
     };
-    const directoryFiles = (path, suffix, role) => {
-        const directory = confinedFile(root, path);
-        const entries = readdirSync(directory, { withFileTypes: true })
-            .filter((entry) => entry.name.endsWith(suffix))
-            .sort((a, b) => a.name.localeCompare(b.name, 'en'));
-        if (!entries.length)
+    const directoryFiles = (path, suffix, role, { optional = false } = {}) => {
+        const entries =
+            optional && !lstatSync(join(root, path), { throwIfNoEntry: false })
+                ? []
+                : readdirSync(confinedFile(root, path), { withFileTypes: true })
+                      .filter(({ name }) => (typeof suffix === 'string' ? name.endsWith(suffix) : suffix.test(name)))
+                      .sort((a, b) => a.name.localeCompare(b.name, 'en'));
+        if (!entries.length && !optional)
             throw new JudgeEvidenceError('evidence-unavailable', `No ${suffix} evidence files in ${path}`);
         for (const entry of entries) {
             add(`${path}/${entry.name}`, role);
         }
+        return entries.length;
     };
     const source = () => {
         add('AdventureWorks.Web.csproj', 'source application');
@@ -247,9 +269,16 @@ export function buildJudgeEvidence(trajectory, stimulus, structuralValidation, s
         add(`${conversion}manifest.json`, 'conversion and identity evidence');
         add(`${conversion}summary.md`, 'model preservation design and clearance conditions');
     };
-    add(`${migration}project.json`, 'checkpoint state', { project: true });
-    add(`${discovery}volumetrics/workload.json`, 'synthetic input assumptions');
-    if (scope === 'boundary' || scope === 'dependencies') {
+    if (scope !== 'dependencies') {
+        add(`${migration}project.json`, 'checkpoint state', { project: true });
+        add(`${discovery}volumetrics/workload.json`, 'synthetic input assumptions');
+    }
+    if (scope === 'dependencies') {
+        add(`${migration}code-migration-plan.md`, 'task ordering, verification, rollback and blocker clearance', {
+            dependencyPlan: true,
+        });
+        add(`${migration}code-migration-manifest.json`, 'generated plan evidence');
+    } else if (scope === 'boundary') {
         add(`${conversion}summary.md`, 'accepted design and clearance context');
         if (phase === 'code-migration') {
             add(`${migration}code-migration-plan.md`, 'complete generated plan');
@@ -257,16 +286,32 @@ export function buildJudgeEvidence(trajectory, stimulus, structuralValidation, s
         }
     } else if (['preflight', 'discovery', 'inferred-ddl'].includes(phase)) {
         source();
-        inventory();
-        directoryFiles(
-            `${discovery}schema-ddl`,
-            '.sql',
-            phase === 'inferred-ddl' ? 'generated inferred DDL' : 'authoritative DDL',
-        );
+        if (scope !== 'access-boundary') inventory();
+        if (phase === 'inferred-ddl') {
+            add('Program.cs', 'application entry point and runtime evidence');
+            if (scope !== 'inventory') {
+                const ddl = directoryFiles(
+                    `${discovery}schema-ddl`,
+                    /\.(?:sql|ddl)$/iu,
+                    'generated SQL/DDL in inference workspace',
+                    { optional: true },
+                );
+                if (!ddl) absentOptionalFiles.push(`app/${discovery}schema-ddl/*.{sql,ddl}`);
+            }
+        } else {
+            directoryFiles(`${discovery}schema-ddl`, '.sql', 'authoritative DDL');
+        }
+        if (scope === 'access-boundary') {
+            for (const controller of ['Customers', 'ProductCategories', 'Products']) {
+                directoryFiles(`Views/${controller}`, '.cshtml', 'source CRUD view and navigation evidence');
+            }
+        }
         add(`${discovery}preflight-summary.md`, 'preflight findings');
-        add(`${discovery}volumetrics/volumetrics.md`, 'workload interpretation');
-        add(`${discovery}access-patterns/access-patterns.md`, 'access-pattern interpretation');
-        if (phase !== 'preflight') access();
+        if (scope !== 'inventory') {
+            add(`${discovery}volumetrics/volumetrics.md`, 'workload interpretation');
+            add(`${discovery}access-patterns/access-patterns.md`, 'access-pattern interpretation');
+            if (phase !== 'preflight') access();
+        }
     } else if (phase === 'assessment') {
         inventory();
         access();
@@ -307,19 +352,26 @@ export function buildJudgeEvidence(trajectory, stimulus, structuralValidation, s
         files,
         absentOptionalFiles,
         agentOutput: trajectory.output,
-        audit: !scoped || scope === 'boundary' ? auditEvents(trajectory.events) : [],
+        audit: !scoped || scope === auditScope ? auditEvents(trajectory.events) : [],
         exclusions: [
             'Only the listed phase-selected files are delivered; this is not a complete repository snapshot.',
             'Project freshness/activity/history fields are omitted; the independent artifact checker validates freshness and boundaries.',
             'Tool-result bodies and reasoning/token events are omitted. Success flags alone do not prove command exit codes.',
-            'Migration artifact patch bodies may be represented by paths and hashes; full selected final files are supplied.',
-            'Skills, setup files, staged reference checkpoints, caches, UI assets and unrelated phases are not judge evidence.',
+            'Migration artifact patch bodies may be represented by paths and hashes; selected final file representations are identified above.',
+            ...(scope === 'dependencies'
+                ? [
+                      'The full plan, accepted design and application evidence are graded in implementation. This scope checks the plan and manifest for explicit and implied prerequisites, including clearance conditions; do not infer a missing gate from list order.',
+                  ]
+                : []),
+            scope === 'access-boundary'
+                ? 'CRUD Razor views are included; static UI assets, skills, setup files, caches and unrelated phases are excluded.'
+                : 'Skills, setup files, staged reference checkpoints, caches, UI assets and unrelated phases are not judge evidence.',
             ...(scoped
                 ? [
                       'This packet grades only its assigned criteria. Other criteria are independently graded in their own complete packets.',
-                      scope === 'boundary'
-                          ? 'Detailed source/model files are graded in the design/implementation packet; the complete execution audit is included here.'
-                          : 'Execution audit is graded separately in the boundary packet, not discarded or treated as verified by this packet.',
+                      scope === auditScope
+                          ? 'This packet includes the complete execution audit. Source and model facts assigned to other scopes are graded separately.'
+                          : `The complete execution audit is graded separately in the ${auditScope} packet, not discarded or treated as verified here.`,
                   ]
                 : []),
         ],

@@ -45,12 +45,31 @@ function matchesJsonType(value, type) {
     return typeof value === type && (type !== 'number' || Number.isFinite(value));
 }
 
+function containsUnresolvedValue(value) {
+    const pending = [value];
+    while (pending.length > 0) {
+        const candidate = pending.pop();
+        if (typeof candidate === 'string') {
+            if (!UNRESOLVED_VALUE.test(candidate)) continue;
+            try {
+                pending.push(JSON.parse(candidate));
+            } catch (error) {
+                if (!(error instanceof SyntaxError)) throw error;
+                return true;
+            }
+        } else if (candidate !== null && typeof candidate === 'object') {
+            for (const child of Object.values(candidate)) pending.push(child);
+        }
+    }
+    return false;
+}
+
 function scanValue(value, jsonPath, errors, depth = 1) {
     if ((Array.isArray(value) || isObject(value)) && depth > MAX_NESTING_DEPTH) {
         addError(errors, jsonPath, `exceeds the ${MAX_NESTING_DEPTH}-level object/array nesting limit`);
         return false;
     }
-    if (typeof value === 'string' && UNRESOLVED_VALUE.test(value)) {
+    if (typeof value === 'string' && containsUnresolvedValue(value)) {
         addError(errors, jsonPath, 'contains an unresolved placeholder');
     }
     let withinDepthLimit = true;

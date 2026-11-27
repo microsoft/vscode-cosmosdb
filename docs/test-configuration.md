@@ -201,7 +201,7 @@ The suite includes:
   disclosure, then stopping without selecting or invoking a parser. The headless scenario tests the permission
   request and pause, not a real user-approval round trip or dependency installation.
 - An unrelated PostgreSQL prompt that must activate neither migration nor best-practices skills.
-- Three artifact-producing scenarios: preflight from supplied synthetic inputs, assessment from a valid
+- Four artifact-producing scenarios: preflight and instruction-scoped discovery from supplied synthetic inputs, assessment from a valid
   discovery checkpoint, and a database target switch from a synthetic completed provisioning checkpoint.
   Each trial gets a separate `app` fixture and local copies of both skills.
   A host-side grader plugin reruns trusted migration completion validators, checks source inventory and ownership,
@@ -225,7 +225,8 @@ The suite includes:
 Every scenario requires completion, correct skill activation, a nonempty answer, and binary correctness
 at threshold `1`. Guidance scenarios also require no workspace edits. Offline fake-judge tests exercise
 grading and rejection paths; they do **not** establish model quality. Artifact checks validate recorded
-contracts and source hashes, not SQL-engine fidelity or real deployment success. No scenario deploys
+contracts and source hashes. Synthetic artifact trials also check the workspace diff for changes outside
+the staged application. These checks do not establish SQL-engine fidelity or real deployment success. No scenario deploys
 resources, executes generated seed scripts, rewrites application code, or builds the sample application.
 
 Live runs consume Copilot requests. Authenticate through the Copilot CLI or set `COPILOT_GITHUB_TOKEN`
@@ -272,22 +273,32 @@ Extend the offline tests with a passing case and focused malformed-output cases 
 
 The isolated phase specs use the [bounded judge](../evals/cosmosdb-relational-migration/adventureworks/judge.mjs),
 not a full repository snapshot. A host-side builder selects the requested phase's source evidence,
-prerequisites and output artifacts and supplies them **inline** to the configured judge. Conversion uses separate
+prerequisites and output artifacts and supplies them **inline** to the configured judge. Code-only inference separates
+the typed inventory and provenance from access patterns, SDK evidence and the discovery boundary. Conversion uses
 design and execution-boundary packets; planning uses implementation, dependency-ordering and execution-boundary
 packets. Other phases retain one complete packet. Every rubric criterion belongs to exactly one scope, and every
 scope must pass; missing or duplicate criterion assignments fail before model invocation. The judge runs in
 an empty temporary workspace with no readable evidence files, so it need not spend tool calls searching
-the repository. Models, reasoning effort, binary threshold and the 120-second response timeout **per call** are unchanged.
-Conversion requires two calls and planning three; these are separate assessments, not retries or a vote.
+the repository. The planning implementation and dependency judges each have a 240-second response timeout;
+the planning boundary judge and all other scopes retain 120 seconds.
+Models, reasoning effort, binary threshold and retry policy are unchanged.
+Inference and conversion each require two calls; planning requires three. These are separate assessments, not retries or a vote.
 The opt-in chained integration case and smaller suites retain their existing graders.
 
 Each packet is limited to **384,000 UTF-8 bytes**; it is not permission to clip oversized files.
-Splitting separates design/source evidence from the execution audit and isolates dependency reasoning over
-the complete plan. Boundary packets retain the complete audit; design/implementation packets explicitly state
-that it is assessed separately. Shared contextual files are repeated where necessary, not shortened.
-Selected text files are complete, JSON is compactly serialized, and the project-state projection explicitly
-lists omitted freshness/activity/history fields. Every selected file carries its path, role, original byte
-count and SHA-256. The packet also includes the independent structural-validation result, final agent answer,
+Splitting separates design/source evidence from the execution audit. The dependency packet pairs the plan manifest
+with complete plan sections for task ordering, operational handoff, validation, rollback, and blocker clearance.
+It omits the preamble and four implementation sections (affected files, access patterns, configuration/authentication,
+and applied rules); additional sections are kept in full. The implementation judge receives the full plan and checks
+that prerequisites described elsewhere are reflected in the tasks and blockers. Boundary packets retain the complete
+audit; design/implementation packets explicitly state that it is assessed separately.
+For code-only inference, the inventory packet contains the typed inventory and EF/model evidence.
+The access/boundary packet carries the audit and generated DDL to verify the inference output and discovery boundary.
+Shared contextual files are repeated where necessary, not shortened.
+Selected text files other than the dependency plan projection are complete. That projection lists omitted sections;
+the project-state projection lists omitted freshness/activity/history fields. JSON is compactly serialized.
+Every selected file carries its path, role, original byte count and SHA-256. The packet also includes the
+independent structural-validation result, final agent answer,
 assistant messages, full command arguments and tool-result success flags. Repeated skill bodies and migration
 artifact patch bodies are represented by names/paths and hashes instead of duplicated text. Executable
 patches are retained. The packet lists its exclusions; it is not an exhaustive source or execution audit,
@@ -303,6 +314,10 @@ budget. It does not expand the agent's permissions or replace independent artifa
 All packets are built and bounded before any judge call. Missing, unreadable, unsafe or oversized evidence fails
 **before** a model call with `status: error`.
 Judge timeouts, malformed/incomplete score sets and an explicit inability to grade also return errors.
+If a judge call throws or returns an unusable verdict, `metadata.active_scope` identifies the scope and
+`metadata.active_call` records the elapsed time around `client.judge` (`elapsed_ms`) and its configured response
+timeout (`timeout_ms`). Elapsed time can include session setup, reminders and cleanup. The judge client does
+not expose whether a verdict was submitted before a timeout; a timeout alone does not establish that it was not.
 A fully graded incorrect output remains a normal failed verdict, not an infrastructure error. Both fail
 the strict CI gate; neither silently passes, retries, drops criteria or substitutes a different model.
 Review oversized-packet diagnostics and narrow the scenario/evidence design deliberately rather than
@@ -416,15 +431,18 @@ Source mode is selected by the evaluation scenario, not by an agent-controlled `
   nonunique indexes. An explicit update-action claim must match the source's `NO ACTION` behavior.
 - **EF inference:** still require known mapped scalar facts and explicitly mapped indexes. Seven nonunique
   FK-convention indexes are optional because they are not explicitly declared in the pinned EF configuration.
-  Physical FK actions may be missing or `unknown`; any concrete database-action claim must agree with the
-  mapped relationship. ORM `ClientSetNull` descriptions are not treated as database `SET NULL`.
+  Physical FK actions may be missing, `null`, or `unknown`. A null field does not override a concrete
+  database-action claim in another field: concrete claims must agree with each other and the source contract.
+  ORM `ClientSetNull` descriptions are not treated as database `SET NULL`.
   `includedColumns: null` records unknown physical index metadata and is accepted only in inference mode;
   it is not normalized into an assertion that the deployed index has no included columns. Concrete included
   columns must still match the fixture, and supplied-DDL grading continues to reject explicit unknown values.
-- **Computed columns:** retain their computed nature; allow explicit unknown physical type/nullability
-  metadata instead of pretending SQL Server ran. Concrete mapped types are checked against the EF mapping,
-  including `LineTotal` precision/scale. Nonblank `computedExpression` and `computedSql` strings are equivalent
-  evidence of a computed column, alongside the existing `computed` marker/expression or computed type label.
+- **Computed columns:** retain their computed nature; accept `null` or `"unknown"` for explicitly unknown
+  physical nullability, not an omitted field or contradictory aliases. An `unknown` type is not itself evidence of computation.
+  Concrete mapped types and supplied facets are checked against the EF mapping, including `LineTotal`
+  precision/scale. The SQL formula from the column's `AS` clause can be recorded as a nonblank
+  `computed.expression`, `computedExpression`, or `computedSql` string. The existing `computed`
+  marker/expression and computed type label are also accepted.
   Recognizing an expression does not bypass type/nullability checks or independently validate its SQL semantics.
 
 These are deterministic checks of recorded source facts, not a SQL parser or source-engine validation.

@@ -247,6 +247,8 @@ stimuli:
       setup and implementation verification before production handoff. Separate their
       clearance evidence from production writer inventory, deployment and cutover gates;
       no code task may require evidence produced only by a later task that depends on it.
+      Make the checklists and blocker-clearance conditions self-contained: include prerequisites
+      identified in access mappings or configuration notes on the tasks that consume them.
       Review whether required supporting-service mechanisms are actually selected and
       implementable. Name storage/API primitives, fencing/publication/recovery steps
       and verification tasks, or keep unresolved mechanisms explicit blockers rather
@@ -257,7 +259,7 @@ stimuli:
       installed skills; preserve user metadata, source DDL and the planned target.
     rubric:
       - Produce a validated, actionable direct-switch plan covering actual controller operations and a supported framework/SDK path, preserving accepted model contracts and supporting-service obligations.
-      - Include ordered implementation and verification tasks, authentication, uniqueness, computed values, identity and relationship hydration, with honest writer ownership and rollback/data-reconciliation limits.
+      - Include ordered implementation and verification tasks, authentication, uniqueness, computed values, identity and relationship hydration, with honest writer ownership and rollback/data-reconciliation limits. Check the complete plan for prerequisites that the task or blocker sections omit or contradict.
       - Keep execution tasks pending and distinguish plan completion from builds, code migration, deployment or production readiness; preserve application and predecessor artifacts.
       - The implementation, verification, blocker-clearance and operational dependencies are executable in order, including prerequisites implied by completion conditions; separate isolated verification from production-only readiness and reject circular gates even when the explicit task graph is acyclic.
       - Carry every mandatory supporting-service obligation into actionable implementation and verification tasks; identify concrete primitives and failure/recovery mechanisms, and retain unresolved technology, supplier or protocol choices as blockers rather than resolved implementation work. Missing execution evidence alone is not a missing design, and no prohibited execution is required during planning.
@@ -297,14 +299,21 @@ stimuli:
       Validate discovery and stop before assessment or target model design.
     rubric:
       - Infer all twelve mapped tables with the declared columns and ordered primary/foreign keys, including composite keys and ProductCategory self-reference, from the EF/model evidence rather than inventing constraints.
-      - Write processable inferred DDL under the migration schema folder, record origin inferred and source-file provenance, and distinguish unresolved source facts from validated source-engine behavior.
+      - Record origin inferred and source-file provenance in the typed source inventory, and distinguish unresolved source facts from validated source-engine behavior.
       - Derive real access patterns from all three CRUD controllers and evaluate the .NET SDK while identifying the obsolete framework; classify schema-only mappings honestly.
-      - Complete and validate discovery without modifying application code or advancing assessment, and label workload values as synthetic rather than measured production data.
+      - Write processable inferred DDL under the migration schema folder and complete and validate discovery without modifying application code or advancing assessment; label workload values as synthetic rather than measured production data.
     graders:
       - *completed
       - *migration
       - type: adventureworks-artifacts
         config: { scenario: inferred-ddl }
-      - *judge
+      - type: adventureworks-judge
+        config:
+          scoring: binary
+          threshold: 1
+          prompt: *judge-prompt
+          evidence_groups:
+            inventory: [0, 1]
+            access-boundary: [2, 3]
       - *output
     artifacts: *artifacts

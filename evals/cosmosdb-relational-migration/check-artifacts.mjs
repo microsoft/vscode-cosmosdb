@@ -35,6 +35,11 @@ export async function checkArtifacts(workspace, phase, skillRoot) {
         const project = JSON.parse(after.get(projectPath));
         const initial = JSON.parse(before.get(projectPath));
         assert.deepEqual(project.customMetadata, initial.customMetadata, 'Preserve unknown project properties');
+        assert.equal(
+            project.phases.discovery.discoveryInstructions,
+            initial.phases.discovery.discoveryInstructions,
+            'Changed saved discovery guidance without an explicit persistence request',
+        );
         const applicationFiles = (files) =>
             [...files].filter(([path]) => !path.startsWith('.cosmosdb-migration/')).sort();
         assert.deepEqual(applicationFiles(after), applicationFiles(before), 'Application files changed');
@@ -154,7 +159,7 @@ export async function checkArtifacts(workspace, phase, skillRoot) {
         );
         assert.deepEqual(project.phases.provisioning, initial.phases.provisioning, 'Advanced provisioning');
         assert.deepEqual(project.phases.codeMigration, initial.phases.codeMigration, 'Advanced code migration');
-        const phaseDirectory = phase === 'preflight' ? '1-discovery' : '2-assessment';
+        const phaseDirectory = phase === 'assessment' ? '2-assessment' : '1-discovery';
         for (const path of after.keys()) {
             assert.ok(
                 before.has(path) ||
@@ -177,6 +182,20 @@ export async function checkArtifacts(workspace, phase, skillRoot) {
         if (phase === 'preflight') {
             assert.equal(project.phases.discovery.status, initial.phases.discovery.status, 'Advanced discovery');
             assert.deepEqual(project.phases.assessment, initial.phases.assessment, 'Advanced assessment');
+        } else if (phase === 'discovery') {
+            assert.deepEqual(project.phases.assessment, initial.phases.assessment, 'Advanced assessment');
+            assert.equal(
+                after.get(`${discovery}/access-patterns/access-patterns.md`),
+                before.get(`${discovery}/access-patterns/access-patterns.md`),
+                'Changed supplied access patterns',
+            );
+            const volumetrics = after.get(`${discovery}/volumetrics/volumetrics.md`);
+            for (const row of before
+                .get(`${discovery}/volumetrics/volumetrics.md`)
+                .split('\n')
+                .filter((line) => line.startsWith('|'))) {
+                assert.ok(volumetrics.includes(row), `Changed supplied volumetrics row: ${row}`);
+            }
         } else {
             assert.deepEqual(project.phases.discovery, initial.phases.discovery, 'Changed accepted discovery state');
             assert.deepEqual(project.phases.assessment.domains.flatMap(({ tables }) => tables).sort(), ['dbo.Orders']);
@@ -201,7 +220,7 @@ export function registerGraders(registry) {
         async grade({ trajectory, config }) {
             assert.ok(trajectory?.workDir, 'Artifact grading requires a trial workspace');
             assert.ok(
-                ['preflight', 'assessment', 'provisioning'].includes(config?.phase),
+                ['preflight', 'discovery', 'assessment', 'provisioning'].includes(config?.phase),
                 'Unknown artifact grading phase',
             );
             try {

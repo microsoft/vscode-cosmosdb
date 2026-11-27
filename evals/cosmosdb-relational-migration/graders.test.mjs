@@ -22,6 +22,7 @@ import { buildFreshnessManifest } from '../../skills/cosmosdb-relational-migrati
 import { buildProvisioningArtifacts } from '../../skills/cosmosdb-relational-migration/scripts/generate-provisioning-artifacts.mjs';
 import {
     assessmentFixture,
+    discoveryFixture,
     evidenceReport,
     writeFixture,
 } from '../../skills/cosmosdb-relational-migration/tests/source-evidence-fixtures.mjs';
@@ -67,7 +68,7 @@ async function completeFixture(root, phase) {
         writeFixture(root, 'project.json', JSON.stringify(project));
         return;
     }
-    if (phase === 'preflight') {
+    if (phase === 'preflight' || phase === 'discovery') {
         writeFixture(
             root,
             'phases/1-discovery/preflight-summary.md',
@@ -85,6 +86,23 @@ async function completeFixture(root, phase) {
         );
         project.phases.discovery.preflightStatus = 'complete';
         project.freshness = { preflight: buildFreshnessManifest(root, project, 'preflight') };
+        if (phase === 'discovery') {
+            discoveryFixture(root, inventory, project, {
+                patterns: [
+                    {
+                        id: 'R001',
+                        kind: 'read',
+                        tables: ['dbo.Orders'],
+                        sourcePaths: ['orders.ts'],
+                        evidence: 'code',
+                        tps: 10,
+                        operation: 'SELECT Id, TenantId, Pk FROM dbo.Orders WHERE Id = @id',
+                    },
+                ],
+                noObservedAccess: [],
+            });
+            project.phases.discovery.status = 'complete';
+        }
     } else {
         project.phases.assessment.domains = [
             {
@@ -123,6 +141,7 @@ test('coverage includes every phase, critical workflow boundaries and negative a
     for (const contract of [
         'supplied-ddl',
         'inferred-ddl',
+        'instruction-routing',
         'workload-contradiction',
         'parser-consent',
         'sdk-eligibility',
@@ -153,7 +172,7 @@ test('coverage includes every phase, critical workflow boundaries and negative a
             .filter(({ tags }) => tags.category === 'artifacts')
             .map(({ tags }) => tags.phase)
             .sort(),
-        ['assessment', 'preflight', 'provisioning'],
+        ['assessment', 'discovery', 'preflight', 'provisioning'],
     );
 });
 
@@ -413,7 +432,7 @@ test('target-switch checks reject identity, upstream, regeneration and verificat
     }
 });
 
-for (const phase of ['preflight', 'assessment']) {
+for (const phase of ['preflight', 'discovery', 'assessment']) {
     test(`${phase}: fixtures start incomplete and have valid prerequisites`, async (t) => {
         const root = workspace(t);
         await prepareFixture(root, phase, skillRoot);
@@ -435,15 +454,23 @@ for (const phase of ['preflight', 'assessment']) {
             ],
             ['out-of-phase artifact', (root) => writeFixture(root, 'phases/3-schema-conversion/model.json', '{}')],
             [
+                'persisted launch controls and workload facts',
+                (root) =>
+                    updateProject(root, (project) => {
+                        project.phases.discovery.discoveryInstructions +=
+                            '\n\nRun only the volumetrics preflight step; retention is 30 days.';
+                    }),
+            ],
+            [
                 'missing summary',
                 (root) =>
                     rmSync(
                         join(
                             root,
                             '.cosmosdb-migration/phases',
-                            phase === 'preflight'
-                                ? '1-discovery/preflight-summary.md'
-                                : '2-assessment/assessment-summary.md',
+                            phase === 'assessment'
+                                ? '2-assessment/assessment-summary.md'
+                                : `1-discovery/${phase === 'discovery' ? 'discovery-report.md' : 'preflight-summary.md'}`,
                         ),
                     ),
             ],

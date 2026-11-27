@@ -113,18 +113,19 @@ function checkColumn(actual, expected, table) {
         assert.ok(
             computedType ||
                 actual.computed === true ||
-                (typeof actual.computed === 'string' && actual.computed.trim()) ||
-                (typeof actual.computedExpression === 'string' && actual.computedExpression.trim()) ||
-                (typeof actual.computedSql === 'string' && actual.computedSql.trim()),
+                [actual.computed, actual.computed?.expression, actual.computedExpression, actual.computedSql].some(
+                    (expression) => typeof expression === 'string' && expression.trim(),
+                ),
             `${label}: computed-column evidence is missing`,
         );
-        if (!computedType) {
-            assert.equal(
-                normalizeType(actual.type, actual, label),
-                normalizeType(expected.inferredType, {}, label),
-                `${label}: computed mapped type`,
-            );
-        }
+        // DDL can declare the expression without naming its physical result type. Any concrete type still has to match.
+        const unspecified =
+            computedType || (typeof actual.type === 'string' && actual.type.trim().toLowerCase() === 'unknown');
+        assert.equal(
+            normalizeType(unspecified ? expected.inferredType : actual.type, actual, label),
+            normalizeType(expected.inferredType, {}, label),
+            `${label}: computed mapped type`,
+        );
         if (actual.efType !== undefined) {
             assert.equal(
                 normalizeType(actual.efType, {}, label),
@@ -150,6 +151,7 @@ function checkColumn(actual, expected, table) {
         actual,
         ['nullable', 'isNullable'],
         (value) => {
+            if (expected.computed && value === null) return 'unknown';
             if (typeof value === 'string') {
                 const text = value.trim().toLowerCase().replace(/\s+/g, ' ');
                 if (expected.computed && text === 'unknown') return 'unknown';
@@ -178,6 +180,12 @@ function action(value, label) {
         `${label}: invalid action`,
     );
     return normalized;
+}
+
+function foreignKeyAction(key, aliases, source, label) {
+    // A null physical action in ORM evidence makes no claim. Still check every concrete alias.
+    const fields = source === 'inferred' ? aliases.filter((field) => key[field] !== null) : aliases;
+    return consistentField(key, fields, (value) => action(value, label), label);
 }
 
 function keyColumns(index, label) {
@@ -302,11 +310,11 @@ export function checkAdventureWorksInventory(inventory, { source = 'supplied' } 
         for (const key of actual.foreignKeys) {
             const expectedKey = expected.foreignKeys.find((entry) => endpoints(entry) === endpoints(key));
             const label = `${name} FK (${key.columns.join(', ')})`;
-            const onDelete = consistentField(key, ['onDelete', 'deleteAction'], (value) => action(value, label), label);
+            const onDelete = foreignKeyAction(key, ['onDelete', 'deleteAction', 'databaseDeleteAction'], source, label);
             if (source === 'supplied' || (onDelete !== undefined && onDelete !== 'UNKNOWN')) {
                 assert.equal(onDelete, expectedKey.onDelete, `${label}: delete action`);
             }
-            const onUpdate = consistentField(key, ['onUpdate', 'updateAction'], (value) => action(value, label), label);
+            const onUpdate = foreignKeyAction(key, ['onUpdate', 'updateAction', 'databaseUpdateAction'], source, label);
             if (onUpdate !== undefined && !(source === 'inferred' && onUpdate === 'UNKNOWN')) {
                 assert.equal(onUpdate, 'NO ACTION', `${label}: update action`);
             }

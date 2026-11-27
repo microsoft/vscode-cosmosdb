@@ -399,6 +399,8 @@ or manifest fields. Record the deployment outcome and any retry in the existing 
    and missing mapped fields still fail. A string representation of a precise decimal
    or large integer must remain a string with its exact digits. Identity and partition-key
    requirements remain unchanged; explicit null support does not relax them.
+   JSON-encoded values are not placeholders merely because they contain braces;
+   reject actual placeholders within their decoded values without changing the stored strings.
 - Resolve each `id` from its `idTemplate` and the selected identity mapping.
    Preserve the corresponding source-key values in their separate mapped fields.
    For `{uuid}` fallback entities, generate a valid UUID once and persist it directly

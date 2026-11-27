@@ -57,6 +57,27 @@ async function runAuxiliaryAction(action: () => Promise<unknown>): Promise<void>
     }
 }
 
+// VS Code gives each extension webview type a stable origin, so this survives reopening the dashboard and restarts.
+const DATA_MODELER_PROMO_COLLAPSED_KEY = 'cosmosDB.accountOverview.dataModelerPromoCollapsed';
+
+/** Returns the last collapsed state of the Data Modeler callout, defaulting to expanded. */
+function readDataModelerPromoCollapsed(): boolean {
+    try {
+        return window.localStorage.getItem(DATA_MODELER_PROMO_COLLAPSED_KEY) === 'true';
+    } catch {
+        return false;
+    }
+}
+
+function writeDataModelerPromoCollapsed(collapsed: boolean): void {
+    try {
+        window.localStorage.setItem(DATA_MODELER_PROMO_COLLAPSED_KEY, String(collapsed));
+    } catch (error) {
+        // The in-memory state still applies for this dashboard when storage is unavailable.
+        console.error('Unable to save the Account Overview Data Modeler callout state.', error);
+    }
+}
+
 const useStyles = makeStyles({
     root: {
         ...typographyStyles.body1,
@@ -135,6 +156,11 @@ export const OverviewDashboard = ({
     const [isAIFeaturesEnabled, setIsAIFeaturesEnabled] = useState(false);
     const [feedbackEnabled, setFeedbackEnabled] = useState(false);
     const [isDataModelerEnabled, setIsDataModelerEnabled] = useState(false);
+    const [isDataModelerPromoCollapsed, setIsDataModelerPromoCollapsed] = useState(readDataModelerPromoCollapsed);
+    const setDataModelerPromoCollapsed = useCallback((collapsed: boolean) => {
+        setIsDataModelerPromoCollapsed(collapsed);
+        writeDataModelerPromoCollapsed(collapsed);
+    }, []);
 
     useEffect(() => {
         const subscription = trpcClient.accountOverview.feedbackEnabled.subscribe(undefined, {
@@ -843,6 +869,8 @@ export const OverviewDashboard = ({
                             <AccountActions
                                 isAIFeaturesEnabled={isAIFeaturesEnabled}
                                 isDataModelerEnabled={isDataModelerEnabled}
+                                isDataModelerPromoCollapsed={isDataModelerPromoCollapsed}
+                                onDataModelerPromoCollapsedChange={setDataModelerPromoCollapsed}
                                 busy={accountActionBusy}
                                 supported={inventory.supported}
                                 databaseId={selectedContainer?.databaseId}

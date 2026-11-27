@@ -13,7 +13,6 @@ import {
     MenuList,
     MenuPopover,
     MenuTrigger,
-    tokens,
     webDarkTheme,
 } from '@fluentui/react-components';
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
@@ -42,21 +41,25 @@ describe('ThemedTooltip', () => {
     it.each([
         {
             kind: 'vscode-dark',
-            background: tokens.colorNeutralBackgroundStatic,
-            color: tokens.colorNeutralForegroundStaticInverted,
+            backgroundColor: webDarkTheme.colorNeutralBackgroundStatic,
+            color: webDarkTheme.colorNeutralForegroundStaticInverted,
         },
-        { kind: 'vscode-light', background: tokens.colorNeutralBackground1, color: tokens.colorNeutralForeground1 },
+        {
+            kind: 'vscode-light',
+            backgroundColor: webDarkTheme.colorNeutralBackground1,
+            color: webDarkTheme.colorNeutralForeground1,
+        },
         {
             kind: 'vscode-high-contrast',
-            background: tokens.colorNeutralBackground1,
-            color: tokens.colorNeutralForeground1,
+            backgroundColor: webDarkTheme.colorNeutralBackground1,
+            color: webDarkTheme.colorNeutralForeground1,
         },
         {
             kind: 'vscode-high-contrast-light',
-            background: tokens.colorNeutralBackground1,
-            color: tokens.colorNeutralForeground1,
+            backgroundColor: webDarkTheme.colorNeutralBackground1,
+            color: webDarkTheme.colorNeutralForeground1,
         },
-    ])('uses the standard Fluent foreground and surface in $kind', ({ kind, background, color }) => {
+    ])('uses the standard Fluent foreground and surface in $kind', ({ kind, backgroundColor, color }) => {
         document.body.setAttribute('data-vscode-theme-kind', kind);
         render(
             <ThemedTooltip content="Details" relationship="description" visible withArrow>
@@ -65,8 +68,7 @@ describe('ThemedTooltip', () => {
             { wrapper: Wrapper },
         );
         const tooltip = screen.getByRole('tooltip');
-        expect(getComputedStyle(tooltip).backgroundColor).toBe(background);
-        expect(getComputedStyle(tooltip).color).toBe(color);
+        expect(tooltip).toHaveStyle({ backgroundColor, color });
         const button = screen.getByRole('button', { name: 'Inspect' });
         expect(button).toHaveTextContent('Inspect');
         expect(button).toHaveAccessibleName('Inspect');
@@ -77,27 +79,29 @@ describe('ThemedTooltip', () => {
         {
             kind: 'vscode-dark',
             appearance: 'normal',
-            background: tokens.colorNeutralBackground1,
-            color: tokens.colorNeutralForeground1,
+            backgroundColor: webDarkTheme.colorNeutralBackground1,
+            color: webDarkTheme.colorNeutralForeground1,
         },
         {
             kind: 'vscode-light',
             appearance: 'inverted',
-            background: tokens.colorNeutralBackgroundStatic,
-            color: tokens.colorNeutralForegroundStaticInverted,
+            backgroundColor: webDarkTheme.colorNeutralBackgroundStatic,
+            color: webDarkTheme.colorNeutralForegroundStaticInverted,
         },
-    ] as const)('preserves explicit $appearance appearance in $kind', ({ kind, appearance, background, color }) => {
-        document.body.setAttribute('data-vscode-theme-kind', kind);
-        render(
-            <ThemedTooltip content="Details" relationship="description" appearance={appearance} visible>
-                <Button>Inspect</Button>
-            </ThemedTooltip>,
-            { wrapper: Wrapper },
-        );
-        const tooltip = screen.getByRole('tooltip');
-        expect(getComputedStyle(tooltip).backgroundColor).toBe(background);
-        expect(getComputedStyle(tooltip).color).toBe(color);
-    });
+    ] as const)(
+        'preserves explicit $appearance appearance in $kind',
+        ({ kind, appearance, backgroundColor, color }) => {
+            document.body.setAttribute('data-vscode-theme-kind', kind);
+            render(
+                <ThemedTooltip content="Details" relationship="description" appearance={appearance} visible>
+                    <Button>Inspect</Button>
+                </ThemedTooltip>,
+                { wrapper: Wrapper },
+            );
+            const tooltip = screen.getByRole('tooltip');
+            expect(tooltip).toHaveStyle({ backgroundColor, color });
+        },
+    );
 
     it('updates an open tooltip when the theme changes without moving focus', async () => {
         document.body.setAttribute('data-vscode-theme-kind', 'vscode-light');
@@ -111,17 +115,19 @@ describe('ThemedTooltip', () => {
         button.focus();
         await act(async () => document.body.setAttribute('data-vscode-theme-kind', 'vscode-dark'));
         await waitFor(() =>
-            expect(getComputedStyle(screen.getByRole('tooltip')).backgroundColor).toBe(
-                tokens.colorNeutralBackgroundStatic,
-            ),
+            expect(screen.getByRole('tooltip')).toHaveStyle({
+                backgroundColor: webDarkTheme.colorNeutralBackgroundStatic,
+                color: webDarkTheme.colorNeutralForegroundStaticInverted,
+            }),
         );
-        expect(getComputedStyle(screen.getByRole('tooltip')).color).toBe(tokens.colorNeutralForegroundStaticInverted);
         expect(button).toHaveFocus();
         await act(async () => document.body.setAttribute('data-vscode-theme-kind', 'vscode-high-contrast'));
         await waitFor(() =>
-            expect(getComputedStyle(screen.getByRole('tooltip')).backgroundColor).toBe(tokens.colorNeutralBackground1),
+            expect(screen.getByRole('tooltip')).toHaveStyle({
+                backgroundColor: webDarkTheme.colorNeutralBackground1,
+                color: webDarkTheme.colorNeutralForeground1,
+            }),
         );
-        expect(getComputedStyle(screen.getByRole('tooltip')).color).toBe(tokens.colorNeutralForeground1);
         expect(button).toHaveFocus();
     });
 
@@ -145,7 +151,7 @@ describe('ThemedTooltip', () => {
         const tooltip = screen.getByRole('tooltip');
         expect(tooltip).toHaveAttribute('id', 'custom-tooltip');
         expect(tooltip).toHaveClass('custom-content');
-        expect(tooltip).toHaveStyle({ maxWidth: '360px', backgroundColor: tokens.colorNeutralBackgroundStatic });
+        expect(tooltip).toHaveStyle({ maxWidth: '360px', backgroundColor: webDarkTheme.colorNeutralBackgroundStatic });
         expect(tooltip.querySelector('strong')).toHaveTextContent('Details');
         expect(screen.getByRole('button', { name: 'Inspect' })).toHaveAccessibleDescription('Details');
     });

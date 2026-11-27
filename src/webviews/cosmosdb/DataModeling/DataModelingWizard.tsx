@@ -427,9 +427,11 @@ const HydratedDataModelingWizard = ({
     useEffect(() => {
         if (!addingContainer && restoreAddFocus.current) {
             restoreAddFocus.current = false;
-            const focusTarget = [addButtonRef.current, advanceButtonRef.current].find(
-                (button) => button && !button.disabled,
-            );
+            const addButton = addButtonRef.current;
+            if (!addButton) return;
+            const { activeElement, body } = addButton.ownerDocument;
+            if (activeElement !== body && activeElement !== addButton) return;
+            const focusTarget = [addButton, advanceButtonRef.current].find((button) => button && !button.disabled);
             focusTarget?.focus();
         }
     }, [addingContainer, addContainerError]);
@@ -731,6 +733,7 @@ const HydratedDataModelingWizard = ({
     const openAddDialog = async () => {
         if (containerNamePending.current || state.dataModel.containers.length >= MAX_CONTAINERS) return;
         containerNamePending.current = true;
+        restoreAddFocus.current = true;
         const request = ++containerNameRequest.current;
         setAddingContainer(true);
         setAddContainerError('');
@@ -970,6 +973,7 @@ const HydratedDataModelingWizard = ({
         abandonRecommendation();
         containerNameRequest.current += 1;
         containerNamePending.current = false;
+        restoreAddFocus.current = false;
         setAddingContainer(false);
         setAddContainerError('');
         cancelEditingContainerName();
@@ -1284,7 +1288,6 @@ const HydratedDataModelingWizard = ({
                                             addingContainer || state.dataModel.containers.length >= MAX_CONTAINERS
                                         }
                                         onClick={() => {
-                                            restoreAddFocus.current = true;
                                             addButtonRef.current?.focus();
                                             void openAddDialog();
                                         }}

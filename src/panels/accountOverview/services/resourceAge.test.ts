@@ -5,7 +5,12 @@
 
 import { MonitorClient, type EventData } from '@azure/arm-monitor';
 import { describe, expect, it, vi } from 'vitest';
-import { getContainerCreatedAt, getKnownResourceAgeDays, getSystemCreatedAt } from './resourceAge';
+import {
+    getContainerCreatedAt,
+    getKnownResourceAgeDays,
+    getSystemCreatedAt,
+    getSystemLastModifiedAt,
+} from './resourceAge';
 import { pagedItems } from './testFixtures';
 import { DAY } from './units';
 
@@ -22,6 +27,14 @@ describe('known resource age', () => {
         expect(getSystemCreatedAt({ systemData: { createdAt: new Date(0) } })).toBe(new Date(0).toISOString());
         expect(getKnownResourceAgeDays(undefined, new Date(0), 7 * DAY)).toBe(7);
         expect(getKnownResourceAgeDays(undefined, undefined, 7 * DAY)).toBeUndefined();
+    });
+
+    it('keeps valid modification evidence separate from creation metadata', () => {
+        const lastModifiedAt = new Date(0);
+        const resource = { systemData: { lastModifiedAt } };
+        expect(getSystemCreatedAt(resource)).toBeUndefined();
+        expect(getSystemLastModifiedAt(resource)).toBe(lastModifiedAt.toISOString());
+        expect(getSystemLastModifiedAt({ systemData: { lastModifiedAt: new Date(NaN) } })).toBeUndefined();
     });
 
     it('resolves a young container on an older account from the earliest retained write event', async () => {

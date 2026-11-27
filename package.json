@@ -126,7 +126,7 @@
     "coda": {
       "repo": "https://dev.azure.com/msdata/CosmosDB/_git/CODA",
       "trackingRef": "refs/heads/main",
-      "commit": "86549e6b118a4e88596427fb5c008a9bc0570928",
+      "commit": "1b9aa1c431664dba39b393af96d7cc2c8d9cabb1",
       "featurePath": "specs/detectors"
     }
   },

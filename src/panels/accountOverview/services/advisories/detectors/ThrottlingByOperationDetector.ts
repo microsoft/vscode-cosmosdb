@@ -45,16 +45,33 @@ export class ThrottlingByOperationDetector extends Detector {
 
     evaluateResult = (input: AccountRequestMetricsInput): AdvisoryEvaluation<'ThrottlingByOperation'> => {
         const { totalRequests, totalThrottled } = summarizeRequestStatuses(input.statusCounts);
+        if (!Number.isFinite(totalRequests) || totalRequests <= 0) {
+            return { rootCause: 'too_few_requests' };
+        }
         const rate = (100 * totalThrottled) / totalRequests;
+        const observations = { totalRequests, totalThrottled, throttleRatePercent: rate };
         const policy = DIAGNOSTIC_POLICY.throttlingByOperation;
+        if (totalRequests < DIAGNOSTIC_POLICY.accountRequests.minRequests) {
+            return { rootCause: 'too_few_requests', observations };
+        }
+        if (totalThrottled === 0) {
+            return { rootCause: 'not_throttling', observations };
+        }
+        if (rate < policy.ratePercent) {
+            return { rootCause: 'below_throttle_threshold', observations };
+        }
         const operations = Object.entries(input.throttledOperationCounts ?? {})
             .filter(([operation, count]) => operation.trim().length > 0 && Number.isFinite(count) && count > 0)
             .sort(([opA, countA], [opB, countB]) => countB - countA || opA.localeCompare(opB));
-        if (!Number.isFinite(totalRequests) || totalRequests < DIAGNOSTIC_POLICY.accountRequests.minRequests) {
-            return { rootCause: 'too_few_requests' };
-        }
-        if (!Number.isFinite(rate) || rate < policy.ratePercent || operations.length === 0) {
-            return { rootCause: 'not_throttling' };
+        const attributedThrottled = operations.reduce((sum, [, count]) => sum + count, 0);
+        if (attributedThrottled !== totalThrottled) {
+            const abstentionReason =
+                attributedThrottled === 0
+                    ? 'no_operation_breakdown'
+                    : attributedThrottled < totalThrottled
+                      ? 'partial_operation_breakdown'
+                      : 'inconsistent_operation_breakdown';
+            return { rootCause: 'insufficient_data', observations, abstentionReason, attributedThrottled };
         }
         const [operation, count] = operations[0];
         const category = operationCategory(operation);
@@ -62,9 +79,7 @@ export class ThrottlingByOperationDetector extends Detector {
             AdvisoryEvaluation<'ThrottlingByOperation'>,
             { rootCause: 'decomposed' }
         >['observations'] = {
-            totalRequests,
-            totalThrottled,
-            throttleRatePercent: rate,
+            ...observations,
             dominantOperation: operation,
             dominantCategory: category,
             dominantSharePercent: (100 * count) / totalThrottled,
@@ -84,7 +99,7 @@ export class ThrottlingByOperationDetector extends Detector {
             title: l10n.t('Throttling by operation'),
             rationale: clampRationale(
                 l10n.t(
-                    '`{rate}%` of `{total} requests` were throttled. `{operation}` is the most frequent throttled operation, representing `{share}%` of status-reported 429s. Independent metric breakdowns can differ in completeness; operation mix does not prove a root cause.',
+                    '`{rate}%` of `{total} requests` were throttled. `{operation}` is the most frequent throttled operation, representing `{share}%` of status-reported 429s. Operation mix does not prove a root cause.',
                     {
                         rate: rate.toFixed(2),
                         total: totalRequests,
@@ -95,7 +110,7 @@ export class ThrottlingByOperationDetector extends Detector {
             ),
             suggestedAction: categoryAction(category),
             thresholdReference: l10n.t(
-                'Threshold: ≥`1,000 requests`, ≥`1%` 429s and a positive operation breakdown; Medium ≥`5%`, High ≥`20%` over seven days',
+                'Threshold: ≥`1,000 requests`, ≥`1%` 429s and operation counts that reconcile to total 429s; Medium ≥`5%`, High ≥`20%` over seven days',
             ),
             evidence,
             agentKitRule: CATEGORY_RULE[category],

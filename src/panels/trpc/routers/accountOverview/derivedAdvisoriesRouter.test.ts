@@ -210,11 +210,11 @@ describe('account advisory acquisition', () => {
                     perRegionPerPartitionAutoscaleEnabled: false,
                     backupPolicy: expect.objectContaining({ type: 'Continuous', continuousTier: 'Continuous35Days' }),
                 }),
-                costContext: {
+                costContext: expect.objectContaining({
                     subscriptionId: 'sub',
                     resourceManagerEndpoint: 'https://management.azure.com',
                     locationNames: ['westus', 'eastus'],
-                },
+                }),
             }),
         );
     });
@@ -231,11 +231,11 @@ describe('account advisory acquisition', () => {
         await getDerivedAdvisoriesForAccount(input);
         expect(collectDerivedAdvisories).toHaveBeenCalledWith(
             expect.objectContaining({
-                costContext: {
+                costContext: expect.objectContaining({
                     subscriptionId: 'sub',
                     resourceManagerEndpoint: 'https://management.usgovcloudapi.net',
                     locationNames: ['East US', ''],
-                },
+                }),
             }),
         );
     });
@@ -307,12 +307,17 @@ describe('account advisory acquisition', () => {
         { capabilities: [{ name: 'EnableGremlin' }] },
         { capabilities: [{ name: 'EnableCassandra' }] },
         { capabilities: [{ name: 'EnableTable' }] },
-    ])('runs wrong-API configuration detection without querying SQL inventory: %j', async (account) => {
+    ])('advises checking client write failover without querying SQL inventory: %j', async (account) => {
         const input = metadata({ ...account, enableMultipleWriteLocations: true });
         const result = await getDerivedAdvisoriesForAccount(input);
         expect(result.advisories).toEqual(
             expect.arrayContaining([
-                expect.objectContaining({ rule: 'MultiRegionWriteAntipattern', severity: 'High' }),
+                expect.objectContaining({
+                    rule: 'MultiRegionWriteAntipattern',
+                    severity: 'Low',
+                    agentKitRule: null,
+                    evidence: { clientWriteFailover: 'not_assessed' },
+                }),
             ]),
         );
         expect(result.metricSource?.available).toBe(false);

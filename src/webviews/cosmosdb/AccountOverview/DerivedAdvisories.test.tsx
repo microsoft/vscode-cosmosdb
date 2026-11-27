@@ -57,6 +57,51 @@ function expandNotice(title: string) {
     return notice;
 }
 
+it.each([
+    { totalThrottled: 99, throttleRatePercent: 0.99, attributionIncomplete: false },
+    { totalThrottled: 1000, throttleRatePercent: 10, attributionIncomplete: true },
+])('shows observed HTTP 429s without creating an operation advisory: %j', (observation) => {
+    showCoverage(undefined, { throttlingObservation: { totalRequests: 10_000, ...observation } });
+
+    const status = screen.getByText(/^HTTP 429s over the last seven days:/);
+    const percent = (observation.throttleRatePercent / 100).toLocaleString(undefined, {
+        style: 'percent',
+        maximumSignificantDigits: 3,
+    });
+    expect(status).toBeVisible();
+    expect(status).toHaveTextContent(
+        `${observation.totalThrottled.toLocaleString()} of ${(10_000).toLocaleString()} requests (${percent}).`,
+    );
+    expect(screen.getAllByRole('status')).toContain(status.closest('output'));
+    expect(status.textContent?.includes('Operation attribution is incomplete.')).toBe(
+        observation.attributionIncomplete,
+    );
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /throttling by operation/i })).not.toBeInTheDocument();
+});
+
+it('shows resource-level throttling details without a capacity recommendation', async () => {
+    const user = userEvent.setup();
+    showCoverage(undefined, {
+        capacityThrottling: [
+            {
+                scope: 'db/items',
+                throttledRequests: 500,
+                totalRequests: 10_000,
+                throttleRatePercent: 5,
+                explanation: 'Partition evidence is incomplete.',
+            },
+        ],
+    });
+    const summary = screen.getByText('Observed throttling by resource (1)');
+    expect(summary).toHaveAccessibleName('Observed throttling by resource (1)');
+    await user.click(summary);
+    expect(screen.getByText(/db\/items: 500 of 10,000 requests returned HTTP 429/)).toHaveTextContent(
+        'Partition evidence is incomplete.',
+    );
+    expect(screen.queryByRole('button', { name: /sustained throttling/i })).not.toBeInTheDocument();
+});
+
 describe('log coverage guidance', () => {
     it.each([
         {
@@ -443,6 +488,7 @@ describe('metric coverage and actionable findings', () => {
                                 currency: 'EUR',
                                 monthlyAmount: 58.4,
                                 recoverableRu: 1000,
+                                billedUnitsPerHour: 10,
                                 rate: {
                                     source: 'customerAmortizedBill',
                                     scope,
@@ -471,15 +517,14 @@ describe('metric coverage and actionable findings', () => {
             const detail = within(dialog).getByRole('region', { name: 'db/items' });
             expect(detail).toHaveTextContent('Estimated capacity savings: 58.40 EUR per month');
             expect(detail).toHaveTextContent(
-                'Model: 1,000.00 recoverable RU/s at 0.0584 EUR per RU/s-month, without additional region, autoscale or zone multipliers.',
+                'Model: 1,000.00 recoverable RU/s maps to 10.00 billed 100-RU/s units per hour for this account. The meter rate is 0.008 EUR per billed unit-hour.',
             );
             expect(detail).toHaveTextContent(
                 scope === 'account' ? 'Rate scope: account.' : 'Rate scope: subscription fallback',
             );
-            expect(detail).not.toHaveTextContent('billing multiplier:');
             expect(detail).toHaveTextContent('not a guaranteed bill reduction');
             expect(detail).toHaveTextContent('Estimates can overlap and must not be added together.');
-            expect(detail).toHaveTextContent('Contributing meters: 100 RU/s');
+            expect(detail).toHaveTextContent('Throughput meter: 100 RU/s');
             expect(detail).toHaveTextContent('2026-10-12T00:00:00.000Z');
             await user.keyboard('{Escape}');
             expect(trigger).toHaveFocus();

@@ -107,6 +107,7 @@ function idleInput(overrides: Partial<IdleContainerInput> = {}): IdleContainerIn
         databaseId: 'db',
         containerId: 'c',
         peakRuPerBucket: 10,
+        resourceAgeDays: 30,
         throughputMode: 'dedicated',
         provisionedRu: 1_000,
         ...overrides,
@@ -767,7 +768,7 @@ describe('CODA parity — DX-008 MultiRegionWriteAntipattern (test_multi_region_
         expect(v?.severity).toBe('Low');
     });
 
-    it('Cassandra multi-region writes is High wrong-API (test_cassandra_multi_region_writes_is_high_wrong_api)', () => {
+    it('Cassandra multi-region writes warrants a Low client check', () => {
         const v = evaluateMultiRegionWrites(
             accountConfig({
                 accountName: 'ledger-prod',
@@ -776,10 +777,10 @@ describe('CODA parity — DX-008 MultiRegionWriteAntipattern (test_multi_region_
                 writeRegionCount: 2,
             }),
         );
-        expect(v?.severity).toBe('High');
+        expect(v?.severity).toBe('Low');
     });
 
-    it('Gremlin multi-region writes is High wrong-API (test_gremlin_multi_region_writes_is_high_wrong_api)', () => {
+    it('Gremlin multi-region writes warrants a Low client check', () => {
         const v = evaluateMultiRegionWrites(
             accountConfig({
                 accountName: 'graph-prod',
@@ -788,10 +789,10 @@ describe('CODA parity — DX-008 MultiRegionWriteAntipattern (test_multi_region_
                 writeRegionCount: 2,
             }),
         );
-        expect(v?.severity).toBe('High');
+        expect(v?.severity).toBe('Low');
     });
 
-    it('Table multi-region writes is High wrong-API (test_table_multi_region_writes_is_high_wrong_api)', () => {
+    it('Table multi-region writes warrants a Low client check', () => {
         const v = evaluateMultiRegionWrites(
             accountConfig({
                 accountName: 'kv-prod',
@@ -800,7 +801,7 @@ describe('CODA parity — DX-008 MultiRegionWriteAntipattern (test_multi_region_
                 writeRegionCount: 2,
             }),
         );
-        expect(v?.severity).toBe('High');
+        expect(v?.severity).toBe('Low');
     });
 
     it('an explicit production tag overrides a non-prod name token (test_env_tag_production_overrides_name_token)', () => {
@@ -848,7 +849,7 @@ describe('CODA parity — DX-008 MultiRegionWriteAntipattern (test_multi_region_
         ).toBeUndefined();
     });
 
-    it('wrong-API classification precedes the env-based variants', () => {
+    it('the client failover check precedes the single-region and environment branches', () => {
         const v = evaluateMultiRegionWrites(
             accountConfig({
                 accountName: 'cache-dev',
@@ -858,7 +859,7 @@ describe('CODA parity — DX-008 MultiRegionWriteAntipattern (test_multi_region_
                 regionCount: 1,
             }),
         );
-        expect(v?.severity).toBe('High');
+        expect(v).toMatchObject({ severity: 'Low', evidence: { clientWriteFailover: 'not_assessed' } });
     });
 });
 

@@ -108,8 +108,15 @@ export const additionalFixtures: readonly Binding[] = [
             };
         },
     ),
-    context(/^a manual container with (\S+) RU\/s and no consumption telemetry$/, (world, match) => {
-        world.idle = { ...scope, throughputMode: 'dedicated', provisionedRu: number(match[1]) };
+    context(
+        /^a (manual|autoscale) container with (\S+) RU\/s and (no consumption telemetry|only null consumption samples)$/,
+        (world, match) => {
+            world.idle = { ...scope, throughputMode: throughputMode(match[1]), provisionedRu: number(match[2]) };
+            world.idleNullSamples = match[3] === 'only null consumption samples';
+        },
+    ),
+    context(/^a shared-throughput database offer of (\S+) RU\/s with no consumption telemetry$/, (world, match) => {
+        world.idle = { databaseId: scope.databaseId, throughputMode: 'shared', provisionedRu: number(match[1]) };
     }),
     context(
         /^a shared-throughput database offer of (\S+) RU\/s that consumed at most (\S+) RU in any bucket$/,

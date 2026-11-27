@@ -29,7 +29,13 @@ const fixtures = [
         'starvation',
         'High',
     ],
-    ['004', 'a manual container with 1200 RU/s that consumed at most 2 RU in any bucket', 'idle', 'Medium'],
+    [
+        '004',
+        `a manual container with 1200 RU/s that consumed at most 2 RU in any bucket
+    And the container was created 30 days before the window ended`,
+        'idle',
+        'Medium',
+    ],
     [
         '005',
         `a manual container with 12000 requests of which 3000 were throttled
@@ -54,7 +60,7 @@ const fixtures = [
         '008',
         'an account using the mongo API with multi-region writes across 2 write regions',
         'mongo_multi_region_writes',
-        'High',
+        'Low',
     ],
     [
         '009',
@@ -157,9 +163,9 @@ describe('all native CODA adapters without private-source access', () => {
         {
             detector: '021',
             given: '2400 requests of which 240 were throttled',
-            root: 'not_throttling',
+            root: 'insufficient_data',
         },
-    ])('retains the CODA negative root for DX-$detector', async ({ detector, given, root }) => {
+    ])('binds the non-finding root for DX-$detector', async ({ detector, given, root }) => {
         expect(await executeCase(scenario(detector, given, `the root cause is ${root}`))).toBe(1);
     });
 
@@ -329,15 +335,17 @@ describe('all native CODA adapters without private-source access', () => {
         expect(await executeCase(scenario(detector, given, `the root cause is ${root}`))).toBe(1);
     });
 
-    it('classifies successful empty idle telemetry and measured zero as idle', async () => {
+    it('keeps successful empty idle telemetry distinct from measured zero', async () => {
         const missing = scenario(
             '004',
-            'a manual container with 1200 RU/s and no consumption telemetry',
-            'the root cause is idle',
+            `a manual container with 1200 RU/s and no consumption telemetry
+    And the container was created 30 days before the window ended`,
+            'the root cause is insufficient_data',
         );
         const zero = scenario(
             '004',
-            'a manual container with 1200 RU/s that consumed at most 0 RU in any bucket',
+            `a manual container with 1200 RU/s that consumed at most 0 RU in any bucket
+    And the container was created 30 days before the window ended`,
             'the root cause is idle',
         );
         expect(await executeCase(missing)).toBe(1);

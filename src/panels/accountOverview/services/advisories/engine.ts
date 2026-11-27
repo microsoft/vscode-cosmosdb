@@ -11,6 +11,7 @@ import {
     type DerivedAdvisoryInputs,
     type DerivedAdvisoryThresholds,
     type DetectorCoverage,
+    type ScopedCapacityThrottling,
 } from './core/types';
 import { DETECTORS } from './registry';
 
@@ -35,11 +36,13 @@ export function analyzeDerivedAdvisories(
     const supersessions = new Map<string, string>();
     const collected: DerivedAdvisory[] = [];
     const detectorCoverage: DetectorCoverage[] = [];
+    const capacityThrottling: ScopedCapacityThrottling[] = [];
 
     for (const detector of DETECTORS) {
         const analysis = detector.analyze(ctx);
 
         detectorCoverage.push(analysis.coverage);
+        capacityThrottling.push(...(analysis.capacityThrottling ?? []));
         for (const advisory of analysis.advisories) {
             collected.push(advisory);
             for (const rule of detector.supersedes) {
@@ -56,5 +59,5 @@ export function analyzeDerivedAdvisories(
 
     result.sort(compareAdvisories);
 
-    return { advisories: result, detectorCoverage };
+    return { advisories: result, detectorCoverage, ...(capacityThrottling.length > 0 && { capacityThrottling }) };
 }

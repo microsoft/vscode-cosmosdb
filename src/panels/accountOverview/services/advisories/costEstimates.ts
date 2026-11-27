@@ -10,7 +10,15 @@ import { type UnavailableReason } from '../shared';
 import { roundMonthlySavings } from './core/helpers';
 import { type CostSourceStatus, type DerivedAdvisory } from './core/types';
 import { getBackupCostEstimate } from './fetchers/backupCost';
-import { classifyCostFailure, CostEvidenceError, getThroughputRate, type CostContext } from './fetchers/costManagement';
+import {
+    classifyCostFailure,
+    CostEvidenceError,
+    getThroughputRate,
+    MULTI_WRITE_METER,
+    STANDARD_METER,
+    throughputMeter,
+    type CostContext,
+} from './fetchers/costManagement';
 
 export function recoverableCapacity(advisory: DerivedAdvisory): number | undefined {
     if (advisory.supersededBy || advisory.actionEligibility === 'blocked') {
@@ -35,6 +43,37 @@ export function recoverableCapacity(advisory: DerivedAdvisory): number | undefin
             return undefined;
     }
     return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+function billedUnitsPerHour(advisory: DerivedAdvisory, ru: number, context: CostContext): number | undefined {
+    const meter = throughputMeter(context);
+    if (!meter) {
+        return undefined;
+    }
+    // DX-008 reports capacity already summed across the copies that could be removed.
+    if (advisory.rule === 'MultiRegionWriteAntipattern') {
+        return meter === MULTI_WRITE_METER ? ru / 100 : undefined;
+    }
+    const mode =
+        advisory.rule === 'OverProvisioning'
+            ? 'manual'
+            : advisory.rule === 'AutoscaleMaxOverProvisioned'
+              ? 'autoscale'
+              : advisory.evidence?.throughputMode;
+    if (mode !== 'manual' && mode !== 'autoscale') {
+        return undefined;
+    }
+    const regions = context.locationNames.length;
+    if (meter === MULTI_WRITE_METER) {
+        return (ru / 100) * regions;
+    }
+    if (mode === 'autoscale') {
+        return (ru / 100) * regions * 1.5;
+    }
+    const zones = context.zoneRedundantRegionCount;
+    return meter === STANDARD_METER && zones !== undefined && Number.isInteger(zones) && zones >= 0 && zones <= regions
+        ? (ru / 100) * (regions + 0.25 * zones)
+        : undefined;
 }
 
 interface CostEnrichmentParams {
@@ -82,31 +121,41 @@ async function collectAdvisoryCosts(params: CostEnrichmentParams): Promise<CostS
         if (!context) {
             failures.push({ operation: 'throughput', kind: 'notConfigured' });
         } else {
+            const priced = capacity.flatMap(({ advisory, ru }) => {
+                const units = billedUnitsPerHour(advisory, ru, context);
+                return units === undefined ? [] : [{ advisory, ru, units }];
+            });
+            const throughputFailures = new Set<CostSourceStatus['failures'][number]['kind']>();
+            if (priced.length !== capacity.length) {
+                throughputFailures.add('noData');
+            }
             try {
-                const rate = await getThroughputRate(cosmosClient, context, accountId, now);
-
-                for (const { advisory, ru } of capacity) {
-                    const amount = ru * rate.perRuMonth;
-                    if (!Number.isFinite(amount)) {
-                        if (!failures.some((failure) => failure.operation === 'throughput')) {
-                            failures.push({ operation: 'throughput', kind: 'invalidData' });
+                if (priced.length > 0) {
+                    const rate = await getThroughputRate(cosmosClient, context, accountId, now);
+                    for (const { advisory, ru, units } of priced) {
+                        const amount = units * (rate.cost / rate.usage100RuHours) * 730;
+                        if (!Number.isFinite(amount)) {
+                            throughputFailures.add('invalidData');
+                            continue;
                         }
-                        continue;
-                    }
-
-                    const monthlyAmount = roundMonthlySavings(amount);
-                    if (monthlyAmount > 0) {
-                        advisory.costEstimate = {
-                            basis: 'customerAmortizedBill',
-                            monthlyAmount,
-                            currency: rate.currency,
-                            recoverableRu: ru,
-                            rate,
-                        };
+                        const monthlyAmount = roundMonthlySavings(amount);
+                        if (monthlyAmount > 0) {
+                            advisory.costEstimate = {
+                                basis: 'customerAmortizedBill',
+                                monthlyAmount,
+                                currency: rate.currency,
+                                recoverableRu: ru,
+                                billedUnitsPerHour: units,
+                                rate,
+                            };
+                        }
                     }
                 }
             } catch (error) {
-                failures.push({ operation: 'throughput', kind: classifyCostFailure(error) });
+                throughputFailures.add(classifyCostFailure(error));
+            }
+            for (const kind of throughputFailures) {
+                failures.push({ operation: 'throughput', kind });
             }
         }
     }

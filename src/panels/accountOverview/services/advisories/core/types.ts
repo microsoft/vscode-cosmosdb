@@ -9,6 +9,7 @@ import { type ThroughputMode } from '../../inventory';
 import { type PartitionStorageSeries } from '../../partitionHealth';
 import { type UnavailableReason } from '../../shared';
 import { type LogsFailureKind, type LogsOperation } from '../fetchers/logsDiagnostics';
+import { type RegionalPartitionEvidence } from '../fetchers/partitionEvidence';
 import { type OperationCategory } from './requestMetrics';
 
 // ─── Client-side derived advisories ──────────────────────────────────────────────
@@ -72,6 +73,7 @@ export interface DetectorCoverage {
 export interface DerivedAdvisoryAnalysis {
     advisories: DerivedAdvisory[];
     detectorCoverage: DetectorCoverage[];
+    capacityThrottling?: ScopedCapacityThrottling[];
 }
 
 export type DerivedAdvisorySeverity = 'High' | 'Medium' | 'Low';
@@ -113,10 +115,18 @@ interface AdvisoryEvaluationResults {
         'unknown' | 'default_or_relaxed' | 'single_region' | 'strong_single_region' | 'premium_multi_region'
     >;
     HotPartitionRisk: EvaluationOutcome<
-        'insufficient_data' | 'single_partition' | 'not_saturated' | 'uniform_saturation' | 'hot_partition'
+        | 'insufficient_data'
+        | 'single_partition'
+        | 'not_saturated'
+        | 'uniform_saturation'
+        | 'hot_partition'
+        | 'no_regional_skew'
     >;
     IdleContainer:
-        | EvaluationOutcome<'insufficient_data' | 'active'>
+        | ({
+              abstentionReason?: 'no_data' | 'resource_age_unknown' | 'too_new';
+          } & EvaluationOutcome<'insufficient_data'>)
+        | EvaluationOutcome<'active'>
         | EvaluationOutcome<'idle', { recoverableRu: number }>;
     IndexingCostRisk:
         | EvaluationOutcome<'indexing_disabled' | 'insufficient_data'>
@@ -131,14 +141,15 @@ interface AdvisoryEvaluationResults {
             | 'single_region_multi_region_writes_tripwire'
             | 'legitimate_ha'
             | 'nonprod_multi_region_writes';
-        observations?:
+        observations?: { clientWriteFailover?: 'not_assessed' } & (
             | { regionalCapacityQuantified: false }
             | {
                   regionalCapacityQuantified: true;
                   configuredPerRegionRu: number;
                   globalRegionalFootprintRu: number;
                   removableExtraRegionRu: number | null;
-              };
+              }
+        );
     };
     PaidContinuousBackup: EvaluationOutcome<
         | 'periodic_backup'
@@ -177,25 +188,39 @@ interface AdvisoryEvaluationResults {
         | EvaluationOutcome<'serverless_throttling', { throttleRatePercent: number }>;
     ShardKeyMisalignment: EvaluationOutcome<'insufficient_data' | 'not_misaligned' | 'shard_key_misaligned'>;
     SharedThroughputStarvation:
-        | EvaluationOutcome<'insufficient_data' | 'single_collection' | 'not_throttling' | 'no_disparity'>
+        | (EvaluationOutcome<'insufficient_data'> & { missingMembers?: readonly string[] })
+        | EvaluationOutcome<'single_collection' | 'not_throttling' | 'no_disparity'>
         | EvaluationOutcome<'starvation', { monopolizer: string; victim: string }>;
     StorageGrowthRisk:
         | EvaluationOutcome<'insufficient_data' | 'too_small' | 'stable'>
         | EvaluationOutcome<'at_or_over_limit' | 'rapid_growth', { daysToLimit: number }>;
     StorageSkewRisk: EvaluationOutcome<
-        'insufficient_data' | 'single_partition' | 'uniform_storage' | 'too_small' | 'storage_skew'
+        'insufficient_data' | 'single_partition' | 'uniform_storage' | 'too_small' | 'storage_skew' | 'no_regional_skew'
     >;
-    SustainedThrottlingInRegion: EvaluationOutcome<
-        'insufficient_data' | 'not_throttling' | 'skew_suspected' | 'global_under_provisioning'
-    >;
+    SustainedThrottlingInRegion: {
+        rootCause:
+            | 'insufficient_data'
+            | 'not_throttling'
+            | 'below_throttle_threshold'
+            | 'throttling_without_saturation'
+            | 'regional_saturation'
+            | 'skew_suspected'
+            | 'global_under_provisioning';
+        observations?: CapacityThrottlingObservation;
+    };
     ThrottlingByOperation:
-        | EvaluationOutcome<'insufficient_data' | 'too_few_requests' | 'not_throttling'>
+        | { rootCause: 'too_few_requests'; observations?: ThrottlingObservation }
+        | (EvaluationOutcome<'insufficient_data', ThrottlingObservation> & {
+              abstentionReason:
+                  | 'no_operation_breakdown'
+                  | 'partial_operation_breakdown'
+                  | 'inconsistent_operation_breakdown';
+              attributedThrottled: number;
+          })
+        | EvaluationOutcome<'not_throttling' | 'below_throttle_threshold', ThrottlingObservation>
         | EvaluationOutcome<
               'decomposed',
-              {
-                  totalRequests: number;
-                  totalThrottled: number;
-                  throttleRatePercent: number;
+              ThrottlingObservation & {
                   dominantOperation: string;
                   dominantCategory: OperationCategory;
                   dominantSharePercent: number;
@@ -266,6 +291,7 @@ export type AdvisoryCostEstimate = {
           basis: 'customerAmortizedBill';
           /** The detector's recoverable capacity, unchanged by financial enrichment. */
           recoverableRu: number;
+          billedUnitsPerHour: number;
           rate: ThroughputRate;
       }
     | {
@@ -317,7 +343,23 @@ export interface LogsSourceStatus {
 /** Missing metric/configuration evidence stays distinguishable from successful checks with no finding. */
 export interface MetricSourceStatus {
     available: boolean;
-    failures: { rule: DerivedAdvisoryRule; scope?: string; reason: UnavailableReason }[];
+    failures: {
+        rule: DerivedAdvisoryRule;
+        scope?: string;
+        reason: UnavailableReason;
+        detail?: 'invalidResourceCreationTime';
+    }[];
+}
+
+export type ThrottlingObservation = {
+    totalRequests: number;
+    totalThrottled: number;
+    throttleRatePercent: number;
+};
+
+/** Observed HTTP 429s to show outside the alert list when DX-021 does not attribute them to operations. */
+export interface UnattributedThrottlingObservation extends ThrottlingObservation {
+    attributionIncomplete: boolean;
 }
 
 export interface DerivedAdvisoriesResult extends ReadDiagnosticsResult {
@@ -335,6 +377,8 @@ export interface DerivedAdvisoriesResult extends ReadDiagnosticsResult {
     metricSource?: MetricSourceStatus;
     costSource?: CostSourceStatus;
     detectorCoverage?: DetectorCoverage[];
+    throttlingObservation?: UnattributedThrottlingObservation;
+    capacityThrottling?: ScopedCapacityThrottling[];
     /** Epoch milliseconds when the server produced this snapshot. */
     generatedAt: number;
 }
@@ -446,6 +490,7 @@ export interface DerivedAdvisoryThresholds {
  * over the window; `throttleRatePercent` is the container's aggregate 429 rate.
  */
 export interface PartitionSaturationInput {
+    regionalEvidence?: RegionalPartitionEvidence;
     resourceAgeDays?: number;
     databaseId: string;
     /** Absent for a shared database offer. */
@@ -460,12 +505,24 @@ export interface PartitionSaturationInput {
     physicalPartitionCount?: number;
     /** Container 429 rate (`sum(429)/sum(total)`, %), absent when the throttle read failed. */
     throttleRatePercent?: number;
+    throttledRequests?: number;
     /** Total requests over the window; absent when unavailable, below the abstain gate too noisy to judge. */
     totalRequests?: number;
     /** Throughput mode, so the under-provisioning remediation can say "raise the max" vs "raise RU/s". */
     throughputMode: ThroughputMode;
     /** Provisioned RU/s, quoted in the under-provisioning remediation when known. */
     provisionedRu?: number;
+}
+
+export interface CapacityThrottlingObservation {
+    totalRequests: number;
+    throttledRequests: number;
+    throttleRatePercent: number;
+    explanation?: string;
+}
+
+export interface ScopedCapacityThrottling extends CapacityThrottlingObservation {
+    scope: string;
 }
 
 /** Duty-cycle thresholds for {@link evaluateAutoscaleCandidate}. */
@@ -483,6 +540,7 @@ export type StoragePartitionSeries = PartitionStorageSeries;
 
 /** Per-container physical-partition storage series for the StorageGrowthRisk (and StorageSkewRisk) rules. */
 export interface ContainerStorageInput {
+    regionalEvidence?: RegionalPartitionEvidence;
     resourceAgeDays?: number;
     databaseId: string;
     containerId: string;
@@ -541,7 +599,7 @@ export interface IdleContainerInput {
     databaseId: string;
     /** Absent for a shared database offer; recovery belongs to the offer, not each member. */
     containerId?: string;
-    /** Peak RU consumed in any bucket; successful empty reads become zero, unavailable reads remain undefined. */
+    /** Peak RU consumed in any bucket; missing consumption is undefined, not zero. */
     peakRuPerBucket?: number;
     /** Throughput billing mode; only manual (dedicated/shared) and autoscale offers are recoverable. */
     throughputMode: ThroughputMode;

@@ -147,16 +147,18 @@ export function reportMetricCoverage(source: MetricSourceStatus | undefined): vo
     }
     const groups = new Map<string, { failure: MetricSourceStatus['failures'][number]; count: number }>();
     for (const failure of source.failures) {
-        const key = `${failure.rule}:${failure.reason}`;
+        const key = `${failure.rule}:${failure.reason}:${failure.detail ?? ''}`;
         groups.set(key, { failure, count: (groups.get(key)?.count ?? 0) + 1 });
     }
     for (const { failure, count } of groups.values()) {
         const detail =
-            failure.reason === 'noData'
-                ? 'No usable metric observations were available. Requests can succeed with empty or incomplete data; this is not evidence of missing permissions.'
-                : failure.reason === 'unsupported'
-                  ? 'This check is not supported for this account.'
-                  : 'See request diagnostics for the failure details.';
+            failure.detail === 'invalidResourceCreationTime'
+                ? 'Resource creation metadata could not be parsed.'
+                : failure.reason === 'noData'
+                  ? 'No usable metric observations were available. Requests can succeed with empty or incomplete data; this is not evidence of missing permissions.'
+                  : failure.reason === 'unsupported'
+                    ? 'This check is not supported for this account.'
+                    : 'See request diagnostics for the failure details.';
         writeReadOutput(
             `[Account Overview][metrics] operation=advisoryCheck; rule=${failure.rule}; reason=${failure.reason}; skippedChecks=${count}; ${detail}`,
         );

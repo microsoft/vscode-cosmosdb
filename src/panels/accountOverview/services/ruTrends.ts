@@ -229,8 +229,9 @@ export async function getThrottleRate(
     containerId: string | undefined,
     config: RangeConfig = RANGE_CONFIG[timeRange],
     sharedContainerIds?: readonly string[],
-): Promise<{ ratePercent: number; totalRequests: number }> {
-    const end = Date.now();
+    now: number = Date.now(),
+): Promise<{ ratePercent: number; totalRequests: number; throttledRequests: number }> {
+    const end = now;
     const start = end - config.windowMs;
     const timespan = `${new Date(start).toISOString()}/${new Date(end).toISOString()}`;
     const buckets = await queryRequestBuckets(
@@ -249,7 +250,11 @@ export async function getThrottleRate(
         throttled += bucket.throttled;
     }
 
-    return { ratePercent: total > 0 ? (100 * throttled) / total : 0, totalRequests: total };
+    return {
+        ratePercent: total > 0 ? (100 * throttled) / total : 0,
+        totalRequests: total,
+        throttledRequests: throttled,
+    };
 }
 
 /**

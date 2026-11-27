@@ -71,6 +71,7 @@ export async function getDerivedAdvisoriesForAccount(
 
 async function collectForAccount(metadata: AdvisoryAccountMetadata): Promise<DerivedAdvisoriesResult> {
     const account = metadata.databaseAccount as DatabaseAccountGetResults;
+    const locations = account.locations ?? account.readLocations ?? [];
     const fullFidelityChangeFeedEnabled = metadata.databaseAccount.enableAllVersionsAndDeletesChangeFeed;
     const api = tryGetExperience(account)?.api;
     const accountConfig: AccountConfigInput = {
@@ -195,11 +196,15 @@ async function collectForAccount(metadata: AdvisoryAccountMetadata): Promise<Der
             accountConfig,
             costContext: {
                 multiRegionWritesEnabled: account.enableMultipleWriteLocations,
+                writeRegionCount: account.writeLocations?.length,
+                freeTier: account.enableFreeTier,
+                isServerless: metadata.isServerless,
+                zoneRedundantRegionCount: locations.every((location) => typeof location.isZoneRedundant === 'boolean')
+                    ? locations.filter((location) => location.isZoneRedundant).length
+                    : undefined,
                 subscriptionId: metadata.subscription.subscriptionId,
                 resourceManagerEndpoint: metadata.subscription.environment.resourceManagerEndpointUrl,
-                locationNames: (account.locations ?? account.readLocations ?? []).map(
-                    (location) => location.locationName ?? '',
-                ),
+                locationNames: locations.map((location) => location.locationName ?? ''),
             },
         });
         return { available: true, ...collected, generatedAt: Date.now() };

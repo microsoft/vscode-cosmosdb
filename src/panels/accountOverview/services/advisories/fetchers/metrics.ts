@@ -24,7 +24,7 @@ import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 // already fetch. Idle reads 30 days in five-minute buckets so periodic workloads are not mistaken for idle;
 // autoscale/serverless use hourly buckets, while partition-merge reads the most recent six hours.
 // All series are read as `Total`/`Maximum` and folded to per-container (or account-total) shapes the pure
-// evaluators consume. Failed reads remain incomplete coverage; only DX-004 treats successful empty consumption as idle.
+// evaluators consume. Empty and failed consumption reads are not evidence of idleness.
 
 /** Builds the `start/end` ISO-8601 timespan for a diagnostic observation ending now. */
 function advisoryTimespan(observation: RangeConfig, now = Date.now()): string {
@@ -176,7 +176,7 @@ async function getContainerMetricPeak(
 /**
  * Reads an offer's peak `TotalRequestUnits` per bucket for the spike-aware idle gate (DX-004).
  * Shared membership must be explicit. Member and regional series are summed per bucket before taking the peak.
- * Successful reads without usable samples count as idle; request and embedded metric errors still reject.
+ * Every member must contribute to the same observed buckets. A measured zero is a valid observation.
  */
 export async function getContainerIdlePeak(
     client: MonitorClient,
@@ -185,22 +185,45 @@ export async function getContainerIdlePeak(
     containerId: string | undefined,
     now = Date.now(),
     sharedContainerIds?: readonly string[],
-): Promise<number> {
+): Promise<number | undefined> {
     if (containerId === undefined && sharedContainerIds === undefined) {
         throw new Error('Shared-offer idle metrics require authoritative container membership.');
     }
-    const peak = await getContainerMetricPeak(
-        client,
-        resourceUri,
-        databaseId,
-        containerId,
-        'TotalRequestUnits',
-        'Total',
-        DIAGNOSTIC_POLICY.idle.observation,
-        now,
-        sharedContainerIds,
-    );
-    return peak ?? 0;
+    const observation = DIAGNOSTIC_POLICY.idle.observation;
+    const timespan = advisoryTimespan(observation, now);
+    const sensitiveValues = [databaseId, containerId ?? '', ...(sharedContainerIds ?? [])];
+    const filter = requestMetricFilter(databaseId, containerId, sharedContainerIds);
+    const filters = typeof filter === 'string' || filter === undefined ? [filter] : filter;
+    const totals = new Map<number, { ru: number; observedMembers: number }>();
+    for (const memberFilter of filters) {
+        const buckets = await querySeries(
+            client,
+            resourceUri,
+            'TotalRequestUnits',
+            'Total',
+            timespan,
+            observation.interval,
+            memberFilter,
+            sensitiveValues,
+        );
+        for (const [timestamp, ru] of buckets) {
+            if (!Number.isFinite(ru) || ru < 0) {
+                continue;
+            }
+            const bucket = totals.get(timestamp) ?? { ru: 0, observedMembers: 0 };
+            bucket.ru += ru;
+            bucket.observedMembers++;
+            totals.set(timestamp, bucket);
+        }
+    }
+    let peak: number | undefined;
+    for (const { ru, observedMembers } of totals.values()) {
+        if (observedMembers !== filters.length || !Number.isFinite(ru)) {
+            return undefined;
+        }
+        peak = Math.max(peak ?? 0, ru);
+    }
+    return peak;
 }
 
 /**
@@ -322,6 +345,28 @@ export async function getAutoscaleUtilization(
 }
 
 /** Independently latest populated index/data samples, without summing replicas or imputing missing sizes. */
+export async function getContainerIndexingMetric(
+    client: MonitorClient,
+    resourceUri: string,
+    databaseId: string,
+    containerId: string,
+    metricName: 'IndexUsage' | 'DataUsage',
+    now: number,
+): Promise<number | undefined> {
+    const observation = DIAGNOSTIC_POLICY.indexing.observation;
+    const buckets = await querySeries(
+        client,
+        resourceUri,
+        metricName,
+        'Maximum',
+        advisoryTimespan(observation, now),
+        observation.interval,
+        containerFilter(databaseId, containerId),
+        [databaseId, containerId],
+    );
+    return buckets.size > 0 ? buckets.get(Math.max(...buckets.keys())) : undefined;
+}
+
 export async function getContainerIndexingUsage(
     client: MonitorClient,
     resourceUri: string,
@@ -329,20 +374,8 @@ export async function getContainerIndexingUsage(
     containerId: string,
     now = Date.now(),
 ): Promise<{ indexUsageBytes?: number; dataUsageBytes?: number }> {
-    const observation = DIAGNOSTIC_POLICY.indexing.observation;
-    const read = async (metricName: string): Promise<number | undefined> => {
-        const buckets = await querySeries(
-            client,
-            resourceUri,
-            metricName,
-            'Maximum',
-            advisoryTimespan(observation, now),
-            observation.interval,
-            containerFilter(databaseId, containerId),
-            [databaseId, containerId],
-        );
-        return buckets.size > 0 ? buckets.get(Math.max(...buckets.keys())) : undefined;
-    };
+    const read = (metricName: 'IndexUsage' | 'DataUsage') =>
+        getContainerIndexingMetric(client, resourceUri, databaseId, containerId, metricName, now);
     const [indexUsageBytes, dataUsageBytes] = await Promise.all([read('IndexUsage'), read('DataUsage')]);
     return { indexUsageBytes, dataUsageBytes };
 }

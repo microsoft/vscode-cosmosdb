@@ -845,11 +845,13 @@ describe('evaluateMultiRegionWrites', () => {
         { api: API.Cassandra, label: 'Cassandra' },
         { api: API.Graph, label: 'Gremlin' },
         { api: API.Table, label: 'Table' },
-    ])('fires High on a $label account (wrong-API misconfiguration)', ({ api, label }) => {
+        { api: 'MongoDB' as const, label: 'MongoDB' },
+    ])('advises checking client failover on a $label account', ({ api, label }) => {
         const advisory = evaluateMultiRegionWrites(config({ api }));
         expect(advisory?.rule).toBe('MultiRegionWriteAntipattern');
-        expect(advisory?.severity).toBe('High');
-        expect(advisory?.title).toBe(`Multi-region writes on a ${label} account`);
+        expect(advisory?.severity).toBe('Low');
+        expect(advisory?.title).toBe(`Verify client write failover on a ${label} account`);
+        expect(advisory?.evidence).toEqual({ clientWriteFailover: 'not_assessed' });
     });
 
     it('does not classify an unknown API as a wrong-API misconfiguration', () => {
@@ -935,6 +937,7 @@ function idleInput(overrides: Partial<IdleContainerInput> = {}): IdleContainerIn
         databaseId: 'db',
         containerId: 'orders',
         peakRuPerBucket: 10,
+        resourceAgeDays: 30,
         throughputMode: 'dedicated',
         provisionedRu: 1_000,
         ...overrides,
@@ -950,6 +953,12 @@ describe('evaluateIdleContainer', () => {
 
     it('treats an all-zero series as the idle signal', () => {
         expect(evaluateIdleContainer(idleInput({ peakRuPerBucket: 0 }), 50, 1_000)).toBeDefined();
+    });
+
+    it('does not call measured zero idle when the resource age is unknown', () => {
+        expect(
+            evaluateIdleContainer(idleInput({ peakRuPerBucket: 0, resourceAgeDays: undefined }), 50),
+        ).toBeUndefined();
     });
 
     it('does not fire when the container consumed real RU in some bucket', () => {

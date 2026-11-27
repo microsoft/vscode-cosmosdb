@@ -145,26 +145,26 @@ Failed or incomplete inventory never implies zero targets, and missing-resource 
 Completed checks remain partial when incomplete throughput inventory leaves other targets potentially eligible.
 Age-read failures affect detector coverage only when an eligible target still lacks its required age evidence;
 redundant failures remain in source diagnostics without reducing completed detector coverage.
-Detector root causes follow pinned CODA's observed-series contract, including `single_partition`, `not_saturated`,
-`uniform_saturation`, `uniform_storage`, `too_small` and the nonsaturated `not_throttling` outcome.
-Independent `PhysicalPartitionCount` evidence is retained for acquisition diagnostics and is never substituted for
-the number of usable observations or used to rewrite a CODA classification. Known-young age gates still apply.
-The existing count read is reused rather than repeated. Failed count reads and unresolved age reads remain separately
-visible in source/coverage diagnostics; a negative classifier result is not proof that every physical partition was read.
+Partition checks compare observations from the same region and comparable time buckets. Independent
+`PhysicalPartitionCount` evidence establishes whether the observed partition series cover each configured region; it
+does not supply missing utilization or storage measurements. Known-young age gates still apply. Failed count reads and
+unresolved age reads remain separately visible in source/coverage diagnostics. An incomplete read can establish
+observed skew, but cannot prove single-partition applicability, balanced load/storage, or whole-offer saturation.
 Age dependency attribution indexes only unresolved scopes and scans observations at most once, without nested scope searches.
 Missing throttle observations are never replaced with synthetic values or counted as under-provisioning evaluations.
-Successful empty observations do not create unavailable dependencies; rules retain their existing evidence semantics,
-including empty successful consumption reads establishing idleness. Disabled indexing and a single observed partition
-can establish inapplicability without otherwise-required metric reads; user-excluded paths do not suppress indexing checks.
-DX-021 retains CODA's `not_throttling` root when there is no usable operation breakdown, even when status counts contain 429s.
-This does not discard acquisition failures: denied operation reads remain separately visible in source/coverage diagnostics.
+Successful empty observations are distinct from failed reads and may be insufficient evidence. Empty idle consumption
+does not establish idleness. Disabled indexing skips storage reads and is not applicable. A single observed partition
+is not applicable to a skew check only when the independent evidence confirms complete coverage. User-excluded paths
+do not suppress indexing checks.
+DX-021 preserves the measured HTTP 429 count and rate independently of operation attribution.
 Sufficient query traffic with known low fan-out is a completed negative evaluation, not proof of container inapplicability.
 Missing configuration fields remain insufficient evidence, not a failed workload-data dependency.
 Required log-query failures affect only their dependent rules; optional cost, request-charge or consistency-charge
 enrichment does not change detector coverage. No per-container or detector-entry/exit events are emitted.
-After sufficient traffic and above-threshold throttling are established, the operation breakdown is read.
-A successfully empty breakdown is an evaluated negative (`not_throttling`); an access-denied breakdown retains that
-detector result while reporting `partial` coverage with an `rbac` reason.
+After sufficient traffic and at least 1% throttling are established, the operation breakdown is read.
+An empty, denied or unreconciled breakdown is `insufficient_data` for attribution, not an evaluated negative.
+Denied reads retain their `rbac` reason. Recommendations show the measured 429s separately from alerts and
+identify incomplete attribution without naming an operation or providing operation-specific advice.
 
 `cosmosDB.accountOverview.webviewError` records subscription failures, render failures and unhandled JavaScript
 errors/rejections with `errorCategory = webview`, `failureKind` and an optional bounded subscription name.
@@ -695,8 +695,8 @@ over-provisioning, idle offers, autoscale maximum over-provisioning (idle-floor 
 extra-region capacity can receive optional monetary estimates. An account-filtered subscription-scope Cost Management
 `AmortizedCost` query per analysis filters the exact account `ResourceId`, aggregates `Cost` and `UsageQuantity`,
 and groups by `MeterCategory` and `Meter`. Its observation is the preceding 30 UTC days, ending at today's
-midnight. Only `Azure Cosmos DB` meters ending in `RU/s` contribute; storage, serverless, transfer and Defender
-meters do not. Responses require unique typed columns, complete rows, one currency, finite
+midnight. Select one applicable Cosmos DB meter (`100 RU/s` or `100 Multi-master RU/s`) from the
+verified paid provisioned account topology. Do not mix meters. Responses require unique typed columns, complete rows, one currency, finite
 cost/usage and positive totals. Signed billing adjustments participate in those totals, as in CODA.
 Pagination is rejected rather than treating a first page as a complete rate.
 The native client reuses the authenticated ARM pipeline and configured cloud endpoint, including bounded
@@ -708,18 +708,21 @@ standard HTTP-date delays, without adding a retry loop or changing its attempt l
 Empty, invalid, negative and timer-overflowing service delays do not create an immediate retry; unhandled or
 exhausted throttling remains a categorized cost-coverage failure. Other ARM providers are unchanged.
 
-The blended rate is `(amortizedCost / billed100RuHours) / 100 * 730`; the estimate is the detector's
-positive recoverable RU/s times that rate, matching the pinned CODA implementation. No additional regional,
-autoscale or zone billing multiplier is applied. Already regionalized `removableExtraRegionRu` is unchanged.
+The hourly meter rate is `amortizedCost / billed100RuHours`. Compute billed 100-RU/s units separately from
+the finding's physical capacity. Offer-local savings count every configured region once. Single-write manual
+throughput in a zone-redundant region uses 1.25 units for each standard unit; single-write autoscale uses 1.5
+times the idle-floor quantity in each region. Multi-write offers use their matching meter without those
+premiums. `removableExtraRegionRu` already includes the removed copies and is not multiplied again.
+Multiply billed units by the hourly rate and 730 hours to estimate monthly savings.
 Amounts use CODA's two-decimal, ties-to-even rounding; a positive amount that rounds to zero is not emitted.
 Billed usage, not configured capacity times window duration, is the divisor.
-Currency, contributing meters, cost, billed usage, window, rate and its scope remain in structured provenance.
+Currency, the matching throughput meter, cost, billed usage, window, rate and its scope remain in structured provenance.
 As in CODA, a successful account query with no usable positive rate permits one subscription-wide bill query.
 This fallback is explicitly labeled `subscription_fallback`; it is a blended subscription rate, not account
 attribution. Authentication, access, service, timeout and invalid-response failures never broaden the query.
 Estimates do not alter findings, severity, thresholds or supersession. Superseded, blocked, unquantified,
-zero-capacity and unrelated findings receive no throughput estimate. The UI explicitly describes the rate as
-blended and savings as modeled, not a guaranteed invoice reduction; reservations, commitments and future demand
+zero-capacity and unrelated findings receive no throughput estimate. The UI shows the physical and billed quantities
+separately and describes savings as modeled, not a guaranteed invoice reduction; reservations, commitments and future demand
 can prevent realization. There is no monetary rollup because actions can overlap across findings.
 
 Paid continuous-backup findings use a **separate USD retail-price scenario**, not the customer-bill rate.
@@ -756,8 +759,8 @@ the qualitative recovery-policy review is retained even when this enrichment fai
 
 Optional cost coverage has its own categorized notice, independent of metric/log detector coverage.
 A billing HTTP 204 No Content response means unavailable data; an empty HTTP 200 response remains invalid evidence.
-Throughput estimates do not require a separate regional footprint or write-mode setting once a detector has
-produced eligible recoverable capacity. These inputs are not quantity gates in CODA's bill-derived model.
+Missing or inconsistent account topology, tier or mode withholds pricing, not physical capacity.
+Unavailable zone settings withhold single-write manual pricing only.
 Any future billing-model correction must be coordinated with CODA's versioned contract and shared fixtures;
 the extension does not independently reinterpret the pinned model.
 Denied inventory retains `backup/accessDenied` rather than becoming missing storage data.
@@ -782,14 +785,22 @@ before taking peaks or computing request-rate proportions. Missing membership is
 database; a failed member read records incomplete coverage rather than contributing zero.
 Shared-offer findings use the database scope, never a per-member copy of the offer's recoverable capacity.
 DX-003 filters traffic to authoritative shared membership before counting active members or computing proportions.
+Every shared member must have a valid traffic row; an absent row means insufficient data, not an idle member.
+DX-011 does not size a shared autoscale pool when its database has dedicated offers: the `AutoscaledRU` aggregate
+cannot establish the pool's provisioned level independently. Dedicated autoscale offers are still evaluated separately.
 These deliberately narrower filters are not a literal port of CODA's database-wide metric scope.
 The shared-offer `CollectionName eq ''` dimension and dedicated-traffic exclusion still require live verification
 on an existing mixed database with populated metric series; controlled SDK fixtures do not establish that fact.
 The November 11 read-only check found no shared database offers in the operator's two accessible test accounts,
 so no qualifying mixed target was available. No database, offer, workload or billable verification fixture was created.
 Duplicate/invalid offer inventory records incomplete coverage and withholds the account materiality denominator.
-DX-004 treats successful consumption reads without usable samples as zero/idle. Failed idle reads still exclude
-that input and record coverage failure; this exception does not apply to other metric readers.
+DX-004 requires evidence that the resource is at least seven days old: the database for a shared offer and the
+container for a dedicated offer. A verified modification timestamp at least seven days old can establish this lower
+bound, but a recent modification does not prove the resource is new. Account age is never substituted.
+Empty or all-null responses are `insufficient_data`; measured zero remains valid.
+For a shared offer, sum each verified shared member once per aligned timestamp.
+If any member's data is missing, the total is incomplete; a dedicated sibling is evaluated on its own.
+Failed idle reads retain their failure reason in coverage and are not converted to zero.
 Unlike CODA's corroborating idle evidence, this path intentionally does not additionally request
 `NormalizedRUConsumption`: that observation is not part of the idle predicate, so collecting it would add cost
 and a failure dependency without changing the spike-aware consumed-RU decision.
@@ -807,8 +818,8 @@ per-region/per-partition autoscale flag. Missing backup mode, unknown tier on no
 applicable autoscale configuration are reported in workload coverage, not interpreted as disabled/free.
 DX-020 and DX-021 do not require Log Analytics or inventory. Status parsing accepts finite positive counts
 with numeric integer status codes; hard errors are codes >=400 excluding 429. All parsed requests, including
-429s, remain in the denominator. One status read feeds both rules; a failed or empty operation breakdown at a
-qualifying throttle rate is recorded in source diagnostics without removing a successful DX-020 finding.
+429s, remain in the denominator. One status read feeds both rules; a failed, empty or unreconciled operation
+breakdown at a qualifying throttle rate is recorded in source diagnostics without removing a successful DX-020 finding.
 Both split queries request up to 1,000 series and reject a response at that cap as potentially truncated.
 DX-023 uses the same distinct-offer total as materiality, not replicated container rows or regional copies.
 Unavailable, incomplete, invalid or duplicate inventory withholds its baseline and records incomplete coverage.
@@ -852,35 +863,40 @@ All predicates in one row are AND unless the row explicitly says OR.
 AO-D identifiers preserve the previous dashboard-document taxonomy; AO-D1 is health and AO-D8 is Azure passthrough,
 not entries in the derived-detector registry.
 
-| ID / rule                                     | Predicate on collected input, default thresholds                                                                                                                                      | Severity                                                             |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| AO-D2 `HotPartitionRisk` / DX-006             | Age not known <1 day; >=2 partitions; max p99 >=90%; min p99 <70%                                                                                                                     | High if rate >=1%; otherwise Medium                                  |
-| AO-D4 `SustainedThrottlingInRegion` / DX-005  | Age not known <1 day; >=1,000 requests; rate >=1%; max p99 >=90%; min p99 >=70%                                                                                                       | High rate >=20%; Medium >=5%; otherwise Low                          |
-| AO-D5 `OverProvisioning` / DX-001             | Manual offer; age not known <7 days; >=24 samples; p99 <30%; peak <90%                                                                                                                | M(recoverable RU/s)                                                  |
-| AO-D6 `AutoscaleCandidate` / DX-012           | Manual offer; same age/sample gates as AO-D5; avg >0; peak >=40%; avg <=30%; peak/avg >=5                                                                                             | Medium                                                               |
-| AO-D7 `IndexingCostRisk` / DX-024             | Finite data >0; finite index >=0; indexing mode not none; index/data >0.3; exclusions are evidence                                                                                    | Medium ratio >1; otherwise Low                                       |
-| AO-D9 `StorageGrowthRisk` / DX-017            | At least one material partition already >=50 GiB OR projected to 50 GiB within <=180 days; detailed rules below                                                                       | High <=30 days, Medium <=90, otherwise Low; already at limit is High |
-| AO-D10 `ExpensiveConsistency` / DX-016        | Known integer region count; Strong with >=1 region OR Bounded Staleness with >=2 regions                                                                                              | Strong: Medium; Bounded Staleness: Low                               |
-| AO-D11 `MultiRegionWriteAntipattern` / DX-008 | Multi-write enabled, then first match: Cassandra/Graph/Table API; else <2 write regions; else positively classified non-production                                                    | High; Low; Medium respectively; otherwise absent                     |
-| AO-D12 `IdleContainer` / DX-004               | Manual/autoscale offer; finite positive capacity; age not known <7 days; observed maximum consumed RU per 5-minute bucket <=50                                                        | M(full manual RU/s or 10% autoscale max)                             |
-| AO-D13 `PartitionMergeCandidate` / DX-009     | Integer actual partition count >=2 and >needed; finite known non-negative throughput/storage; needed defined below                                                                    | Medium if actual >=2*needed; otherwise Low                           |
-| AO-D14 `AutoscaleMaxOverProvisioned` / DX-011 | Autoscale configured max >0; age not known <7 days; >=24 samples; peak AutoscaledRU percentage <30% and <90%                                                                          | M(recoverable floor RU/s)                                            |
-| AO-D15 `AutoscaleToManualCandidate` / DX-013  | Autoscale; same age/sample gates; avg >0 and >=66% of configured max; peak/avg <=1.3                                                                                                  | Medium                                                               |
-| AO-D16 `ServerlessCandidate` / DX-014         | Not Serverless; >=24 hourly samples; peak RU/s in **[10, 5000]**; avg/peak <0.1                                                                                                       | Low                                                                  |
-| AO-D17 `CrossPartitionQuery` / DX-002         | >=50 observed executions; inferred partition count >1; >=10% executions belong to shapes with avg fan-out >=1.5; >=0.1 fan-out queries/s over actual duration                         | Partition-count/rate matrix below                                    |
-| AO-D18 `ShardKeyMisalignment` / DX-007        | >=50 executions; inferred partitions >=2; unrounded fan-out share >=60%; >=0.1 fan-out queries/s over actual duration                                                                 | Partition-count/rate matrix below                                    |
-| AO-D19 `UncontrolledIngestion` / DX-010       | >=1,000 requests; write RU/total RU >=80%; rate >=10%                                                                                                                                 | High rate >=20%; otherwise Medium                                    |
-| AO-D20 `SharedThroughputStarvation` / DX-003  | Known shared members; >=2 active members each with >=100 requests; their pool rate >=5%, total RU >0, largest RU share >=60%, and a different member has rate >=5% and RU share <=20% | High                                                                 |
-| AO-D21 `ServerlessThrottling` / DX-018        | Serverless container; >=1,000 requests; rate >=1%; no normalized-RU prerequisite                                                                                                      | High rate >=20%; Medium >=5%; otherwise Low                          |
-| AO-D3 `StorageSkewRisk` / DX-015              | Age not known <1 day; >=2 valid non-negative partition peaks; busiest >=1 GiB; coolest/busiest <0.7                                                                                   | High busiest >=40 GiB; Medium >=25 GiB; otherwise Low                |
-| `PaidContinuousBackup` / DX-019               | Continuous30Days/Continuous35Days, case-insensitive, and positively classified non-production                                                                                         | Medium                                                               |
-| `NonThrottlingErrors` / DX-020                | >=1,000 account requests and >=1% hard non-429 errors                                                                                                                                 | High >=10%; Medium >=5%; otherwise Low                               |
-| `ThrottlingByOperation` / DX-021              | >=1,000 account requests, >=1% 429s and a positive operation breakdown                                                                                                                | High >=20%; Medium >=5%; otherwise Low                               |
-| `PerRegionAutoscaleCandidate` / DX-022        | Known provisioned account, >=2 regions and independent autoscale explicitly disabled; an autoscale offer is not required for this review                                              | Low                                                                  |
-| `ReservedCapacityCandidate` / DX-023          | Known provisioned account and complete distinct-offer baseline >=3,000 RU/s                                                                                                           | Always Low, including very large accounts                            |
+| ID / rule                                     | Predicate on collected input, default thresholds                                                                                                                                                | Severity                                                             |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| AO-D2 `HotPartitionRisk` / DX-006             | Age not known <1 day; in one region over comparable buckets, >=2 partitions, max p99 >=90% and min p99 <70%                                                                                     | High if offer 429 rate >=1%; otherwise Medium                        |
+| AO-D4 `SustainedThrottlingInRegion` / DX-005  | Age not known <1 day; >=1,000 requests; rate >=1%; complete partition coverage in every configured region, max p99 >=90% and min p99 >=70% in each region                                       | High rate >=20%; Medium >=5%; otherwise Low                          |
+| AO-D5 `OverProvisioning` / DX-001             | Manual offer; age not known <7 days; >=24 samples; p99 <30%; peak <90%                                                                                                                          | M(recoverable RU/s)                                                  |
+| AO-D6 `AutoscaleCandidate` / DX-012           | Manual offer; same age/sample gates as AO-D5; avg >0; peak >=40%; avg <=30%; peak/avg >=5                                                                                                       | Medium                                                               |
+| AO-D7 `IndexingCostRisk` / DX-024             | Finite data >0; finite index >=0; indexing mode not none; index/data >0.3; exclusions are evidence                                                                                              | Medium ratio >1; otherwise Low                                       |
+| AO-D9 `StorageGrowthRisk` / DX-017            | At least one material partition already >=50 GiB OR projected to 50 GiB within <=180 days; detailed rules below                                                                                 | High <=30 days, Medium <=90, otherwise Low; already at limit is High |
+| AO-D10 `ExpensiveConsistency` / DX-016        | Known integer region count; Strong with >=1 region OR Bounded Staleness with >=2 regions                                                                                                        | Strong: Medium; Bounded Staleness: Low                               |
+| AO-D11 `MultiRegionWriteAntipattern` / DX-008 | Multi-write enabled, then first match: MongoDB/Cassandra/Gremlin/Table client check; else <2 write regions; else positively classified non-production                                           | Low; Low; Medium respectively; otherwise absent                      |
+| AO-D12 `IdleContainer` / DX-004               | Manual/autoscale offer; finite positive capacity; known resource age >=7 days; observed maximum consumed RU per 5-minute bucket <=50                                                            | M(full manual RU/s or 10% autoscale max)                             |
+| AO-D13 `PartitionMergeCandidate` / DX-009     | Integer actual partition count >=2 and >needed; finite known non-negative throughput/storage; needed defined below                                                                              | Medium if actual >=2*needed; otherwise Low                           |
+| AO-D14 `AutoscaleMaxOverProvisioned` / DX-011 | Autoscale configured max >0; age not known <7 days; >=24 samples; peak AutoscaledRU percentage <30% and <90%                                                                                    | M(recoverable floor RU/s)                                            |
+| AO-D15 `AutoscaleToManualCandidate` / DX-013  | Autoscale; same age/sample gates; avg >0 and >=66% of configured max; peak/avg <=1.3                                                                                                            | Medium                                                               |
+| AO-D16 `ServerlessCandidate` / DX-014         | Not Serverless; >=24 hourly samples; peak RU/s in **[10, 5000]**; avg/peak <0.1                                                                                                                 | Low                                                                  |
+| AO-D17 `CrossPartitionQuery` / DX-002         | >=50 observed executions; inferred partition count >1; >=10% executions belong to shapes with avg fan-out >=1.5; >=0.1 fan-out queries/s over actual duration                                   | Partition-count/rate matrix below                                    |
+| AO-D18 `ShardKeyMisalignment` / DX-007        | >=50 executions; inferred partitions >=2; unrounded fan-out share >=60%; >=0.1 fan-out queries/s over actual duration                                                                           | Partition-count/rate matrix below                                    |
+| AO-D19 `UncontrolledIngestion` / DX-010       | >=1,000 requests; write RU/total RU >=80%; rate >=10%                                                                                                                                           | High rate >=20%; otherwise Medium                                    |
+| AO-D20 `SharedThroughputStarvation` / DX-003  | Complete shared-member traffic; >=2 active members each with >=100 requests; their pool rate >=5%, total RU >0, largest RU share >=60%, and a different member has rate >=5% and RU share <=20% | High                                                                 |
+| AO-D21 `ServerlessThrottling` / DX-018        | Serverless container; >=1,000 requests; rate >=1%; no normalized-RU prerequisite                                                                                                                | High rate >=20%; Medium >=5%; otherwise Low                          |
+| AO-D3 `StorageSkewRisk` / DX-015              | Age not known <1 day; in one region over comparable buckets, >=2 valid non-negative partition peaks, busiest >=1 GiB and coolest/busiest <0.7                                                   | High busiest >=40 GiB; Medium >=25 GiB; otherwise Low                |
+| `PaidContinuousBackup` / DX-019               | Continuous30Days/Continuous35Days, case-insensitive, and positively classified non-production                                                                                                   | Medium                                                               |
+| `NonThrottlingErrors` / DX-020                | >=1,000 account requests and >=1% hard non-429 errors                                                                                                                                           | High >=10%; Medium >=5%; otherwise Low                               |
+| `ThrottlingByOperation` / DX-021              | >=1,000 account requests, >=1% 429s and operation counts that sum to the status-reported 429 count                                                                                              | High >=20%; Medium >=5%; otherwise Low                               |
+| `PerRegionAutoscaleCandidate` / DX-022        | Known provisioned account, >=2 regions and independent autoscale explicitly disabled; an autoscale offer is not required for this review                                                        | Low                                                                  |
+| `ReservedCapacityCandidate` / DX-023          | Known provisioned account and complete distinct-offer baseline >=3,000 RU/s                                                                                                                     | Always Low, including very large accounts                            |
 
 The proposed CODA DX-020/021/023 thresholds above were explicitly adopted for native advisories.
 They remain ranking heuristics, separate from Account Health and user settings.
+DX-005 reports measured 429 counts and rates by offer separately from findings. It withholds a capacity recommendation
+when partition coverage is incomplete, regional skew is observed, or saturation is absent or not account-wide for the
+offer. An observed regional DX-006 or DX-015 witness can support a finding with partial coverage; incomplete evidence
+cannot establish a clean negative or prove that only one partition exists. These metrics do not identify a logical key
+or attribute individual 429s to a physical partition.
 DX-019 advises reviewing seven-day continuous retention only if recovery requirements allow losing older restore
 points; it never recommends switching to Periodic. An optional USD storage/retail-price estimate requires
 a complete common-timestamp storage snapshot and current prices for every configured region; otherwise the
@@ -891,7 +907,9 @@ These are conditional investigations, not proof of existence-check-before-create
 SDK-specific atomic-create semantics matter: unconditional upsert can overwrite, and .NET IfNoneMatchEtag is
 not write protection. Expected 412s may show concurrency protection working.
 DX-021 selects the most frequent individual throttled operation, not the largest combined category.
-Category shares use status-reported total 429s; independent breakdowns may differ in completeness.
+Category shares use status-reported total 429s and are withheld when the sources disagree.
+With sufficient volume, zero 429s are `not_throttling`; nonzero throttling below 1% is
+`below_throttle_threshold`. Its measured count and rate remain visible, with no alert or operation read.
 Write/read/query/execute/other map respectively to `sdk-ingestion-rate-control`, `partition-avoid-hotspots`,
 `query-avoid-cross-partition`, `monitoring-ru-consumption`, `monitoring-throttling`.
 The nullable `agentKitRule` field preserves these mappings for consumers; it does not execute a skill.
@@ -954,8 +972,11 @@ Nested `_etag`, differently cased, other paths and unknown path entries are not 
 This is an index-storage proxy, not a measurement of write RU spent maintaining indexes.
 Exclusions do not suppress DX-024; large composite/spatial/vector indexes may be justified.
 The collector skips DX-024 storage-metric requests for an explicitly disabled indexing mode (`none`, case-insensitive),
-without reporting missing metric coverage for that container. Missing or unrecognized modes do not establish disabled
-indexing; metric acquisition and missing/failed-evidence reporting remain unchanged for those containers.
+counting `indexing_disabled` as `notApplicable` even when storage is unavailable. Missing or unrecognized modes do
+not establish disabled indexing. Group eligible storage reads by database and verify each returned metric and
+container identity against inventory. An absent, truncated or ambiguous series can use an exact read within a
+report-wide budget of eight. After recovery is exhausted, unverified containers remain incomplete without
+discarding usable results for their siblings.
 
 **Conformance:** `externalSpecifications.coda` in `package.json` pins the private source revision.
 `npm run test:coda` fetches/verifies an isolated Git-ignored checkout and executes its unmodified `.feature` files
@@ -974,8 +995,9 @@ Setup fidelity is checked independently of verdict assertions: the DX-008 Server
 quantifiable positive manual capacity, and DX-009 migration starts from a known Periodic policy. Missing retention
 tiers remain absent rather than literal strings; storage histories, query windows and configured-region normalization
 retain the original bindings' inputs.
-All 379 scenarios at the manifest pin pass, with zero unbound, skipped or unexecuted scenarios.
-DX-004 classifies successful empty consumption reads as idle, without converting acquisition failures to zero.
+The pin tracks the verified private CODA revision, not the public release tag. The default conformance run checks
+the whole pinned inventory. Use an explicit `--detectors` selection for focused iteration, not as evidence that
+the full inventory passed. Findings and coverage are checked independently.
 DX-017 compares fitted growth against the inclusive 0.1 GiB/day floor using a roundoff estimate scaled by sample
 magnitudes and regression conditioning, not an arbitrary policy epsilon or rounded fixtures. Growth measurably below
 the floor remains stable. Synthetic conformance does not establish live collector acceptance.
@@ -984,7 +1006,9 @@ DX-008 regional capacity observations require a complete, positive all-manual of
 account/region count. They report configured per-region RU/s and the global regional footprint, not measured usage,
 billable savings or permission to remove regions. Extra-region capacity is only identified for the non-production
 finding; legitimate HA has no removable extra-region capacity. Autoscale, serverless and incomplete inventories are
-not quantified. MongoDB metadata support in this pure configuration evaluation does not introduce a MongoDB provider.
+not quantified. The API-specific client advisory records failover as not assessed and recommends a controlled client
+test, not disabling multi-region writes or removing regions. MongoDB metadata support in this configuration evaluation
+does not introduce a MongoDB provider.
 
 `npm run coda:check` independently compares the tracked branch HEAD and pin, reports exact ahead/behind counts including
 rewound/divergent/unrelated histories, and exits nonzero for mismatch or unverifiable source access. It never repins.

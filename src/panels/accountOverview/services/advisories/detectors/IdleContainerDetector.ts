@@ -7,7 +7,7 @@ import * as l10n from '@vscode/l10n';
 import { escapeAdvisoryText } from '../../../advisoryText';
 import { type ThroughputMode } from '../../inventory';
 import { Detector, type DetectorContext, type DetectorEvaluation } from '../core/Detector';
-import { capacityMaterialitySeverity, clampRationale, hasMinimumKnownResourceAge, offerScope } from '../core/helpers';
+import { capacityMaterialitySeverity, clampRationale, offerScope } from '../core/helpers';
 import { DIAGNOSTIC_POLICY } from '../core/thresholds';
 import { type AdvisoryEvaluation, type DerivedAdvisory, type IdleContainerInput } from '../core/types';
 
@@ -24,8 +24,8 @@ const MANUAL_THROUGHPUT_MODES: ReadonlySet<ThroughputMode> = new Set<ThroughputM
  * pure 24/7 waste. The signal is the **peak RU consumed in any single bucket** (`max(TotalRequestUnits, Total)`)
  * over a long 30-day window: a container that never spends more than a tiny system floor in *any* bucket did no
  * real work, so it is idle. This is deliberately spike-aware — a container silent for 29 days that runs one real
- * batch on day 30 shows a large peak and is correctly not flagged. Measured zero and successful empty
- * consumption reads establish idleness; failed reads are excluded by the collector.
+ * batch on day 30 shows a large peak and is correctly not flagged. Measured zero establishes idleness;
+ * missing consumption or unknown resource age cannot.
  * Mode-aware recoverable capacity: manual idle bills the full provisioned RU/s (all recoverable); autoscale idle
  * scales to ~10% of its max (that floor is what decommission recovers). Severity is capacity materiality. Pure.
  */
@@ -41,13 +41,18 @@ function evaluateIdleContainer(
         (!isAutoscale && !isManual) ||
         input.provisionedRu === undefined ||
         !Number.isFinite(input.provisionedRu) ||
-        input.provisionedRu <= 0 ||
-        input.peakRuPerBucket === undefined ||
-        !Number.isFinite(input.peakRuPerBucket) ||
-        input.peakRuPerBucket < 0 ||
-        !hasMinimumKnownResourceAge(input.resourceAgeDays, DIAGNOSTIC_POLICY.idle.minResourceAgeDays)
+        input.provisionedRu <= 0
     ) {
         return { rootCause: 'insufficient_data' };
+    }
+    if (input.peakRuPerBucket === undefined || !Number.isFinite(input.peakRuPerBucket) || input.peakRuPerBucket < 0) {
+        return { rootCause: 'insufficient_data', abstentionReason: 'no_data' };
+    }
+    if (input.resourceAgeDays === undefined || !Number.isFinite(input.resourceAgeDays)) {
+        return { rootCause: 'insufficient_data', abstentionReason: 'resource_age_unknown' };
+    }
+    if (input.resourceAgeDays < DIAGNOSTIC_POLICY.idle.minResourceAgeDays) {
+        return { rootCause: 'insufficient_data', abstentionReason: 'too_new' };
     }
     // Consumed real RU in some bucket ⇒ active, not idle — DX-001 right-sizes it instead.
     if (input.peakRuPerBucket > maxIdlePeakRu) {

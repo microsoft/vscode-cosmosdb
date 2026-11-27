@@ -392,7 +392,13 @@ describe('shared offer ownership', () => {
                     },
                 ],
                 idleContainers: [
-                    { databaseId: 'db', throughputMode: 'shared', provisionedRu: 4000, peakRuPerBucket: 0 },
+                    {
+                        databaseId: 'db',
+                        throughputMode: 'shared',
+                        provisionedRu: 4000,
+                        peakRuPerBucket: 0,
+                        resourceAgeDays: 30,
+                    },
                 ],
             },
             DEFAULT_ADVISORY_THRESHOLDS,

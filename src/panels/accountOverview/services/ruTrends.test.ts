@@ -88,6 +88,7 @@ describe('shared-offer RU and request readers', () => {
             expect(trends.peakPercent).toBe(40);
             expect(trends.points).toEqual(timestamps.map((timestamp) => ({ timestamp, ruPercent: 40, throttled })));
             expect(rate.totalRequests).toBe(6 * 10100);
+            expect(rate.throttledRequests).toBe(6 * throttlesPerBucket);
             expect(rate.ratePercent).toBeCloseTo((100 * throttlesPerBucket) / 10100, 10);
             expect(
                 list.mock.calls
@@ -110,7 +111,7 @@ describe('shared-offer RU and request readers', () => {
         const trends = await getRuTrends(client, '/account', '1H', 'db', undefined, undefined, []);
         const rate = await getThrottleRate(client, '/account', '1H', 'db', undefined, undefined, []);
         expect(trends.points).toEqual(timestamps.map((timestamp) => ({ timestamp, ruPercent: 40, throttled: false })));
-        expect(rate).toEqual({ ratePercent: 0, totalRequests: 0 });
+        expect(rate).toEqual({ ratePercent: 0, totalRequests: 0, throttledRequests: 0 });
         expect(list).toHaveBeenCalledOnce();
         expect(list.mock.calls[0][1]).toMatchObject({
             metricnames: 'NormalizedRUConsumption',

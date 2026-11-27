@@ -9,19 +9,20 @@ import type * as InventoryModule from '../inventory';
 import type * as RuTrendsModule from '../ruTrends';
 import type * as EngineModule from './engine';
 import type * as MetricsModule from './fetchers/metrics';
+import type * as PartitionEvidenceModule from './fetchers/partitionEvidence';
 
 vi.mock('../inventory', () => ({
     getSqlInventoryDetails: vi.fn(),
 }));
 
-vi.mock('../partitionHealth', async () => {
-    const { OVERVIEW_DEFAULTS } = await import('../healthPolicy');
-    return {
-        DEFAULT_PARTITION_THRESHOLDS: OVERVIEW_DEFAULTS.partition,
-        getPartitionHealth: vi.fn(),
-        getPartitionStorageSeries: vi.fn(),
-    };
-});
+vi.mock('../partitionHealth', () => ({
+    getPartitionStorageSeries: vi.fn(),
+}));
+
+vi.mock('./fetchers/partitionEvidence', async (importOriginal) => ({
+    ...(await importOriginal<typeof PartitionEvidenceModule>()),
+    getRegionalPartitionEvidence: vi.fn(),
+}));
 
 vi.mock('../ruTrends', async (importOriginal) => ({
     ...(await importOriginal<typeof RuTrendsModule>()),
@@ -59,7 +60,7 @@ import { CosmosDBManagementClient, type ThroughputSettingsGetResults } from '@az
 import { MonitorClient, type Response as MetricsResponse } from '@azure/arm-monitor';
 import { createHttpHeaders } from '@azure/core-rest-pipeline';
 import { getSqlInventoryDetails } from '../inventory';
-import { getPartitionHealth, getPartitionStorageSeries } from '../partitionHealth';
+import { getPartitionStorageSeries } from '../partitionHealth';
 import * as resourceAge from '../resourceAge';
 import { getRuTrends, getThrottleRate } from '../ruTrends';
 import { GB, pagedItems } from '../testFixtures';
@@ -85,11 +86,13 @@ import {
     getContainerPartitionCount,
     getThrottledOperationCounts,
 } from './fetchers/metrics';
+import { getRegionalPartitionEvidence } from './fetchers/partitionEvidence';
 
 beforeEach(() => {
     vi.mocked(getAccountRequestStatusCounts).mockResolvedValue({ 200: 1000 });
     vi.mocked(selectDataPlaneSource).mockResolvedValue({ source: 'CDBDataPlaneRequests', hasData: true });
     vi.mocked(probeCdbLogs).mockResolvedValue({ available: false, reason: 'noData' });
+    vi.mocked(getRegionalPartitionEvidence).mockResolvedValue({ regions: [] });
 });
 
 afterEach(() => {
@@ -288,6 +291,19 @@ describe('collectDerivedAdvisories parity wiring', () => {
             generatedAt: 0,
         });
         vi.mocked(getContainerPartitionCount).mockResolvedValueOnce(state === 'singleObservedHistory' ? 1 : undefined);
+        const sampledSingle = state === 'singleObservedHistory';
+        vi.mocked(getRegionalPartitionEvidence).mockResolvedValue({
+            regions: [
+                {
+                    region: 'West',
+                    expected: sampledSingle ? 1 : 2,
+                    observed: sampledSingle ? 1 : 2,
+                    histories: new Map((sampledSingle ? ['0'] : ['0', '1']).map((id) => [id, new Map([[0, 20 * GB]])])),
+                    bucketMs: DIAGNOSTIC_POLICY.storageSkew.observation.bucketMs,
+                    issues: [],
+                },
+            ],
+        });
         vi.mocked(getPartitionStorageSeries).mockResolvedValue({
             available: true,
             databaseId: row.databaseId,
@@ -302,32 +318,40 @@ describe('collectDerivedAdvisories parity wiring', () => {
 
         const result = await collectDerivedAdvisories(params({ cosmosClient, logsClient: undefined }));
 
+        const ageUnknown = ['accountFallback', 'unknown', 'singleObservedHistory'].includes(state);
+        const ageReadFailed = state === 'accountFallback';
         expect(result.detectorCoverage.find(({ rule }) => rule === 'IdleContainer')).toMatchObject({
             status:
-                state === 'unknown' || state === 'singleObservedHistory'
-                    ? 'partial'
-                    : state === 'idleFailure'
-                      ? 'unavailable'
+                state === 'idleFailure' || ageReadFailed
+                    ? 'unavailable'
+                    : ageUnknown
+                      ? 'insufficientData'
                       : 'evaluated',
-            evaluatedCount: state === 'idleFailure' ? 0 : 1,
-            unavailableReasons: ['unknown', 'singleObservedHistory', 'idleFailure'].includes(state) ? ['rbac'] : [],
+            evaluatedCount: ageUnknown || state === 'idleFailure' ? 0 : 1,
+            insufficientDataCount: ageUnknown ? 1 : 0,
+            unavailableReasons: state === 'idleFailure' ? ['rbac'] : ageReadFailed ? ['noData'] : [],
         });
+        expect(result.advisories.some(({ rule }) => rule === 'IdleContainer')).toBe(
+            !ageUnknown && state !== 'idleFailure',
+        );
         expect(result.detectorCoverage.find(({ rule }) => rule === 'StorageSkewRisk')).toMatchObject({
-            status:
-                shared || state === 'singleObservedHistory'
-                    ? 'notApplicable'
-                    : state === 'unknown'
-                      ? 'partial'
-                      : 'evaluated',
-            evaluatedCount: shared || state === 'singleObservedHistory' ? 0 : 1,
-            unavailableReasons: state === 'unknown' ? ['rbac'] : [],
+            status: shared ? 'notApplicable' : state === 'unknown' || sampledSingle ? 'partial' : 'evaluated',
+            evaluatedCount: shared || sampledSingle ? 0 : 1,
+            notApplicableCount: Number(sampledSingle),
+            unavailableReasons: state === 'unknown' || sampledSingle ? ['rbac'] : [],
         });
         expect(result.metricSource.available).toBe(false);
-        expect(result.metricSource.failures).toContainEqual({
-            rule: 'IdleContainer',
-            reason: state === 'accountFallback' ? 'noData' : 'rbac',
-            scope: state === 'accountFallback' ? 'private-db/private-container' : undefined,
-        });
+        expect(result.metricSource.failures.filter(({ rule }) => rule === 'IdleContainer')).toEqual(
+            ageUnknown || state === 'idleFailure'
+                ? [
+                      {
+                          rule: 'IdleContainer',
+                          reason: state === 'idleFailure' ? 'rbac' : 'noData',
+                          scope: 'private-db/private-container',
+                      },
+                  ]
+                : [],
+        );
     });
 
     it('attributes redundant scoped age failures with a linear number of identity reads', async () => {
@@ -379,9 +403,10 @@ describe('collectDerivedAdvisories parity wiring', () => {
         const result = await collectDerivedAdvisories(params({ logsClient: undefined }));
 
         expect(result.detectorCoverage.find(({ rule }) => rule === 'IdleContainer')).toMatchObject({
-            status: 'evaluated',
-            evaluatedCount: count,
-            unavailableReasons: [],
+            status: 'unavailable',
+            evaluatedCount: 0,
+            insufficientDataCount: count,
+            unavailableReasons: ['noData'],
         });
         expect(result.metricSource.failures.filter(({ rule }) => rule === 'IdleContainer')).toHaveLength(count);
         expect(identityReads).toBeLessThan(128 * count);
@@ -663,9 +688,9 @@ describe('collectDerivedAdvisories parity wiring', () => {
                 generatedAt: 0,
             });
             vi.mocked(getContainerIdlePeak).mockResolvedValue(0);
-            vi.mocked(getPartitionHealth).mockRejectedValue(new Error('unavailable'));
+            vi.mocked(getRegionalPartitionEvidence).mockRejectedValue(new Error('unavailable'));
             vi.mocked(getPartitionStorageSeries).mockRejectedValue(new Error('unavailable'));
-            vi.mocked(getThrottleRate).mockResolvedValue({ ratePercent: 0, totalRequests: 1000 });
+            vi.mocked(getThrottleRate).mockResolvedValue({ ratePercent: 0, totalRequests: 1000, throttledRequests: 0 });
             const cosmosClient = new CosmosDBManagementClient({ getToken: async () => null }, 'sub');
             vi.spyOn(cosmosClient.databaseAccounts, 'get').mockResolvedValue({
                 systemData: { createdAt: new Date('2020-01-01T00:00:00Z') },
@@ -693,6 +718,10 @@ describe('collectDerivedAdvisories parity wiring', () => {
                     logsClient: undefined,
                     costContext: {
                         multiRegionWritesEnabled: false,
+                        writeRegionCount: 1,
+                        isServerless: false,
+                        freeTier: false,
+                        zoneRedundantRegionCount: 0,
                         subscriptionId: 'sub',
                         resourceManagerEndpoint: 'https://management.azure.com',
                         locationNames: ['East US', 'West US'],
@@ -712,7 +741,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
             const estimated = expect.objectContaining({
                 basis: 'customerAmortizedBill',
                 currency: 'EUR',
-                monthlyAmount: 58.4,
+                monthlyAmount: autoscale ? 175.2 : 116.8,
                 recoverableRu: 1000,
             });
             expect(idle?.costEstimate).toEqual(status === 200 ? estimated : undefined);
@@ -816,7 +845,30 @@ describe('collectDerivedAdvisories parity wiring', () => {
         expect(getThrottledOperationCounts).not.toHaveBeenCalled();
     });
 
-    it.each(['denied', 'empty'] as const)(
+    it('exposes below-threshold 429s without requesting operation metrics or issuing an alert', async () => {
+        const engine = await vi.importActual<typeof EngineModule>('./engine');
+        vi.mocked(analyzeDerivedAdvisories).mockImplementation(engine.analyzeDerivedAdvisories);
+        vi.mocked(getAccountRequestStatusCounts).mockResolvedValue({ 200: 9901, 429: 99 });
+
+        const result = await collectDerivedAdvisories(params({ logsClient: undefined }));
+
+        expect(getThrottledOperationCounts).not.toHaveBeenCalled();
+        expect(result.advisories.some(({ rule }) => rule === 'ThrottlingByOperation')).toBe(false);
+        expect(result.throttlingObservation).toEqual({
+            totalRequests: 10_000,
+            totalThrottled: 99,
+            throttleRatePercent: 0.99,
+            attributionIncomplete: false,
+        });
+        expect(result.detectorCoverage.find(({ rule }) => rule === 'ThrottlingByOperation')).toMatchObject({
+            status: 'evaluated',
+            evaluatedCount: 1,
+            matchedCount: 0,
+            insufficientDataCount: 0,
+        });
+    });
+
+    it.each(['denied', 'empty', 'underreported', 'overreported'] as const)(
         'preserves errors while reporting %s throttled-operation evidence as incomplete',
         async (scenario) => {
             const engine = await vi.importActual<typeof EngineModule>('./engine');
@@ -831,20 +883,28 @@ describe('collectDerivedAdvisories parity wiring', () => {
             if (scenario === 'denied') {
                 vi.mocked(getThrottledOperationCounts).mockRejectedValue({ statusCode: 403 });
             } else {
-                vi.mocked(getThrottledOperationCounts).mockResolvedValue({});
+                vi.mocked(getThrottledOperationCounts).mockResolvedValue(
+                    scenario === 'empty' ? {} : { Create: scenario === 'underreported' ? 50 : 200 },
+                );
             }
             const result = await collectDerivedAdvisories(params({ logsClient: undefined }));
             expect(result.advisories.map((item) => item.rule)).toEqual(['NonThrottlingErrors']);
+            expect(result.throttlingObservation).toEqual({
+                totalRequests: 1000,
+                totalThrottled: 100,
+                throttleRatePercent: 10,
+                attributionIncomplete: true,
+            });
             expect(result.metricSource.failures).toContainEqual({
                 rule: 'ThrottlingByOperation',
                 reason: scenario === 'denied' ? 'rbac' : 'noData',
                 scope: undefined,
             });
             expect(result.detectorCoverage.find(({ rule }) => rule === 'ThrottlingByOperation')).toMatchObject({
-                status: scenario === 'denied' ? 'partial' : 'evaluated',
-                evaluatedCount: 1,
+                status: scenario === 'denied' ? 'unavailable' : 'insufficientData',
+                evaluatedCount: 0,
                 matchedCount: 0,
-                insufficientDataCount: 0,
+                insufficientDataCount: 1,
                 unavailableReasons: scenario === 'denied' ? ['rbac'] : [],
             });
         },
@@ -1044,7 +1104,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
             vi.spyOn(cosmosClient.sqlResources, 'listSqlContainers').mockImplementation(() =>
                 pagedItems([{ resource: { id: 'disabled', indexingPolicy: { indexingMode } } }]),
             );
-            vi.mocked(getThrottleRate).mockResolvedValue({ ratePercent: 0, totalRequests: 0 });
+            vi.mocked(getThrottleRate).mockResolvedValue({ ratePercent: 0, totalRequests: 0, throttledRequests: 0 });
             vi.mocked(getContainerIndexingUsage).mockRejectedValue({ statusCode: 403 });
 
             const result = await collectDerivedAdvisories(
@@ -1054,7 +1114,13 @@ describe('collectDerivedAdvisories parity wiring', () => {
             expect(result.metricSource.failures.filter((failure) => failure.rule === 'IndexingCostRisk')).toEqual([]);
             expect(getContainerIndexingUsage).not.toHaveBeenCalled();
             expect(result.advisories.filter((item) => item.rule === 'IndexingCostRisk')).toEqual([]);
-            expect(vi.mocked(analyzeDerivedAdvisories).mock.calls[0][0].indexing).toEqual([]);
+            expect(result.detectorCoverage.find(({ rule }) => rule === 'IndexingCostRisk')).toMatchObject({
+                status: 'notApplicable',
+                notApplicableCount: 1,
+                evaluatedCount: 0,
+                insufficientDataCount: 0,
+                unavailableReasons: [],
+            });
         },
     );
 
@@ -1084,7 +1150,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
                     { resource: { id: 'eligible', indexingPolicy: { indexingMode } } },
                 ]),
             );
-            vi.mocked(getThrottleRate).mockResolvedValue({ ratePercent: 0, totalRequests: 0 });
+            vi.mocked(getThrottleRate).mockResolvedValue({ ratePercent: 0, totalRequests: 0, throttledRequests: 0 });
             if (outcome === 'denied' || outcome === 'transient') {
                 vi.mocked(getContainerIndexingUsage).mockRejectedValue({
                     statusCode: outcome === 'denied' ? 403 : 503,
@@ -1120,9 +1186,10 @@ describe('collectDerivedAdvisories parity wiring', () => {
                       ],
             );
             expect(result.detectorCoverage.find(({ rule }) => rule === 'IndexingCostRisk')).toMatchObject({
-                status: outcome === 'positive' ? 'evaluated' : outcome === 'empty' ? 'insufficientData' : 'unavailable',
+                status: outcome === 'positive' ? 'evaluated' : 'partial',
                 evaluatedCount: outcome === 'positive' ? 1 : 0,
                 matchedCount: outcome === 'positive' ? 1 : 0,
+                notApplicableCount: 1,
                 unavailableReasons:
                     outcome === 'positive' || outcome === 'empty' ? [] : [outcome === 'denied' ? 'rbac' : 'noData'],
             });
@@ -1166,7 +1233,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
             vi.spyOn(cosmosClient.sqlResources, 'listSqlContainers').mockImplementation(() =>
                 pagedItems([{ resource: { id: 'events', indexingPolicy } }]),
             );
-            vi.mocked(getThrottleRate).mockResolvedValue({ ratePercent: 0, totalRequests: 0 });
+            vi.mocked(getThrottleRate).mockResolvedValue({ ratePercent: 0, totalRequests: 0, throttledRequests: 0 });
             vi.mocked(getContainerIndexingUsage).mockResolvedValue({ indexUsageBytes, dataUsageBytes });
 
             const result = await collectDerivedAdvisories(
@@ -1182,7 +1249,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
                 expect.any(Number),
             );
             expect(getRuTrends).not.toHaveBeenCalled();
-            expect(getPartitionHealth).not.toHaveBeenCalled();
+            expect(getRegionalPartitionEvidence).not.toHaveBeenCalled();
             const collectedInventory = await vi.mocked(getSqlInventoryDetails).mock.results[0].value;
             expect(collectedInventory.rows[0].excludedPathCount).toBe(paths.length);
             expect(indexingPolicy).toEqual(originalPolicy);
@@ -1249,9 +1316,9 @@ describe('collectDerivedAdvisories parity wiring', () => {
                 timeRange: '7D',
                 generatedAt: 0,
             });
-            vi.mocked(getPartitionHealth).mockRejectedValue(new Error('unavailable'));
+            vi.mocked(getRegionalPartitionEvidence).mockRejectedValue(new Error('unavailable'));
             vi.mocked(getPartitionStorageSeries).mockRejectedValue(new Error('unavailable'));
-            vi.mocked(getThrottleRate).mockResolvedValue({ ratePercent: 0, totalRequests: 1000 });
+            vi.mocked(getThrottleRate).mockResolvedValue({ ratePercent: 0, totalRequests: 1000, throttledRequests: 0 });
             vi.mocked(getAccountConsumedRuShape).mockResolvedValue({ avgRuPerSec: 0, peakRuPerSec: 0, sampleCount: 0 });
             const monitorClient = new MonitorClient({ getToken: async () => null }, 'sub');
             let inFlight = 0;
@@ -1340,18 +1407,19 @@ describe('collectDerivedAdvisories parity wiring', () => {
             );
 
             const idleAdvisories = result.advisories.filter((item) => item.rule === 'IdleContainer');
-            const idleFinding = expect.objectContaining({
-                scope: 'db0/c0',
-                evidence: { peakRuPerBucket: 0, provisionedRu: 1000, recoverableRu: 1000, throughputMode: 'manual' },
+            expect.soft(idleAdvisories).toEqual([]);
+            expect.soft(result.detectorCoverage.find(({ rule }) => rule === 'IdleContainer')).toMatchObject({
+                status: missingIdle || scenario === 'missing idle' ? 'partial' : 'evaluated',
+                evaluatedCount: missingIdle || scenario === 'missing idle' ? 11 : 12,
+                insufficientDataCount: scenario === 'missing idle' ? 1 : 0,
             });
-            expect.soft(idleAdvisories).toEqual(scenario === 'missing idle' ? [idleFinding] : []);
             expect.soft(inputs.idleContainers).toHaveLength(idleRows.length);
             for (const row of idleRows) {
                 expect.soft(inputs.idleContainers).toContainEqual(
                     expect.objectContaining({
                         databaseId: row.databaseId,
                         containerId: row.containerId,
-                        peakRuPerBucket: scenario === 'missing idle' && row === rows[0] ? 0 : 1000,
+                        peakRuPerBucket: scenario === 'missing idle' && row === rows[0] ? undefined : 1000,
                     }),
                 );
             }
@@ -1374,12 +1442,20 @@ describe('collectDerivedAdvisories parity wiring', () => {
                     )
                     .toBe(fullFidelityChangeFeedEnabled === true ? 'blocked' : 'requiresValidation');
             }
-            expect.soft(list).toHaveBeenCalledTimes(rows.length * 3);
+            expect
+                .soft(
+                    list.mock.calls.filter(([, options]) =>
+                        ['TotalRequestUnits', 'PhysicalPartitionCount', 'DataUsage'].includes(
+                            options?.metricnames ?? '',
+                        ),
+                    ),
+                )
+                .toHaveLength(rows.length * 3);
             expect.soft(peakConcurrency).toBeGreaterThan(1);
             expect.soft(peakConcurrency).toBeLessThanOrEqual(5);
             expect.soft(list.mock.calls.every(([, options]) => !options?.filter?.includes("eq '*'"))).toBe(true);
             expect.soft(metricFailures).toEqual([
-                ...(missingIdle
+                ...(missingIdle || scenario === 'missing idle'
                     ? [
                           {
                               rule: 'IdleContainer',
@@ -1436,9 +1512,9 @@ describe('collectDerivedAdvisories parity wiring', () => {
             generatedAt: 0,
         });
         vi.mocked(getContainerIdlePeak).mockResolvedValue(1000);
-        vi.mocked(getPartitionHealth).mockRejectedValue(new Error('unavailable'));
+        vi.mocked(getRegionalPartitionEvidence).mockRejectedValue(new Error('unavailable'));
         vi.mocked(getPartitionStorageSeries).mockRejectedValue(new Error('unavailable'));
-        vi.mocked(getThrottleRate).mockResolvedValue({ ratePercent: 0, totalRequests: 1000 });
+        vi.mocked(getThrottleRate).mockResolvedValue({ ratePercent: 0, totalRequests: 1000, throttledRequests: 0 });
         vi.mocked(getContainerPartitionCount).mockResolvedValue(undefined);
         vi.mocked(getContainerMergeStoragePeak).mockResolvedValue(undefined);
         vi.mocked(getAccountConsumedRuShape).mockResolvedValue({ avgRuPerSec: 0, peakRuPerSec: 0, sampleCount: 0 });
@@ -1531,6 +1607,7 @@ describe('collectDerivedAdvisories parity wiring', () => {
                     throughputMode: 'autoscale',
                     offerThroughputMode: 'autoscale',
                     throughputRU: 4000,
+                    resourceCreatedAt: '2026-01-10T00:00:00.000Z',
                 },
                 {
                     databaseId: 'db-manual',
@@ -1562,23 +1639,25 @@ describe('collectDerivedAdvisories parity wiring', () => {
             databaseId === 'db-manual' ? 0 : 20,
         );
         vi.mocked(getContainerIndexingUsage).mockResolvedValue({ indexUsageBytes: 20, dataUsageBytes: 100 });
-        vi.mocked(getPartitionHealth).mockResolvedValue({
-            available: true,
-            mode: 'ru',
-            databaseId: 'db-manual',
-            containerId: 'manual-c',
-            tiles: [],
-            skewScore: 0,
-            topPartitionShare: 95,
-            maxSaturationPercent: 95,
-            minSaturationPercent: 50,
-            partitionCount: 2,
-            topN: 5,
-            generatedAt: 1,
+        vi.mocked(getRegionalPartitionEvidence).mockResolvedValue({
+            regions: [
+                {
+                    region: 'West',
+                    expected: 2,
+                    observed: 2,
+                    histories: new Map([
+                        ['0', new Map([[0, 95]])],
+                        ['1', new Map([[0, 70]])],
+                    ]),
+                    bucketMs: DIAGNOSTIC_POLICY.partitionSaturation.observation.bucketMs,
+                    issues: [],
+                },
+            ],
         });
         vi.mocked(getThrottleRate).mockImplementation(async (_client, _resource, _range, databaseId, containerId) => ({
             ratePercent: containerId === 'serverless-c' ? 6 : 2,
             totalRequests: databaseId === 'db-sls' ? 5000 : 3000,
+            throttledRequests: containerId === 'serverless-c' ? 300 : 60,
         }));
         vi.mocked(getPartitionStorageSeries).mockResolvedValue({
             available: true,
@@ -1629,21 +1708,14 @@ describe('collectDerivedAdvisories parity wiring', () => {
 
         const result = await collectDerivedAdvisories(params());
         const inputs = vi.mocked(analyzeDerivedAdvisories).mock.calls[0][0];
-        expect(getPartitionHealth).toHaveBeenCalledWith(
+        expect(getRegionalPartitionEvidence).toHaveBeenCalledWith(
             expect.anything(),
             expect.any(String),
-            'ru',
-            DIAGNOSTIC_POLICY.partitionSaturation.observation.timeRange,
-            expect.any(String),
-            expect.any(String),
-            {
-                saturationPercent: DEFAULT_ADVISORY_THRESHOLDS.partitionSaturationPercent,
-                headroomPercent: DEFAULT_ADVISORY_THRESHOLDS.partitionHeadroomPercent,
-                skewBalanceRatio: DEFAULT_ADVISORY_THRESHOLDS.storageSkewBalanceRatio,
-                topN: 5,
-            },
+            'NormalizedRUConsumption',
             DIAGNOSTIC_POLICY.partitionSaturation.observation,
-            DIAGNOSTIC_POLICY.partitionSaturation.percentile,
+            expect.objectContaining({ databaseId: 'db-shared', offerLevel: 'database' }),
+            expect.any(Array),
+            expect.any(Number),
         );
 
         expect(inputs.manualThroughput).toEqual([
@@ -1709,20 +1781,6 @@ describe('collectDerivedAdvisories parity wiring', () => {
             generatedAt: 1,
         });
         vi.mocked(getContainerIdlePeak).mockRejectedValue(new Error('idle failed'));
-        vi.mocked(getPartitionHealth).mockResolvedValue({
-            available: true,
-            mode: 'ru',
-            databaseId: 'db',
-            containerId: 'c',
-            tiles: [],
-            skewScore: 0,
-            topPartitionShare: 90,
-            maxSaturationPercent: 90,
-            minSaturationPercent: 20,
-            partitionCount: 2,
-            topN: 5,
-            generatedAt: 1,
-        });
         vi.mocked(getThrottleRate).mockRejectedValue(new Error('throttle failed'));
         vi.mocked(getPartitionStorageSeries).mockResolvedValue({
             available: true,
@@ -1763,7 +1821,14 @@ describe('collectDerivedAdvisories parity wiring', () => {
         const inputs = vi.mocked(analyzeDerivedAdvisories).mock.calls[0][0];
 
         expect(inputs.idleContainers).toEqual([]);
-        expect(inputs.partitions).toEqual([]);
+        expect(inputs.partitions).toEqual([
+            expect.objectContaining({
+                regionalEvidence: { regions: [] },
+                totalRequests: undefined,
+                throttledRequests: undefined,
+                throttleRatePercent: undefined,
+            }),
+        ]);
         expect(inputs.partitionMerges).toEqual([]);
         expect(result.metricSource.available).toBe(false);
         expect(result.metricSource.failures).toEqual(

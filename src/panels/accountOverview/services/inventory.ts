@@ -11,7 +11,7 @@ import {
 } from '@azure/arm-cosmosdb';
 import { type ReadDiagnosticsResult } from '../accessRequirements';
 import { readItems, reportReadFailure } from './readDiagnostics';
-import { getSystemCreatedAt } from './resourceAge';
+import { getSystemCreatedAt, getSystemLastModifiedAt, hasMalformedCreationTime } from './resourceAge';
 import { classifyUnavailable, type UnavailableReason } from './shared';
 
 // ─── Static databases/containers inventory ──────────────────────────────────────
@@ -58,7 +58,12 @@ export interface InventoryThroughputOffer {
     throughputMode: ThroughputMode;
     offerThroughputMode: Exclude<OfferThroughputMode, 'serverless' | 'unknown'>;
     throughputRU: number;
+    /** Database/container resource RID used to scope offer-level Monitor reads. */
+    ownerRid?: string;
     resourceCreatedAt?: string;
+    /** Latest possible creation time, from the resource's own ARM last-modified timestamp. */
+    resourceExistedAt?: string;
+    malformedCreationTime?: true;
 }
 
 export interface SqlInventoryDetails {
@@ -142,7 +147,10 @@ export async function getSqlInventoryDetails(
                 throughputMode: resolvedDatabaseOffer.mode,
                 offerThroughputMode: resolvedDatabaseOffer.offerThroughputMode,
                 throughputRU: resolvedDatabaseOffer.ru,
+                ...(db.resource?.rid && { ownerRid: db.resource.rid }),
                 resourceCreatedAt: databaseCreatedAt,
+                resourceExistedAt: getSystemLastModifiedAt(db),
+                ...(hasMalformedCreationTime(db) && { malformedCreationTime: true as const }),
             });
         }
 
@@ -202,7 +210,10 @@ export async function getSqlInventoryDetails(
                             throughputMode,
                             offerThroughputMode,
                             throughputRU,
+                            ...(container.resource?.rid && { ownerRid: container.resource.rid }),
                             resourceCreatedAt: containerCreatedAt,
+                            resourceExistedAt: getSystemLastModifiedAt(container),
+                            ...(hasMalformedCreationTime(container) && { malformedCreationTime: true as const }),
                         });
                     }
                 } else {

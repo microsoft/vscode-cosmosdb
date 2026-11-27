@@ -15,8 +15,11 @@ import { computeDerivedAdvisories } from '../engine';
 import { getAutoscaleUtilization } from '../fetchers/metrics';
 import { ACTION_DETECTORS, ADDITIONAL_RULES, additionalOutcomes, evaluateAdditional } from './additionalBindings';
 import { additionalFixtures } from './additionalFixtures';
+import { allocationBindings, evaluateAllocationCase } from './allocationBindings';
 import { type FeatureCase } from './features';
 import { metricResponse, withMetrics } from './metricsFixture';
+import { evaluatePartition, partitionBindings } from './partitionBindings';
+import { reportBindings } from './reportBindings';
 import { near, number, observation, type Binding, type World } from './shared';
 
 export const SUPPORTED_DETECTORS: ReadonlySet<string> = new Set([
@@ -40,6 +43,9 @@ function errors(world: World): RequestErrorEvaluation {
 
 async function evaluate(world: World, detector: string): Promise<void> {
     assert.equal(world.result, undefined, 'A scenario may evaluate only once.');
+    if (await evaluateAllocationCase(world, detector)) {
+        return;
+    }
     const threshold = DEFAULT_ADVISORY_THRESHOLDS.overProvisioningBandPercent;
     if (detector === 'DX-001') {
         assert.ok(world.manual, 'Missing manual offer fixture.');
@@ -83,6 +89,8 @@ async function evaluate(world: World, detector: string): Promise<void> {
         assert.ok(world.statuses, 'Missing status-count fixture.');
         world.inputs.accountRequests = { statusCounts: world.statuses };
         world.result = nonThrottlingErrorsDetector.evaluateResult(world.inputs.accountRequests);
+    } else if (detector === 'DX-005' || detector === 'DX-006' || detector === 'DX-015') {
+        await evaluatePartition(world, detector);
     } else {
         await evaluateAdditional(world, detector);
     }
@@ -106,6 +114,9 @@ async function evaluate(world: World, detector: string): Promise<void> {
 }
 
 const bindings: readonly Binding[] = [
+    ...reportBindings,
+    ...allocationBindings,
+    ...partitionBindings,
     ...additionalFixtures,
     ...additionalOutcomes,
     {
@@ -243,8 +254,11 @@ const bindings: readonly Binding[] = [
     {
         type: 'Outcome',
         pattern: /^the wasted capacity is (\S+) RU\/s$/,
-        execute(world, match) {
-            near(sizing(world).recoverableRu, match[1]);
+        execute(world, match, detector) {
+            const result = sizing(world);
+            // An abstention does not measure waste and awards no savings.
+            const abstained = detector === 'DX-011' && result.band === 'insufficient_data' && !world.advisory;
+            near(abstained ? (result.recoverableRu ?? 0) : result.recoverableRu, match[1]);
         },
     },
     {
@@ -357,7 +371,7 @@ export async function executeCase(testCase: FeatureCase): Promise<number> {
         }
     }
     assert.ok(
-        (world.result || world.applicabilityChecked) && world.checks > 0,
+        (world.result || world.collected || world.applicabilityChecked) && world.checks > 0,
         'Every scenario must evaluate production code and assert at least one outcome.',
     );
     return world.checks;

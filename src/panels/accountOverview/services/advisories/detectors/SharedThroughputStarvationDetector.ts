@@ -33,13 +33,18 @@ function evaluateSharedThroughputStarvation(
     }
     const members = new Set(input.sharedContainerIds);
     const traffic = input.collections.filter((c) => members.has(c.containerId));
+    const observedMembers = new Set(traffic.map((c) => c.containerId));
+    const missingMembers = [...members].filter((member) => !observedMembers.has(member)).sort();
+    if (missingMembers.length > 0) {
+        return { rootCause: 'insufficient_data', missingMembers };
+    }
     if (
-        new Set(traffic.map((c) => c.containerId)).size !== traffic.length ||
+        observedMembers.size !== traffic.length ||
         traffic.some(
             (c) =>
-                !Number.isFinite(c.requests) ||
+                !Number.isInteger(c.requests) ||
                 c.requests < 0 ||
-                !Number.isFinite(c.throttledRequests) ||
+                !Number.isInteger(c.throttledRequests) ||
                 c.throttledRequests < 0 ||
                 c.throttledRequests > c.requests ||
                 !Number.isFinite(c.ruConsumed) ||

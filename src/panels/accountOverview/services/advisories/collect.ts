@@ -270,10 +270,10 @@ export async function collectDerivedAdvisories(
     const serverlessTargets = rows.filter(isServerlessContainer);
     const logTargets = rows.filter((row) => isDedicatedContainerOffer(row) || isServerlessContainer(row));
     const rowsByScope = new Map(rows.map((row) => [scopeOf(row), row]));
-    const scopeProvisionedRuTotal = offers.reduce<number | undefined>(
-        (sum, offer) => (sum ?? 0) + offer.throughputRU,
-        undefined,
-    );
+    const scopeProvisionedRuTotal =
+        inventory.value?.throughputInventoryComplete === true
+            ? offers.reduce<number | undefined>((sum, offer) => (sum ?? 0) + offer.throughputRU, undefined)
+            : undefined;
 
     const manualObservation = DIAGNOSTIC_POLICY.overProvisioning.observation;
     const saturationObservation = DIAGNOSTIC_POLICY.partitionSaturation.observation;
@@ -607,10 +607,13 @@ export async function collectDerivedAdvisories(
             weeklyRuPercents: [],
             weeklyPeakPercent: undefined,
             hasManualThroughput: manualTargets.length > 0,
-            manualProvisionedRuTotal: manualTargets.reduce<number | undefined>(
-                (sum, row) => (sum ?? 0) + (row.throughputRU ?? 0),
-                undefined,
-            ),
+            manualProvisionedRuTotal:
+                inventory.value?.throughputInventoryComplete === true
+                    ? manualTargets.reduce<number | undefined>(
+                          (sum, row) => (sum ?? 0) + (row.throughputRU ?? 0),
+                          undefined,
+                      )
+                    : undefined,
             partitions,
             storage: storage.map((result) => ({
                 databaseId: result.databaseId,

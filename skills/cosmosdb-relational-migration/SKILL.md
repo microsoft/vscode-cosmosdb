@@ -154,8 +154,8 @@ be inferred safely.
   [Review and Fix](./references/workflow/interaction-and-checkpoints.md#review-and-fix).
   A supplied phase scopes the review, including prerequisites, not execution. Require
   explicit approval before writes or phase execution; this overrides mode fallback and rerun defaults.
-- `additional instructions`: optional phase guidance supplied with the request. Never save a whole run request as phase
-  instructions; persist only explicitly reusable guidance.
+- `additional instructions`: optional phase guidance supplied with the request.
+  Never save a whole run request as phase instructions; persist only explicitly reusable guidance.
 - `workspace`: selected application project root; default to the sole workspace folder
   only when it is also the target project root. An explicit workspace does not override
   a conflicting selected migration. Apply the Project Scope conflict check below first.

@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { acceptedTrial, handoffSpec, runHandoff } from '../../scripts/eval-handoff.mjs';
 import { resolveEvalSelection } from '../../scripts/eval-options.mjs';
 import { checkPhaseCompletions } from '../../skills/cosmosdb-relational-migration/scripts/check-phase-completion.mjs';
+import { buildFreshnessManifest } from '../../skills/cosmosdb-relational-migration/scripts/freshness.mjs';
 import {
     applicationSnapshot,
     checkAdventureWorks,
@@ -469,6 +470,37 @@ test('isolated grading rejects predecessor mutations and future-phase artifacts'
     project.phases.assessment.domains[0].isMapped = true;
     writeFileSync(join(migration, 'phases/3-schema-conversion/summary.md'), 'Changed accepted design');
     assert.throws(() => checkPhaseBoundary(app, 'provisioning', project), /predecessor artifact/);
+});
+
+test('inferred discovery rejects root-level planning outputs even without a code-migration status', async (t) => {
+    const root = temporary(t);
+    const sample = fixtureSource(root);
+    const app = join(root, 'app');
+    await setupAdventureWorks(app, sample, ddl, 'assessment');
+    const migration = join(app, '.cosmosdb-migration');
+    const manifestPath = join(migration, 'phases/1-discovery/preflight-manifest.json');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    for (const file of manifest.sourceInventory.files) {
+        file.origin = 'inferred';
+        file.sourcePaths = ['Models/sampledbContext.cs'];
+    }
+    writeFileSync(manifestPath, JSON.stringify(manifest));
+    const projectPath = join(migration, 'project.json');
+    const project = JSON.parse(readFileSync(projectPath, 'utf8'));
+    delete project.phases.codeMigration;
+    for (const phase of ['preflight', 'discovery']) {
+        project.freshness[phase] = buildFreshnessManifest(app, project, phase, readCheckpoint(phase).consulted);
+        writeFileSync(projectPath, JSON.stringify(project));
+    }
+    checkAdventureWorks(app, 'inferred-ddl', sample);
+    for (const file of ['code-migration-plan.md', 'code-migration-manifest.json']) {
+        await t.test(file, (t) => {
+            const path = join(migration, file);
+            writeFileSync(path, 'Premature planning output');
+            t.after(() => rmSync(path));
+            assert.throws(() => checkAdventureWorks(app, 'inferred-ddl', sample), /Unexpected code-migration-/);
+        });
+    }
 });
 
 test('checkpoint drift fails before an agent can use it', async (t) => {

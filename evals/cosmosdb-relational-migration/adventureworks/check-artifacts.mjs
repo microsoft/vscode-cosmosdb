@@ -202,6 +202,9 @@ export function checkAdventureWorks(workspace, scenario, sample, handoffBaseline
         for (const directory of ['2-assessment', '3-schema-conversion', '4-provisioning']) {
             assert.equal(existsSync(join(root, 'phases', directory)), false, `Unexpected ${directory} artifacts`);
         }
+        for (const file of readdirSync(root)) {
+            assert.equal(phaseOutputs['code-migration'].test(file), false, `Unexpected ${file} artifact`);
+        }
         return;
     }
 

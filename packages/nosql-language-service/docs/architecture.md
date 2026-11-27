@@ -197,3 +197,83 @@ parse tables (`y_tab.cpp`). This TypeScript version uses
 Chevrotain's LL(k) algorithm with `EmbeddedActionsParser`,
 which builds AST nodes directly inside grammar rules (similar
 to the `{ $$ = SqlQuery::Create(...) }` actions in the `.y`).
+
+The parser uses two-token global lookahead, with explicit gates for longer ambiguities.
+Keep the global bound small: Chevrotain recomputes expected-token paths when reporting errors,
+so increasing it can make short, incomplete editor queries expensive to parse.
+The error-recovery tests check this bound without depending on machine-specific timing.
+
+### Differential lookahead checks
+
+The lookahead reduction is not behaviorally identical on incomplete input. Grammar self-analysis and successful
+complete-query tests do not establish recovery compatibility, especially for gated alternatives.
+Use `SqlParser.lookahead.test.ts` to compare the default parser against the same grammar with three-token lookahead.
+The public `parse()` API always uses the default; the constructor override is only used by this comparison.
+
+The normal suite includes 16 complex scenarios:
+
+- Parameterized partition filters, projections, nested `BETWEEN`, and pagination.
+- Array self-joins, filtered subquery joins, correlated `EXISTS`, shadowed aliases, and aggregate/ARRAY subqueries.
+- Coalesce/conditional expressions, bracket notation, comments, and UTF-16 source positions.
+- Ranked full-text and weighted vector/full-text search.
+- Parser-dialect probes for `FIRST`/`LAST`/`ALL`, keyword-like aliases/functions, `LET`, UDFs, and dynamic indexers.
+
+The workload scenarios use the checked-in product/order schemas, except the hybrid-search case, which uses the
+`id`/`text`/`vector` sample shape from the RRF reference. These are parser tests, not server-execution assertions:
+hybrid search requires the appropriate policies/indexes; multi-property ordering requires a composite index.
+The gate probes cover existing parser syntax without claiming that every construct is a recommended or
+server-supported query. The 512-rule/256-AST-depth checks are implementation limits, not Cosmos DB service quotas.
+
+Sources:
+
+- [Parameterized queries](https://learn.microsoft.com/en-us/cosmos-db/query/parameterized-queries)
+- [Array self-joins](https://learn.microsoft.com/en-us/cosmos-db/query/join)
+- [Subqueries and predicate pushdown](https://learn.microsoft.com/en-us/cosmos-db/query/subquery)
+- [BETWEEN](https://learn.microsoft.com/en-us/cosmos-db/query/between)
+- [ORDER BY RANK](https://learn.microsoft.com/en-us/cosmos-db/query/order-by-rank)
+- [Weighted reciprocal rank fusion](https://learn.microsoft.com/en-us/cosmos-db/query/rrf)
+
+The opt-in comparison includes the existing query fixture corpus and negatives, every distinct token-boundary
+prefix of the complete corpus, targeted token deletions/delimiter replacements in the complex scenarios,
+and depth-boundary probes. It compares full ASTs and ranges, raw parser diagnostics and recovery context,
+complexity outcomes, exceptions, and printed/reparsed complete queries. Diagnostic differences are not normalized
+away. Both configurations rejecting a query is not sufficient for equivalence.
+
+Run from the repository root:
+
+```bash
+# New complete-query assertions only (also included in the normal unit suite)
+npm run vitest -- packages/nosql-language-service/src/parser/SqlParser.lookahead.test.ts
+
+# Explicitly run the slower legacy parser too; exits nonzero for differences or unexpected exceptions
+COSMOSDB_COMPARE_LOOKAHEAD=1 COSMOSDB_LOOKAHEAD_REPORT=/tmp/lookahead-comparison.json \
+  npm run vitest -- packages/nosql-language-service/src/parser/SqlParser.lookahead.test.ts
+```
+
+The optional JSON report preserves differing inputs/results, unexpected exceptions, shared printer failures,
+and aggregate timings by input kind. Timings are diagnostic measurements, not hardware-independent assertions.
+The legacy comparison is opt-in to avoid reintroducing its expensive invalid-input path into every coverage run.
+
+### Diagnostic-path caching prototype
+
+An additional opt-in mode keeps **three-token lookahead in both parsers** and memoizes only the expected-token
+paths used by `raiseNoAltException`. The cache is per parser and keyed by grammar-rule identity, alternation
+occurrence, and lookahead depth. It stores no query text, ASTs, actual tokens, or rendered diagnostic messages.
+Each error still uses the current tokens and the original message provider and error-registration/recovery machinery.
+
+```bash
+COSMOSDB_COMPARE_LOOKAHEAD=1 COSMOSDB_COMPARE_DIAGNOSTIC_CACHE=1 \
+  COSMOSDB_LOOKAHEAD_REPORT=/tmp/diagnostic-cache-comparison.json \
+  npm run vitest -- packages/nosql-language-service/src/parser/SqlParser.lookahead.test.ts
+```
+
+The report includes the mode and counts of error events versus path computations. Lazy caching leaves the first
+error at each grammar site expensive; subsequent errors reuse its paths, even for different input strings.
+Parser initialization and early-exit diagnostics are not optimized by this prototype.
+
+This adapter is confined to the test file and is **not a production integration**. Chevrotain 13.2 does not expose
+a supported hook for replacing this computation: its custom error-message provider runs after path enumeration.
+The prototype therefore validates the required runtime hooks and replaces only one parser instance's error method,
+restoring it after comparison. It assumes our message provider does not mutate the cached path arrays.
+The preferred production approach is an upstream cache in Chevrotain, with reset/grammar-lifetime and
+custom-provider mutation semantics handled there, rather than shipping an override of undocumented methods.

@@ -14,7 +14,7 @@ import {
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { checkPhaseCompletion } from '../../skills/cosmosdb-relational-migration/scripts/check-phase-completion.mjs';
@@ -36,6 +36,27 @@ const specs = await Promise.all(evals.map(({ filePath }) => loadEvalSpec(filePat
 const stimuli = specs.flatMap((spec) => spec.stimuli);
 const completed = { type: 'turn_end', data: { turnId: 'offline' } };
 const failure = { type: 'error', data: { message: 'Synthetic executor failure' } };
+
+test('required activations refer to the skills installed for each scenario', () => {
+    for (const [index, spec] of specs.entries()) {
+        for (const stimulus of spec.stimuli) {
+            const skills = stimulus.environment?.skills ?? spec.environment.skills;
+            const installed = new Set(
+                skills.map((skill) => {
+                    const content = readFileSync(resolve(dirname(evals[index].filePath), skill, 'SKILL.md'), 'utf8');
+                    const name = /^name: (.+)$/mu.exec(content)?.[1];
+                    assert.ok(name, `Missing skill name: ${skill}`);
+                    return name;
+                }),
+            );
+            for (const grader of stimulus.graders.filter(({ type }) => type === 'skill-invocation')) {
+                for (const name of grader.config.required ?? []) {
+                    assert.ok(installed.has(name), `${stimulus.name}: required skill ${name} is not installed`);
+                }
+            }
+        }
+    }
+});
 
 function workspace(t) {
     const root = mkdtempSync(join(tmpdir(), 'migration-vally-test-'));

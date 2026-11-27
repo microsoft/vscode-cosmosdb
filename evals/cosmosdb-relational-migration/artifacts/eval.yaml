@@ -96,7 +96,7 @@ stimuli:
     graders:
       - type: completed
       - type: skill-invocation
-        config: { required: [cosmosdb-migration] }
+        config: { required: [cosmosdb-relational-migration] }
       - type: migration-artifacts
         config: { phase: discovery }
       - type: prompt

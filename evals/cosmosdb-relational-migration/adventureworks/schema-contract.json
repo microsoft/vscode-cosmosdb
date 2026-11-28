@@ -1,0 +1,354 @@
+{
+  "dbo.BuildVersion": {
+    "columns": [
+      { "name": "SystemInformationID", "type": "TINYINT", "nullable": false },
+      { "name": "Database Version", "type": "NVARCHAR(25)", "nullable": false },
+      { "name": "VersionDate", "type": "DATETIME", "nullable": false },
+      { "name": "ModifiedDate", "type": "DATETIME", "nullable": false }
+    ],
+    "primaryKey": ["SystemInformationID"],
+    "foreignKeys": [],
+    "indexes": []
+  },
+  "dbo.ErrorLog": {
+    "columns": [
+      { "name": "ErrorLogID", "type": "INT", "nullable": false },
+      { "name": "ErrorTime", "type": "DATETIME", "nullable": false },
+      { "name": "ErrorNumber", "type": "INT", "nullable": false },
+      { "name": "ErrorSeverity", "type": "INT", "nullable": true },
+      { "name": "ErrorState", "type": "INT", "nullable": true },
+      { "name": "ErrorProcedure", "type": "NVARCHAR(126)", "nullable": true },
+      { "name": "ErrorLine", "type": "INT", "nullable": true },
+      { "name": "ErrorMessage", "type": "NVARCHAR(4000)", "nullable": false }
+    ],
+    "primaryKey": ["ErrorLogID"],
+    "foreignKeys": [],
+    "indexes": []
+  },
+  "SalesLT.Address": {
+    "columns": [
+      { "name": "AddressID", "type": "INT", "nullable": false },
+      { "name": "AddressLine1", "type": "NVARCHAR(60)", "nullable": false },
+      { "name": "AddressLine2", "type": "NVARCHAR(60)", "nullable": true },
+      { "name": "City", "type": "NVARCHAR(30)", "nullable": false },
+      { "name": "StateProvince", "type": "NVARCHAR(50)", "nullable": false },
+      { "name": "CountryRegion", "type": "NVARCHAR(50)", "nullable": false },
+      { "name": "PostalCode", "type": "NVARCHAR(15)", "nullable": false },
+      { "name": "rowguid", "type": "UNIQUEIDENTIFIER", "nullable": false },
+      { "name": "ModifiedDate", "type": "DATETIME", "nullable": false }
+    ],
+    "primaryKey": ["AddressID"],
+    "foreignKeys": [],
+    "indexes": [
+      { "name": "AK_Address_rowguid", "columns": ["rowguid"], "unique": true },
+      { "name": "IX_Address_StateProvince", "columns": ["StateProvince"], "unique": false },
+      {
+        "name": "IX_Address_AddressLine1_AddressLine2_City_StateProvince_PostalCode_CountryRegion",
+        "columns": ["AddressLine1", "AddressLine2", "City", "StateProvince", "PostalCode", "CountryRegion"],
+        "unique": false
+      }
+    ]
+  },
+  "SalesLT.Customer": {
+    "columns": [
+      { "name": "CustomerID", "type": "INT", "nullable": false },
+      { "name": "NameStyle", "type": "BIT", "nullable": false },
+      { "name": "Title", "type": "NVARCHAR(8)", "nullable": true },
+      { "name": "FirstName", "type": "NVARCHAR(50)", "nullable": false },
+      { "name": "MiddleName", "type": "NVARCHAR(50)", "nullable": true },
+      { "name": "LastName", "type": "NVARCHAR(50)", "nullable": false },
+      { "name": "Suffix", "type": "NVARCHAR(10)", "nullable": true },
+      { "name": "CompanyName", "type": "NVARCHAR(128)", "nullable": true },
+      { "name": "SalesPerson", "type": "NVARCHAR(256)", "nullable": true },
+      { "name": "EmailAddress", "type": "NVARCHAR(50)", "nullable": true },
+      { "name": "Phone", "type": "NVARCHAR(25)", "nullable": true },
+      { "name": "PasswordHash", "type": "VARCHAR(128)", "nullable": false },
+      { "name": "PasswordSalt", "type": "VARCHAR(10)", "nullable": false },
+      { "name": "rowguid", "type": "UNIQUEIDENTIFIER", "nullable": false },
+      { "name": "ModifiedDate", "type": "DATETIME", "nullable": false }
+    ],
+    "primaryKey": ["CustomerID"],
+    "foreignKeys": [],
+    "indexes": [
+      { "name": "IX_Customer_EmailAddress", "columns": ["EmailAddress"], "unique": false },
+      { "name": "AK_Customer_rowguid", "columns": ["rowguid"], "unique": true }
+    ]
+  },
+  "SalesLT.CustomerAddress": {
+    "columns": [
+      { "name": "CustomerID", "type": "INT", "nullable": false },
+      { "name": "AddressID", "type": "INT", "nullable": false },
+      { "name": "AddressType", "type": "NVARCHAR(50)", "nullable": false },
+      { "name": "rowguid", "type": "UNIQUEIDENTIFIER", "nullable": false },
+      { "name": "ModifiedDate", "type": "DATETIME", "nullable": false }
+    ],
+    "primaryKey": ["CustomerID", "AddressID"],
+    "foreignKeys": [
+      {
+        "columns": ["AddressID"],
+        "referencedTable": "SalesLT.Address",
+        "referencedColumns": ["AddressID"],
+        "onDelete": "NO ACTION"
+      },
+      {
+        "columns": ["CustomerID"],
+        "referencedTable": "SalesLT.Customer",
+        "referencedColumns": ["CustomerID"],
+        "onDelete": "NO ACTION"
+      }
+    ],
+    "indexes": [
+      { "name": "AK_CustomerAddress_rowguid", "columns": ["rowguid"], "unique": true },
+      { "name": "IX_CustomerAddress_AddressID", "columns": ["AddressID"], "unique": false, "inferredOptional": true }
+    ]
+  },
+  "SalesLT.Product": {
+    "columns": [
+      { "name": "ProductID", "type": "INT", "nullable": false },
+      { "name": "Name", "type": "NVARCHAR(50)", "nullable": false },
+      { "name": "ProductNumber", "type": "NVARCHAR(25)", "nullable": false },
+      { "name": "Color", "type": "NVARCHAR(15)", "nullable": true },
+      { "name": "StandardCost", "type": "MONEY", "nullable": false },
+      { "name": "ListPrice", "type": "MONEY", "nullable": false },
+      { "name": "Size", "type": "NVARCHAR(5)", "nullable": true },
+      { "name": "Weight", "type": "DECIMAL(8,2)", "nullable": true },
+      { "name": "ProductCategoryID", "type": "INT", "nullable": true },
+      { "name": "ProductModelID", "type": "INT", "nullable": true },
+      { "name": "SellStartDate", "type": "DATETIME", "nullable": false },
+      { "name": "SellEndDate", "type": "DATETIME", "nullable": true },
+      { "name": "DiscontinuedDate", "type": "DATETIME", "nullable": true },
+      { "name": "ThumbNailPhoto", "type": "VARBINARY(MAX)", "nullable": true },
+      { "name": "ThumbnailPhotoFileName", "type": "NVARCHAR(50)", "nullable": true },
+      { "name": "rowguid", "type": "UNIQUEIDENTIFIER", "nullable": false },
+      { "name": "ModifiedDate", "type": "DATETIME", "nullable": false }
+    ],
+    "primaryKey": ["ProductID"],
+    "foreignKeys": [
+      {
+        "columns": ["ProductCategoryID"],
+        "referencedTable": "SalesLT.ProductCategory",
+        "referencedColumns": ["ProductCategoryID"],
+        "onDelete": "NO ACTION"
+      },
+      {
+        "columns": ["ProductModelID"],
+        "referencedTable": "SalesLT.ProductModel",
+        "referencedColumns": ["ProductModelID"],
+        "onDelete": "NO ACTION"
+      }
+    ],
+    "indexes": [
+      { "name": "AK_Product_Name", "columns": ["Name"], "unique": true },
+      { "name": "AK_Product_ProductNumber", "columns": ["ProductNumber"], "unique": true },
+      { "name": "AK_Product_rowguid", "columns": ["rowguid"], "unique": true },
+      {
+        "name": "IX_Product_ProductCategoryID",
+        "columns": ["ProductCategoryID"],
+        "unique": false,
+        "inferredOptional": true
+      },
+      { "name": "IX_Product_ProductModelID", "columns": ["ProductModelID"], "unique": false, "inferredOptional": true }
+    ]
+  },
+  "SalesLT.ProductCategory": {
+    "columns": [
+      { "name": "ProductCategoryID", "type": "INT", "nullable": false },
+      { "name": "ParentProductCategoryID", "type": "INT", "nullable": true },
+      { "name": "Name", "type": "NVARCHAR(50)", "nullable": false },
+      { "name": "rowguid", "type": "UNIQUEIDENTIFIER", "nullable": false },
+      { "name": "ModifiedDate", "type": "DATETIME", "nullable": false }
+    ],
+    "primaryKey": ["ProductCategoryID"],
+    "foreignKeys": [
+      {
+        "columns": ["ParentProductCategoryID"],
+        "referencedTable": "SalesLT.ProductCategory",
+        "referencedColumns": ["ProductCategoryID"],
+        "onDelete": "NO ACTION"
+      }
+    ],
+    "indexes": [
+      { "name": "AK_ProductCategory_Name", "columns": ["Name"], "unique": true },
+      { "name": "AK_ProductCategory_rowguid", "columns": ["rowguid"], "unique": true },
+      {
+        "name": "IX_ProductCategory_ParentProductCategoryID",
+        "columns": ["ParentProductCategoryID"],
+        "unique": false,
+        "inferredOptional": true
+      }
+    ]
+  },
+  "SalesLT.ProductDescription": {
+    "columns": [
+      { "name": "ProductDescriptionID", "type": "INT", "nullable": false },
+      { "name": "Description", "type": "NVARCHAR(400)", "nullable": false },
+      { "name": "rowguid", "type": "UNIQUEIDENTIFIER", "nullable": false },
+      { "name": "ModifiedDate", "type": "DATETIME", "nullable": false }
+    ],
+    "primaryKey": ["ProductDescriptionID"],
+    "foreignKeys": [],
+    "indexes": [{ "name": "AK_ProductDescription_rowguid", "columns": ["rowguid"], "unique": true }]
+  },
+  "SalesLT.ProductModel": {
+    "columns": [
+      { "name": "ProductModelID", "type": "INT", "nullable": false },
+      { "name": "Name", "type": "NVARCHAR(50)", "nullable": false },
+      { "name": "CatalogDescription", "type": "XML", "nullable": true },
+      { "name": "rowguid", "type": "UNIQUEIDENTIFIER", "nullable": false },
+      { "name": "ModifiedDate", "type": "DATETIME", "nullable": false }
+    ],
+    "primaryKey": ["ProductModelID"],
+    "foreignKeys": [],
+    "indexes": [
+      { "name": "AK_ProductModel_Name", "columns": ["Name"], "unique": true },
+      { "name": "AK_ProductModel_rowguid", "columns": ["rowguid"], "unique": true }
+    ]
+  },
+  "SalesLT.ProductModelProductDescription": {
+    "columns": [
+      { "name": "ProductModelID", "type": "INT", "nullable": false },
+      { "name": "ProductDescriptionID", "type": "INT", "nullable": false },
+      { "name": "Culture", "type": "NVARCHAR(6)", "nullable": false },
+      { "name": "rowguid", "type": "UNIQUEIDENTIFIER", "nullable": false },
+      { "name": "ModifiedDate", "type": "DATETIME", "nullable": false }
+    ],
+    "primaryKey": ["ProductModelID", "ProductDescriptionID", "Culture"],
+    "foreignKeys": [
+      {
+        "columns": ["ProductDescriptionID"],
+        "referencedTable": "SalesLT.ProductDescription",
+        "referencedColumns": ["ProductDescriptionID"],
+        "onDelete": "NO ACTION"
+      },
+      {
+        "columns": ["ProductModelID"],
+        "referencedTable": "SalesLT.ProductModel",
+        "referencedColumns": ["ProductModelID"],
+        "onDelete": "NO ACTION"
+      }
+    ],
+    "indexes": [
+      { "name": "AK_ProductModelProductDescription_rowguid", "columns": ["rowguid"], "unique": true },
+      {
+        "name": "IX_ProductModelProductDescription_ProductDescriptionID",
+        "columns": ["ProductDescriptionID"],
+        "unique": false,
+        "inferredOptional": true
+      }
+    ]
+  },
+  "SalesLT.SalesOrderDetail": {
+    "columns": [
+      { "name": "SalesOrderID", "type": "INT", "nullable": false },
+      { "name": "SalesOrderDetailID", "type": "INT", "nullable": false },
+      { "name": "OrderQty", "type": "SMALLINT", "nullable": false },
+      { "name": "ProductID", "type": "INT", "nullable": false },
+      { "name": "UnitPrice", "type": "MONEY", "nullable": false },
+      { "name": "UnitPriceDiscount", "type": "MONEY", "nullable": false },
+      {
+        "name": "LineTotal",
+        "type": "computed expression",
+        "nullable": "unknown",
+        "computed": true,
+        "inferredType": "NUMERIC(38,6)"
+      },
+      { "name": "rowguid", "type": "UNIQUEIDENTIFIER", "nullable": false },
+      { "name": "ModifiedDate", "type": "DATETIME", "nullable": false }
+    ],
+    "primaryKey": ["SalesOrderID", "SalesOrderDetailID"],
+    "foreignKeys": [
+      {
+        "columns": ["ProductID"],
+        "referencedTable": "SalesLT.Product",
+        "referencedColumns": ["ProductID"],
+        "onDelete": "NO ACTION"
+      },
+      {
+        "columns": ["SalesOrderID"],
+        "referencedTable": "SalesLT.SalesOrderHeader",
+        "referencedColumns": ["SalesOrderID"],
+        "onDelete": "CASCADE"
+      }
+    ],
+    "indexes": [
+      { "name": "IX_SalesOrderDetail_ProductID", "columns": ["ProductID"], "unique": false },
+      { "name": "AK_SalesOrderDetail_rowguid", "columns": ["rowguid"], "unique": true }
+    ]
+  },
+  "SalesLT.SalesOrderHeader": {
+    "columns": [
+      { "name": "SalesOrderID", "type": "INT", "nullable": false },
+      { "name": "RevisionNumber", "type": "TINYINT", "nullable": false },
+      { "name": "OrderDate", "type": "DATETIME", "nullable": false },
+      { "name": "DueDate", "type": "DATETIME", "nullable": false },
+      { "name": "ShipDate", "type": "DATETIME", "nullable": true },
+      { "name": "Status", "type": "TINYINT", "nullable": false },
+      { "name": "OnlineOrderFlag", "type": "BIT", "nullable": false },
+      {
+        "name": "SalesOrderNumber",
+        "type": "computed expression",
+        "nullable": "unknown",
+        "computed": true,
+        "inferredType": "NVARCHAR(25)"
+      },
+      { "name": "PurchaseOrderNumber", "type": "NVARCHAR(25)", "nullable": true },
+      { "name": "AccountNumber", "type": "NVARCHAR(15)", "nullable": true },
+      { "name": "CustomerID", "type": "INT", "nullable": false },
+      { "name": "ShipToAddressID", "type": "INT", "nullable": true },
+      { "name": "BillToAddressID", "type": "INT", "nullable": true },
+      { "name": "ShipMethod", "type": "NVARCHAR(50)", "nullable": false },
+      { "name": "CreditCardApprovalCode", "type": "VARCHAR(15)", "nullable": true },
+      { "name": "SubTotal", "type": "MONEY", "nullable": false },
+      { "name": "TaxAmt", "type": "MONEY", "nullable": false },
+      { "name": "Freight", "type": "MONEY", "nullable": false },
+      {
+        "name": "TotalDue",
+        "type": "computed expression",
+        "nullable": "unknown",
+        "computed": true,
+        "inferredType": "MONEY"
+      },
+      { "name": "Comment", "type": "NVARCHAR(MAX)", "nullable": true },
+      { "name": "rowguid", "type": "UNIQUEIDENTIFIER", "nullable": false },
+      { "name": "ModifiedDate", "type": "DATETIME", "nullable": false }
+    ],
+    "primaryKey": ["SalesOrderID"],
+    "foreignKeys": [
+      {
+        "columns": ["BillToAddressID"],
+        "referencedTable": "SalesLT.Address",
+        "referencedColumns": ["AddressID"],
+        "onDelete": "NO ACTION"
+      },
+      {
+        "columns": ["ShipToAddressID"],
+        "referencedTable": "SalesLT.Address",
+        "referencedColumns": ["AddressID"],
+        "onDelete": "NO ACTION"
+      },
+      {
+        "columns": ["CustomerID"],
+        "referencedTable": "SalesLT.Customer",
+        "referencedColumns": ["CustomerID"],
+        "onDelete": "NO ACTION"
+      }
+    ],
+    "indexes": [
+      { "name": "IX_SalesOrderHeader_CustomerID", "columns": ["CustomerID"], "unique": false },
+      { "name": "AK_SalesOrderHeader_rowguid", "columns": ["rowguid"], "unique": true },
+      { "name": "AK_SalesOrderHeader_SalesOrderNumber", "columns": ["SalesOrderNumber"], "unique": true },
+      {
+        "name": "IX_SalesOrderHeader_BillToAddressID",
+        "columns": ["BillToAddressID"],
+        "unique": false,
+        "inferredOptional": true
+      },
+      {
+        "name": "IX_SalesOrderHeader_ShipToAddressID",
+        "columns": ["ShipToAddressID"],
+        "unique": false,
+        "inferredOptional": true
+      }
+    ]
+  }
+}

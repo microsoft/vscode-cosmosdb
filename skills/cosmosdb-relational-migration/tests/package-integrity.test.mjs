@@ -74,6 +74,9 @@ test('defines a project boundary independent of the host workspace', () => {
     const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
     assert.match(skill, /default to the sole workspace folder\s+only when it is also the target project root/u);
     assert.match(skill, /directory containing its `\.cosmosdb-migration` folder/u);
+    assert.match(skill, /An explicit `workspace` and a selected existing migration are two constraints, not a\s+precedence order/u);
+    assert.match(skill, /Do not select either root, inspect either project, initialize another migration/u);
+    assert.match(skill, /If the host cannot ask, report the unresolved\s+scope and stop rather than choosing a root/u);
     assert.match(skill, /If multiple projects could match, ask the user to select one/u);
     assert.match(skill, /not the collection of open folders or a containing repository/u);
     assert.match(skill, /Scope search tools\s+explicitly and discard results outside it/u);
@@ -283,15 +286,35 @@ test('permits advisory code-migration concerns without relaxing execution checks
     assert.match(codeMigration, /Required execution checks, SDK compatibility, and output\s+evidence still determine acceptance/u);
 });
 
-test('persists request instructions through the version 1 fields', () => {
+test('persists only explicitly saved phase guidance through the version 1 fields', () => {
     const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
     const projectFormat = fs.readFileSync(path.join(skillRoot, 'references', 'contracts', 'project-state-and-artifacts.md'), 'utf8');
-    assert.match(skill, /Before setting a phase `in-progress`, persist additional instructions/u);
-    assert.match(projectFormat, /`preflight` or `discovery`: `phases\.discovery\.discoveryInstructions`/u);
+    assert.match(skill, /Before setting a phase `in-progress`, persist only explicitly saved phase guidance/u);
+    assert.match(skill, /Never save a whole run request as phase instructions/u);
+    assert.match(projectFormat, /requires an explicit save\/reuse request or entry in a phase's instruction field/u);
+    assert.match(projectFormat, /`discovery`: `phases\.discovery\.discoveryInstructions`/u);
     assert.match(projectFormat, /`assessment`: `phases\.assessment\.assessmentInstructions`/u);
     assert.match(projectFormat, /`schema-conversion`: `phases\.schemaConversion\.schemaConversionInstructions`/u);
     assert.match(projectFormat, /`code-migration`: root `migrationInstructions`/u);
-    assert.match(projectFormat, /`provisioning` has no free-form instruction field/u);
+    assert.match(projectFormat, /Route and apply saved guidance to its intended phase, not the currently running phase/u);
+    assert.match(projectFormat, /Ask before persisting if intent or destination is ambiguous/u);
+    assert.match(projectFormat, /Preserve only the intended guidance verbatim/u);
+    assert.match(projectFormat, /Append different text after a blank line/u);
+    assert.match(projectFormat, /replace only on explicit request and skip exact duplicates/u);
+    assert.match(projectFormat, /`preflight` and `provisioning` have no free-form instruction fields/u);
+    assert.doesNotMatch(projectFormat, /`preflight` or `discovery`: `phases\.discovery\.discoveryInstructions`/u);
+});
+
+test('keeps preflight controls and workload evidence out of saved discovery guidance', () => {
+    const projectFormat = fs.readFileSync(path.join(skillRoot, 'references/contracts/project-state-and-artifacts.md'), 'utf8');
+    const preflight = fs.readFileSync(path.join(skillRoot, 'references/phases/preflight.md'), 'utf8');
+    assert.match(projectFormat, /Run controls[\s\S]*`schema-source: infer`[\s\S]*never saved instruction fields/u);
+    assert.match(projectFormat, /Put traffic, retention, and storage in `volumetrics\/volumetrics\.md`/u);
+    assert.match(projectFormat, /One-run context does not authorize persistence/u);
+    assert.match(projectFormat, /Old saved launch controls never constrain later requests/u);
+    assert.match(preflight, /Keep preflight guidance invocation-scoped and workload facts in input artifacts/u);
+    assert.match(preflight, /Only explicit requests to save discovery guidance may change `phases\.discovery\.discoveryInstructions`/u);
+    assert.doesNotMatch(preflight, /Apply and preserve `phases\.discovery\.discoveryInstructions`/u);
 });
 
 test('resolves every relative Markdown link inside the migration Skill', () => {
@@ -835,6 +858,26 @@ test('keeps operational handoff separate without hiding required implementation 
     assert.equal([...example.matchAll(/^  - Depends on:/gmu)].length, 3);
     assert.equal([...example.matchAll(/^  - Done when:/gmu)].length, 3);
     assert.equal([...example.matchAll(/^  - Evidence:/gmu)].length, 3);
+});
+
+test('requires acyclic evidence clearance across implementation and activation milestones', () => {
+    const reference = fs.readFileSync(path.join(skillRoot, 'references/phases/code-migration.md'), 'utf8');
+    assert.match(reference, /Check the combined dependency graph, not just\s+the explicit ID lists/u);
+    assert.match(reference, /Test-environment setup is a prerequisite for implementation verification/u);
+    assert.match(reference, /Activation must enumerate only its pre-activation blocker IDs/u);
+    assert.match(reference, /cannot require a blocker's clearance that includes observing or closing the rollback window/u);
+    assert.match(reference, /Do not fix a cycle by deleting\s+required evidence, weakening rollback guarantees/u);
+});
+
+test('distinguishes selected implementation mechanisms from unresolved service choices', () => {
+    const reference = fs.readFileSync(path.join(skillRoot, 'references/phases/code-migration.md'), 'utf8');
+    const conversion = fs.readFileSync(path.join(skillRoot, 'references/phases/schema-conversion.md'), 'utf8');
+    assert.match(reference, /naming a service does not/u);
+    assert.match(reference, /do not\s+reclassify that choice as only missing test evidence/u);
+    assert.match(reference, /a named future service without a selected\s+mechanism is not a resolved solution/u);
+    assert.match(reference, /milestone and evidence-producing task or external owner/u);
+    assert.match(conversion, /These are conditional design notes, not a new veto on conversion completion/u);
+    assert.match(conversion, /code-migration\.md#implementation-mechanisms/u);
 });
 
 test('resolves target intent before account discovery', () => {

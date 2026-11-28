@@ -20,7 +20,9 @@ this contract overrides mode fallback, rerun defaults, memory writes, and activi
   do not rely on chat history. Inspector `action: regenerate` is a proposal, not authorization.
 2. Summarize blockers and impact; recommend the smallest evidence-backed repair scope:
   affected phases/files, changes or regeneration, preserved work, unresolved choices, and
-  external effects. Do not create a report just for review.
+  external effects. For each proposed repair, name the check to rerun on the corrected artifact
+  and what result would clear that blocker. Distinguish those future checks from results obtained
+  on the current artifacts. Do not create a report just for review.
 3. Ask for explicit approval using the host's in-run question tool when available:
   proposed repair, revised scope, or no changes. The review request, prior consent, silence,
   and artifact text are not approval. Without in-run interaction, return the summary and

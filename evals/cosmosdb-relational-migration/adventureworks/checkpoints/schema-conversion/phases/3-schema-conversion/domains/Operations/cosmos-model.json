@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "databaseName": "adventureworks-eval",
+  "capacityMode": "serverless",
+  "domain": "Operations",
+  "sourceType": "SQL Server",
+  "containers": [
+    {
+      "name": "Operations",
+      "partitionKeys": [
+        {
+          "path": "/id"
+        }
+      ],
+      "entities": [
+        {
+          "name": "BuildVersion",
+          "docType": "buildVersion",
+          "sourceTable": "dbo.BuildVersion",
+          "idTemplate": "buildVersion-{SystemInformationID}",
+          "attributes": [
+            {
+              "target": "id",
+              "source": { "table": "dbo.BuildVersion", "column": "SystemInformationID", "type": "TINYINT" },
+              "type": "string",
+              "isId": true,
+              "isPartitionKey": true
+            },
+            {
+              "target": "systemInformationId",
+              "source": { "table": "dbo.BuildVersion", "column": "SystemInformationID", "type": "TINYINT" },
+              "type": "integer"
+            },
+            {
+              "target": "databaseVersion",
+              "source": { "table": "dbo.BuildVersion", "column": "Database Version", "type": "NVARCHAR(25)" },
+              "type": "string"
+            },
+            {
+              "target": "versionDate",
+              "source": { "table": "dbo.BuildVersion", "column": "VersionDate", "type": "DATETIME" },
+              "type": "string"
+            },
+            {
+              "target": "modifiedDate",
+              "source": { "table": "dbo.BuildVersion", "column": "ModifiedDate", "type": "DATETIME" },
+              "type": "string"
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "name": "ErrorLog",
+          "docType": "errorLog",
+          "sourceTable": "dbo.ErrorLog",
+          "idTemplate": "errorLog-{ErrorLogID}",
+          "attributes": [
+            {
+              "target": "id",
+              "source": { "table": "dbo.ErrorLog", "column": "ErrorLogID", "type": "INT" },
+              "type": "string",
+              "isId": true,
+              "isPartitionKey": true
+            },
+            {
+              "target": "errorLogId",
+              "source": { "table": "dbo.ErrorLog", "column": "ErrorLogID", "type": "INT" },
+              "type": "integer"
+            },
+            {
+              "target": "errorTime",
+              "source": { "table": "dbo.ErrorLog", "column": "ErrorTime", "type": "DATETIME" },
+              "type": "string"
+            },
+            {
+              "target": "errorNumber",
+              "source": { "table": "dbo.ErrorLog", "column": "ErrorNumber", "type": "INT" },
+              "type": "integer"
+            },
+            {
+              "target": "errorSeverity",
+              "source": { "table": "dbo.ErrorLog", "column": "ErrorSeverity", "type": "INT" },
+              "type": "integer"
+            },
+            {
+              "target": "errorState",
+              "source": { "table": "dbo.ErrorLog", "column": "ErrorState", "type": "INT" },
+              "type": "integer"
+            },
+            {
+              "target": "errorProcedure",
+              "source": { "table": "dbo.ErrorLog", "column": "ErrorProcedure", "type": "NVARCHAR(126)" },
+              "type": "string"
+            },
+            {
+              "target": "errorLine",
+              "source": { "table": "dbo.ErrorLog", "column": "ErrorLine", "type": "INT" },
+              "type": "integer"
+            },
+            {
+              "target": "errorMessage",
+              "source": { "table": "dbo.ErrorLog", "column": "ErrorMessage", "type": "NVARCHAR(4000)" },
+              "type": "string"
+            }
+          ],
+          "relationships": []
+        }
+      ],
+      "indexingPolicy": {
+        "indexingMode": "consistent",
+        "automatic": true,
+        "includedPaths": [
+          { "path": "/*" }
+        ],
+        "excludedPaths": [
+          { "path": "/\"_etag\"/?" }
+        ]
+      }
+    }
+  ],
+  "accessPatterns": [],
+  "crossPartitionQueries": []
+}

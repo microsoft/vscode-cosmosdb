@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "domain": "Orders",
+  "databaseName": "adventureworks-eval",
+  "capacityMode": "serverless",
+  "sourceType": "SQL Server",
+  "containers": [
+    {
+      "name": "Orders",
+      "partitionKeys": [
+        {
+          "path": "/salesOrderId",
+          "analysis": "Both source tables supply SalesOrderID; co-locates each header with its details. Per-order skew and growth are unknown."
+        }
+      ],
+      "entities": [
+        {
+          "name": "SalesOrderHeader",
+          "docType": "salesOrderHeader",
+          "sourceTable": "SalesLT.SalesOrderHeader",
+          "idTemplate": "salesOrderHeader-{SalesOrderID}",
+          "attributes": [
+            { "target": "id", "source": { "table": "SalesLT.SalesOrderHeader", "column": "SalesOrderID", "type": "INT" }, "type": "string", "isId": true },
+            { "target": "salesOrderId", "source": { "table": "SalesLT.SalesOrderHeader", "column": "SalesOrderID", "type": "INT" }, "type": "integer", "isPartitionKey": true },
+            { "target": "revisionNumber", "source": { "table": "SalesLT.SalesOrderHeader", "column": "RevisionNumber", "type": "TINYINT" }, "type": "integer" },
+            { "target": "orderDate", "source": { "table": "SalesLT.SalesOrderHeader", "column": "OrderDate", "type": "DATETIME" }, "type": "string" },
+            { "target": "dueDate", "source": { "table": "SalesLT.SalesOrderHeader", "column": "DueDate", "type": "DATETIME" }, "type": "string" },
+            { "target": "shipDate", "source": { "table": "SalesLT.SalesOrderHeader", "column": "ShipDate", "type": "DATETIME" }, "type": "string" },
+            { "target": "status", "source": { "table": "SalesLT.SalesOrderHeader", "column": "Status", "type": "TINYINT" }, "type": "integer" },
+            { "target": "onlineOrderFlag", "source": { "table": "SalesLT.SalesOrderHeader", "column": "OnlineOrderFlag", "type": "dbo.Flag" }, "type": "boolean" },
+            { "target": "salesOrderNumber", "source": { "table": "SalesLT.SalesOrderHeader", "column": "SalesOrderNumber", "type": "computed expression" }, "type": "string" },
+            { "target": "purchaseOrderNumber", "source": { "table": "SalesLT.SalesOrderHeader", "column": "PurchaseOrderNumber", "type": "dbo.OrderNumber" }, "type": "string" },
+            { "target": "accountNumber", "source": { "table": "SalesLT.SalesOrderHeader", "column": "AccountNumber", "type": "dbo.AccountNumber" }, "type": "string" },
+            { "target": "customerId", "source": { "table": "SalesLT.SalesOrderHeader", "column": "CustomerID", "type": "INT" }, "type": "integer" },
+            { "target": "shipToAddressId", "source": { "table": "SalesLT.SalesOrderHeader", "column": "ShipToAddressID", "type": "INT" }, "type": "integer" },
+            { "target": "billToAddressId", "source": { "table": "SalesLT.SalesOrderHeader", "column": "BillToAddressID", "type": "INT" }, "type": "integer" },
+            { "target": "shipMethod", "source": { "table": "SalesLT.SalesOrderHeader", "column": "ShipMethod", "type": "NVARCHAR(50)" }, "type": "string" },
+            { "target": "creditCardApprovalCode", "source": { "table": "SalesLT.SalesOrderHeader", "column": "CreditCardApprovalCode", "type": "VARCHAR(15)" }, "type": "string" },
+            { "target": "subTotal", "source": { "table": "SalesLT.SalesOrderHeader", "column": "SubTotal", "type": "MONEY" }, "type": "string" },
+            { "target": "taxAmt", "source": { "table": "SalesLT.SalesOrderHeader", "column": "TaxAmt", "type": "MONEY" }, "type": "string" },
+            { "target": "freight", "source": { "table": "SalesLT.SalesOrderHeader", "column": "Freight", "type": "MONEY" }, "type": "string" },
+            { "target": "totalDue", "source": { "table": "SalesLT.SalesOrderHeader", "column": "TotalDue", "type": "computed expression" }, "type": "string" },
+            { "target": "comment", "source": { "table": "SalesLT.SalesOrderHeader", "column": "Comment", "type": "NVARCHAR(MAX)" }, "type": "object" },
+            { "target": "rowguid", "source": { "table": "SalesLT.SalesOrderHeader", "column": "rowguid", "type": "UNIQUEIDENTIFIER" }, "type": "string" },
+            { "target": "modifiedDate", "source": { "table": "SalesLT.SalesOrderHeader", "column": "ModifiedDate", "type": "DATETIME" }, "type": "string" }
+          ],
+          "relationships": [
+            { "targetEntity": "Customer", "sourceFK": { "table": "SalesLT.SalesOrderHeader", "column": "CustomerID", "type": "INT", "constraintName": "FK_SalesOrderHeader_Customer_CustomerID" }, "type": "one-to-many", "strategy": "reference" },
+            { "targetEntity": "Address", "sourceFK": { "table": "SalesLT.SalesOrderHeader", "column": "BillToAddressID", "type": "INT", "constraintName": "FK_SalesOrderHeader_Address_BillTo_AddressID" }, "type": "one-to-many", "strategy": "reference" },
+            { "targetEntity": "Address", "sourceFK": { "table": "SalesLT.SalesOrderHeader", "column": "ShipToAddressID", "type": "INT", "constraintName": "FK_SalesOrderHeader_Address_ShipTo_AddressID" }, "type": "one-to-many", "strategy": "reference" }
+          ]
+        },
+        {
+          "name": "SalesOrderDetail",
+          "docType": "salesOrderDetail",
+          "sourceTable": "SalesLT.SalesOrderDetail",
+          "idTemplate": "salesOrderDetail-{SalesOrderID}-{SalesOrderDetailID}",
+          "attributes": [
+            { "target": "id", "source": { "table": "SalesLT.SalesOrderDetail", "column": "SalesOrderID", "type": "INT" }, "type": "string", "isId": true },
+            { "target": "salesOrderId", "source": { "table": "SalesLT.SalesOrderDetail", "column": "SalesOrderID", "type": "INT" }, "type": "integer", "isPartitionKey": true },
+            { "target": "salesOrderDetailId", "source": { "table": "SalesLT.SalesOrderDetail", "column": "SalesOrderDetailID", "type": "INT" }, "type": "integer" },
+            { "target": "orderQty", "source": { "table": "SalesLT.SalesOrderDetail", "column": "OrderQty", "type": "SMALLINT" }, "type": "integer" },
+            { "target": "productId", "source": { "table": "SalesLT.SalesOrderDetail", "column": "ProductID", "type": "INT" }, "type": "integer" },
+            { "target": "unitPrice", "source": { "table": "SalesLT.SalesOrderDetail", "column": "UnitPrice", "type": "MONEY" }, "type": "string" },
+            { "target": "unitPriceDiscount", "source": { "table": "SalesLT.SalesOrderDetail", "column": "UnitPriceDiscount", "type": "MONEY" }, "type": "string" },
+            { "target": "lineTotal", "source": { "table": "SalesLT.SalesOrderDetail", "column": "LineTotal", "type": "computed expression" }, "type": "string" },
+            { "target": "rowguid", "source": { "table": "SalesLT.SalesOrderDetail", "column": "rowguid", "type": "UNIQUEIDENTIFIER" }, "type": "string" },
+            { "target": "modifiedDate", "source": { "table": "SalesLT.SalesOrderDetail", "column": "ModifiedDate", "type": "DATETIME" }, "type": "string" }
+          ],
+          "relationships": [
+            { "targetEntity": "Product", "sourceFK": { "table": "SalesLT.SalesOrderDetail", "column": "ProductID", "type": "INT", "constraintName": "FK_SalesOrderDetail_Product_ProductID" }, "type": "one-to-many", "strategy": "reference" },
+            { "targetEntity": "SalesOrderHeader", "sourceFK": { "table": "SalesLT.SalesOrderDetail", "column": "SalesOrderID", "type": "INT", "constraintName": "FK_SalesOrderDetail_SalesOrderHeader_SalesOrderID" }, "type": "one-to-many", "strategy": "reference" }
+          ]
+        }
+      ],
+      "indexingPolicy": {
+        "indexingMode": "consistent",
+        "automatic": true,
+        "includedPaths": [
+          { "path": "/docType/?" },
+          { "path": "/salesOrderId/?" },
+          { "path": "/customerId/?" },
+          { "path": "/productId/?" },
+          { "path": "/billToAddressId/?" },
+          { "path": "/shipToAddressId/?" },
+          { "path": "/salesOrderNumber/?" },
+          { "path": "/rowguid/?" }
+        ],
+        "excludedPaths": [
+          { "path": "/*" },
+          { "path": "/\"_etag\"/?" }
+        ]
+      }
+    }
+  ],
+  "accessPatterns": [
+    {
+      "name": "Hypothetical order by primary key",
+      "source": { "type": "schema-inferred", "query": "SalesOrderHeader lookup by SalesOrderID; no controller access observed" },
+      "target": { "type": "point-read", "container": "Orders", "operation": "Read header by deterministic id and salesOrderId through coordinator", "partitionKeyValue": "SalesOrderID", "isCrossPartition": false }
+    },
+    {
+      "name": "Hypothetical details by order",
+      "source": { "type": "schema-inferred", "query": "SalesOrderDetail lookup by SalesOrderID; no controller access observed" },
+      "target": { "type": "query", "container": "Orders", "operation": "Parameterized partition-routed query through coordinator", "query": "SELECT * FROM c WHERE c.docType = @docType AND c.salesOrderId = @salesOrderId", "partitionKeyValue": "SalesOrderID", "isCrossPartition": false }
+    },
+    {
+      "name": "Hypothetical customer orders",
+      "source": { "type": "schema-inferred", "query": "SalesOrderHeader lookup by CustomerID source index; no controller access observed" },
+      "target": { "type": "query", "container": "Orders", "operation": "Parameterized fan-out query through coordinator", "query": "SELECT * FROM c WHERE c.docType = @docType AND c.customerId = @customerId", "isCrossPartition": true }
+    },
+    {
+      "name": "Hypothetical product references",
+      "source": { "type": "schema-inferred", "query": "SalesOrderDetail lookup by ProductID source index; no controller access observed" },
+      "target": { "type": "query", "container": "Orders", "operation": "Parameterized fan-out query through coordinator", "query": "SELECT * FROM c WHERE c.docType = @docType AND c.productId = @productId", "isCrossPartition": true }
+    }
+  ]
+}

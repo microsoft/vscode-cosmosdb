@@ -190,11 +190,13 @@ test('coverage includes every phase, critical workflow boundaries and negative a
         'domain-ownership',
         'domain-selection',
         'peer-design',
+        'ttl-preservation',
         'operation-results',
         'copied-version',
         'grouping-scope',
         'operation-indexes',
         'container-specific-routing',
+        'ttl-readiness',
         'provisioning-approval',
         'target-switch',
         'code-approval',
@@ -219,7 +221,7 @@ test('coverage includes every phase, critical workflow boundaries and negative a
             .filter(({ tags }) => tags.category === 'artifacts')
             .map(({ tags }) => tags.phase)
             .sort(),
-        ['assessment', 'discovery', 'preflight', 'provisioning'],
+        ['assessment', 'discovery', 'preflight', 'provisioning', 'schema-conversion'],
     );
     for (const [contract, phase] of Object.entries({
         'document-preflight': 'preflight',

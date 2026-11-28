@@ -340,6 +340,29 @@ Every domain sharing a container must declare the same complete policy; the merg
 does not union policies. Record the chosen uniqueness scope and supporting evidence
 in the conversion summary.
 
+### Time to Live (TTL)
+
+Model approved retention per container with `defaultTtl`: omit it for TTL off, use
+`-1` for item-level expiration only, or use a positive number of seconds from each
+item's last update. For example, 180 days is `15552000`. Do not infer this setting
+from a storage forecast or substitute sliding expiration for an absolute source deadline.
+The initial backfill is a new target write: copying the original duration restarts the clock.
+For fixed deadlines, demonstrate the remaining lifetime at backfill and after a later write,
+and decide separately how to handle already-expired records (zero is not a valid TTL).
+When reviewing missing expiration evidence, identify each affected target, including projections.
+For each one, require a backfill and a later update of the **same item ID and complete partition key**.
+Matching deadlines on two different items do not demonstrate what an update does to the first item.
+Inspect root `ttl` fields before copying documents into TTL-enabled containers: explicitly
+rename business data or map a deliberate item override. Omit `ttl` to inherit the default;
+`null` is not inheritance. See the [executable evidence contract](../contracts/source-inventory.md).
+All domains sharing a container must agree on this setting.
+
+When reviewing rollout to a populated container, identify which existing items would
+expire under the proposed policy and explicitly flag the approval gate: **obtain separate
+approval for the TTL change before applying it**. Conversion sign-off, passing examples,
+and an inventory of affected items do not authorize deletion. Carry this requirement
+into the [provisioning handoff](./provisioning.md).
+
 ## Multi-DocType Container Strategy
 
 - Prefer co-locating related entity types, including parent-child entities, when

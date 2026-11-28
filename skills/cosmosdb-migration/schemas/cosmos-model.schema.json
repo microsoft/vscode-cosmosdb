@@ -379,6 +379,7 @@
         "indexingPolicy": { "$ref": "#/$defs/indexingPolicy" },
         "fullTextPolicy": { "$ref": "#/$defs/fullTextPolicy" },
         "uniqueKeyPolicy": { "$ref": "#/$defs/uniqueKeyPolicy" },
+        "defaultTtl": { "type": "integer", "minimum": -1, "maximum": 2147483647, "not": { "const": 0 } },
         "maxThroughput": { "type": "integer", "minimum": 1000, "multipleOf": 1000 },
         "throughputMode": { "enum": ["shared", "dedicated"] },
         "estimatedStorageGB": { "type": "number", "minimum": 0 },

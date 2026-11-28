@@ -347,6 +347,20 @@ test('emits container-level full-text policy and indexing-policy full-text index
     assert.match(bicep, /^        fullTextIndexes: \[\n          \{\n            path: '\/description'/mu);
 });
 
+test('emits modeled TTL and requires separate emulator provisioning before seeding', () => {
+    const { model, sampleData, project } = inputs();
+    project.phases.targetEnvironment.type = 'emulator';
+    const generate = () => buildProvisioningArtifacts(model, sampleData, project);
+    assert.doesNotMatch(generate()['main.bicep'], /defaultTtl/u);
+    for (const ttl of [15552000, -1]) {
+        model.containers[0].defaultTtl = ttl;
+        const artifacts = generate();
+        assert.deepEqual(artifacts['main.bicep'].match(/defaultTtl: -?\d+/gu), [`defaultTtl: ${ttl}`]);
+        assert.doesNotMatch(artifacts['seed-data.csh'], /^create /mu);
+        assert.match(artifacts['seed-data.csh'], /Seed-only/u);
+    }
+});
+
 test('provisions unique-key policies via Bicep without silently omitting them in Shell', () => {
     const { model, sampleData, project } = inputs();
     model.containers[0].uniqueKeyPolicy = { uniqueKeys: [{ paths: ['/docType', '/itemId'] }] };

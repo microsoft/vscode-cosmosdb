@@ -9,7 +9,7 @@ import { showHelp } from './cli-help.mjs';
 import { objectIdHex, readIdentityManifest, resolveItemId, validateIdentityManifest } from './identity-mapping.mjs';
 import { readPartitionKeyValue } from './partition-key-values.mjs';
 import { parseJson } from './phase-summary.mjs';
-import { isObjectIdSourceType, splitIndexPathParts, validateCosmosModel } from './validate-cosmos-model.mjs';
+import { isObjectIdSourceType, isValidTtl, splitIndexPathParts, validateCosmosModel } from './validate-cosmos-model.mjs';
 import { createSourceResolver, readSourceInventory, resolveForeignKey } from './validate-source-evidence.mjs';
 import { datasetKey, entitySource, sourceRefs, resolveField } from './source-contract.mjs';
 
@@ -395,6 +395,13 @@ function validateItem(item, container, entityByDocType, jsonPath, uniqueKeys, co
             if (!attribute.optional) addError(errors, attributePath, 'is required by the canonical model');
         } else if (!(attribute.nullable && item[attribute.target] === null) && !matchesJsonType(item[attribute.target], attribute.type)) {
             addError(errors, attributePath, `must have JSON type ${attribute.type}`);
+        }
+    }
+    if (container.defaultTtl !== undefined && Object.hasOwn(item, 'ttl')) {
+        if (!entity.attributes.some(attribute => attribute.target === 'ttl')) {
+            addError(errors, `${jsonPath}.ttl`, 'item TTL override must be declared on this entity');
+        } else if (!isValidTtl(item.ttl)) {
+            addError(errors, `${jsonPath}.ttl`, 'must be -1 or an integer from 1 to 2147483647 seconds');
         }
     }
     validateId(item, entity, jsonPath, errors, manifest?.mappings.find(mapping => mapping.containerName === container.name && mapping.docType === entity.docType));

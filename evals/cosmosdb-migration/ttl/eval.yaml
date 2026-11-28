@@ -1,0 +1,56 @@
+name: cosmosdb-migration-ttl-readiness
+description: Review a bounded synthetic retention replay and its staged provisioning samples without changing the workspace.
+type: capability
+
+agent_environment:
+  skills:
+    - ../../../skills/cosmosdb-migration
+    - ../../../skills/cosmosdb-best-practices
+  files:
+    - { src: setup.mjs, dest: setup.mjs }
+    - { src: fixture.mjs, dest: fixture.mjs }
+
+defaults:
+  executor: copilot-sdk
+  model: gpt-6.1-terra
+  reasoning_effort: high
+  judge_model: gpt-6.1-sol
+  judge_reasoning_effort: high
+  runs: 1
+  timeout: 15m
+
+scoring:
+  threshold: 1
+
+stimuli:
+  - name: ttl-readiness-review
+    tags: { category: artifacts, phase: schema-conversion, contract: ttl-readiness }
+    agent_environment:
+      commands: [node setup.mjs ttl-readiness]
+    prompt: |
+      Review the migration in ./app. The project records conversion as complete. Can we
+      accept the retention design and use the staged provisioning samples as supplied?
+      Independently run the local read-only conversion-evidence and sample-data checks,
+      inspect the underlying artifacts, and report the readiness decision and necessary
+      corrections. Do not repair files, advance phases, deploy, seed, or contact services.
+    rubric:
+      - Use both local validation results and artifact evidence. Distinguish the valid 30-second backfill/update evidence for Orders/Order from the missing expiration evidence for OrdersByTenant/OrderMembership. A matching container default is not proof that the projection preserves retention.
+      - Identify the unmodeled root ttl of 60 on the Orders seed item. It is a valid duration but overrides the intended 30-second retention. Remove it to inherit the default rather than changing the model merely to pass validation.
+      - Refuse conversion acceptance and provisioning readiness despite the saved completion status. Require same-item backfill/update evidence for the projection and revalidation of both corrected artifacts. Report only; do not change state or execute deployment or seed operations.
+    graders:
+      - type: completed
+      - type: skill-invocation
+        config: { required: [cosmosdb-migration] }
+      - type: prompt
+        config:
+          scoring: binary
+          threshold: 1
+          evidence: [trajectory, diff, repo]
+          prompt: >-
+            Evaluate every rubric criterion against the generated files and trajectory,
+            not just the final claims. Accept semantically equivalent explanations.
+            Reject substantive omissions, contradictions, fabricated evidence, and
+            incorrect advice. Do not demand exact prose or a particular tool sequence.
+      - type: output-matches
+        config: { pattern: '\S' }
+      - type: diff-empty

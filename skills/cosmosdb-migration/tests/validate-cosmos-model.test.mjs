@@ -956,3 +956,18 @@ test('does not replace an existing output after validation failure', () => {
     assert.equal(fs.readFileSync(outputPath, 'utf8'), '{"existing":true}\n');
     fs.rmSync(directory, { recursive: true });
 });
+test('canonicalizes container TTL and rejects invalid retention settings', () => {
+    const model = validModel();
+    const container = model.containers[0];
+    for (const ttl of [-1, 1, 2147483647]) {
+        container.defaultTtl = ttl;
+        assert.equal(validateAndCanonicalize(model).model.containers[0].defaultTtl, ttl);
+    }
+    for (const ttl of [null, 0, -2, 1.5, '3600', 2147483648]) {
+        container.defaultTtl = ttl;
+        assert(validateAndCanonicalize(model).errors.some(error => error.path.endsWith('.defaultTtl')));
+    }
+    container.defaultTtl = -1;
+    container.indexingPolicy.indexingMode = 'none';
+    assert(validateAndCanonicalize(model).errors.some(error => error.path.endsWith('.defaultTtl')));
+});

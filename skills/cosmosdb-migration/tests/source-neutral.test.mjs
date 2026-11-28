@@ -272,12 +272,128 @@ test('required behavior needs a passing executable check or explicit approved re
     assert.deepEqual(executeBehaviorExample({
         operation: 'partition-batch', input: { partitionKeys: [['tenant-a'], ['tenant-a']], payloadBytes: 2 * 1024 * 1024 + 1 },
     }), { supported: false });
-    assert.deepEqual(executeBehaviorExample({
-        operation: 'ttl-relative', input: { lastModifiedSeconds: 100, ttl: 30, sourceExpiresAtSeconds: 130 },
-    }), { expiresAtSeconds: 130, equivalent: true });
-    assert.deepEqual(executeBehaviorExample({
-        operation: 'ttl-relative', input: { lastModifiedSeconds: 120, ttl: 30, sourceExpiresAtSeconds: 130 },
-    }), { expiresAtSeconds: 150, equivalent: false });
+});
+
+test('TTL-enabled document preservation separates business fields from intentional item overrides', t => {
+    const data = fixture(workspace(t));
+    const decision = data.evidence.documentMappings[0];
+    const source = { ...decision.examples[0].source, ttl: 60, details: { ttl: -2 } };
+    const run = defaultTtl => executeDocumentMapping(data.inventory, data.entity, data.evidence.fieldMappings, decision, source, { defaultTtl });
+    assert.equal(run(undefined).ttl, 60);
+    assert.throws(() => run(-1), /collides/u);
+    data.inventory.datasets[0].fields.push({ id: 'ttl', path: [property('ttl')], nativeTypes: ['integer'] });
+    const attribute = { target: 'businessTtl', type: 'integer', source: { dataset: 'orders', field: 'ttl' } };
+    const mapping = { ...data.evidence.fieldMappings[1], target: 'businessTtl', inputs: [attribute.source] };
+    data.entity.attributes.push(attribute);
+    data.evidence.fieldMappings.push(mapping);
+    const renamed = run(3600);
+    assert.equal(renamed.businessTtl, 60);
+    assert.equal(Object.hasOwn(renamed, 'ttl'), false);
+    assert.deepEqual(renamed.details, { ttl: -2 });
+    attribute.target = mapping.target = 'ttl';
+    assert.throws(() => run(-1), /itemTtl/u);
+    decision.itemTtl = true;
+    for (const ttl of [-1, 1, 2147483647]) {
+        source.ttl = ttl;
+        assert.equal(run(3600).ttl, ttl);
+    }
+    for (const ttl of [null, 0, 0.5, 2147483648]) {
+        source.ttl = ttl;
+        assert.throws(() => run(-1), /Invalid mapped item ttl/u);
+    }
+});
+
+test('expiration preservation replays backfill and update against the modeled target', t => {
+    const data = fixture(workspace(t));
+    const semantic = { id: 'retention', kind: 'expiration', required: true, datasets: ['orders'], expirationBasis: 'sliding' };
+    const example = { domain: 'Orders', container: 'Orders', entity: 'Order', operation: 'ttl-relative', expected: { equivalent: true },
+        input: { backfill: { exampleIndex: 0, lastModifiedSeconds: 100, sourceExpiresAtSeconds: 130 },
+            update: { exampleIndex: 0, lastModifiedSeconds: 120, sourceExpiresAtSeconds: 150 } } };
+    data.inventory.semantics.push(semantic);
+    data.evidence.behaviorDecisions = [{ semantic: 'retention', action: 'preserve', rationale: 'Source retention', implementation: 'Item TTL', examples: [example] }];
+    const container = data.model.containers[0];
+    const validate = () => validateMappingEvidence(data.inventory, data.models, data.evidence, new Map([['orders', 'Orders']]));
+    assert.throws(validate, /TTL enabled/u);
+    container.defaultTtl = -1;
+    assert.throws(validate, /not preserved/u);
+    container.defaultTtl = 30;
+    assert.doesNotThrow(validate);
+    semantic.expirationBasis = 'fixed';
+    assert.throws(validate, /source deadline/u);
+    example.input.update.sourceExpiresAtSeconds = 130;
+    assert.throws(validate, /not preserved/u);
+
+    const documents = data.evidence.documentMappings[0];
+    documents.itemTtl = true;
+    const field = { ...data.inventory.datasets[0].fields[1], id: 'remaining', path: [property('remaining')], nativeTypes: ['integer'] };
+    data.inventory.datasets[0].fields.push(field);
+    data.entity.attributes.push({ target: 'ttl', type: 'integer', source: { dataset: 'orders', field: field.id } });
+    data.evidence.fieldMappings.push({ domain: 'Orders', container: 'Orders', entity: 'Order', target: 'ttl', operation: 'copy',
+        inputs: [{ dataset: 'orders', field: field.id }], examples: [30, 10].map(ttl => ({ inputs: [value(ttl)], output: value(ttl) })) });
+    documents.examples = [30, 10].map(ttl => ({
+        source: { ...documents.examples[0].source, remaining: ttl }, output: { ...data.item, ttl },
+    }));
+    container.defaultTtl = -1;
+    example.input.update.exampleIndex = 1;
+    assert.doesNotThrow(validate);
+    documents.examples[1].source.tenant = documents.examples[1].output.tenant = 'different partition';
+    assert.throws(validate, /same target item/u);
+});
+
+test('expiration evidence for non-document sources uses resolved IDs and covers derived copies', t => {
+    const data = fixture(workspace(t));
+    data.inventory.datasets[0].kind = 'other';
+    data.evidence.documentMappings = [];
+    data.model.containers[0].defaultTtl = 30;
+    const cases = [data.item.sourceId, '507f1f77bcf86cd799439012'].map(sourceId => {
+        const item = { sourceId, tenant: 'a' };
+        return { item, id: resolveItemId(data.entity, item) };
+    });
+    data.evidence.identityExamples[0].cases = cases;
+    data.inventory.semantics.push({ id: 'retention', kind: 'expiration', required: true, datasets: ['orders'], expirationBasis: 'sliding' });
+    const example = { domain: 'Orders', container: 'Orders', entity: 'Order', operation: 'ttl-relative', expected: { equivalent: true },
+        input: { backfill: { exampleIndex: 0, lastModifiedSeconds: 100, sourceExpiresAtSeconds: 130 },
+            update: { exampleIndex: 1, lastModifiedSeconds: 120, sourceExpiresAtSeconds: 150 } } };
+    const examples = [example];
+    data.evidence.behaviorDecisions = [{ semantic: 'retention', action: 'preserve', rationale: 'Sliding retention', implementation: 'Container TTL', examples }];
+    const validate = () => validateMappingEvidence(data.inventory, data.models, data.evidence, new Map([['orders', 'Orders'], ['archive', 'Orders']]));
+    assert.throws(validate, /same target item/u);
+    example.input.update.exampleIndex = 0;
+    assert.doesNotThrow(validate);
+
+    const copy = structuredClone(data.entity);
+    copy.name = 'ArchiveEntry';
+    copy.sourceDataset = 'archive';
+    data.inventory.datasets.push({ ...data.inventory.datasets[0], id: 'archive' });
+    data.model.containers.push({ ...data.model.containers[0], name: 'Archive', entities: [copy] });
+    const target = { domain: 'Orders', container: 'Archive', entity: copy.name };
+    data.evidence.fieldMappings.push(...data.evidence.fieldMappings.map(mapping => ({ ...mapping, ...target })));
+    data.evidence.identityExamples.push({ ...target, cases: cases.map(({ item }) => ({ item, id: resolveItemId(copy, item) })) });
+    assert.throws(validate, /every affected target/u);
+    data.evidence.sourceDispositions = [{ sourceDataset: 'orders', targets: [{ domain: 'Orders', container: 'Orders', entity: 'Order', kind: 'authoritative' },
+        { ...target, kind: 'projection' }] }];
+    assert.throws(validate, /every affected target/u);
+    examples.push({ ...example, ...target });
+    assert.doesNotThrow(validate);
+    delete data.model.containers[1].defaultTtl;
+    assert.throws(validate, /TTL enabled/u);
+});
+
+test('provisioning samples allow only declared, valid root TTL overrides in enabled containers', t => {
+    const data = fixture(workspace(t));
+    const container = data.root.containers[0];
+    const check = fields => validateSampleData(data.root, {
+        sampleData: [{ containerName: container.name, items: [{ ...data.item, ...fields }] }],
+    }, undefined, data.inventory);
+    assert.deepEqual(check({ ttl: 0 }), []);
+    container.defaultTtl = -1;
+    assert.deepEqual(check({ details: { ttl: 0 } }), []);
+    assert(check({ ttl: 60 }).some(error => error.path.endsWith('.ttl') && error.message.includes('declared')));
+    container.entities[0].attributes.push({ target: 'ttl', type: 'number', optional: true, nullable: true, source: { generated: 'constant', type: 'number' } });
+    for (const ttl of [0, 1.5, 2147483648, null]) {
+        assert(check({ ttl }).some(error => error.path.endsWith('.ttl') && error.message.includes('2147483647')));
+    }
+    for (const fields of [{}, { ttl: 1 }, { ttl: -1 }, { ttl: 2147483647 }]) assert.deepEqual(check(fields), []);
 });
 
 test('batch evidence distinguishes null from missing components without shortening hierarchical keys', () => {

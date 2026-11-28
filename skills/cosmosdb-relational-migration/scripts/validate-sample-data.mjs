@@ -67,22 +67,22 @@ function containsUnresolvedValue(value) {
     return false;
 }
 
-function scanValue(value, jsonPath, errors, depth = 1) {
+function scanValue(value, jsonPath, errors, depth = 1, checkPlaceholders = true) {
     if ((Array.isArray(value) || isObject(value)) && depth > MAX_NESTING_DEPTH) {
         addError(errors, jsonPath, `exceeds the ${MAX_NESTING_DEPTH}-level object/array nesting limit`);
         return false;
     }
-    if (typeof value === 'string' && containsUnresolvedValue(value)) {
+    if (checkPlaceholders && typeof value === 'string' && containsUnresolvedValue(value)) {
         addError(errors, jsonPath, 'contains an unresolved placeholder');
     }
     let withinDepthLimit = true;
     if (Array.isArray(value)) {
         value.forEach((item, index) => {
-            if (!scanValue(item, `${jsonPath}[${index}]`, errors, depth + 1)) withinDepthLimit = false;
+            if (!scanValue(item, `${jsonPath}[${index}]`, errors, depth + 1, checkPlaceholders)) withinDepthLimit = false;
         });
     } else if (isObject(value)) {
         for (const [key, child] of Object.entries(value)) {
-            if (!scanValue(child, `${jsonPath}.${key}`, errors, depth + 1)) withinDepthLimit = false;
+            if (!scanValue(child, `${jsonPath}.${key}`, errors, depth + 1, checkPlaceholders)) withinDepthLimit = false;
         }
     }
     return withinDepthLimit;
@@ -353,32 +353,34 @@ function uniquePathValue(item, uniquePath) {
 function validateItem(item, container, entityByDocType, jsonPath, uniqueKeys, coverage, errors, manifest) {
     if (!isObject(item)) {
         addError(errors, jsonPath, 'must be an object');
-        return;
+        return false;
     }
-    const withinDepthLimit = scanValue(item, jsonPath, errors);
+    // Check stored nesting before serialization, without decoding embedded JSON.
+    const withinDepthLimit = scanValue(item, jsonPath, errors, 1, false);
     if (typeof item.docType !== 'string') {
         addError(errors, `${jsonPath}.docType`, 'must be a string');
-        return;
+        return false;
     }
     const entity = entityByDocType.get(item.docType);
     if (!entity) {
         addError(errors, `${jsonPath}.docType`, `does not identify a standalone entity in container ${container.name}`);
-        return;
+        return false;
     }
     coverage.add(item.docType);
-    if (!withinDepthLimit) return;
+    if (!withinDepthLimit) return false;
 
     try {
         const itemBytes = Buffer.byteLength(JSON.stringify(item), 'utf8');
         if (itemBytes > MAX_ITEM_BYTES) {
             addError(errors, jsonPath, `exceeds the ${MAX_ITEM_BYTES}-byte item limit (${itemBytes} UTF-8 JSON bytes)`);
-            return;
+            return false;
         }
     } catch {
         addError(errors, jsonPath, 'must be serializable JSON');
-        return;
+        return false;
     }
 
+    scanValue(item, jsonPath, errors);
     for (const attribute of entity.attributes) {
         const attributePath = `${jsonPath}.${attribute.target}`;
         if (!Object.hasOwn(item, attribute.target)) {
@@ -424,6 +426,7 @@ function validateItem(item, container, entityByDocType, jsonPath, uniqueKeys, co
         }
         uniqueKeys.add(uniqueKey);
     }
+    return true;
 }
 
 export function validateSampleData(model, sampleData, identityManifest, sourceInventory) {
@@ -473,12 +476,15 @@ export function validateSampleData(model, sampleData, identityManifest, sourceIn
         entry.items.forEach((item, itemIndex) => {
             const itemPath = `${entryPath}.items[${itemIndex}]`;
             const entity = entityByDocType.get(item?.docType);
-            if (entity) {
+            const canValidateRelationships = validateItem(
+                item, container, entityByDocType, itemPath, uniqueKeys, coverage, errors, identityManifest,
+            );
+            // Relationship checks must not revisit items rejected by the depth or size guards.
+            if (entity && canValidateRelationships) {
                 const samples = samplesByEntity.get(entity.name) ?? [];
                 samples.push({ item, path: itemPath });
                 samplesByEntity.set(entity.name, samples);
             }
-            validateItem(item, container, entityByDocType, itemPath, uniqueKeys, coverage, errors, identityManifest);
         });
         for (const entity of standaloneEntities) {
             if (!coverage.has(entity.docType)) {

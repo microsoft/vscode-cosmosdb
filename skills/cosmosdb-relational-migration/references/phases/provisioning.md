@@ -403,6 +403,8 @@ or manifest fields. Record the deployment outcome and any retry in the existing 
    reject actual placeholders within their decoded values without changing the stored strings.
    Inspect JSON strings and arrays even when escape sequences hide placeholder text in their stored representation.
    Only JSON-looking object, array, or quoted-string values are decoded; ordinary text is checked directly.
+   Check stored object/array nesting against the 128-level limit before serialization.
+   Reject items exceeding 2 MiB of UTF-8 JSON before decoding embedded JSON or validating relationships.
 - Resolve each `id` from its `idTemplate` and the selected identity mapping.
    Preserve the corresponding source-key values in their separate mapped fields.
    For `{uuid}` fallback entities, generate a valid UUID once and persist it directly

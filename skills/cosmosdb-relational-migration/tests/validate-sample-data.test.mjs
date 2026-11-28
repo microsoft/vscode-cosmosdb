@@ -835,6 +835,114 @@ test('inspects large encoded arrays without parsing ordinary string leaves', () 
     assert.deepEqual(data, before);
 });
 
+test('checks the exact item byte boundary before decoding embedded JSON', () => {
+    const data = samples();
+    const item = data.sampleData[0].items[0];
+    const limit = 2 * 1024 * 1024;
+    item.nativeValue = JSON.stringify(['']);
+    const padding = limit - Buffer.byteLength(JSON.stringify(item), 'utf8');
+    item.nativeValue = JSON.stringify(['a'.repeat(padding)]);
+    const parse = JSON.parse;
+    let decodingAllowed = true;
+    let decodingAttempts = 0;
+    JSON.parse = (value, ...args) => {
+        if (value === item.nativeValue) {
+            decodingAttempts++;
+            if (!decodingAllowed) throw new Error('Oversized sample must not be decoded');
+        }
+        return parse(value, ...args);
+    };
+    try {
+        assert.deepEqual(validateSampleData(model(), data), []);
+        assert.equal(decodingAttempts, 1);
+
+        const oversized = JSON.stringify(['a'.repeat(padding + 1)]);
+        item.nativeValue = oversized;
+        decodingAllowed = false;
+        decodingAttempts = 0;
+        assert.deepEqual(validateSampleData(model(), data), [{
+            path: '$.sampleData[0].items[0]',
+            message: `exceeds the ${limit}-byte item limit (${limit + 1} UTF-8 JSON bytes)`,
+        }]);
+        assert.equal(decodingAttempts, 0);
+        assert.equal(item.nativeValue, oversized);
+    } finally {
+        JSON.parse = parse;
+    }
+});
+
+test('does not revisit oversized items during embedded relationship validation', () => {
+    const { definition, data, inventory } = referenceFixture();
+    const order = definition.containers[0].entities[0];
+    order.relationships.push({
+        ...order.relationships[0],
+        strategy: 'embed',
+        targetProperty: 'customerSnapshot',
+    });
+    const [orderSample, customerSample] = data.sampleData[0].items;
+    const encoded = JSON.stringify({ value: '\u00e9'.repeat(1024 * 1024) });
+    orderSample.customerSnapshot = { ...customerSample, nativeValue: encoded };
+    const itemBytes = Buffer.byteLength(JSON.stringify(orderSample), 'utf8');
+    const parse = JSON.parse;
+    let decodingAttempts = 0;
+    JSON.parse = (value, ...args) => {
+        if (value === encoded) {
+            decodingAttempts++;
+            throw new Error('Oversized embedded sample must not be decoded');
+        }
+        return parse(value, ...args);
+    };
+    try {
+        const errors = validateSampleData(definition, data, undefined, inventory);
+        assert(errors.some(error =>
+            error.path === '$.sampleData[0].items[0]' &&
+            error.message === `exceeds the ${2 * 1024 * 1024}-byte item limit (${itemBytes} UTF-8 JSON bytes)`));
+        assert.equal(decodingAttempts, 0);
+        assert.equal(orderSample.customerSnapshot.nativeValue, encoded);
+    } finally {
+        JSON.parse = parse;
+    }
+});
+
+test('rejects excessive stored nesting before serialization or embedded JSON decoding', () => {
+    const data = samples();
+    const item = data.sampleData[0].items[0];
+    const encoded = '["kept"]';
+    item.nativeValue = encoded;
+    let nested = {};
+    for (let index = 0; index < 150; index++) nested = { child: [nested] };
+    item.nested = nested;
+    const parse = JSON.parse;
+    const stringify = JSON.stringify;
+    let decodingAttempts = 0;
+    let serializationAttempts = 0;
+    JSON.parse = (value, ...args) => {
+        if (value === encoded) {
+            decodingAttempts++;
+            throw new Error('Over-nested sample must not be decoded');
+        }
+        return parse(value, ...args);
+    };
+    JSON.stringify = (value, ...args) => {
+        if (value === item) {
+            serializationAttempts++;
+            throw new Error('Over-nested sample must not be serialized');
+        }
+        return stringify(value, ...args);
+    };
+    try {
+        const errors = validateSampleData(model(), data);
+        assert(errors.some(error => error.message === 'exceeds the 128-level object/array nesting limit'));
+        assert.equal(decodingAttempts, 0);
+        assert.equal(serializationAttempts, 0);
+        assert.equal(item.nativeValue, encoded);
+        assert.equal(item.nested, nested);
+    } finally {
+        JSON.parse = parse;
+        JSON.stringify = stringify;
+    }
+});
+
 test('rejects JSON-escaped placeholders without changing their stored representations', () => {
     for (const value of [
         String.raw`"\u0054ODO"`,

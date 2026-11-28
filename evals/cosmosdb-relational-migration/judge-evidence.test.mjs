@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { buildJudgeEvidence, judgeEvidenceGroups, MAX_EVIDENCE_BYTES } from './adventureworks/judge-evidence.mjs';
-import { createAdventureWorksJudge } from './adventureworks/judge.mjs';
+import { createAdventureWorksJudge, createPacketJudgeRequest } from './adventureworks/judge.mjs';
 
 const migration = '.cosmosdb-migration/';
 const rubric = ['Preserve source identity and generate a plan without applying changes.'];
@@ -337,7 +337,10 @@ function judgeFixture(t, options = {}) {
                     assert.deepEqual(request.workspace.evidenceFiles, [], 'Judge must not browse files');
                     assert.deepEqual(readdirSync(request.workspace.workingDirectory), []);
                     const input = JSON.parse(request.userMessage);
-                    assert.deepEqual(input.rubric, rubric);
+                    assert.deepEqual(
+                        input.rubric.map(({ text }) => text),
+                        rubric,
+                    );
                     assert.ok(
                         input.evidence.files.some(({ content }) => content.includes('FINAL ROLLBACK OBLIGATION')),
                     );
@@ -345,11 +348,15 @@ function judgeFixture(t, options = {}) {
                     return {
                         args: options.verdict ?? {
                             evidence_sufficient: true,
-                            rubric_scores: rubric.map((criterion) => ({
-                                criterion,
-                                score: 1,
-                                reasoning: 'Complete synthetic evidence.',
-                            })),
+                            rubric_scores: Object.fromEntries(
+                                input.rubric.map(({ id }) => [
+                                    id,
+                                    {
+                                        score: 1,
+                                        reasoning: 'Complete synthetic evidence.',
+                                    },
+                                ]),
+                            ),
                             overall_score: 1,
                             overall_reasoning: 'Complete synthetic evidence.',
                         },
@@ -375,16 +382,21 @@ test('bounded judge delivers complete inline evidence and preserves strict binar
     assert.equal(passed.passed, true);
     assert.equal(passed.status, undefined);
     assert.equal(passed.metadata.active_call, undefined);
+    assert.equal(passed.metadata.active_response, undefined);
     assert.ok(passed.metadata.evidence_packet.files.length);
     assert.deepEqual(success.counts(), { calls: 1, shutdowns: 1 });
     const failure = judgeFixture(t, {
         verdict: {
             evidence_sufficient: true,
-            rubric_scores: rubric.map((criterion) => ({
-                criterion,
-                score: 0,
-                reasoning: 'Required design is omitted.',
-            })),
+            rubric_scores: Object.fromEntries(
+                rubric.map((_criterion, index) => [
+                    `criterion_${index + 1}`,
+                    {
+                        score: 0,
+                        reasoning: 'Required design is omitted.',
+                    },
+                ]),
+            ),
             overall_score: 0,
             overall_reasoning: 'Required design is omitted.',
         },
@@ -421,14 +433,14 @@ test('incomplete evidence and missing rubric scores cannot become successful jud
         [
             {
                 evidence_sufficient: false,
-                rubric_scores: [],
+                rubric_scores: { criterion_1: { score: 0, reasoning: 'Cannot inspect required evidence.' } },
                 overall_score: 0,
                 overall_reasoning: 'Cannot inspect required evidence.',
             },
             'judge-evidence-incomplete',
         ],
         [
-            { evidence_sufficient: true, rubric_scores: [], overall_score: 1, overall_reasoning: 'Looks correct.' },
+            { evidence_sufficient: true, rubric_scores: {}, overall_score: 1, overall_reasoning: 'Looks correct.' },
             'judge-invalid-response',
         ],
     ]) {
@@ -436,9 +448,52 @@ test('incomplete evidence and missing rubric scores cannot become successful jud
         const result = await fixture.grade();
         assert.equal(result.status, 'error');
         assert.equal(result.metadata.error_category, category);
+        assert.deepEqual(result.metadata.active_response, verdict);
         assert.ok(result.metadata.active_call.elapsed_ms >= 0);
         assert.equal(result.score, 0);
     }
+});
+
+test('judge submission schema requires exactly the assigned stable criterion IDs', () => {
+    const criteria = ['Source ownership', 'Data preservation', 'Workload design', 'Implementation feasibility'];
+    const request = createPacketJudgeRequest({
+        config,
+        workingDirectory: 'unused-offline-directory',
+        request: 'Review the conversion.',
+        rubric: criteria,
+        packet: { phase: 'schema-conversion', scope: 'design' },
+    });
+    const input = JSON.parse(request.userMessage);
+    assert.deepEqual(
+        input.rubric.map(({ text }) => text),
+        criteria,
+    );
+    const verdict = {
+        evidence_sufficient: true,
+        rubric_scores: Object.fromEntries(
+            input.rubric.map(({ id }) => [
+                id,
+                {
+                    score: 1,
+                    reasoning: 'Supported by the provided evidence.',
+                },
+            ]),
+        ),
+        overall_score: 1,
+        overall_reasoning: 'Every assigned criterion passes.',
+    };
+    assert.equal(request.tool.parameters.safeParse(verdict).success, true);
+    const missing = structuredClone(verdict);
+    delete missing.rubric_scores[input.rubric[3].id];
+    assert.equal(request.tool.parameters.safeParse(missing).success, false);
+    const extra = structuredClone(verdict);
+    extra.rubric_scores.unassigned = { score: 1, reasoning: 'Not assigned to this scope.' };
+    assert.equal(request.tool.parameters.safeParse(extra).success, false);
+    const textLabels = {
+        ...verdict,
+        rubric_scores: Object.fromEntries(criteria.map((text) => [text, { score: 1, reasoning: 'Copied text.' }])),
+    };
+    assert.equal(request.tool.parameters.safeParse(textLabels).success, false);
 });
 
 test('scoped evidence retains complete files and the audit in independently bounded packets', (t) => {
@@ -524,9 +579,18 @@ test('dependency evidence preserves complete tasks and clearance conditions with
 
 test('every scoped verdict is required and each judge sees only its assigned criteria', async (t) => {
     const { trajectory } = fixture(t);
-    const input = { ...stimulus('code-migration'), rubric: ['Implementation', 'Dependencies', 'Boundary'] };
-    const grouped = { ...config, evidence_groups: { implementation: [0], dependencies: [1], boundary: [2] } };
-    for (const rejected of [undefined, 'dependencies']) {
+    const ordered = { implementation: [0], dependencies: [1], boundary: [2] };
+    for (const [criteria, rejected, scopes] of [
+        [['Implementation', 'Dependencies', 'Boundary'], undefined, ordered],
+        [['Implementation', 'Dependencies', 'Boundary'], 'dependencies', ordered],
+        [
+            ['Dependencies', 'Boundary', 'Implementation'],
+            'boundary',
+            { implementation: [2], dependencies: [0], boundary: [1] },
+        ],
+    ]) {
+        const input = { ...stimulus('code-migration'), rubric: criteria };
+        const grouped = { ...config, evidence_groups: scopes };
         const seen = [];
         let shutdowns = 0;
         const grader = createAdventureWorksJudge({
@@ -541,7 +605,7 @@ test('every scoped verdict is required and each judge sees only its assigned cri
                         assert.equal(request.timeoutMs, scope === 'boundary' ? 120_000 : 240_000);
                         seen.push(scope);
                         assert.deepEqual(
-                            rubric,
+                            rubric.map(({ text }) => text),
                             grouped.evidence_groups[scope].map((index) => input.rubric[index]),
                         );
                         assert.ok(evidence.files.some(({ content }) => content.includes('FINAL ROLLBACK OBLIGATION')));
@@ -549,13 +613,17 @@ test('every scoped verdict is required and each judge sees only its assigned cri
                         return {
                             args: {
                                 evidence_sufficient: true,
-                                overall_score: score,
+                                overall_score: 1,
                                 overall_reasoning: `Synthetic ${scope} verdict`,
-                                rubric_scores: rubric.map((criterion) => ({
-                                    criterion,
-                                    score,
-                                    reasoning: 'Synthetic verdict',
-                                })),
+                                rubric_scores: Object.fromEntries(
+                                    rubric.map(({ id }) => [
+                                        id,
+                                        {
+                                            score,
+                                            reasoning: 'Synthetic verdict',
+                                        },
+                                    ]),
+                                ),
                             },
                             latencyMs: 1,
                         };
@@ -568,10 +636,15 @@ test('every scoped verdict is required and each judge sees only its assigned cri
         });
         const result = await grader.grade({ trajectory, stimulus: input, config: grouped });
         assert.equal(result.passed, rejected === undefined);
-        assert.equal(result.status, undefined);
+        assert.equal(result.status, undefined, result.evidence);
         assert.deepEqual(seen, ['implementation', 'dependencies', 'boundary']);
         assert.equal(result.metadata.evidence_packets.length, 3);
         assert.equal(result.details.length, 3);
+        assert.deepEqual(
+            result.details.map(({ name }) => name),
+            input.rubric,
+        );
+        if (rejected) assert.equal(result.details[scopes[rejected][0]].score, 0);
         assert.equal(shutdowns, 1);
     }
 });

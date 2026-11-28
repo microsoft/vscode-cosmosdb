@@ -12,15 +12,19 @@ import { buildJudgeEvidence, judgeEvidenceGroups, JudgeEvidenceError } from './j
 import { verifySample } from './sample.mjs';
 
 const binary = z.union([z.literal(0), z.literal(1)]);
-const responseSchema = z.object({
-    evidence_sufficient: z.boolean(),
-    rubric_scores: z.array(z.object({ criterion: z.string().min(1), score: binary, reasoning: z.string().min(1) })),
-    overall_score: binary,
-    overall_reasoning: z.string().min(1),
-});
+const criterionScoreSchema = z.object({ score: binary, reasoning: z.string().min(1) }).strict();
 
 // Use the same request for a live trial and for a diagnostic replay of one retained evidence packet.
 export function createPacketJudgeRequest({ config, workingDirectory, request, rubric, packet }) {
+    const criteria = rubric.map((text, index) => ({ id: `criterion_${index + 1}`, text }));
+    const responseSchema = z
+        .object({
+            evidence_sufficient: z.boolean(),
+            rubric_scores: z.object(Object.fromEntries(criteria.map(({ id }) => [id, criterionScoreSchema]))).strict(),
+            overall_score: binary,
+            overall_reasoning: z.string().min(1),
+        })
+        .strict();
     return {
         model: config.model,
         reasoningEffort: config.reasoning_effort,
@@ -38,8 +42,11 @@ The host structural verdict is evidence only for its declared scope, not a seman
 Do not infer deployment, application execution, source-engine validity or command success from file existence or final claims.
 Accept semantically equivalent explanations and justified alternative designs. Missing required reasoning or incorrect output is a score of 0, not unavailable evidence.
 Set evidence_sufficient=false only if the delivered evidence cannot support grading, explaining what is unavailable. Do not guess or silently waive criteria.
-Return exactly one score for each rubric criterion, using its exact text. All criteria and the overall verdict must score 1 to pass.`,
-        userMessage: JSON.stringify({ request, rubric, instructions: config.prompt, evidence: packet }),
+Return rubric_scores as an object keyed by the assigned criterion IDs, never by copied or paraphrased criterion text.
+Include every assigned ID exactly once and no other IDs.
+If evidence is insufficient, still include every ID with score 0 and explain what is unavailable.
+All criteria and the overall verdict must score 1 to pass.`,
+        userMessage: JSON.stringify({ request, rubric: criteria, instructions: config.prompt, evidence: packet }),
         tool: {
             name: 'submit_migration_grade',
             description: 'Submit strict binary scores for every migration rubric criterion.',
@@ -146,6 +153,7 @@ export function createAdventureWorksJudge({
                 judgeDirectory = mkdtempSync(join(tmpdir(), 'migration-judge-'));
                 client = await createClient();
                 const verdicts = [];
+                const scoresByIndex = new Map();
                 for (const group of groups) {
                     provenance.active_scope = group.scope;
                     const request = createPacketJudgeRequest({
@@ -165,36 +173,39 @@ export function createAdventureWorksJudge({
                             timeout_ms: request.timeoutMs,
                         };
                     }
-                    const parsed = responseSchema.safeParse(response.args);
+                    provenance.active_response = response.args;
+                    const parsed = request.tool.parameters.safeParse(response.args);
                     if (!parsed.success) return failed('judge-invalid-response', parsed.error.message, provenance);
                     const verdict = parsed.data;
                     if (!verdict.evidence_sufficient || response.evidenceUsage?.budgetExhausted) {
                         return failed('judge-evidence-incomplete', verdict.overall_reasoning, provenance);
                     }
-                    const expected = [...group.rubric].sort();
-                    const received = verdict.rubric_scores.map(({ criterion }) => criterion).sort();
-                    if (JSON.stringify(expected) !== JSON.stringify(received)) {
-                        return failed(
-                            'judge-invalid-response',
-                            'Judge must score every criterion exactly once',
-                            provenance,
-                        );
-                    }
+                    const rubricScores = group.rubric.map((criterion, index) => {
+                        const score = { criterion, ...verdict.rubric_scores[`criterion_${index + 1}`] };
+                        scoresByIndex.set(group.indices[index], score);
+                        return score;
+                    });
                     verdicts.push(verdict);
                     provenance.group_results.push({
                         scope: group.scope,
                         latency_ms: response.latencyMs,
                         token_usage: response.tokenUsage,
                         evidence_usage: response.evidenceUsage,
-                        rubric_scores: verdict.rubric_scores,
+                        rubric_scores: rubricScores,
                         overall_score: verdict.overall_score,
                     });
                     delete provenance.active_call;
+                    delete provenance.active_response;
                 }
                 delete provenance.active_scope;
-                const scores = stimulus.rubric.map((criterion) =>
-                    verdicts.flatMap((verdict) => verdict.rubric_scores).find((score) => score.criterion === criterion),
-                );
+                const scores = stimulus.rubric.map((_criterion, index) => scoresByIndex.get(index));
+                if (scoresByIndex.size !== stimulus.rubric.length || scores.some((score) => !score)) {
+                    return failed(
+                        'judge-invalid-response',
+                        'Judge must score every criterion exactly once',
+                        provenance,
+                    );
+                }
                 const passed =
                     structuralValidation.passed &&
                     verdicts.every((verdict) => verdict.overall_score === 1) &&

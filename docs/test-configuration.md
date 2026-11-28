@@ -290,6 +290,10 @@ Models, reasoning effort, binary threshold and retry policy are unchanged.
 Inference and conversion each require two calls; planning requires three. These are separate assessments, not retries or a vote.
 The opt-in chained integration case and smaller suites retain their existing graders.
 
+Each request assigns local IDs such as `criterion_1` alongside the complete rubric text.
+The submission schema requires a score and reasoning for every assigned ID and rejects unassigned IDs.
+The host maps those scores back to the original rubric positions without relying on copied criterion text.
+
 Each packet is limited to **384,000 UTF-8 bytes**; it is not permission to clip oversized files.
 Splitting separates design/source evidence from the execution audit. The dependency packet pairs the plan manifest
 with complete plan sections for task ordering, operational handoff, validation, rollback, and blocker clearance.
@@ -323,6 +327,7 @@ If a judge call throws or returns an unusable verdict, `metadata.active_scope` i
 `metadata.active_call` records the elapsed time around `client.judge` (`elapsed_ms`) and its configured response
 timeout (`timeout_ms`). Elapsed time can include session setup, reminders and cleanup. The judge client does
 not expose whether a verdict was submitted before a timeout; a timeout alone does not establish that it was not.
+When a response is returned but rejected, `metadata.active_response` retains its tool arguments for inspection.
 A fully graded incorrect output remains a normal failed verdict, not an infrastructure error. Both fail
 the strict CI gate; neither silently passes, retries, drops criteria or substitutes a different model.
 Review oversized-packet diagnostics and narrow the scenario/evidence design deliberately rather than

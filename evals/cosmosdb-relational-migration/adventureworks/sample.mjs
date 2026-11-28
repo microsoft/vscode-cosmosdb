@@ -24,7 +24,7 @@ function git(directory, ...args) {
 export function verifySample(directory, revision = sampleRevision) {
     assert.equal(git(directory, 'rev-parse', 'HEAD'), revision, 'Sample checkout must match the pinned commit');
     assert.equal(
-        git(directory, 'status', '--porcelain', '--untracked-files=all'),
+        git(directory, 'status', '--porcelain', '--untracked-files=all', '--ignored'),
         '',
         'Sample checkout has local changes',
     );

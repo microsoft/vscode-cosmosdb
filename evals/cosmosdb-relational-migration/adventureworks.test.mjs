@@ -397,13 +397,23 @@ test('pinned checkout is fetched once, reused offline, and never resets modified
         execFileSync('git', ['-C', source, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
     git('init', '--quiet');
     writeFileSync(join(source, 'sample.txt'), 'original');
-    git('add', 'sample.txt');
+    writeFileSync(join(source, '.gitignore'), 'settings.local\nignored-output/\n');
+    git('add', 'sample.txt', '.gitignore');
     git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '--quiet', '-m', 'Fixture');
     const revision = git('rev-parse', 'HEAD');
     assert.equal(fetchSample(cache, source, revision), cache);
     rmSync(source, { recursive: true });
     assert.equal(fetchSample(cache, source, revision), cache, 'Cached use must not fetch the now-absent source');
     assert.throws(() => fetchSample(cache, source, '0'.repeat(40)), /pinned commit/);
+    for (const ignored of ['settings.local', 'ignored-output/result.txt']) {
+        const path = join(cache, ignored);
+        mkdirSync(dirname(path), { recursive: true });
+        writeFileSync(path, 'local artifact');
+        assert.throws(() => verifySample(cache, revision), /local changes/);
+        assert.throws(() => fetchSample(cache, source, revision), /local changes/);
+        assert.equal(readFileSync(path, 'utf8'), 'local artifact');
+        rmSync(path);
+    }
     writeFileSync(join(cache, 'sample.txt'), 'user edit');
     assert.throws(() => verifySample(cache, revision), /local changes/);
     assert.throws(() => fetchSample(cache, source, revision), /local changes/);

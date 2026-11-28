@@ -396,8 +396,9 @@ Framework modernization belongs in the generated plan, not in evaluation setup.
 
 The runner fetches that exact commit once into `.vally/fixtures/adventureworks-web/` before starting
 matching live stimuli, then copies the checkout into each isolated trial without its Git metadata.
-Its license is retained. A cached checkout must have the pinned HEAD and no local changes; mismatches
-fail explicitly rather than resetting or overwriting files. Offline lint/tests and filtered runs that
+Its license is retained. A cached checkout must have the pinned HEAD and no local changes, including
+untracked and Git-ignored files. Mismatches fail explicitly rather than resetting or overwriting files.
+Offline lint/tests and filtered runs that
 exclude the extended scenarios do not download it. Initial preparation requires Git and GitHub access.
 
 [AdventureworksLT.sql](../evals/cosmosdb-relational-migration/adventureworks/AdventureworksLT.sql) is the

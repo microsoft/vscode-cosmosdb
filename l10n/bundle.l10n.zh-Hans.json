@@ -482,7 +482,7 @@
   "Could not find unique name for new file.": "找不到新文件的唯一名称。",
   "Could not generate deployment code. {error}": "无法生成部署代码。{error}",
   "Could not load deployment databases. {error}": "无法加载部署数据库。{error}",
-  "Could not load the saved data model. Changes to this temporary model will not be saved. Retry loading to restore the saved model and discard temporary changes.": "Could not load the saved data model. Changes to this temporary model will not be saved. Retry loading to restore the saved model and discard temporary changes.",
+  "Could not load the saved data model. Changes to this temporary model will not be saved. Retry loading to restore the saved model and discard temporary changes.": "无法加载已保存的数据模型。对该临时模型所做的更改不会保存。请重试加载，以恢复已保存的模型并丢弃临时更改。",
   "Could not load the saved data model. Starting a new model on the Workload page.": "无法加载已保存的数据模型。在“工作负载”页上启动新模型。",
   "Could not locate JSON property \"{property}\".": "找不到 JSON 属性“{property}”。",
   "Could not open Copilot Chat to request a recommendation.": "无法打开 Copilot 对话助手来请求建议。",

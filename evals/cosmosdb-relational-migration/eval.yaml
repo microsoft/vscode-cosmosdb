@@ -117,7 +117,8 @@ stimuli:
     tags: { category: guidance, phase: discovery, contract: sdk-eligibility }
     prompt: |
       Our relational-to-Cosmos migration has an authoritative PHP application and the
-      bundled matrix reports no first-party SDK. Which phases are blocked, and is a
+      bundled matrix reports no first-party SDK. Which phase owns SDK compatibility
+      evaluation, and is it a preflight readiness gate? Which phases are blocked, and is a
       REST-only rewrite an acceptable fallback? Explain only; do not run tools other
       than reading guidance or write files.
     rubric:

@@ -50,12 +50,16 @@ function containsUnresolvedValue(value) {
     while (pending.length > 0) {
         const candidate = pending.pop();
         if (typeof candidate === 'string') {
-            try {
-                pending.push(JSON.parse(candidate));
-            } catch (error) {
-                if (!(error instanceof SyntaxError)) throw error;
-                if (UNRESOLVED_VALUE.test(candidate)) return true;
+            const first = candidate.trimStart()[0];
+            if (first === '{' || first === '[' || first === '"') {
+                try {
+                    pending.push(JSON.parse(candidate));
+                    continue;
+                } catch (error) {
+                    if (!(error instanceof SyntaxError)) throw error;
+                }
             }
+            if (UNRESOLVED_VALUE.test(candidate)) return true;
         } else if (candidate !== null && typeof candidate === 'object') {
             for (const child of Object.values(candidate)) pending.push(child);
         }

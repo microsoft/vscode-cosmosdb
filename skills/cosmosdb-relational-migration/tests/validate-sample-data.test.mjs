@@ -812,10 +812,34 @@ test('rejects placeholders inside JSON-encoded objects, arrays and strings', () 
     }
 });
 
+test('inspects large encoded arrays without parsing ordinary string leaves', () => {
+    const data = samples();
+    const encoded = JSON.stringify(Array(50_000).fill('kept'));
+    data.sampleData[0].items[0].nativeValue = encoded;
+    const before = structuredClone(data);
+    const parse = JSON.parse;
+    let encodedParses = 0;
+    let ordinaryParses = 0;
+    JSON.parse = (value, ...args) => {
+        if (value === encoded) encodedParses++;
+        if (value === 'kept') ordinaryParses++;
+        return parse(value, ...args);
+    };
+    try {
+        assert.deepEqual(validateSampleData(model(), data), []);
+    } finally {
+        JSON.parse = parse;
+    }
+    assert.equal(encodedParses, 1);
+    assert.equal(ordinaryParses, 0);
+    assert.deepEqual(data, before);
+});
+
 test('rejects JSON-escaped placeholders without changing their stored representations', () => {
     for (const value of [
         String.raw`"\u0054ODO"`,
         String.raw`["\u0054ODO"]`,
+        ' \n\t' + String.raw`["\u0054ODO"]`,
         JSON.stringify(String.raw`["\u0054ODO"]`),
         JSON.stringify({ nested: [String.raw`"\u0054ODO"`] }),
         String.raw`"\u003cvalue\u003e"`,

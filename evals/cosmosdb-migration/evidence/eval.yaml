@@ -1,0 +1,117 @@
+name: cosmosdb-migration-source-evidence
+description: Independently grade unfamiliar native evidence and the accepted application planning handoff.
+type: capability
+
+agent_environment:
+  skills:
+    - ../../../skills/cosmosdb-migration
+    - ../../../skills/cosmosdb-best-practices
+
+defaults:
+  executor: copilot-sdk
+  model: gpt-6.1-terra
+  reasoning_effort: high
+  judge_model: gpt-6.1-sol
+  judge_reasoning_effort: high
+  runs: 1
+  timeout: 15m
+
+scoring:
+  threshold: 1
+
+stimuli:
+  - name: source-unfamiliar-preflight
+    tags: { category: synthetic, phase: preflight, contract: unfamiliar-preflight }
+    agent_environment:
+      files: [{ src: unfamiliar, dest: app }]
+      commands: ['node -e "require(''node:fs'').rmSync(''cosmosdb-migration/tests'', {recursive:true})"']
+    prompt: |
+      Prepare and validate preflight only for migration of ./app to Azure Cosmos DB for NoSQL.
+      This is a schema-only handoff for a fictional wide-column source. Work autonomously
+      using the supplied native evidence and engineer estimates. Preserve the supplied files,
+      explain what is and isn't established, and identify concrete follow-up for required
+      behavior whose guarantee you cannot establish. Do not run discovery or a later phase,
+      install software, connect to services, consult external sources, or analyze another application.
+
+      In the preflight manifest's sourceInventory, use the qualified native family name as the
+      scope value for a family-scoped key. Explain routing versus uniqueness in the summary.
+      Keep native field types separate from JSON sample values.
+      For a sampled non-key cell, include sampleObservation on its field: source (the sample path),
+      values (an array of the JSON values actually present, with repetitions), and missing (the count
+      of sampled rows omitting the cell). Alternatively include the sampled JSON objects as a
+      sampleRows array on the sample file's inventory entry. Do not create a separate artifact.
+    rubric:
+      - Complete the preflight checkpoint without requiring a guide, connector, SQL intermediate or DDL parser. The destination remains Azure Cosmos DB for NoSQL; don't switch to a different database API.
+      - Preserve the declared routing tuple and full native row identity, including key types, order and family scope. The submitted inventory must attest the bounded two-row, single-station/day slice — gust contains the JSON number 18 once and is missing (not null) once. Its LoomCell native type and nullability are unknown. Neither a citation of the sample alone nor an unqualified numeric native type establishes the observation. Do not infer universal presence, uniqueness, relationships, or production workload from the slice.
+      - Record the required all-or-nothing visibility of a TwinSeal correction across two routing tuples as unresolved, not a preflight blocker or a proven source or target capability. Require a concrete clearance check in the artifacts, such as obtaining the producer's cross-tuple visibility contract or running an authorized partial-write/read test. Generic advice to investigate is insufficient.
+    graders:
+      - type: completed
+      - &skill
+        type: skill-invocation
+        config: { required: [cosmosdb-migration] }
+      - type: source-migration-artifacts
+        config: { scenario: unfamiliar-preflight }
+      - &judge
+        type: prompt
+        config:
+          scoring: binary
+          threshold: 1
+          evidence: [trajectory, diff, repo]
+          prompt: >-
+            Require every rubric criterion against the actual evidence, trajectory and final decision.
+            Accept equivalent reasoning, not unsupported assertions, contradictions or violations of scope.
+            Do not prescribe exact prose or tools.
+      - &output
+        type: output-matches
+        config: { pattern: '\S' }
+    artifacts:
+      include: [app/.cosmosdb-migration/**]
+
+  - name: source-resume-code
+    tags: { category: synthetic, phase: code-migration, contract: resume-code }
+    agent_environment:
+      files:
+        - &setup { src: checkpoint.mjs, dest: checkpoint.mjs }
+        - { src: revisions/orders.ts.txt, dest: revision }
+      commands: [node checkpoint.mjs orders.ts]
+    prompt: &review |
+      Review readiness in ./app for another iteration of code-migration planning against the accepted
+      Azure Cosmos DB for NoSQL model. A handoff input has changed since review. Inspect the current
+      evidence and distinguish readiness for new work from the historical execution record. Identify
+      the changed file by name, explain the impact, and recommend the next action. End with exactly one
+      line "Planning handoff: READY" or "Planning handoff: BLOCKED" for the new planning iteration.
+      Review only: do not write a plan, repair artifacts, refresh hashes, run application code, install
+      anything, or contact services. Keep the entire application workspace unchanged.
+    rubric:
+      - Use the current TypeScript application as evidence, identifying the displayOrder change in orders.ts (display now includes the native order identifier). The accepted v2 inventory classified it as code; language, SDK compatibility, selected metadata, model and accepted analytical outputs are unchanged.
+      - Accept the analytical handoff for planning against the current application without forcing analytical regeneration solely to match an old code hash. Distinguish ordinary analytical freshness from the accepted code handoff; do not assert all original inputs still match.
+      - Historical execution is not invalidated and does not prove the new iteration is done. Remain read-only and propose planning against current code, not execution.
+    graders:
+      - type: completed
+      - *skill
+      - type: source-migration-artifacts
+        config: { scenario: resume-code }
+      - *judge
+      - *output
+      - type: diff-empty
+
+  - name: source-resume-metadata
+    tags: { category: synthetic, phase: code-migration, contract: resume-metadata }
+    agent_environment:
+      files:
+        - *setup
+        - { src: revisions/catalog.json, dest: revision }
+      commands: [node checkpoint.mjs catalog.json]
+    prompt: *review
+    rubric:
+      - Identify the change to selected, accepted native metadata in catalog.json (identity scope is now tenant rather than collection). Explain the possible implication for uniqueness/identity design. An unchanged path, SDK and model do not make this code drift.
+      - Refuse the planning handoff. Name preflight/source inventory as the earliest affected analytical prerequisite, review the declaration and affected downstream analytical decisions before another plan, and do not replace hashes to appear current.
+      - Keep the historical execution record intact and separate from readiness; do not create a new plan, run a phase or repair anything.
+    graders:
+      - type: completed
+      - *skill
+      - type: source-migration-artifacts
+        config: { scenario: resume-metadata }
+      - *judge
+      - *output
+      - type: diff-empty

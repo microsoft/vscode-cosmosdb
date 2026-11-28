@@ -4,7 +4,7 @@ type: capability
 
 agent_environment:
   skills:
-    - ../../skills/cosmosdb-relational-migration
+    - ../../skills/cosmosdb-migration
     - ../../skills/cosmosdb-best-practices
 
 defaults:
@@ -31,7 +31,7 @@ stimuli:
     graders: &guidance
       - type: completed
       - type: skill-invocation
-        config: { required: [cosmosdb-relational-migration] }
+        config: { required: [cosmosdb-migration] }
       - type: prompt
         config: &judge
           scoring: binary
@@ -51,7 +51,7 @@ stimuli:
       migrations and queries. I forbid external parser dependencies. Explain schema
       acquisition and its limits; do not run a phase or write files.
     rubric:
-      - Infer processable DDL from project evidence, recording provenance, conflicts and uncertainty rather than inventing missing constraints.
+      - Infer a typed source inventory directly from project evidence without requiring synthesized DDL, recording provenance, conflicts and uncertainty rather than inventing missing constraints.
       - Use model-only interpretation without Python, SQLGlot, or a custom parser script, and do not claim structural validation proves source-engine fidelity.
     graders: *guidance
 
@@ -65,25 +65,6 @@ stimuli:
     rubric:
       - Identify that a SQL Server TINYINT key has at most 256 distinct values and cannot uniquely identify 1,000 simultaneous rows.
       - Preserve the supplied evidence, flag the inconsistency, and request a corrected or verified count or record the feasible count as unknown; do not invent a replacement count, change the DDL, or present the estimate as observed or feasible.
-    graders: *guidance
-
-  - name: explicit-phase-guidance-during-preflight
-    tags: { category: guidance, phase: preflight, contract: instruction-routing }
-    prompt: |
-      Explain how you would handle these requests in an existing migration; do not
-      execute them or write files. First, I ask to infer the source inventory from
-      workspace code (schema-source: infer), then run only volumetrics with a declared
-      30-day retention requirement. During that preflight request I also explicitly
-      ask to save "Focus on tenant isolation." as additional instructions for future
-      discovery. The discovery field already contains "Include archived orders."
-      What belongs in saved instructions, what belongs in workload evidence, and
-      what applies only to the current run? What changes if I repeat the save request,
-      explicitly replace the saved text, or ask to save guidance without naming a phase?
-    rubric:
-      - Save only the explicit future discovery guidance in phases.discovery.discoveryInstructions, appending it after the existing text without rewording or discarding either. Do not apply future discovery guidance to preflight.
-      - Keep schema-source inference and focused-step launch controls invocation-scoped; record retention as a declared requirement in volumetrics evidence rather than as discovery instructions.
-      - Do not append an exact duplicate; replace existing text only on an explicit replacement request. Ask for the intended phase before persisting ambiguously scoped guidance rather than defaulting to the current phase.
-      - Do not invent a preflight instruction field or use discoveryInstructions as a catch-all for preflight requests, and make no writes during this explanation-only request.
     graders: *guidance
 
   - name: parser-choice-and-failure
@@ -113,20 +94,6 @@ stimuli:
       - Stop for the user's answer without choosing or claiming approval, recording a parser decision, interpreting DDL, initializing migration state, installing dependencies or invoking a parser. A noninteractive host does not override this explicit stop request.
     graders: *guidance
 
-  - name: discovery-unsupported-sdk
-    tags: { category: guidance, phase: discovery, contract: sdk-eligibility }
-    prompt: |
-      Our relational-to-Cosmos migration has an authoritative PHP application and the
-      bundled matrix reports no first-party SDK. Which phase owns SDK compatibility
-      evaluation, and is it a preflight readiness gate? Which phases are blocked, and is a
-      REST-only rewrite an acceptable fallback? Explain only; do not run tools other
-      than reading guidance or write files.
-    rubric:
-      - A valid unsupported SDK classification permits discovery, assessment, schema conversion, provisioning and code-migration planning; it blocks application code migration to an unsupported SDK.
-      - Do not recommend direct REST as an SDK replacement; propose a supported language or supported-language service boundary.
-      - SDK compatibility is discovery-owned, not a preflight readiness condition.
-    graders: *guidance
-
   - name: assessment-domain-ownership
     tags: { category: guidance, phase: assessment, contract: domain-ownership }
     prompt: |
@@ -138,224 +105,6 @@ stimuli:
       - Prioritize business ownership, lifecycle and consistency invariants over reporting joins; a domain is not a logical partition or final container design.
       - Assign each non-excluded table to exactly one domain, retaining the legacy table with explicit mapping uncertainty rather than silently excluding it.
       - Record cross-domain dependencies and defer final container and partition-key decisions beyond assessment. Accept equivalent wording without requiring the later phase's name; reject choosing a final container layout or partition key during assessment.
-    graders: *guidance
-
-  - name: conversion-domain-selection
-    tags: { category: guidance, phase: schema-conversion, contract: domain-selection }
-    prompt: |
-      In my relational-to-Cosmos migration every assessed domain has isMapped=false.
-      I requested schema conversion without include-unmapped-domains. Should you
-      convert them anyway? Explain the scope and completion requirements only,
-      without creating files.
-    rubric:
-      - Stop with an option to explicitly include unmapped domains; do not silently widen scope or declare an empty conversion complete.
-      - Completion requires domain models and summaries plus a validated canonical root model and supporting evidence, not merely a complete status flag.
-    graders: *guidance
-
-  - name: conversion-bounded-children
-    tags: { category: guidance, phase: schema-conversion, contract: peer-design }
-    prompt: |
-      For a relational-to-Cosmos migration, an Order has at most 12 tiny line items,
-      always read and updated with it. Explain whether to embed them and what source
-      semantics to preserve. Read relevant guidance, but do not execute migration
-      helpers or create files.
-    rubric:
-      - Recommend embedding the bounded co-read children while checking document size and growth limits.
-      - Preserve source identities and relevant relationship or transaction semantics rather than treating embedding alone as proof of correctness.
-    graders: &design-guidance
-      - type: completed
-      - type: skill-invocation
-        config: { required: [cosmosdb-relational-migration, cosmosdb-best-practices] }
-      - type: prompt
-        config: *judge
-      - type: output-matches
-        config: { pattern: '\S' }
-      - type: diff-empty
-
-  - name: conversion-copy-results
-    tags:
-      { category: guidance, phase: schema-conversion, contract: operation-results, regression: conversion-semantics }
-    prompt: |
-      Review this phase 3 candidate for a relational-to-Cosmos DB migration of an
-      Events table. Its eventKind, occurredAt and payload columns are mapped to
-      target fields with those names; payload contains JSON business data whose
-      additional nested properties must be retained. R01 reads migrated target
-      events using SELECT c.id, c.ownerId FROM c WHERE c.ownerId = @ownerId.
-      W01 then copies each returned event to a new owner, deriving its new ID from
-      eventKind and occurredAt and retaining the complete JSON payload.
-      Target events have those fields, but R01 returns only the two
-      projected fields. There is no intervening read. The model validator and
-      field-mapping and identity examples pass. A separate display-only R02 needs
-      just id and ownerId and uses the same projection.
-      Should conversion complete with an implementation caveat? Explain the
-      smallest operation-level correction and where to record it. Read relevant
-      skill guidance, but do not write files, execute a phase, or access services.
-    rubric:
-      - Identify that R01 cannot supply the eventKind, occurredAt, payload and additional properties W01 requires; passing structural and isolated mapping checks does not make this operation sequence correct.
-      - Require repair before completing conversion by returning the complete required payload or recording an explicit full-item read before copying, including its routing and capacity impact; retain the valid display-only R02 projection rather than banning projections.
-      - Record the consumer/result and follow-up requirements in existing access-pattern summaries and model operations without introducing a new ledger or treating the demonstrated contradiction as merely unperformed runtime validation.
-    graders: *design-guidance
-
-  - name: conversion-source-version
-    tags: { category: guidance, phase: schema-conversion, contract: copied-version, regression: conversion-semantics }
-    prompt: |
-      Review a proposed Cosmos DB copy-and-delete sequence during schema conversion.
-      R01 reads a complete source item at ETag E1. W01 successfully copies that
-      version to another partition. Another writer changes the source to E2.
-      Cleanup reads the source again, obtains E2, then deletes using If-Match E2.
-      The plan says this is safe because it uses conditional deletion and that
-      an ETag on a separate workflow item fences every source writer. There is
-      no writer-participation protocol. What must change, and which unresolved
-      guarantees remain? Explain only using relevant skill guidance; do not write
-      files, run a migration, or access a database.
-    rubric:
-      - Explain that deleting with E2 can destroy an update that was not copied; capture payload and token from the same source version and retain E1 as the cleanup precondition for that successful copy.
-      - On a version conflict, preserve the changed source and reconcile or recopy under the selected recovery protocol; do not accept the latest ETag, blindly retry deletion, or treat a newer read as proof that its contents were copied.
-      - Distinguish item-version protection from cross-partition atomicity and writer fencing; an ETag on an unrelated item is insufficient, and the missing coordination mechanism remains an explicit design or execution-clearance condition.
-    graders: *design-guidance
-
-  - name: conversion-colocation-scope
-    tags: { category: guidance, phase: schema-conversion, contract: grouping-scope, regression: conversion-semantics }
-    prompt: |
-      During phase 3 of a relational-to-Cosmos DB migration, the source Profiles
-      and Leases tables share an ownerId. Their compatible string primary keys
-      are unique per table, but the two tables can have the same key for that owner.
-      The candidate keeps those key values as Cosmos id and puts both types in one
-      container with HPK [/ownerId, /docType]. The summary claims their shared
-      owner prefix permits a single transactional batch. They remain independently
-      updated documents, and operations involving two owners also exist.
-      Review the claimed benefit and compare alternatives while retaining original
-      source keys. Distinguish embedding, shared complete-key documents,
-      shared-container/different-key documents and separate containers, including
-      capacity sharing and per-owner scaling tradeoffs. No layout or identity
-      change is preapproved. Read relevant guidance and explain only; do not
-      change artifacts, deploy, or execute a phase.
-    rubric:
-      - Identify that [ownerId, profile] and [ownerId, lease] are different complete partition keys and cannot share a transactional batch merely because they share a container and leading prefix.
-      - Distinguish the four grouping choices and their actual workload, size, update, scaling and atomicity tradeoffs; acknowledge that the current design can still share throughput and policies.
-      - Compare losslessly type-scoped Cosmos IDs under a shared business key, retaining original source keys, with namespace separation through the partition tuple; require justification and approval for consequential changes rather than automatically rewriting IDs or forcing co-location.
-      - Do not claim that same-owner grouping makes cross-owner or cross-container operations atomic.
-    graders: *design-guidance
-
-  - name: conversion-index-justification
-    tags:
-      { category: guidance, phase: schema-conversion, contract: operation-indexes, regression: conversion-semantics }
-    prompt: |
-      Review a phase 3 Cosmos DB container partitioned by /id with consistent,
-      exclude-all-first indexing. Q01 frequently filters ownerId equality plus
-      score > @minimum, without ORDER BY. R02 uses ReadItem with known id and
-      partition key, checks leaseToken and destination in application code, then
-      performs ReplaceItem with the returned ETag. R03 projects payload for display.
-      Proposed included paths are /ownerId/?, /score/?, /leaseToken/?,
-      /destination/? and /payload/?. The author says all accessed properties need
-      indexes and composite indexes are never useful without ORDER BY.
-      Explain which paths have evidence, which do not, and how to assess the
-      composite claim. Show how to record these decisions and their operation
-      evidence in the existing phase summary. Read relevant guidance; do not
-      write files, run a phase, benchmark a database, or invent additional access patterns.
-    rubric:
-      - Retain index support for Q01's actual ownerId and score predicates, but identify that point-read application checks and a response-only projection do not justify indexes on leaseToken, destination or payload.
-      - Explain that the ETag precondition does not require indexing the system ETag and that index decisions must be linked to actual server-side operations or documented service requirements in the existing summary.
-      - Reject the blanket claim about ORDER BY; consider a composite for the equality-plus-range workload as a possible optimization, weighing write/index overhead without asserting it is required for correctness or claiming measured savings.
-    graders: *design-guidance
-
-  - name: conversion-workload-routing
-    tags:
-      {
-        category: guidance,
-        phase: schema-conversion,
-        contract: container-specific-routing,
-        regression: conversion-semantics,
-      }
-    prompt: |
-      Review phase 3 partition-key reasoning for a relational-to-Cosmos DB
-      migration of the Aliases and Events tables into separate containers.
-      Aliases has stable table-wide unique primary keys, 90% known-ID
-      lookups and 10% reverse owner lookups; its ownerId changes during reassignment.
-      Events has stable table-wide unique primary keys, an ownerId fixed for
-      each stored item, and all discovered queries retrieve an owner's events.
-      A supplied synthetic scenario has 10 million event creates and 20,000
-      owner-event queries per day. Source primary-key uniqueness must not be weakened;
-      no deterministic ID-to-owner routing invariant has been established.
-      Both summaries choose /id with the identical explanation "preserves source
-      primary keys and scales well." No skew or event-growth measurements are available.
-      Explain a separate comparison for each container and the evidence still
-      needed. You may retain either choice if justified. Read relevant guidance;
-      do not invent measurements, write files, run a phase or access services.
-    rubric:
-      - Justify stable-ID routing for Aliases using its known-ID workload and mutable ownerId; explain that owner reassignment under an owner-based partition key would require a move/reconciliation design, not an in-place key update.
-      - Compare Events identity-first routing and owner-oriented routing, considering the write-dominated synthetic scenario, grouped-query fan-out, key skew and growth; do not reject /id categorically or assume owner routing is automatically best.
-      - Explain how each candidate retains native uniqueness within Cosmos partition scope, leaving missing routing/enforcement evidence explicit rather than assuming preserving the id string establishes global uniqueness across owners.
-      - Use container-specific evidence and label supplied rates as synthetic and unmeasured dimensions as unknown; missing measurements may leave optimization conditional, but generic duplicated rationale does not establish a workload-specific comparison.
-    graders: *design-guidance
-
-  - name: provisioning-current-approval
-    tags: { category: guidance, phase: provisioning, contract: provisioning-approval }
-    prompt: |
-      My relational-to-Cosmos migration memory records deployment approval from yesterday.
-      Today's provisioning request omits allow-provisioning. May you deploy or seed, and
-      can generated Bicep prove provisioning complete? Explain only; do not write files,
-      access Azure, or run deployment commands.
-    rubric:
-      - Past approval is not current authorization; without allow-provisioning true for this invocation, do not mutate resources or data.
-      - Artifact generation alone does not establish a deployed or verified target and must not be reported as completed provisioning.
-    graders: *guidance
-
-  - name: code-migration-plan-only
-    tags: { category: guidance, phase: code-migration, contract: code-approval }
-    prompt: |
-      In a relational-to-Cosmos migration, saved checkpoint metadata describes an earlier
-      code execution. My current request says "update the migration plan." Does that
-      authorize application edits? Explain only; do not change files or run a phase.
-    rubric:
-      - Derive action from the current request and update only the plan and its migration metadata, not application code.
-      - Require an explicit current request to migrate, apply or execute the plan before application edits; old checkpoint metadata does not authorize them.
-    graders: *guidance
-
-  - name: code-migration-historical-completion
-    tags: { category: guidance, phase: code-migration, contract: historical-completion }
-    prompt: |
-      After a completed relational-to-Cosmos code migration I refactored application files.
-      For another code-migration iteration, must you rerun discovery to refresh old source
-      hashes? Explain historical completion versus current readiness, without running
-      helpers or changing files.
-    rubric:
-      - Historical code-migration completion is not invalidated by later application edits and has no ongoing code-migration freshness contract.
-      - Inspect the current application, SDK compatibility and accepted model for the new iteration without automatically restarting upstream analysis or rewriting old hashes to match.
-    graders: *guidance
-
-  - name: planning-readiness-order
-    tags: { category: guidance, phase: code-migration, contract: planning-readiness, regression: planning-quality }
-    prompt: |
-      Review this relational-to-Cosmos migration plan without writing files or executing it:
-      CM-03 finishes implementation verification only after ENV-001 is cleared.
-      ENV-001 requires production writer inventory and the frozen production generator state.
-      OP-01 collects that evidence, but depends on completed CM-03.
-      The plan also requires real SDK, fault-recovery and source-parity tests, and an
-      isolated test environment can be provisioned under a later approved invocation.
-      Is this an executable order? Explain the smallest repair while retaining the
-      necessary verification and production safeguards.
-    rubric:
-      - Identify the indirect CM-03 to ENV-001 to OP-01 to CM-03 cycle even though the explicit task IDs alone do not show it.
-      - Give implementation verification its own earlier isolated-environment prerequisites and required SDK/fault/source-parity evidence; keep actual production inventory and frozen generator state as separate later activation gates, not prerequisites for CM-03.
-      - Do not remove required tests, move unavailable implementation checks to operational handoff to claim completion, fabricate clearance, or authorize provisioning during this review.
-    graders: *guidance
-
-  - name: planning-activation-order
-    tags: { category: guidance, phase: code-migration, contract: planning-activation, regression: planning-quality }
-    prompt: |
-      Review this relational-to-Cosmos direct-switch plan. OP-05 activates production
-      traffic once all deferred production blockers are clear. OPS-001 clears only
-      after writer fencing, rollback rehearsal, and OP-06's completed live rollback
-      observation window. OP-06 depends on OP-05. All tasks are still pending.
-      Assess the ordering and propose a correction without deleting safety work,
-      weakening the zero-acknowledged-write-loss requirement, writing files or executing anything.
-      Give concrete replacement clearance identifiers, the task owning each clearance,
-      and the revised OP-05/OP-06 dependencies so the correction can be applied to the plan.
-    rubric:
-      - Identify that OP-05 indirectly waits for OP-06 through OPS-001 while OP-06 explicitly waits for OP-05; pending checkboxes do not resolve this cycle.
-      - Split pre-activation readiness and rehearsal from post-activation observation and window closure, with separate clearance identifiers and owning tasks; activation requires only explicitly identified pre-activation gates.
-      - Retain writer fencing, rollback rehearsal, post-activation observation and closure at their proper stages, without claiming future evidence exists or weakening the loss guarantee.
     graders: *guidance
 
   - name: planning-unselected-mechanism
@@ -379,53 +128,6 @@ stimuli:
       - Preserve the accepted conditional model and its obligations; do not silently introduce an unapproved service, weaken source semantics, or claim implementation or verification occurred.
     graders: *guidance
 
-  - name: validation-only-rerun
-    tags: { category: guidance, contract: validation-only }
-    prompt: |
-      For my relational-to-Cosmos migration I explicitly request "validate assessment
-      only" in autonomous mode. Existing evidence is stale. Should the inspector use
-      --regenerate, should you repair artifacts, or report incompleteness? May you
-      update migration memory as part of this request? Explain only; do not inspect
-      a real project or write files.
-    rubric:
-      - Explicit validation-only intent overrides autonomous regeneration, so omit --regenerate and report stale or incomplete evidence without regenerating or repairing artifacts.
-      - Do not update migration memory as a side effect of this read-only request.
-    graders: *guidance
-
-  - name: review-requires-approval
-    tags: { category: guidance, contract: review-approval }
-    prompt: |
-      I request "review assessment blockers and propose fixes for approval" for a
-      relational-to-Cosmos migration on a noninteractive host. Does autonomous fallback
-      authorize applying those fixes? Explain the boundary only; do not run a phase
-      or change files.
-    rubric:
-      - Review may inspect evidence and propose repairs, but must wait for explicit approval before writes or phase execution even on a noninteractive host.
-    graders: *guidance
-
-  - name: project-scope-conflict
-    tags: { category: guidance, contract: project-scope }
-    prompt: |
-      I resume a relational-to-Cosmos migration in project A but explicitly set workspace
-      to project B in a multi-project repository. The active terminal is in B. Which root
-      should you use? Explain only; do not inspect or initialize either project.
-    rubric:
-      - Stop and ask which project to use because the explicit workspace and selected migration conflict; neither the active terminal nor folder order resolves it.
-      - Do not initialize a second migration or broaden source analysis to sibling projects while scope is unresolved.
-    graders: *guidance
-
-  - name: memory-only-no-phase
-    tags: { category: guidance, contract: memory-only }
-    prompt: |
-      I ask only to remember an existing relational-to-Cosmos migration decision for this
-      application, which already has unrelated migration notes. Explain where the new
-      decision belongs, how to handle the existing notes, and whether you must initialize
-      project.json, run a phase, or load the peer skill. Do not actually save anything.
-    rubric:
-      - Existing knowledge belongs in project-local .cosmosdb-migration/memory.md, preserving unrelated notes rather than using user-profile memory.
-      - A memory-only request does not initialize project.json or run inspector, freshness, completion helpers or a migration phase; recording existing knowledge does not require the peer skill.
-    graders: *guidance
-
   - name: unrelated-postgresql
     tags: { category: activation, contract: non-activation }
     prompt: Explain briefly how to create a PostgreSQL index on users(email). Do not write files.
@@ -434,7 +136,7 @@ stimuli:
     graders:
       - type: completed
       - type: skill-invocation
-        config: { disallowed: [cosmosdb-relational-migration, cosmosdb-best-practices] }
+        config: { disallowed: [cosmosdb-migration, cosmosdb-best-practices] }
       - type: prompt
         config: *judge
       - type: output-matches

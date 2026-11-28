@@ -16,7 +16,7 @@ vscode-cosmosdb/
 │   └── **/*.test.ts              # Vitest unit tests (run in Node or jsdom, vscode is mocked)
 ├── packages/*/src/
 │   └── **/*.test.ts              # Vitest unit tests for workspace packages
-├── skills/cosmosdb-relational-migration/tests/
+├── skills/cosmosdb-migration/tests/
 │   └── *.test.mjs                # Portable migration helper and contract tests
 ├── evals/cosmosdb-relational-migration/
 │   ├── **/eval.yaml              # Vally capability and artifact evaluation specs
@@ -54,11 +54,13 @@ vscode-cosmosdb/
 - `vscode` is aliased to `src/__mocks__/vscode.ts` (provided by `jest-mock-vscode`).
 - `npm run vitest` runs these tests and the portable migration skill tests in parallel.
 
-### Migration skill tests (`skills/cosmosdb-relational-migration/tests/*.test.mjs`)
+### Migration skill tests (`skills/cosmosdb-migration/tests/*.test.mjs`)
 
 - Use Node's built-in test runner so the standalone skill does not depend on Vitest.
 - Run alone with `npm run test:migration-skill`, or as part of the main `npm run vitest` command.
 - For live agent behavior and artifact checks, see [Migration skill evaluations (Vally)](#migration-skill-evaluations-vally).
+- Relational, document, and unfamiliar-source fixtures exercise inventory, mapping examples, freshness,
+  compatibility, and completion contracts. These are not live source extraction or engine-equivalence tests.
 
 ### Integration tests (`test/**/*.test.ts`)
 
@@ -90,6 +92,10 @@ vscode-cosmosdb/
   `fixtures/webviewHelpers.ts`.
 - Run with `npm run e2e`. See [`test/e2e/README.md`](../test/e2e/README.md) for
   the full architecture, env-var contract, and per-spec patterns.
+- The migration spec uses deterministic agent output with real VS Code routing and artifact validation,
+  including native-source resumption and code-planning freshness. Run it without a database service with
+  `COSMOSDB_E2E_SKIP_EMULATOR=1 npm run e2e -- test/e2e/specs/migration.spec.ts --project=default`.
+  Build freshness includes `skills/` because completion workers load packaged portable helpers at runtime.
 
 ---
 
@@ -155,9 +161,12 @@ For debugging one file at a time without sharing test state, use `--no-file-para
 
 ### Migration skill evaluations (Vally)
 
-The [Vally suite](../evals/cosmosdb-relational-migration/) follows the live capability-evaluation approach in
-[AzureCosmosDB/cosmosdb-agent-kit#277](https://github.com/AzureCosmosDB/cosmosdb-agent-kit/pull/277).
-It supplements, rather than replaces, `npm run test:migration-skill` and the extension's unit and UI tests.
+The [source-independent and document suite](../evals/cosmosdb-migration/) and the
+[relational suite](../evals/cosmosdb-relational-migration/) evaluate the same migration skill.
+Their specs define the scenarios, tags and grading criteria. Fresh inventories require version 2 and field IDs
+derived from typed paths; resumed trials must preserve reviewed inventories, including legacy versions and opaque IDs.
+These evaluations supplement `npm run test:migration-skill`; they do not establish live extraction, production
+performance or deployed service equivalence.
 
 Use the Node.js version in `.nvmrc` and install the pinned development dependencies with `npm ci`.
 
@@ -168,64 +177,16 @@ npm run eval:test
 
 # Requires Copilot authentication and access to both configured models.
 npm run eval
-npm run eval -- --tag category=guidance
-npm run eval -- --tag category=artifacts --tag phase=preflight
-# Check persisted project identity and artifact regeneration for an approved database switch.
-npm run eval -- --tag contract=target-switch --max-retries 0
-# Focused regressions for implied readiness cycles and unselected implementation mechanisms.
-npm run eval -- --tag regression=planning-quality --max-retries 0
-# Parser fallback explanations and the actual first-use permission request.
-npm run eval -- --tag contract=parser-consent --max-retries 0
-# Independent real-sample phases and inference; fetches the pinned application once.
-npm run eval -- --tag category=extended --max-retries 0
-# Run one phase from reviewed prerequisites, without rerunning earlier phases.
-npm run eval -- --tag category=extended --tag phase=provisioning --max-retries 0
-# Explicit opt-in: one conversation chaining discovery through planning.
-npm run eval -- --tag category=integration --max-retries 0
-# Opt-in handoff: fresh conversion, then a separate planning session using those exact outputs.
-npm run eval:handoff
-# Run the smaller suite without downloading the external sample.
-npm run eval -- --tag category!=extended
-# Optional model overrides, without changing the committed specs.
-npm run eval -- --model <agent-model> --judge-model <judge-model>
+
+# Run a single synthetic phase without downloading AdventureWorks.
+npm run eval -- --tag category=synthetic --tag phase=discovery --max-retries 0
 ```
 
-The suite includes:
+The chained AdventureWorks integration and conversion-to-planning handoff remain opt-in.
 
-- Guidance scenarios for all six phases, parser consent and fallback, source authority, SDK eligibility,
-  domain ownership, peer-skill design guidance, approval gates, reruns, project scope,
-  historical code-migration completion, and project-local memory.
-  Conversion-design guidance uses relational source tables and mapped Cosmos DB target items.
-  Planning regressions cover implementation-versus-production readiness, activation-versus-observation cycles,
-  and unresolved service mechanisms being mislabeled as resolved work.
-  Parser coverage includes both fallback explanations and presenting the first-use choice with dependency/license
-  disclosure, then stopping without selecting or invoking a parser. The headless scenario tests the permission
-  request and pause, not a real user-approval round trip or dependency installation.
-- An unrelated PostgreSQL prompt that must activate neither migration nor best-practices skills.
-- Four artifact-producing scenarios: preflight and instruction-scoped discovery from supplied synthetic inputs, assessment from a valid
-  discovery checkpoint, and a database target switch from a synthetic completed provisioning checkpoint.
-  Each trial gets a separate `app` fixture and local copies of both skills.
-  A host-side grader plugin reruns trusted migration completion validators, checks source inventory and ownership,
-  and rejects source edits, changed predecessor evidence, lost user metadata, and out-of-phase artifacts.
-  The model judge also inspects the generated files, not just the agent's completion claim.
-  The target-switch case replaces the prose-only identity-preservation check: it verifies the saved project name,
-  accepted root/domain models, upstream state and freshness, account coordinates, and reused sample data.
-  It requires the approved database in saved state, exact target-dependent artifact regeneration, and incomplete,
-  unverified provisioning. Old readback may be removed or retained unchanged as historical evidence, but must not be
-  retargeted or refreshed into new verification. The semantic judge checks the decision summary and execution
-  boundaries without requiring the final reply to enumerate every preserved field.
-- Seven extended AdventureWorks scenarios: independent preflight, discovery, assessment, schema conversion,
-  artifact-only provisioning and code-migration planning, plus discovery that infers DDL from the real
-  Entity Framework application without receiving the supplied schema.
-  Artifact checks require the migration name initialized by the fixture to remain unchanged.
-  Discovery-only inference rejects root-level code-migration planning artifacts, even if phase statuses remain unset.
-- An opt-in integration scenario chaining discovery through planning in one conversation. The runner
-  excludes it unless `--tag category=integration` explicitly selects it, including on an unfiltered `npm run eval`.
-- An opt-in conversion-to-planning handoff, reusing the isolated phase specifications and their current rubrics.
-  It runs fresh conversion first, then passes its exact accepted outputs to a new planning session instead of
-  substituting the reviewed conversion fixture. It is not included in an unfiltered `npm run eval`.
-  Planning preserves every captured root property except mutable `execution` activity and separately checked `phases`.
-  Unknown user metadata is protected; code-migration phase progress remains mutable.
+AdventureWorks artifact checks preserve the initialized migration name and reject root-level code-migration planning
+artifacts during discovery-only inference. Handoff planning preserves every captured root property except mutable
+execution activity and separately checked phases; unknown user metadata remains protected.
 
 Every scenario requires completion, correct skill activation, a nonempty answer, and binary correctness
 at threshold `1`. Guidance scenarios also require no workspace edits. Offline fake-judge tests exercise
@@ -258,7 +219,7 @@ and rate limits at most twice; failed correctness verdicts are not retried or re
 The extended CI job disables executor retries to avoid repeating an expensive full migration after a timeout.
 
 The [evaluation workflow](../.github/workflows/migration-evals.yml) runs offline checks when evaluation inputs
-change. Automatic live runs require changes under `skills/cosmosdb-relational-migration/` or its required
+change. Automatic live runs require changes under `skills/cosmosdb-migration/` or its required
 `skills/cosmosdb-best-practices/` peer; evaluation-only and unrelated changes skip model calls.
 Fork and Dependabot PRs are always offline-only. A manual workflow dispatch runs the default suites;
 its `integration` input additionally enables the chained scenario, and its independent `handoff` input enables
@@ -300,10 +261,10 @@ with complete plan sections for task ordering, operational handoff, validation, 
 It omits the preamble and four implementation sections (affected files, access patterns, configuration/authentication,
 and applied rules); additional sections are kept in full. The implementation judge receives the full plan and checks
 that prerequisites described elsewhere are reflected in the tasks and blockers. Boundary packets retain the complete
-audit; design/implementation packets explicitly state that it is assessed separately.
-For code-only inference, the inventory packet contains the typed inventory and EF/model evidence.
-The access/boundary packet carries the audit and generated DDL to verify the inference output and discovery boundary.
-Shared contextual files are repeated where necessary, not shortened.
+audit; design/implementation packets explicitly state that it is assessed separately. For code-only inference, the inventory packet contains the typed inventory and
+EF/model evidence. The access/boundary packet alone carries the audit and any generated DDL so the judge can
+verify that the agent did not synthesize DDL or advance beyond discovery. Shared contextual files are repeated
+where necessary, not shortened.
 Selected text files other than the dependency plan projection are complete. That projection lists omitted sections;
 the project-state projection lists omitted freshness/activity/history fields. JSON is compactly serialized.
 Every selected file carries its path, role, original byte count and SHA-256. The packet also includes the

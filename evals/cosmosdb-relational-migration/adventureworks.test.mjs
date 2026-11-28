@@ -13,13 +13,15 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { acceptedTrial, handoffSpec, runHandoff } from '../../scripts/eval-handoff.mjs';
 import { resolveEvalSelection } from '../../scripts/eval-options.mjs';
-import { checkPhaseCompletions } from '../../skills/cosmosdb-relational-migration/scripts/check-phase-completion.mjs';
-import { buildFreshnessManifest } from '../../skills/cosmosdb-relational-migration/scripts/freshness.mjs';
+import { checkPhaseCompletions } from '../../skills/cosmosdb-migration/scripts/check-phase-completion.mjs';
+import { buildFreshnessManifest } from '../../skills/cosmosdb-migration/scripts/freshness.mjs';
+import { sourceFilesHash } from '../../skills/cosmosdb-migration/scripts/validate-source-evidence.mjs';
 import {
     applicationSnapshot,
     checkAdventureWorks,
     checkAdventureWorksInventory,
     checkControllerCoverage,
+    checkInferenceEvidence,
     checkPlanningBoundary,
     checkPhaseBoundary,
 } from './adventureworks/check-artifacts.mjs';
@@ -37,6 +39,7 @@ import { judgeEvidenceGroups } from './adventureworks/judge-evidence.mjs';
 import { checkPlanTasks } from './adventureworks/plan-contract.mjs';
 import { fetchSample, verifySample } from './adventureworks/sample.mjs';
 import { setupAdventureWorks, workloadContent } from './adventureworks/setup.mjs';
+import { reviewedDdlV2 } from './ddl-inventory-fixture.mjs';
 
 const ddl = fileURLToPath(new URL('./adventureworks/AdventureworksLT.sql', import.meta.url));
 
@@ -472,6 +475,17 @@ for (const phase of phaseOrder) {
         assert.throws(() => checkAdventureWorks(app, phase, sample));
         if (analyticalPhases.includes(phase)) {
             await materializePrerequisites(app, phaseOrder[phaseOrder.indexOf(phase) + 1]);
+            if (phase === 'preflight') {
+                assert.throws(() => checkAdventureWorks(app, phase, sample), /Fresh preflight/);
+                const path = join(app, '.cosmosdb-migration/phases/1-discovery/preflight-manifest.json');
+                const manifest = JSON.parse(readFileSync(path, 'utf8'));
+                manifest.sourceInventory = reviewedDdlV2(manifest.sourceInventory);
+                manifest.sourceSha256 = manifest.sourceInventory.sha256;
+                writeFileSync(path, JSON.stringify(manifest));
+                const state = JSON.parse(readFileSync(projectPath, 'utf8'));
+                state.freshness.preflight = buildFreshnessManifest(app, state, phase, readCheckpoint(phase).consulted);
+                writeFileSync(projectPath, JSON.stringify(state));
+            }
             checkAdventureWorks(app, phase, sample);
             const completedProject = JSON.parse(readFileSync(projectPath, 'utf8'));
             completedProject.name = 'RenamedMigration';
@@ -507,13 +521,43 @@ test('inferred discovery rejects root-level planning outputs even without a code
     const migration = join(app, '.cosmosdb-migration');
     const manifestPath = join(migration, 'phases/1-discovery/preflight-manifest.json');
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-    for (const file of manifest.sourceInventory.files) {
-        file.origin = 'inferred';
-        file.sourcePaths = ['Models/sampledbContext.cs'];
+    const inventory = reviewedDdlV2(manifest.sourceInventory);
+    const sourcePath = 'Models/sampledbContext.cs';
+    const evidence = [sourcePath];
+    inventory.files = [
+        {
+            path: sourcePath,
+            sha256: sha256(readFileSync(join(app, sourcePath))),
+            kind: 'code',
+            disposition: 'used',
+            rationale: 'Synthetic application evidence for boundary grading.',
+            provenance: { method: 'code', scope: 'offline fixture' },
+        },
+    ];
+    inventory.sha256 = sourceFilesHash(inventory.source.engine, inventory.files);
+    for (const dataset of inventory.datasets) {
+        dataset.evidence = evidence;
+        dataset.coverage = { basis: 'code', complete: false, scope: 'Synthetic application mappings.', sampling: null };
+        for (const field of dataset.fields) field.evidence = evidence;
+        for (const identity of dataset.identities) identity.evidence = evidence;
     }
+    for (const relationship of inventory.relationships) relationship.evidence = evidence;
+    manifest.sourceInventory = inventory;
+    manifest.sourceSha256 = inventory.sha256;
     writeFileSync(manifestPath, JSON.stringify(manifest));
+    rmSync(join(migration, 'phases/1-discovery/schema-ddl/AdventureworksLT.sql'));
+    const discoveryPath = join(migration, 'phases/1-discovery/discovery-manifest.json');
+    const discovery = JSON.parse(readFileSync(discoveryPath, 'utf8'));
+    discovery.sourceSha256 = inventory.sha256;
+    writeFileSync(discoveryPath, JSON.stringify(discovery));
+    const reportPath = join(migration, 'phases/1-discovery/discovery-report.md');
+    writeFileSync(
+        reportPath,
+        readFileSync(reportPath, 'utf8').replace('## Relational Semantics', '## Source Semantics'),
+    );
     const projectPath = join(migration, 'project.json');
     const project = JSON.parse(readFileSync(projectPath, 'utf8'));
+    project.phases.discovery.schemaInventory = { files: [`../${sourcePath}`] };
     delete project.phases.codeMigration;
     for (const phase of ['preflight', 'discovery']) {
         project.freshness[phase] = buildFreshnessManifest(app, project, phase, readCheckpoint(phase).consulted);
@@ -607,6 +651,81 @@ test('independent inventory checks accept quoted references and reject lost rela
         const changed = structuredClone(inventory);
         mutate(changed);
         assert.throws(() => checkAdventureWorksInventory(changed));
+    }
+});
+
+test('version-2 relational projection retains independent source-fact checks', () => {
+    const legacy = schemaInventory();
+    const inventory = {
+        version: 2,
+        dialect: legacy.dialect,
+        datasets: legacy.tables.map((table) => ({
+            id: table.name,
+            kind: 'relational',
+            relational: { ...table, indexes: legacy.indexes.filter((index) => index.table === table.name) },
+        })),
+    };
+    checkAdventureWorksInventory(inventory);
+    for (const mutate of [
+        (value) => value.datasets.pop(),
+        (value) => delete value.datasets[0].relational,
+        (value) => value.datasets.find(({ id }) => id === 'SalesLT.Product').relational.columns.pop(),
+        (value) => value.datasets.find(({ id }) => id === 'SalesLT.CustomerAddress').relational.primaryKey.reverse(),
+        (value) => value.datasets.find(({ id }) => id === 'SalesLT.ProductCategory').relational.foreignKeys.splice(0),
+        (value) => value.datasets.find(({ id }) => id === 'SalesLT.Product').relational.indexes.splice(0),
+    ]) {
+        const changed = structuredClone(inventory);
+        mutate(changed);
+        assert.throws(() => checkAdventureWorksInventory(changed));
+    }
+});
+
+test('code-only inference requires exact application evidence and cannot claim deployed completeness', () => {
+    const path = 'Models/sampledbContext.cs';
+    const hash = sha256('reviewed application mapping');
+    const source = new Map([[path, hash]]);
+    const inventory = {
+        version: 2,
+        files: [{ path, sha256: hash, kind: 'code', disposition: 'used' }],
+        datasets: [
+            {
+                fields: [{ id: '$.Id', path: [{ kind: 'property', name: 'Id' }] }],
+                coverage: { basis: 'code', complete: false },
+                evidence: [path],
+            },
+        ],
+    };
+    checkInferenceEvidence(inventory, source);
+    const legacy = schemaInventory();
+    legacy.files[0].origin = 'inferred';
+    legacy.files[0].sourcePaths = [path];
+    assert.throws(() => checkInferenceEvidence(legacy, source), /Fresh preflight/);
+    for (const mutate of [
+        (value) => {
+            value.datasets[0].fields[0].id = 'opaque';
+        },
+        (value) => {
+            value.files[0].path = 'invented.cs';
+        },
+        (value) => {
+            value.files[0].sha256 = 'changed';
+        },
+        (value) => {
+            value.files[0].disposition = 'excluded';
+        },
+        (value) => {
+            value.datasets[0].coverage.basis = 'declared';
+        },
+        (value) => {
+            value.datasets[0].coverage.complete = true;
+        },
+        (value) => {
+            value.datasets[0].evidence = ['other.cs'];
+        },
+    ]) {
+        const changed = structuredClone(inventory);
+        mutate(changed);
+        assert.throws(() => checkInferenceEvidence(changed, source));
     }
 });
 

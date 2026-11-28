@@ -6,7 +6,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { isAbsolute, join, relative, sep } from 'node:path';
-import { markdownSections } from '../../../skills/cosmosdb-relational-migration/scripts/phase-summary.mjs';
+import { markdownSections } from '../../../skills/cosmosdb-migration/scripts/phase-summary.mjs';
 
 export const MAX_EVIDENCE_BYTES = 384_000;
 const MAX_FILE_BYTES = 512_000;

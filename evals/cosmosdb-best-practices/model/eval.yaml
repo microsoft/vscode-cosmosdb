@@ -1,0 +1,52 @@
+name: cosmosdb-best-practices-model
+description: Entity grouping regression for the local upstream contribution.
+type: capability
+
+agent_environment:
+  skills:
+    - ../../../skills/cosmosdb-best-practices
+
+defaults:
+  executor: copilot-sdk
+  model: gpt-5.6-luna
+  judge_model: gpt-5.6-terra
+  runs: 1
+  timeout: 3m
+
+scoring:
+  threshold: 1
+
+stimuli:
+  # Distinguish sharing from atomicity.
+  - name: model-type-discriminator
+    tags: { category: model, rule: model-type-discriminator, regression: upstream-operation-review }
+    prompt: |
+      Cosmos DB Profiles and Leases share an owner and may have equal native IDs.
+      A proposed container uses HPK [/ownerId, /type]. Explain discrimination,
+      ID collisions, transaction scope and scaling tradeoffs versus embedding,
+      sharing a complete key, or separate containers. What do different complete
+      keys tell us about logical partitioning, placement on physical partitions,
+      and how evenly load is distributed? Include pooling and hot-owner limits;
+      preserve original keys when comparing identity changes.
+      Operations across owners also exist. Do not write files.
+    rubric:
+      - Persist distinct type values for filtering/deserialization and explain that [owner, profile] and [owner, lease] are different logical partitions, not a shared transactional batch boundary.
+      - Compare embedding, separate documents sharing one complete key, shared-container documents with different keys, and separate containers using their size/update, atomicity, pooling and scaling tradeoffs; same-key items share logical-partition limits and different keys do not guarantee balanced physical placement.
+      - Explain that a discriminator alone does not distinguish equal IDs within one complete key; compare collision-free type-scoped Cosmos IDs while retaining original keys against type-separated partition tuples, without silently rewriting existing identities.
+      - Do not claim that same-owner grouping makes cross-owner or cross-container operations atomic.
+    graders:
+      - type: completed
+      - type: skill-invocation
+        config: { required: [cosmosdb-best-practices], disallowed: [cosmosdb-migration] }
+      - type: prompt
+        config:
+          scoring: binary
+          threshold: 1
+          prompt: >-
+            Evaluate every rubric criterion for technical correctness. Accept semantically equivalent
+            explanations and concise actionable prose; do not require exact phrases or code unless
+            explicitly requested. Reject substantive omissions, contradictions, and incorrect advice.
+            Keyword mentions alone do not satisfy a criterion.
+      - type: output-matches
+        config: { pattern: '\S' }
+      - type: diff-empty

@@ -123,7 +123,7 @@ export function buildMigrationSkillPrompt(invocation: MigrationSkillInvocation, 
             invocation.phase
                 ? `Review the ${invocation.phase.replaceAll('-', ' ')} migration blockers and propose fixes for approval.`
                 : 'Review the migration blockers and propose fixes for approval.',
-            'Use the cosmosdb-relational-migration skill.',
+            'Use the cosmosdb-migration skill.',
             ...(isMigrationWorkspaceRoot(invocation.workspacePath)
                 ? []
                 : [`Workspace: ${JSON.stringify(path.resolve(invocation.workspacePath))}`]),
@@ -154,16 +154,16 @@ export function buildMigrationSkillPrompt(invocation: MigrationSkillInvocation, 
     const isWorkspaceRoot = isMigrationWorkspaceRoot(invocation.workspacePath);
     const lines = [
         invocation.phase === undefined
-            ? 'Run a relational database migration to Azure Cosmos DB.'
+            ? 'Run a database migration to Azure Cosmos DB for NoSQL.'
             : hasExistingArtifacts && codeMigrationAction === undefined
-              ? `Regenerate the ${phaseLabel} results for a relational database migration to Azure Cosmos DB.`
-              : `Run the ${phaseLabel} phase of a relational database migration to Azure Cosmos DB.`,
-        'Use the cosmosdb-relational-migration skill.',
+              ? `Regenerate the ${phaseLabel} results for a database migration to Azure Cosmos DB for NoSQL.`
+              : `Run the ${phaseLabel} phase of a database migration to Azure Cosmos DB for NoSQL.`,
+        'Use the cosmosdb-migration skill.',
         ...(isWorkspaceRoot ? [] : [`Workspace: ${JSON.stringify(path.resolve(invocation.workspacePath))}`]),
         ...(invocation.mode === 'autonomous' ? ['Run in autonomous mode.'] : []),
         ...(invocation.preflightStep === undefined ? [] : [`Run only the ${invocation.preflightStep} preflight step.`]),
         ...(invocation.schemaSource === 'infer'
-            ? ['Infer the source schema from workspace code and selected artifacts (schema-source: infer).']
+            ? ['Infer the source inventory from workspace code and selected artifacts (schema-source: infer).']
             : []),
         ...(invocation.includeUnmappedDomains === undefined
             ? []

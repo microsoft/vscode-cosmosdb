@@ -52,10 +52,7 @@ describe('shared migration resource pipeline', () => {
     it('validates shared and dedicated allocation using the published JSON Schema', () => {
         const schema = JSON.parse(
             readFileSync(
-                new URL(
-                    '../../../../skills/cosmosdb-relational-migration/schemas/cosmos-model.schema.json',
-                    import.meta.url,
-                ),
+                new URL('../../../../skills/cosmosdb-migration/schemas/cosmos-model.schema.json', import.meta.url),
                 'utf8',
             ),
         ) as object;

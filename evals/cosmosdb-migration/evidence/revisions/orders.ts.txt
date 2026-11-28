@@ -1,0 +1,2 @@
+export type NativeOrder = { _id: { $oid: string }; tenant: string };
+export const displayOrder = (row: NativeOrder) => `${row.tenant}:${row._id.$oid}`;

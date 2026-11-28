@@ -25,7 +25,7 @@ import {
 
 async function withCompletionChecker(source: string, check: (extensionPath: string) => Promise<void>): Promise<void> {
     const extensionPath = fs.mkdtempSync(path.join(os.tmpdir(), 'migration C# worker test '));
-    const scriptsPath = path.join(extensionPath, 'skills', 'cosmosdb-relational-migration', 'scripts');
+    const scriptsPath = path.join(extensionPath, 'skills', 'cosmosdb-migration', 'scripts');
     fs.mkdirSync(scriptsPath, { recursive: true });
     fs.mkdirSync(path.join(extensionPath, '.cosmosdb-migration'));
     fs.writeFileSync(path.join(scriptsPath, 'check-phase-completion.mjs'), source);

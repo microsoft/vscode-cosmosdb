@@ -1,0 +1,49 @@
+name: cosmosdb-best-practices-query
+description: Projection correctness regression for the local upstream contribution.
+type: capability
+
+agent_environment:
+  skills:
+    - ../../../skills/cosmosdb-best-practices
+
+defaults:
+  executor: copilot-sdk
+  model: gpt-5.6-luna
+  judge_model: gpt-5.6-terra
+  runs: 1
+  timeout: 3m
+
+scoring:
+  threshold: 1
+
+stimuli:
+  # Preserve payload and copied versions.
+  - name: query-use-projections
+    tags: { category: query, rule: query-use-projections, regression: upstream-operation-review }
+    prompt: |
+      A Cosmos DB list page needs only id/name. Its projected DTO is also reused
+      to copy full items, including unknown fields, then delete their sources.
+      Cleanup rereads each source's newest ETag. Review the projection, result
+      type, and copy/delete sequence. Explain which payload and version each
+      step needs, and how conflicts should be handled. No code or file changes.
+    rubric:
+      - Keep the display projection limited to id/name with an appropriate result type; do not treat its DTO as a complete item or ban projections for unrelated display reads.
+      - Obtain the complete application payload, including unknown properties that must survive, before copying or replacing; an explicit additional full-item read is acceptable if its extra work is acknowledged.
+      - Capture payload and ETag from the same source version and delete only successfully copied versions using the original ETag; a newer cleanup read must not authorize deleting uncopied updates.
+      - On a version conflict retain the source and reconcile or recopy, without claiming that per-item ETags provide cross-partition atomicity or fence unrelated writers.
+    graders:
+      - type: completed
+      - type: skill-invocation
+        config: { required: [cosmosdb-best-practices], disallowed: [cosmosdb-migration] }
+      - type: prompt
+        config:
+          scoring: binary
+          threshold: 1
+          prompt: >-
+            Evaluate every rubric criterion for technical correctness. Accept semantically equivalent
+            explanations and concise actionable prose; do not require exact phrases or code unless
+            explicitly requested. Reject substantive omissions, contradictions, and incorrect advice.
+            Keyword mentions alone do not satisfy a criterion.
+      - type: output-matches
+        config: { pattern: '\S' }
+      - type: diff-empty

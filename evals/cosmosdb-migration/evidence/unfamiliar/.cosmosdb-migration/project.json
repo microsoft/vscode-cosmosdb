@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "name": "Gauge archive",
+  "sourceCode": "parent",
+  "phases": {
+    "discovery": {
+      "status": "not-started",
+      "preflightStatus": "not-started",
+      "schemaInventory": { "files": ["../family.json", "../slice.jsonl", "../requirements.md"] },
+      "volumetrics": { "files": ["../workload.md"] },
+      "accessPatterns": { "files": ["../workload.md"] },
+      "applicationAnalysis": {
+        "codebaseAvailable": false,
+        "projectName": "Gauge archive",
+        "databaseType": "LoomCell",
+        "completedAt": "2026-10-01T00:00:00.000Z"
+      }
+    },
+    "assessment": { "status": "not-started", "domains": [] },
+    "schemaConversion": { "status": "not-started", "domains": [] },
+    "provisioning": { "status": "not-started" },
+    "codeMigration": { "status": "not-started" }
+  }
+}

@@ -75,7 +75,7 @@ Reference these guidelines when:
 - [model-numeric-precision](rules/model-numeric-precision.md) - Understand IEEE 754 numeric precision limits
 - [model-denormalize-reads](rules/model-denormalize-reads.md) - Denormalize for read-heavy workloads including pre-computed aggregates
 - [model-schema-versioning](rules/model-schema-versioning.md) - Version your document schemas
-- [model-type-discriminator](rules/model-type-discriminator.md) - Use type discriminators for polymorphic data
+- [model-type-discriminator](rules/model-type-discriminator.md) - Use type discriminators; distinguish shared containers from transaction scope
 - [model-json-serialization](rules/model-json-serialization.md) - Handle JSON serialization correctly for Cosmos DB documents
 - [model-relationship-references](rules/model-relationship-references.md) - Use ID references with transient hydration for document relationships
 - [model-ttl-expiration](rules/model-ttl-expiration.md) - Configure TTL relative to the item's last update, with container defaults and item overrides
@@ -96,7 +96,7 @@ Reference these guidelines when:
 
 - [query-aggregate-single-pass](rules/query-aggregate-single-pass.md) - Compute min/max/avg with one scoped aggregate query
 - [query-avoid-cross-partition](rules/query-avoid-cross-partition.md) - Minimize cross-partition queries
-- [query-use-projections](rules/query-use-projections.md) - Project only needed fields; prefer dedicated result types for projections
+- [query-use-projections](rules/query-use-projections.md) - Project needed fields without losing downstream payload or version evidence
 - [query-pagination](rules/query-pagination.md) - Use continuation tokens for pagination
 - [query-avoid-scans](rules/query-avoid-scans.md) - Avoid full container scans
 - [query-parameterize](rules/query-parameterize.md) - Use parameterized queries
@@ -154,9 +154,9 @@ Reference these guidelines when:
 
 ### 5. Indexing Strategies (MEDIUM-HIGH)
 
-- [index-exclude-unused](rules/index-exclude-unused.md) - Exclude paths never queried
+- [index-exclude-unused](rules/index-exclude-unused.md) - Justify indexes from server-side operations, not point reads or projected fields
 - [index-path-syntax](rules/index-path-syntax.md) - Use correct path notation (`/?`, `/[]`, `/*`)
-- [index-composite](rules/index-composite.md) - Use composite indexes for ORDER BY
+- [index-composite](rules/index-composite.md) - Use composite indexes for multi-property sorts and filter optimization
 - [index-composite-direction](rules/index-composite-direction.md) - Match composite index directions to ORDER BY
 - [index-spatial](rules/index-spatial.md) - Add spatial indexes for geo queries
 - [index-range-vs-hash](rules/index-range-vs-hash.md) - Choose appropriate index types

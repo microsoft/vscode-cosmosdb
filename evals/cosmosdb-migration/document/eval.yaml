@@ -1,0 +1,146 @@
+name: cosmosdb-migration-document-checkpoints
+description: Independent schema-only MongoDB journal checkpoints from local synthetic evidence.
+type: capability
+
+agent_environment:
+  skills:
+    - ../../../skills/cosmosdb-migration
+    - ../../../skills/cosmosdb-best-practices
+  files:
+    - { src: setup.mjs, dest: document/setup.mjs }
+    - { src: fixtures.mjs, dest: document/fixtures.mjs }
+
+defaults:
+  executor: copilot-sdk
+  model: gpt-6.1-terra
+  reasoning_effort: high
+  judge_model: gpt-6.1-sol
+  judge_reasoning_effort: high
+  runs: 1
+  timeout: 15m
+
+scoring:
+  threshold: 1
+
+stimuli:
+  - name: document-preflight
+    tags: { category: synthetic, phase: preflight, contract: document-preflight }
+    agent_environment:
+      commands: [node document/setup.mjs document-preflight]
+    prompt: |
+      Run only preflight for the migration from MongoDB to Azure Cosmos DB for NoSQL in ./app.
+      The project selects native evidence files and the engineer's workload handoff. Review them
+      directly; record a fresh inventory, provenance, scope, and limitations. Preserve the selected
+      inputs and validate the completed checkpoint. For this handoff, report each identity's scope
+      as the bare scope level, the qualified namespace it covers, or the exact native scope declaration.
+      Record secondary indexes in each dataset's indexes array with their native name, ordered key
+      and unique flag. The key may be a native key document or an ordered array of field/direction
+      entries; any fieldId must match its field. For a single-field key, fields plus direction also work.
+      For sample-only paths retain observed types (optionally also "unknown" for unseen variants).
+      Distinguish an observation from a requirement or a non-null guarantee. Leave runCounts unchanged:
+      preflight has its own status but no run counter.
+      Explain qualifications in the summary. This is schema-only. Use explicit unknowns where
+      figures were not supplied. Do not run discovery or later phases. Work autonomously using only
+      ./app and the installed skills, without installs, network calls, or a database connection.
+    rubric:
+      - Reconcile the open validator and collection metadata with the bounded two-document sample. Distinguish the unique collection-scoped _id from the ascending, nonunique tenantId index in the inventory and summary; reject contradictions between them. Do not infer other guarantees or an exhaustive schema.
+      - Inventory mixed native key types, the BSON long, optional/null evidence, literal dotted versus nested names, and ordered nested array paths. At sample-only paths retain observed types, not unsupported concrete variants, required presence or a non-null guarantee. Use field IDs produced from typed paths. Preserve input bytes and evidence provenance.
+      - Complete and validate only preflight with schema-only scope. Preserve the engineer-declared read and unknown quantities; do not invent a language, SDK, coded or observed operations, parser choice, or SQL intermediate.
+    graders:
+      - &completed { type: completed }
+      - &skill { type: skill-invocation, config: { required: [cosmosdb-migration] } }
+      - { type: source-migration-artifacts, config: { scenario: document-preflight } }
+      - &judge
+        type: prompt
+        config:
+          scoring: binary
+          threshold: 1
+          evidence: [trajectory, diff, repo]
+          prompt: >-
+            Evaluate all rubric criteria using the supplied evidence, actual files, trajectory and
+            final response. Pre-staged prerequisites are not agent achievements. Accept substantively
+            equivalent reasoning, not keyword matches. Fail unsupported claims, fabricated evidence
+            and actions outside the requested boundary.
+      - &output { type: output-matches, config: { pattern: '\S' } }
+    artifacts: &artifacts
+      include: [app/.cosmosdb-migration/**]
+
+  - name: document-discovery
+    tags: { category: synthetic, phase: discovery, contract: document-discovery }
+    agent_environment:
+      commands: [node document/setup.mjs document-discovery]
+    prompt: |
+      Run discovery only in ./app for this schema-only migration to Azure Cosmos DB for NoSQL;
+      the preflight checkpoint is already reviewed. Identify the engineer's confirmed workload
+      and one additional plausible access pattern suggested by the native evidence. Distinguish
+      what supports each pattern and what still needs confirmation in the discovery artifacts.
+      In the manifest retain the engineer's exact statement in declaration and cite the workload
+      handoff in sourcePaths; only the confirmed read has a declaration. Cite native source files
+      supporting the candidate. For each read give filterFields (the inventory field IDs used as
+      predicates, [] if unfiltered; a single top-level filter may instead be named by ending
+      operation with "by FIELD"). If the read is distinct
+      because of its result rather than its predicates, give resultKind (one, count, aggregate,
+      exists, distinct, or projection; ordinary record retrieval defaults to records).
+      Explain what the read returns and why it is a different requirement, not merely a new name.
+      Validate the discovery checkpoint and stop before assessment. Preserve the accepted inputs.
+      No application exists. Work locally and autonomously using only ./app and installed skills;
+      no installs or external services.
+    rubric:
+      - Only tenant listing is user-declared. Retain the exact supplied statement and cite the handoff. Accept any one distinct, plausible schema-inferred read grounded in actual native evidence, not only an identity lookup. Verify that operation, predicate fields, result, provenance and report agree in meaning; reject a restated tenant listing regardless of its label or an incidental mention of ID. Explain what needs confirmation.
+      - Neither pattern is observed traffic or code evidence. Keep measured rates and SDK compatibility unknown or absent, without generating an SDK report.
+      - Produce a complete, current discovery checkpoint. Preserve preflight and native evidence; do not assign domains, design containers or advance other phases.
+    graders:
+      - *completed
+      - *skill
+      - { type: source-migration-artifacts, config: { scenario: document-discovery } }
+      - *judge
+      - *output
+    artifacts: *artifacts
+
+  - name: document-assessment
+    tags: { category: synthetic, phase: assessment, contract: document-assessment }
+    agent_environment:
+      commands: [node document/setup.mjs document-assessment]
+    prompt: |
+      Run only assessment in ./app for the schema-only migration to Azure Cosmos DB for NoSQL.
+      Discovery has been reviewed. Assign the in-scope datasets to appropriate business domains
+      and explain the assignment using the available evidence. Validate the checkpoint and stop;
+      do not design containers or start conversion. Preserve source and predecessor artifacts.
+      No application code or measured workload is available. Use only ./app and installed skills
+      with no external requests, installs or deployments.
+    rubric:
+      - Account for every in-scope dataset exactly once across the domain evidence, root assessment manifest and project. Justify ownership using source purpose and evidenced workload.
+      - Keep the domain in schema scope despite lacking an application mapping. Distinguish the declared read from the candidate and do not invent code references, SDK evidence or observed traffic.
+      - Preserve the reviewed predecessors, validate the assessment artifacts and freshness, and stop before conversion.
+    graders:
+      - *completed
+      - *skill
+      - { type: source-migration-artifacts, config: { scenario: document-assessment } }
+      - *judge
+      - *output
+    artifacts: *artifacts
+
+  - name: document-planning
+    tags: { category: synthetic, phase: code-migration, contract: document-planning }
+    agent_environment:
+      files:
+        - { src: ../document-conversion/accepted.mjs, dest: document-conversion/accepted.mjs }
+      commands: [node document/setup.mjs document-planning]
+    prompt: |
+      The schema conversion in ./app is reviewed. Create a code-migration plan for the application
+      now. If an essential prerequisite is missing, report what I need to supply or refresh first
+      and which migration work can still proceed, without writing artifacts. Do not execute a plan, change application code,
+      revise accepted artifacts, deploy, contact a service or install anything. Use only ./app and
+      the installed skills.
+    rubric:
+      - Refuse to create an application code-migration plan from a schema-only checkpoint. Do not substitute a speculative plan, scaffold application files, or reinterpret the completed analytical phases as application evidence.
+      - Give actionable next steps to obtain the real codebase, inspect it, and refresh application discovery including language and SDK compatibility evidence before planning.
+      - Explain that missing code does not invalidate schema analysis or prevent authorized artifact-only provisioning. Do not perform those tasks, alter accepted evidence, or imply deployment occurred.
+    graders:
+      - *completed
+      - *skill
+      - { type: source-migration-artifacts, config: { scenario: document-planning } }
+      - *judge
+      - *output
+      - type: diff-empty
+    artifacts: *artifacts

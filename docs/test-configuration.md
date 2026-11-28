@@ -195,6 +195,7 @@ The suite includes:
 - Guidance scenarios for all six phases, parser consent and fallback, source authority, SDK eligibility,
   domain ownership, peer-skill design guidance, approval gates, reruns, project scope,
   historical code-migration completion, and project-local memory.
+  Conversion-design guidance uses relational source tables and mapped Cosmos DB target items.
   Planning regressions cover implementation-versus-production readiness, activation-versus-observation cycles,
   and unresolved service mechanisms being mislabeled as resolved work.
   Parser coverage includes both fallback explanations and presenting the first-use choice with dependency/license

@@ -175,13 +175,16 @@ stimuli:
     tags:
       { category: guidance, phase: schema-conversion, contract: operation-results, regression: conversion-semantics }
     prompt: |
-      Review this document-source-to-Cosmos DB phase 3 candidate. R01 finds events
-      using SELECT c.id, c.ownerId FROM c WHERE c.ownerId = @ownerId.
+      Review this phase 3 candidate for a relational-to-Cosmos DB migration of an
+      Events table. Its eventKind, occurredAt and payload columns are mapped to
+      target fields with those names; payload contains JSON business data whose
+      additional nested properties must be retained. R01 reads migrated target
+      events using SELECT c.id, c.ownerId FROM c WHERE c.ownerId = @ownerId.
       W01 then copies each returned event to a new owner, deriving its new ID from
-      eventKind and occurredAt and retaining payload plus arbitrary additional
-      source properties. Events have those fields, but R01 returns only the two
+      eventKind and occurredAt and retaining the complete JSON payload.
+      Target events have those fields, but R01 returns only the two
       projected fields. There is no intervening read. The model validator and
-      whole-document mapping examples pass. A separate display-only R02 needs
+      field-mapping and identity examples pass. A separate display-only R02 needs
       just id and ownerId and uses the same projection.
       Should conversion complete with an implementation caveat? Explain the
       smallest operation-level correction and where to record it. Read relevant
@@ -213,9 +216,10 @@ stimuli:
   - name: conversion-colocation-scope
     tags: { category: guidance, phase: schema-conversion, contract: grouping-scope, regression: conversion-semantics }
     prompt: |
-      During document-source migration, Profiles and Leases share an ownerId.
-      Each source collection can have the same native _id for that owner.
-      The candidate keeps those IDs as Cosmos id and puts both types in one
+      During phase 3 of a relational-to-Cosmos DB migration, the source Profiles
+      and Leases tables share an ownerId. Their compatible string primary keys
+      are unique per table, but the two tables can have the same key for that owner.
+      The candidate keeps those key values as Cosmos id and puts both types in one
       container with HPK [/ownerId, /docType]. The summary claims their shared
       owner prefix permits a single transactional batch. They remain independently
       updated documents, and operations involving two owners also exist.
@@ -263,16 +267,17 @@ stimuli:
         regression: conversion-semantics,
       }
     prompt: |
-      Review partition-key reasoning for two containers in a document-source
-      migration. Aliases has stable globally unique source IDs, 90% known-ID
+      Review phase 3 partition-key reasoning for a relational-to-Cosmos DB
+      migration of the Aliases and Events tables into separate containers.
+      Aliases has stable table-wide unique primary keys, 90% known-ID
       lookups and 10% reverse owner lookups; its ownerId changes during reassignment.
-      Events has stable globally unique source event IDs, an ownerId fixed for
+      Events has stable table-wide unique primary keys, an ownerId fixed for
       each stored item, and all discovered queries retrieve an owner's events.
       A supplied synthetic scenario has 10 million event creates and 20,000
-      owner-event queries per day. Native-ID uniqueness must not be weakened;
+      owner-event queries per day. Source primary-key uniqueness must not be weakened;
       no deterministic ID-to-owner routing invariant has been established.
-      Both summaries choose /id with the identical explanation "preserves native
-      IDs and scales well." No skew or event-growth measurements are available.
+      Both summaries choose /id with the identical explanation "preserves source
+      primary keys and scales well." No skew or event-growth measurements are available.
       Explain a separate comparison for each container and the evidence still
       needed. You may retain either choice if justified. Read relevant guidance;
       do not invent measurements, write files, run a phase or access services.
